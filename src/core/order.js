@@ -46,7 +46,7 @@ export function beginCounter(state, ctx) {
     reportedTotal: null, totalAttempts: 0, trueTotal: null, amountDue: null,
     payMethod: null, fakeQr: false, given: null,
     changeDue: 0, changePaid: 0, changeDone: false, changeAttempts: 0, cashDeposited: false,
-    changeOptionsUsed: [], rounding: 0,
+    changeOptionsUsed: [], rounding: 0, changeBills: {},
     tray: {},
     qrArriveAt: null, qrArrived: false, paid: false,
     receipt: null
@@ -225,7 +225,10 @@ export function reportTotal(state, amount, ctx) {
     return { result: 'du', reason: 'cong_sai', penalized, trueTotal, line: lineFor('total_too_high', customer, sh, ctx) }
   }
   const result = amount === trueTotal ? 'dung' : 'thieu'
-  if (result === 'thieu') sh.ledger.undercharge += trueTotal - amount
+  if (result === 'thieu') {
+    sh.ledger.undercharge += trueTotal - amount
+    customer.undercharge = trueTotal - amount     // lỗi 0 sao 'bao_thieu' trên phiếu chấm
+  }
   c.amountDue = amount
   emit(ctx, 'total.reported', { correct: result === 'dung', diff: amount - trueTotal })
   // khách chọn phương thức
@@ -314,6 +317,7 @@ export function giveChange(state, ctx) {
   depositGiven(sh, c)
   c.tray = {}
   c.changePaid += traySum
+  c.changeBills = addBills({ ...(c.changeBills || {}) }, tray, 1)
   c.changeAttempts += 1
   const diff = traySum - due
   const correct = diff === 0
@@ -336,6 +340,7 @@ export function giveChange(state, ctx) {
     }
   } else {
     if (diff > 0) {
+      customer.overchanged = true                  // lỗi 0 sao 'thoi_du' (kể cả khi khách trả lại)
       sh.ledger.overchange += diff
       if (chance(sh, cfg(ctx, 'overChangeReturnRate'))) {
         const back = composeGreedy(diff)
@@ -371,6 +376,27 @@ export function changeOptions(state, ctx = null) {
   return opts.filter(o => !c.changeOptionsUsed.includes(o))
 }
 
+// Hoàn tác tiền mặt đã nhận (khi đổi cách trả sau lần thối thiếu): khách trả lại mọi tờ
+// tiền thối đã cầm, quán trả lại tiền khách đưa; hủy doanh thu tiền mặt và phần làm tròn.
+function undoCashPayment(sh, c) {
+  if (c.rounding) {
+    sh.ledger.rounding = Math.max(0, (sh.ledger.rounding || 0) - c.rounding)
+    c.changeDue -= c.rounding
+    c.rounding = 0
+  }
+  if (!c.cashDeposited) return false
+  const back = c.changeBills && drawerTotal(c.changeBills) === c.changePaid ? c.changeBills : (composeGreedy(c.changePaid) || {})
+  addBills(sh.drawer, back, 1)
+  for (const [b, n] of Object.entries((c.given && c.given.bills) || {})) {
+    sh.drawer[b] = Math.max(0, (Number(sh.drawer[b]) || 0) - (Number(n) || 0))
+  }
+  sh.ledger.cash -= c.amountDue
+  c.cashDeposited = false
+  c.changePaid = 0
+  c.changeBills = {}
+  return true
+}
+
 // Xử lý khi két không thối được.
 // xin_tien_le: 40% khách có tiền lẻ (trả vừa đủ), luôn −5% kiên nhẫn.
 // moi_qr: chuyển sang QR (ngày ≥ qrFromDay). lam_tron: thối dư tối đa 5.000đ có lợi cho khách.
@@ -388,15 +414,19 @@ export function resolveNoChange(state, option, ctx) {
     customer.patience = Math.max(0, customer.patience - cfg(ctx, 'changeAskPatienceCost'))
     const exact = c.amountDue % 5000 === 0 ? composeGreedy(c.amountDue) : null
     if (exact && chance(sh, cfg(ctx, 'changeAskRate'))) {
+      // đổi tờ: hoàn tác lần đưa trước (nếu tiền đã vào két) rồi nhận tiền vừa đủ
+      const undone = undoCashPayment(sh, c)
       c.given = { bills: exact, total: c.amountDue }
       customer.given = c.given
       c.changeDue = 0
       c.changePaid = 0
-      return { ok: true, success: true, option }
+      return { ok: true, success: true, option, undone }
     }
     return { ok: true, success: false, option }
   }
   if (option === 'moi_qr') {
+    // khách lấy lại tiền mặt đã đưa (trả lại tiền thối đã cầm) rồi chuyển khoản trọn hóa đơn
+    const undone = undoCashPayment(sh, c)
     c.payMethod = 'qr'
     customer.payMethod = 'qr'
     c.given = null
@@ -406,7 +436,7 @@ export function resolveNoChange(state, option, ctx) {
     customer.fakeQr = false
     c.qrArriveAt = sh.t + nextInt(sh, 1, 4)
     c.qrArrived = false
-    return { ok: true, success: true, option }
+    return { ok: true, success: true, option, undone }
   }
   // lam_tron
   const due = c.changeDue - c.changePaid
@@ -495,6 +525,7 @@ export function clipTicket(state, ctx) {
     listTotal: priceOfLines(c.draft, R), total: c.amountDue,
     given: c.payMethod === 'cash' && c.given ? c.given.total : null,
     change: c.payMethod === 'cash' ? c.changePaid : 0,
+    rounding: c.payMethod === 'cash' ? (c.rounding || 0) : 0,
     method: c.payMethod
   }
   const ticket = {
@@ -513,7 +544,8 @@ export function clipTicket(state, ctx) {
     if (customer.patience < 0.15) customer.penalties.push({ code: 'cho_goi_mon', stars: 1, source: 'cho' })
     else if (customer.patience < 0.4) customer.penalties.push({ code: 'cho_goi_mon', stars: 0.5, source: 'cho' })
   }
-  const counterErr = customer.orderErrors.length > 0 || customer.penalties.some(p => p.source === 'quay') || !!c.changeWrongAny
+  const counterErr = customer.orderErrors.length > 0 || customer.penalties.some(p => p.source === 'quay') || !!c.changeWrongAny ||
+    (customer.undercharge > 0) || (c.payMethod === 'qr' && !!c.fakeQr)
   sh.counterStreak = counterErr ? 0 : (sh.counterStreak || 0) + 1
   customer.ticketId = ticket.id
   customer.status = 'cho_mon'

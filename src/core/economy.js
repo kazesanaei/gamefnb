@@ -6,6 +6,27 @@ function countCodes(into, codes) {
   for (const c of codes || []) into[c] = (into[c] || 0) + 1
 }
 
+// Mã lỗi → trigger thẻ Mẹo nghề dùng làm "Lời khuyên" (mã trùng trigger thì dùng thẳng).
+export const ERROR_TIP_TRIGGER = Object.freeze({
+  bao_du: 'total_too_high', bao_thieu: 'total_too_high',
+  thoi_thieu: 'change_wrong', thoi_du: 'change_wrong', qr_gia: 'fake_qr',
+  sai_mon: 'first_readback', thieu_mon: 'first_readback', thua_mon: 'first_readback', sai_so_luong: 'first_readback',
+  sai_ghi_chu: 'sai_ghi_chu', trai_ghi_chu: 'sai_ghi_chu',
+  cho_goi_mon: 'cho_lau', cho_lau: 'cho_lau',
+  thieu_nguyen_lieu: 'thieu_nguyen_lieu', thua_nguyen_lieu: 'thieu_nguyen_lieu', bay_nguyen_lieu: 'thieu_nguyen_lieu',
+  thieu_chinh: 'thieu_nguyen_lieu', thieu_phu: 'thieu_nguyen_lieu', thua: 'thieu_nguyen_lieu', bay: 'thieu_nguyen_lieu',
+  chua_so_che: 'chua_rua', bo_qua: 'chua_rua',
+  chay: 'chay', tran: 'nem_lech',
+  song: 'dish_hong', hong: 'dish_hong', sai_cach: 'dish_hong', sai_cach_so_che: 'dish_hong'
+})
+
+// Thẻ Mẹo nghề hợp với mã lỗi (trigger trùng mã, không thì theo bảng ERROR_TIP_TRIGGER).
+export function tipForError(code, tips) {
+  const list = Array.isArray(tips) ? tips : Object.values(tips || {})
+  return list.find(t => t && t.trigger === code) ||
+    (ERROR_TIP_TRIGGER[code] ? list.find(t => t && t.trigger === ERROR_TIP_TRIGGER[code]) : null) || null
+}
+
 // Tổng kết ca (không sửa state). data (tùy chọn) để tra lời khuyên từ TIPS.
 export function summarizeShift(state, data = null) {
   const sh = state.shift
@@ -33,8 +54,7 @@ export function summarizeShift(state, data = null) {
   let advice = null
   if (topCode) {
     advice = { code: topCode, count: all[topCode], tipId: null, text: '' }
-    const tips = data && data.TIPS ? (Array.isArray(data.TIPS) ? data.TIPS : Object.values(data.TIPS)) : []
-    const t = tips.find(x => x.trigger === topCode)
+    const t = tipForError(topCode, data && data.TIPS)
     if (t) { advice.tipId = t.id; advice.text = t.text }
   }
   const lateReviews = Object.values(sh.customers).filter(c => c.reviewLate).map(c => ({ customerId: c.id, name: c.name, ...c.reviewLate }))

@@ -127,7 +127,8 @@ export function makeRequest(state, sh, ctx, opts = {}) {
     }
   }
   const w = cfg(ctx, 'lineCountWeights')
-  const count = weightedPick(sh, [{ n: 1, w: w[0] }, { n: 2, w: w[1] }, { n: 3, w: w[2] }]).n
+  // mỗi dòng một món khác nhau (đơn cùng món nhiều dòng chỉ có ở nhánh tách dòng)
+  const count = Math.min(menu.length, weightedPick(sh, [{ n: 1, w: w[0] }, { n: 2, w: w[1] }, { n: 3, w: w[2] }]).n)
   const lines = []
   const used = []
   for (let i = 0; i < count; i++) {
@@ -168,9 +169,16 @@ function pickName(sh, ctx) {
   if (Array.isArray(N)) { const n = pick(sh, N); return { name: typeof n === 'string' ? n : (n && n.name) || 'Khách', gender: null } }
   const keys = Object.keys(N).filter(k => Array.isArray(N[k]) && N[k].length)
   if (!keys.length) return { name: 'Khách', gender: null }
-  const g = pick(sh, keys)
-  const n = pick(sh, N[g])
-  return { name: typeof n === 'string' ? n : (n && n.name) || 'Khách', gender: g === 'nam' || g === 'nu' ? g : null }
+  // tránh trùng tên với khách khác trong cùng ca (thử lại vài lần)
+  const used = new Set(Object.values(sh.customers || {}).map(c => c.name))
+  let g, name
+  for (let i = 0; i < 6; i++) {
+    g = pick(sh, keys)
+    const n = pick(sh, N[g])
+    name = typeof n === 'string' ? n : (n && n.name) || 'Khách'
+    if (!used.has(name)) break
+  }
+  return { name, gender: g === 'nam' || g === 'nu' ? g : null }
 }
 
 export function personaObj(ctx, id) {

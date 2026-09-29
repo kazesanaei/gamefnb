@@ -30,17 +30,17 @@ export const PERSONAS = deepFreeze({
   }
 })
 
-// Khách quen: ngày 1 hướng dẫn, sau đó thỉnh thoảng quay lại gọi món ruột.
+// Khách quen: ngày 1 hướng dẫn, sau đó thỉnh thoảng quay lại gọi món ruột. `self`: cách tự xưng cố định.
 export const REGULARS = deepFreeze({
   co_thu: {
-    id: 'co_thu', name: 'Cô Thu', persona: 'co_chu', gender: 'nu', region: 'nam',
+    id: 'co_thu', name: 'Cô Thu', persona: 'co_chu', gender: 'nu', region: 'nam', self: 'cô',
     favorite: { recipeId: 'banh_mi_op_la', notes: [] },
     greeting: 'Cô Thu nè con! Hôm nay xe mở hàng, cô ủng hộ liền.',
     returnGreeting: 'Như mọi khi nha con!',
     thanks: 'Ngon lắm, mai cô ghé nữa nghen.'
   },
   ban_nam: {
-    id: 'ban_nam', name: 'Bạn Nam', persona: 'hoc_sinh', gender: 'nam', region: 'nam',
+    id: 'ban_nam', name: 'Bạn Nam', persona: 'hoc_sinh', gender: 'nam', region: 'nam', self: 'em',
     favorite: { recipeId: 'tra_tac', notes: [] },
     greeting: 'Em là Nam, nhà ở cuối hẻm nè. Đi học về khát nước quá!',
     returnGreeting: 'Như mọi khi nha!',

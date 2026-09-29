@@ -1,5 +1,5 @@
 // Bộ sinh số ngẫu nhiên tất định (mulberry32). Trạng thái là số uint32 nằm trong object JSON
-// (vd shift.rng) để lưu/khôi phục nguyên vẹn. Không dùng Math.random.
+// (vd shift.rng) để lưu/khôi phục nguyên vẹn. Không dùng hàm ngẫu nhiên của trình duyệt.
 
 // FNV-1a 32 bit trên chuỗi (theo mã UTF-16, đủ cho băm/giá trị kiểm tra).
 export function hashString(str) {

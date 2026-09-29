@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#b9472f">
+  <meta name="description" content="Bếp Khởi Nghiệp: game bán hàng xe đẩy, ghi order, tính tiền, thối tiền và nấu món.">
+  <title>Bếp Khởi Nghiệp</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/game.css">
+  <link rel="stylesheet" href="css/kitchen.css">
+</head>
+<body>
+  <div id="app" class="app-frame">
+    <div id="boot" class="boot">
+      <p class="boot-title">Bếp Khởi Nghiệp</p>
+      <p class="boot-text">Đang dọn xe ra đầu hẻm…</p>
+    </div>
+  </div>
+  <noscript>
+    <div class="boot boot-error">
+      <p class="boot-title">Bếp Khởi Nghiệp</p>
+      <p class="boot-text">Trình duyệt đang tắt JavaScript. Hãy bật JavaScript để chơi game.</p>
+    </div>
+  </noscript>
+  <script>
+    // Mở trực tiếp tệp (file://) thì ES Modules không chạy được: hiện hướng dẫn.
+    (function () {
+      if (location.protocol !== 'file:') return
+      var box = document.getElementById('boot')
+      if (!box) return
+      box.className = 'boot boot-error'
+      box.innerHTML = '<p class="boot-title">Bếp Khởi Nghiệp</p>' +
+        '<p class="boot-text">Game cần chạy qua máy chủ tĩnh, không mở trực tiếp tệp.</p>' +
+        '<p class="boot-text">Hãy chạy <code>npm run serve</code> rồi mở <b>http://localhost:8080</b></p>'
+    })()
+  </script>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

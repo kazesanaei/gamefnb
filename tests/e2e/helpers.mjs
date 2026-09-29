@@ -1,0 +1,436 @@
+// Tiện ích e2e: nạp Playwright, máy chủ tĩnh, ngữ cảnh điện thoại, thu lỗi trang,
+// và "người chơi tự động" điều khiển giao diện thật chỉ qua data-testid / data-* (chuột + chạm).
+import { createRequire } from 'node:module'
+import { mkdirSync } from 'node:fs'
+import path from 'node:path'
+import assert from 'node:assert/strict'
+import { startServer } from '../helpers/static-server.mjs'
+import { DATA } from '../../src/data/index.js'
+import { requiredIngredients } from '../../src/core/scoring.js'
+import { priceOfLines } from '../../src/core/order.js'
+import { minBillsChange, BILLS } from '../../src/core/money.js'
+import { decodeSave, SAVE_KEY } from '../../src/core/save.js'
+
+const require = createRequire(import.meta.url)
+
+// Thử require('playwright') rồi tới bản cài toàn cục.
+export function loadPlaywright() {
+  try { return require('playwright') } catch { /* thử đường dẫn cố định */ }
+  return require('/opt/node22/lib/node_modules/playwright')
+}
+
+export const T = id => `[data-testid="${id}"]`
+
+// Kích thước khung nhìn: mặc định 390×844; E2E_VIEWPORT=1280x800 để chụp ảnh máy tính.
+export function viewportFromEnv() {
+  const m = /^(\d+)x(\d+)$/.exec(process.env.E2E_VIEWPORT || '')
+  return m ? { width: Number(m[1]), height: Number(m[2]) } : { width: 390, height: 844 }
+}
+
+/**
+ * Khởi động máy chủ (cổng 0) + Chromium + ngữ cảnh điện thoại. Thu lỗi console/pageerror/HTTP ≥ 400.
+ * Trả { page, context, browser, server, errors, url(pathAndQuery), shot(name), close() }.
+ */
+export async function openGame({ clock = false, name = 'e2e' } = {}) {
+  const { chromium } = loadPlaywright()
+  const server = await startServer(0)
+  const browser = await chromium.launch()
+  const viewport = viewportFromEnv()
+  const mobile = viewport.width < 600
+  const context = await browser.newContext({
+    viewport, hasTouch: true, isMobile: mobile, deviceScaleFactor: mobile ? 2 : 1,
+    locale: 'vi-VN', timezoneId: 'Asia/Ho_Chi_Minh'
+  })
+  const page = await context.newPage()
+  const errors = []
+  page.on('pageerror', e => errors.push('pageerror: ' + e.message))
+  page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') errors.push(`console.${m.type()}: ${m.text()}`) })
+  page.on('response', r => { if (r.status() >= 400) errors.push(`HTTP ${r.status()}: ${r.url()}`) })
+  if (clock) await page.clock.install()
+  const shotDir = process.env.SHOT_DIR ? path.join(process.env.SHOT_DIR, `${viewport.width}x${viewport.height}`) : null
+  if (shotDir) mkdirSync(shotDir, { recursive: true })
+  let shotNo = 0
+  return {
+    page, context, browser, server, errors, viewport,
+    url: (p = '') => server.url + p.replace(/^\//, ''),
+    // Chụp ảnh khi đặt SHOT_DIR (không lưu vào repo).
+    async shot(label) {
+      if (!shotDir) return
+      await page.screenshot({ path: path.join(shotDir, `${name}-${String(++shotNo).padStart(2, '0')}-${label}.png`) })
+    },
+    async close() {
+      await context.close().catch(() => {})
+      await browser.close().catch(() => {})
+      await server.close()
+    }
+  }
+}
+
+// ---------- Đọc state từ localStorage (chỉ đọc, để kiểm tra) ----------
+
+export async function readSave(page) {
+  const raw = await page.evaluate(k => localStorage.getItem(k), SAVE_KEY)
+  return raw ? decodeSave(raw) : null
+}
+
+// Chờ state lưu thỏa điều kiện (save có debounce 300 ms).
+export async function waitSave(page, pred, timeout = 5000) {
+  const end = Date.now() + timeout
+  for (;;) {
+    const s = await readSave(page)
+    if (s && pred(s)) return s
+    if (Date.now() > end) throw new Error('save không đạt điều kiện chờ')
+    await page.waitForTimeout(100)
+  }
+}
+
+// ---------- Bắt đầu game ----------
+
+export async function startNewGame(g, shopName = 'Xe Bánh Mì Cô Ba') {
+  const { page } = g
+  await page.goto(g.url('/?seed=42&test=1'))
+  await page.waitForSelector(T('shop-name-input'))
+  await g.shot('title')
+  await page.fill(T('shop-name-input'), shopName)
+  await page.click(T('start-button'))
+  await page.waitForSelector(T('open-shift'))
+  await g.shot('prep')
+  await page.click(T('open-shift'))
+  await page.waitForSelector(T('screen-service'))
+}
+
+// Tiến thời gian game khi đang rảnh: có đồng hồ giả thì chạy nhanh, không thì chờ thật.
+export async function passTime(g, ms, useClock) {
+  if (useClock) await g.page.clock.runFor(ms)
+  else await g.page.waitForTimeout(ms)
+}
+
+// Chờ tới khi có khách ở khâu order (bóng thoại) hoặc hết ca (màn tổng kết). Trả 'customer' | 'summary'.
+export async function waitCustomerOrEnd(g, { useClock = false, timeoutGameMs = 400000 } = {}) {
+  const { page } = g
+  let waited = 0
+  for (;;) {
+    if (await page.$(T('summary'))) return 'summary'
+    if (await page.$(T('speech-bubble'))) return 'customer'
+    if (await page.$(`${T('counter-panel')}[data-stage]:not([data-stage=""])`)) return 'customer'
+    if (waited > timeoutGameMs) throw new Error('chờ khách quá lâu')
+    const step = useClock ? 1500 : 250
+    await passTime(g, step, useClock)
+    waited += step
+  }
+}
+
+// ---------- Khâu quầy ----------
+
+export function lineTotal(request) {
+  return priceOfLines(request, DATA.RECIPES)
+}
+
+// Phục vụ khách đang ở quầy qua 3 khâu Order → Thanh toán → Tính tiền và kẹp phiếu. Trả {request, total, ticketNo}.
+export async function serveAtCounter(g) {
+  const { page } = g
+  if (!(await page.isVisible(T('panel-counter')))) await page.click(T('tab-counter'))
+  await page.waitForSelector(T('speech-bubble'))
+  const request = JSON.parse(await page.getAttribute(T('speech-bubble'), 'data-request'))
+  const name = await page.getAttribute(T('progress-4'), 'data-customer')
+  await page.waitForSelector(`${T('progress-4')}[data-stage="order"]`)
+  await g.shot('quay-order')
+
+  // Order: chọn món, ghi chú, số lượng
+  for (const line of request) {
+    await page.click(T('menu-item-' + line.recipeId))
+    await page.waitForSelector(T('order-sheet'))
+    for (const n of line.notes || []) await page.click(T('note-chip-' + n))
+    for (let q = 1; q < line.qty; q++) await page.click(T('qty-plus'))
+    assert.equal(await page.textContent(T('qty-value')), String(line.qty))
+    await page.click(T('add-line'))
+    await page.waitForSelector(T('order-sheet'), { state: 'detached' })
+  }
+  for (let i = 0; i < request.length; i++) await page.waitForSelector(T('order-line-' + i))
+  assert.equal(await page.isDisabled(T('confirm-order')), true, 'chưa đọc lại mà đã chốt được')
+  await page.click(T('readback'))
+  await page.waitForSelector(`${T('confirm-order')}:not([disabled])`)
+  assert.equal(await page.$(T('caught-list')), null, 'phiếu đúng mà khách bắt lỗi')
+  await g.shot('quay-doc-lai')
+  await page.click(T('confirm-order'))
+
+  // Thanh toán: gõ tổng theo nghìn
+  await page.waitForSelector(T('report-total'))
+  await page.waitForSelector(`${T('progress-4')}[data-stage="thanh_toan"]`)
+  const total = lineTotal(request)
+  for (const d of String(total / 1000)) await page.click(T('numpad-' + d))
+  assert.equal(Number(await page.getAttribute(T('numpad-display'), 'data-amount')), total)
+  await g.shot('thanh-toan')
+  await page.click(T('report-total'))
+
+  // Tính tiền
+  await page.waitForSelector(`${T('given-cash')}, ${T('qr-status')}`)
+  await page.waitForSelector(`${T('progress-4')}[data-stage="tinh_tien"]`)
+  if (!(await page.$(T('qr-status')))) await giveChangeUi(g, total)
+  // chuyển khoản (khách chọn QR, hoặc mời QR khi két hết tiền lẻ): chờ tiền về rồi xác nhận
+  if (await page.$(T('qr-status')) && !(await confirmQrUi(g))) return { request, total, name, ticketNo: null, ticketId: null, rejected: true }
+  await page.waitForSelector(`${T('clip-ticket')}:not([disabled])`)
+  await page.waitForSelector(T('receipt'))
+  const ticketNo = (await page.textContent(`${T('receipt')} .receipt-head span`)).trim().split(' ').pop()
+  await g.shot('phieu-thu')
+  await page.click(T('clip-ticket'))
+  await page.waitForSelector(`${T('progress-4')}[data-stage="lam_do"]`)
+  const ticketId = 'p' + Number(ticketNo.replace('#', ''))
+  await page.waitForSelector(T('rail-ticket-' + ticketId))
+  return { request, total, name, ticketNo, ticketId }
+}
+
+async function drawerCounts(page) {
+  const d = {}
+  for (const b of BILLS) d[b] = Number(await page.getAttribute(T('drawer-' + b), 'data-count')) || 0
+  return d
+}
+
+// Chờ thông báo tiền về rồi bấm "Đã nhận đủ" (dùng đồng hồ giả nếu có).
+export async function confirmQrUi(g) {
+  const { page } = g
+  await g.shot('qr')
+  // tiền thật về sau 1–4 giây; quá 6 giây không có thông báo → ảnh chuyển khoản giả, từ chối
+  const ok = await page.waitForSelector(`${T('qr-status')}[data-arrived="true"]`, { timeout: 6000 }).catch(() => null)
+  if (!ok) {
+    await page.click(T('qr-reject'))
+    return false
+  }
+  await page.click(T('qr-confirm'))
+  await page.waitForSelector(T('qr-confirm'), { state: 'detached' })
+  return true
+}
+
+// Két không đủ tiền lẻ: hộp chọn tự mở; chọn lần lượt làm tròn → mời QR → xin tiền lẻ tới khi xong.
+async function resolveNoChangeUi(g) {
+  const { page } = g
+  for (let k = 0; k < 4; k++) {
+    const modal = await page.waitForSelector(`${T('no-change-modal')}:not(.hide)`, { timeout: 500 }).catch(() => null)
+    if (!modal) return
+    await g.shot('ket-het-tien-le')
+    let chosen = null
+    for (const o of ['lam_tron', 'moi_qr', 'xin_tien_le']) {
+      const btn = await modal.$(T('no-change-' + o))
+      if (btn) { chosen = btn; break }
+    }
+    assert.ok(chosen, 'hộp két hết tiền lẻ không có lựa chọn')
+    await chosen.click()
+    await modal.waitForElementState('hidden').catch(() => {})
+    await page.waitForTimeout(250)
+  }
+}
+
+// Thối tiền: đọc tiền khách đưa (given-cash data-amount), tính tiền thối bằng số tờ có trong két.
+export async function giveChangeUi(g, total) {
+  const { page } = g
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await resolveNoChangeUi(g)
+    // mời QR thành công → không còn thối tiền mặt
+    if (await page.$(T('qr-status'))) return
+    const giveBtn = await page.$(T('give-change'))
+    if (!giveBtn) return
+    const given = Number(await page.getAttribute(T('given-cash'), 'data-amount'))
+    assert.ok(given >= total, `khách đưa ${given} < tổng ${total}`)
+    const hint = await page.$(T('change-hint'))
+    const due = hint ? Number(await hint.getAttribute('data-amount')) : given - total
+    if (!hint) assert.equal(due, given - total)
+    const best = minBillsChange(due, await drawerCounts(page))
+    if (!best) continue   // két vẫn không thối được: hộp chọn sẽ mở lại
+    for (const b of Object.keys(best.bills).map(Number).sort((a, b2) => b2 - a)) {
+      for (let k = 0; k < best.bills[b]; k++) await page.click(T('drawer-' + b))
+    }
+    assert.equal(Number(await page.getAttribute(T('tray'), 'data-amount')), due)
+    await g.shot('tinh-tien')
+    await page.click(T('give-change'))
+    await page.waitForSelector(T('give-change'), { state: 'detached' })
+    return
+  }
+  throw new Error('không thối được tiền')
+}
+
+// ---------- Khâu bếp ----------
+
+// Nấu hết các dòng của phiếu (ticketId dạng 'p1') và giao. Trả số sao trên phiếu chấm.
+export async function cookAndServe(g, ticketId, { shots = true } = {}) {
+  const { page } = g
+  if (!(await page.isVisible(T('panel-kitchen')))) await page.click(T('tab-kitchen'))
+  await page.waitForSelector(T('ticket-' + ticketId))
+  const save = await waitSave(page, st => st.shift && st.shift.tickets.some(t => t.id === ticketId))
+  const ticket = save.shift.tickets.find(t => t.id === ticketId)
+  assert.ok(ticket, 'không thấy phiếu ' + ticketId + ' trong save')
+  if (shots) await g.shot('bep-day-phieu')
+  for (let i = 0; i < ticket.lines.length; i++) {
+    const line = ticket.lines[i]
+    const recipe = DATA.RECIPES[line.recipeId]
+    if (!(await page.$(T('cook-line-' + i)))) await page.click(T('ticket-' + ticketId))
+    await page.click(T('cook-line-' + i))
+    await page.waitForSelector(`${T('minigame-stage')}[data-type="chon"]`)
+    const req = requiredIngredients(recipe, line.notes)
+    for (const id of req.required) await page.click(T('shelf-' + id))
+    if (shots) await g.shot('bep-ke-chon')
+    await page.click(T('chon-done'))
+    await page.waitForSelector(T('board'))
+    if (shots) await g.shot('bep-thot')
+    await playBoard(g, recipe, { shots })
+    await page.click(T('finish-dish'))
+    await page.waitForSelector(T('dish-reveal'))
+    if (shots) { await page.waitForTimeout(250); await g.shot('bep-cong-bo-mon') }
+    await page.waitForSelector(T('dish-reveal'), { state: 'detached', timeout: 5000 })
+  }
+  await page.waitForSelector(`${T('serve-ticket')}[data-ticket-id="${ticketId}"]`)
+  await page.click(`${T('serve-ticket')}[data-ticket-id="${ticketId}"]`)
+  const sheet = await page.waitForSelector(`${T('score-sheet')}[data-customer-id="${ticket.customerId}"]`, { timeout: 5000 })
+  const stars = Number(await sheet.getAttribute('data-stars'))
+  if (shots) { await page.waitForTimeout(300); await g.shot('phieu-cham') }
+  return { stars, customerId: ticket.customerId }
+}
+
+// Làm mọi bước trên Thớt sơ chế theo thứ tự có thể làm.
+async function playBoard(g, recipe, { shots }) {
+  const { page } = g
+  for (let guard = 0; guard < 20; guard++) {
+    const next = await page.$('[data-testid^="board-step-"].is-available')
+    if (!next) break
+    const stepId = await next.getAttribute('data-step-id')
+    const def = recipe.steps.find(s => s.id === stepId)
+    await next.click()
+    const sheet = await page.waitForSelector(T('step-sheet'), { timeout: 300 }).catch(() => null)
+    if (sheet) {
+      if (def.method) await page.click(T('method-' + def.method.correct))
+      else await page.click(T('step-start'))
+    }
+    const hint = await page.waitForSelector(T('step-hint'), { timeout: 400 }).catch(() => null)
+    if (hint) await hint.tap().catch(() => {})     // chạm để bỏ qua thẻ gợi ý
+    await page.waitForSelector(`${T('minigame-stage')}[data-type="${def.type}"] .mg-foot`)
+    await playStage(g, def, { shots })
+    await page.waitForSelector('.k-layer', { state: 'hidden', timeout: 60000 })
+    await page.waitForSelector(`${T('board-step-' + stepId)}.is-done`)
+  }
+  const left = await page.$$('[data-testid^="board-step-"]:not(.is-done)')
+  assert.equal(left.length, 0, 'còn bước chưa làm')
+}
+
+async function center(page, sel) {
+  const b = await (await page.$(sel)).boundingBox()
+  return { x: b.x + b.width / 2, y: b.y + b.height / 2, box: b }
+}
+
+// Chơi một mini-game bằng chuột/cảm ứng, đọc vị trí mục tiêu từ data-*.
+export async function playStage(g, def, { shots = false } = {}) {
+  const { page } = g
+  const S = `${T('minigame-stage')}[data-type="${def.type}"]`
+  const mode = def.params && def.params.mode
+  const snap = async label => { if (shots) await g.shot('mg-' + label) }
+
+  if (def.type === 'cha') {
+    const spots = await page.$$(`${S} [data-testid^="cha-spot-"]`)
+    if (spots.length) {
+      // vuốt qua lại trên từng vết bẩn
+      for (const [k, sp] of spots.entries()) {
+        const b = await sp.boundingBox()
+        if (!b) continue
+        const cx = b.x + b.width / 2, cy = b.y + b.height / 2
+        const clean = Number(await sp.getAttribute('data-clean'))
+        if (clean >= 1) continue
+        await page.mouse.move(cx - 24, cy)
+        await page.mouse.down()
+        for (let r = 0; r < 5; r++) {
+          await page.mouse.move(cx + 24, cy, { steps: 4 })
+          await page.waitForTimeout(20)
+          await page.mouse.move(cx - 24, cy, { steps: 4 })
+          await page.waitForTimeout(20)
+          if (k === 0 && r === 1) await snap('cha-vet-ban')
+        }
+        await page.mouse.up()
+      }
+    } else {
+      // lắc/trộn: vuốt qua lại đủ số lượt
+      const c = await center(page, `${S} ${T('cha-area')}`)
+      const strokes = Number(def.params.strokes) || 6
+      await page.mouse.move(c.x, c.y)
+      await page.mouse.down()
+      for (let k = 0; k < strokes + 2; k++) {
+        await page.mouse.move(c.x + (k % 2 ? -70 : 70), c.y, { steps: 5 })
+        // chờ 1 khung hình: trình duyệt gộp các pointermove trong cùng khung, ngón tay thật không đảo chiều nhanh vậy
+        await page.waitForTimeout(24)
+        if (k === 2) await snap('cha-lac')
+      }
+      await page.mouse.up()
+    }
+  } else if (def.type === 'thai') {
+    // kéo dao tới vạch (data-x tính từ mép trái sân khấu), nhấc tay để cắt
+    const stage = await (await page.$(S)).boundingBox()
+    const board = await (await page.$(`${S} ${T('thai-board')}`)).boundingBox()
+    const y = board.y + board.height * 0.7
+    const xs = await page.$$eval(`${S} [data-testid^="thai-guide-"]`, els => els.map(e => Number(e.dataset.x)))
+    for (const [k, gx] of xs.entries()) {
+      const x = stage.x + gx
+      await page.mouse.move(x - 30, y)
+      await page.mouse.down()
+      await page.mouse.move(x, y, { steps: 4 })
+      if (k === 0) await snap('thai-ngam')
+      await page.mouse.up()
+    }
+  } else if (def.type === 'cham' && mode === 'targets') {
+    const bottles = await page.$$(`${S} [data-testid^="cham-bottle-"]`)
+    for (const b of bottles) {
+      const n = Number(await b.getAttribute('data-target'))
+      for (let k = 0; k < n; k++) await b.tap()
+    }
+    await snap('cham-nem')
+    await page.click(`${S} ${T('cham-done')}`)
+  } else if (def.type === 'cham' && mode === 'min') {
+    const pad = await page.$(`${S} ${T('cham-pad')}`)
+    const n = Number(await pad.getAttribute('data-n'))
+    const c = await center(page, `${S} ${T('cham-pad')}`)
+    for (let k = 0; k < n; k++) {
+      await page.mouse.click(c.x, c.y)
+      if (k === Math.floor(n / 2)) await snap('cham-vat')
+    }
+    // bước tự kết thúc sau T giây tính từ lần chạm đầu
+  } else if (def.type === 'cham') {
+    const n = Number(await page.getAttribute(`${S} ${T('cham-target')}`, 'data-n'))
+    const pan = await page.$(`${S} ${T('cham-pan')}`)
+    if (pan) {
+      // đập trứng vào tâm chảo; đủ n lần tự xong
+      const c = await center(page, `${S} ${T('cham-target')}`)
+      for (let k = 0; k < n; k++) {
+        await page.mouse.click(c.x, c.y)
+        if (k === 0) await snap('cham-dap-trung')
+      }
+    } else {
+      for (let k = 0; k < n; k++) await page.tap(`${S} ${T('cham-target')}`)
+      await snap('cham-muong')
+      await page.click(`${S} ${T('cham-done')}`)
+    }
+  } else if (def.type === 'lua') {
+    // chờ kim tới tâm vùng xanh rồi bấm Nhấc
+    const za = Number(await page.getAttribute(`${S} ${T('lua-zone')}`, 'data-a'))
+    const zb = Number(await page.getAttribute(`${S} ${T('lua-zone')}`, 'data-b'))
+    const target = (za + zb) / 2 - 0.012
+    const lift = await center(page, `${S} ${T('lua-lift')}`)
+    await snap('lua')
+    await page.waitForFunction(([sel, v]) => {
+      const n = document.querySelector(sel)
+      return !n || Number(n.dataset.v) >= v
+    }, [`${S} ${T('lua-needle')}`, target], { polling: 'raf', timeout: 20000 })
+    await page.mouse.click(lift.x, lift.y)
+  } else if (def.type === 'rot') {
+    // giữ để rót, thả tay khi mực tới giữa vạch
+    const za = Number(await page.getAttribute(`${S} ${T('rot-zone')}`, 'data-a'))
+    const zb = Number(await page.getAttribute(`${S} ${T('rot-zone')}`, 'data-b'))
+    const target = (za + zb) / 2 - 0.008
+    const pour = await center(page, `${S} ${T('rot-pour')}`)
+    await page.mouse.move(pour.x, pour.y)
+    await page.mouse.down()
+    await page.waitForFunction(([sel, v]) => Number(document.querySelector(sel).dataset.v) >= v * 0.7,
+      [`${S} ${T('rot-level')}`, target], { polling: 'raf', timeout: 20000 })
+    await snap('rot')
+    await page.waitForFunction(([sel, v]) => Number(document.querySelector(sel).dataset.v) >= v,
+      [`${S} ${T('rot-level')}`, target], { polling: 'raf', timeout: 20000 })
+    await page.mouse.up()
+    await page.click(`${S} ${T('rot-done')}:not([disabled])`)
+  } else {
+    throw new Error('Không biết chơi mini-game: ' + def.type)
+  }
+}

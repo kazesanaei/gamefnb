@@ -40,9 +40,10 @@ export function planArrivals(sh, list, ctx) {
   }
   const work = list.slice(0, -1).reduce((s, c) => s + c.expectedSec, 0)
   const span = gaps.reduce((a, b) => a + b, 0)
-  const maxLoad = cfg(ctx, 'maxLoad')
-  if (span > 0 && work / span > maxLoad) {
-    const k = (work / span) / maxLoad * 1.0001
+  // chừa 1% cho sai số làm tròn mốc đến (0,1 giây)
+  const target = cfg(ctx, 'maxLoad') * 0.99
+  if (span > 0 && work / span > target) {
+    const k = (work / span) / target
     for (let i = 0; i < gaps.length; i++) gaps[i] *= k
   }
   let t = cfg(ctx, 'firstArrival')

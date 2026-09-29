@@ -323,7 +323,7 @@ test('makeSpeech: 500 đơn ngẫu nhiên đều sạch và nhắc đủ món, g
       assert.ok(names.some(n => low.includes(n)), `thiếu tên món ${line.recipeId}: ${s}`)
       for (const nid of line.notes) {
         const words = SPOKEN.notes[nid][region]
-        assert.ok(words.some(w => low.includes(w)), `thiếu ghi chú ${nid}: ${s}`)
+        assert.ok(words.some(w => low.includes(w) || low.includes(w.replace(/^trứng /, ''))), `thiếu ghi chú ${nid}: ${s}`)
       }
     }
   }
@@ -352,6 +352,13 @@ test('makeSpeech: giọng Bắc dùng từ Bắc; khách quen có câu chào', (
   const r = makeSpeech({ request: [{ recipeId: 'banh_mi_op_la', qty: 1, notes: [] }], persona: 'co_chu', region: 'nam',
     recipes: RECIPES, rand, regularId: 'co_thu', gender: 'nu' })
   assert.ok(r.startsWith(REGULARS.co_thu.returnGreeting) && /cô/.test(r), r)
+  for (let i = 0; i < 20; i++) {
+    const n = makeSpeech({ request: [{ recipeId: 'tra_tac', qty: 1, notes: [] }], persona: 'hoc_sinh', region: 'nam',
+      recipes: RECIPES, rand, regularId: 'ban_nam', firstVisit: true })
+    assert.match(n, /cho em /, n)
+    assert.ok(!/trứng trứng/.test(makeSpeech({ request: [{ recipeId: 'banh_mi_op_la', qty: 1, notes: ['chin_ky'] }],
+      persona: 'van_phong', region: i % 2 ? 'nam' : 'bac', recipes: RECIPES, rand })))
+  }
 })
 
 test('makeSpeech/makeLine nhận persona là id hoặc object (như lõi truyền vào)', () => {

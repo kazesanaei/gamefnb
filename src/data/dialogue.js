@@ -190,9 +190,19 @@ function noteWord(recipeId, noteId, region, recipes, rand) {
   return note && note.label ? lowerFirst(note.label) : ''
 }
 
-function notesPhrase(recipeId, notes, region, recipes, rand) {
+// Ghép ghi chú; bỏ chữ lặp với cuối tên món ("bánh mì trứng" + "trứng chín kỹ" → "bánh mì trứng chín kỹ").
+function notesPhrase(recipeId, notes, region, recipes, rand, dishName = '') {
+  const last = dishName.split(' ').pop()
   const words = (notes || []).map(id => noteWord(recipeId, id, region, recipes, rand)).filter(Boolean)
+  if (words.length && last && words[0].startsWith(last + ' ')) words[0] = words[0].slice(last.length + 1)
   return words.join(', ')
+}
+
+// Khách quen có cách tự xưng cố định; nhận ra qua regularId hoặc tên.
+function regularOf(regularId, name) {
+  if (regularId && REGULARS[regularId]) return REGULARS[regularId]
+  if (typeof name === 'string' && name) return Object.values(REGULARS).find(x => x.name === name) || null
+  return null
 }
 
 function qtyPhrase(qty, unit, region, rand, single) {
@@ -234,7 +244,7 @@ function groupPhrase(group, region, recipes, rand, single, allowTailNotes) {
   }
   if (lines.length === 1) {
     const line = lines[0]
-    const notes = notesPhrase(group.recipeId, line.notes, region, recipes, rand)
+    const notes = notesPhrase(group.recipeId, line.notes, region, recipes, rand, name)
     const head = `${qtyPhrase(line.qty, unit, region, rand, single)} ${name}`
     if (!notes) return head
     // "Cho cô cái bánh mì trứng, không cho hành nhé."
@@ -295,7 +305,8 @@ export function makeSpeech({ request, persona: personaIn, region, recipes, rand,
   const persona = personaId(personaIn)
   const reg = normRegion(region)
   const g = resolveGender(gender, name, r)
-  const self = resolveSelf(persona, g, r)
+  const regular = regularOf(regularId, null)
+  const self = (regular && regular.self) || resolveSelf(persona, g, r)
   const call = callFor(self, reg)
   const groups = groupLines(request)
   const single = groups.length === 1 && groups[0].lines.length === 1
@@ -319,7 +330,6 @@ export function makeSpeech({ request, persona: personaIn, region, recipes, rand,
   const tails = TAILS[reg].filter(t => !(usedCall && t.t.includes('{call}')))
   const tail = renderFrom(tails, vars, persona, r)
   let text = opener + (tail ? lowerTail(tail) : '!')
-  const regular = regularId && REGULARS[regularId]
   if (regular) {
     const pre = firstVisit ? regular.greeting : regular.returnGreeting
     if (pre) text = `${pre} ${text}`
@@ -350,7 +360,7 @@ const LINES = {
     nam: ['Khoan, {self} gọi {line} mà!', 'Ủa, hông phải vậy đâu, {line} chứ.', 'Sai rồi {call} ơi, nghe lại giùm {self} nha.',
       'Hông đúng rồi, ghi lại giùm {self} nghen.'],
     bac: ['Khoan, {self} gọi {line} cơ mà!', 'Không phải, {line} chứ.', 'Nhầm rồi {call} ơi, nghe lại giúp {self} nhé.',
-      'Chưa đúng rồi, ghi lại giúp {self} nhé.']
+      'Không đúng rồi, ghi lại giúp {self} nhé.']
   },
   total_too_high: {
     nam: ['Sao nhiều vậy {call}? Tính lại giùm {self} coi.', '{total} lận hả? Hình như tính lộn rồi.',
@@ -377,6 +387,19 @@ const LINES = {
   qr_paid: {
     nam: ['{Self} chuyển khoản rồi nha, {call} coi giùm.', 'Chuyển rồi đó, kiểm tra giùm {self} nha.'],
     bac: ['{Self} chuyển khoản rồi nhé, {call} xem giúp.', 'Chuyển rồi đấy, kiểm tra giúp {self} nhé.']
+  },
+  // két hết tiền lẻ: khách có / không có tiền lẻ; đồng ý chuyển khoản
+  no_small_change_yes: {
+    nam: ['Có nè, đưa vừa đủ luôn nha.', 'Để {self} coi… có nè, gửi {call} đủ luôn.', { t: 'Dạ có ạ, {self} gửi vừa đủ ạ.', p: ['hoc_sinh'] }],
+    bac: ['Có đây, đưa vừa đủ luôn nhé.', 'Để {self} xem… có đây, gửi {call} đủ luôn.', { t: 'Dạ có ạ, {self} gửi vừa đủ ạ.', p: ['hoc_sinh'] }]
+  },
+  no_small_change_no: {
+    nam: ['Hổng có rồi, tính sao đây?', 'Tiền lẻ hết trơn rồi {call} ơi.', { t: 'Dạ {self} hổng có tiền lẻ ạ.', p: ['hoc_sinh'] }],
+    bac: ['Không có rồi, tính sao bây giờ?', 'Hết tiền lẻ mất rồi {call} ạ.', { t: 'Dạ {self} không có tiền lẻ ạ.', p: ['hoc_sinh'] }]
+  },
+  qr_ok: {
+    nam: ['Được, để {self} quét mã.', 'Ừa, chuyển khoản cũng được.', { t: 'Dạ được ạ, {self} quét mã liền.', p: ['hoc_sinh'] }],
+    bac: ['Được, để {self} quét mã.', 'Ừ, chuyển khoản cũng được.', { t: 'Dạ được ạ, {self} quét mã luôn.', p: ['hoc_sinh'] }]
   },
   thanks: {
     nam: ['Cảm ơn {call} nha!', 'Hôm sau {self} ghé nữa nghen.', 'Cảm ơn nha, chúc bán đắt hàng!', { t: 'Dạ, {self} cảm ơn ạ!', p: ['hoc_sinh'] }],
@@ -412,7 +435,8 @@ export function makeLine(kind, { persona: personaIn, region, rand, vars } = {}) 
   const reg = normRegion(region)
   const v = vars || {}
   const g = resolveGender(v.gender, v.name, r)
-  const self = v.self || resolveSelf(persona, g, r)
+  const regular = regularOf(v.regularId, v.name)
+  const self = v.self || (regular && regular.self) || resolveSelf(persona, g, r)
   const call = callFor(self, reg)
   const data = {
     self, call,
@@ -490,13 +514,13 @@ export const DIALOGUE = deepFreeze({
     loanOffer: 'Kẹt vốn hả con? Dì cho mượn đỡ, bán được thì trả dần.',
     tutorial: {
       order: 'Khách nói gì thì ghi y vậy vào sổ order nha con.',
-      readback: 'Ghi xong bấm "Đọc lại" cho khách nghe, sai còn sửa kịp.',
+      readback: 'Ghi xong bấm "Đọc lại đơn" cho khách nghe, sai còn sửa kịp.',
       total: 'Nhìn bảng giá, cộng tổng rồi báo khách. Gõ theo nghìn thôi: gõ 20 là 20.000đ.',
       change: 'Chạm ngăn két để lấy tiền thối, đếm cho đủ rồi bấm "Đưa tiền thối".',
       ticket: 'Thu tiền xong mới kẹp phiếu vào dây bếp nghen.',
       chon: 'Nhìn thẻ công thức, lấy đúng và đủ nguyên liệu. Coi chừng mấy thứ na ná nhau!',
       thot: 'Sơ chế từng thứ trên thớt, làm bước nào trước cũng được, trừ bước phải chờ.',
-      serve: 'Xong hết thì bấm "Ra món" rồi giao cho khách.'
+      serve: 'Món xong rồi, bấm "Giao cho khách" nha con.'
     }
   },
   // Anh Khoa: hướng dẫn công cụ bán hàng.

@@ -487,6 +487,13 @@ const PERSONA_LOOKS = {
     hair: `<path d="M12 34 C10 20 20 12 32 12 C44 12 54 20 52 34 C50 26 46 20 38 19 C30 22 20 22 14 28 C13 30 12 32 12 34Z" fill="#b9b4ae"/>`,
     accessory: `<circle cx="25" cy="35" r="5.5" fill="none" stroke-width="2"/><circle cx="39" cy="35" r="5.5" fill="none" stroke-width="2"/><path d="M30.5 35 H33.5" stroke-width="2"/>`
   },
+  // chú (cô chú, giới tính nam): tóc muối tiêu cắt ngắn, ria mép, kính
+  co_chu_nam: {
+    skin: '#e8b88f', shirt: '#5f7f9f',
+    hair: `<path d="M12 31 C11 17 21 11 32 11 C43 11 53 17 52 31 C49 24 44 20 38 19 C31 21 22 20 16 24 C14 26 13 28 12 31Z" fill="#9e9a94"/>`,
+    accessory: `<circle cx="25" cy="35" r="5.5" fill="none" stroke-width="2"/><circle cx="39" cy="35" r="5.5" fill="none" stroke-width="2"/><path d="M30.5 35 H33.5" stroke-width="2"/>` +
+      `<path d="M26 42 Q32 39 38 42 Q32 43 26 42Z" fill="#7d7872" stroke-width="1.2"/>`
+  },
   van_phong: {
     skin: '#f5c9a0', shirt: '#ffffff',
     hair: `<path d="M12 31 C12 16 22 10 34 11 C46 12 53 20 52 31 C46 22 34 18 24 20 C18 22 14 26 12 31Z" fill="#4a3426"/>`,
@@ -510,9 +517,10 @@ function buildFaces() {
 
 export const FACES = deepFreeze(buildFaces())
 
-/** Mặt khách theo kiểu khách và tâm trạng; thiếu thì dùng mặt học sinh bình thường. */
-export function face(persona, mood) {
-  const set = FACES[persona] || FACES.hoc_sinh
+/** Mặt khách theo kiểu khách và tâm trạng (gender 'nam' cho kiểu cô chú → mặt chú); thiếu thì dùng mặt học sinh bình thường. */
+export function face(persona, mood, gender = null) {
+  const key = persona === 'co_chu' && gender === 'nam' ? 'co_chu_nam' : persona
+  const set = FACES[key] || FACES.hoc_sinh
   return set[mood] || set.binh_thuong
 }
 

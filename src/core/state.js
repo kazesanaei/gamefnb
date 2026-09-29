@@ -30,7 +30,7 @@ export const DEFAULT_BALANCE = Object.freeze({
   surchargeFromDay: 6, multiLineFromDay: 3, lineCountWeights: [70, 25, 5],
   changeAskRate: 0.4, changeAskPatienceCost: 0.05, roundingMax: 5000,
   shortChangeDetectRate: 0.9, overChangeReturnRate: 0.5,
-  loanOfferBelow: 50000
+  loanOfferBelow: 20000   // mời vay khi Tiền quán < chi phí cố định 1 ca (thiết kế mục Dì Sáu cho mượn)
 })
 
 // Đọc một khóa cân bằng: ctx.data.BALANCE[key] nếu có, không thì mặc định.

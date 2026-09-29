@@ -36,9 +36,10 @@ src/ui/
   components/ hud.js toast.js modal.js progress4.js patience.js ticket-rail.js cash-drawer.js numpad.js
   screens/    title.js prep.js service.js counter.js kitchen.js summary.js
   minigames/  index.js chon.js cha.js thai.js cham.js lua.js rot.js
-tests/unit/*.test.mjs      node:test
-tests/e2e/*.e2e.mjs        Playwright (Chromium ở /opt/pw-browsers)
-tests/helpers/static-server.mjs
+tests/unit/*.test.mjs      node:test (integration-shift.test.mjs: DATA thật, 3 ca liên tiếp, người chơi hoàn hảo/ẩu)
+tests/e2e/*.e2e.mjs        Playwright (Chromium ở /opt/pw-browsers): one-shift, reload
+tests/e2e/helpers.mjs      nạp Playwright, ngữ cảnh 390×844 cảm ứng, người chơi tự động qua data-testid
+tests/helpers/static-server.mjs  perfect-player.mjs
 docs/                      tài liệu
 package.json
 ```
@@ -90,7 +91,7 @@ E2E nạp Playwright bằng `createRequire`, thử `require('playwright')` rồi
     changeCorrect: 0, changeWrong: 0, readbacks: 0, qrConfirmed: 0, fakeQrCaught: 0,
     flawlessDishes: 0, totalRevenue: 0, shiftsPlayed: 0
   },
-  loan: null,              // {remaining} khi đang nợ Dì Sáu
+  loan: null,              // {amount, remaining} khi đang nợ Dì Sáu
   settings: {
     sound: true, vibrate: true, tips: true, reducedMotion: false,
     assistCash: false,     // Hỗ trợ tính tiền: hiện tổng và tiền thối
@@ -114,6 +115,7 @@ export function nextInt(holder, min, max, key) → số nguyên trong [min,max]
 export function pick(holder, arr, key) → phần tử
 export function weightedPick(holder, items /* [{w, ...}] */, key) → phần tử
 export function shuffle(holder, arr, key) → mảng mới
+// bổ sung: chance(holder, p, key) → boolean ; nextRange(holder, a, b, key) → số thực ; makeRand(holder, key) → rand() cho makeSpeech/makeReview
 ```
 
 ### money.js
@@ -127,6 +129,7 @@ export function minBillsChange(amount, drawer) → {count, bills:{mệnh giá:s�
 export function canMakeChange(amount, drawer) → boolean
 export function customerCash(holder, total, persona, day) → {bills:{mệnh giá: số tờ}, total}   // cách khách đưa tiền (mục 3.6 tài liệu thiết kế)
 export function roundUpTo(n, step) , roundDownTo(n, step)
+// bổ sung: emptyDrawer() ; addBills(drawer, bills, sign = 1) (sửa trực tiếp) ; billsCount(bills) ; composeGreedy(amount) → bills | null
 ```
 
 ### clock.js
@@ -140,8 +143,12 @@ export function trustedNow(state, deviceNow) → {now, rewind:boolean}   // cậ
 ```js
 export function createBus() → { on(type, fn) → off, emit(type, payload), clear() }
 ```
+`on('*', fn)` nhận mọi sự kiện với `fn(payload, type)`. Phía giao diện, `app.ctx.emit` bọc `bus.emit` trong try/catch để lỗi của bộ nghe không làm đứt hàm lõi đang chạy.
+
 Sự kiện miền (payload là object thuần):
 `order.readback {errorsFound, errorsMissed}` · `order.confirmed {customerId}` · `total.reported {correct, diff}` · `payment.received {method, amount}` · `change.given {correct, optimal, diff}` · `qr.confirmed {fake, blocked}` · `ticket.clipped {ticketId}` · `step.done {recipeId, type, score, grade, auto}` · `dish.done {recipeId, q, grade, flawless, errors}` · `dish.served {customerId}` · `customer.rated {customerId, stars, counterErrors, kitchenErrors}` · `customer.lost {customerId, reason}` · `shift.started {day}` · `shift.ended {day, profit, served, lost}` · `recipe.bought {recipeId}` · `tip.unlocked {tipId}`.
+
+Sự kiện bổ sung (thực tế): `customer.arrived {customerId}` · `qr.arrived {customerId, amount}` · `counter.begin {customerId}` · `cook.started {ticketId, lineIndex, recipeId}` · `step.retry {recipeId, stepId, cost}` · `dish.abandoned {ticketId, lineIndex, recipeId, waste}` · `complaint.resolved {customerId, action, apologyCorrect, amount?|ticketId?}` · `upgrade.bought {upgradeId}`. Sự kiện riêng của giao diện (không do lõi phát): `ui.tab {tab}` · `ui.ticket.select {ticketId}` · `kitchen.served {ticketId, customerId, sheet}`.
 
 ## 6. Dữ liệu (src/data)
 
@@ -150,15 +157,17 @@ Sự kiện miền (payload là object thuần):
 export const DATA = Object.freeze({ BALANCE, INGREDIENTS, RECIPES, METHOD_LABELS, MINIGAME_TYPES,
   PERSONAS, REGULARS, NAMES, DIALOGUE, makeSpeech, makeLine, makeReview, TIPS, UPGRADES, STRINGS })
 ```
+`DATA` thực tế có thêm (chỉ thêm, không đổi): `ROLE_LABELS, SPOKEN, SYNONYMS, LINE_KINDS, REVIEWS, TIP_GROUPS, describeLine, readbackText, tipsForTrigger`.
+
 **Lõi không import trực tiếp `src/data`** (trừ khi cần hằng số thuần); mọi hàm lõi đọc dữ liệu từ `ctx.data`. Test lõi dùng dữ liệu mẫu nhỏ ở `tests/fixtures/data.mjs`; test tích hợp dùng `DATA` thật. `ctx = { emit(type, payload), data }`.
 
 Hàm trợ giúp nội dung (thuần, nhận `rand()` trả số trong [0,1)):
 ```js
 // dialogue.js
-export function makeSpeech({ request, persona, region, recipes, rand }) → string   // câu gọi món tự nhiên
-export function makeLine(kind, { persona, region, rand, vars }) → string           // kind: 'readback_ok' | 'readback_wrong' | 'total_too_high' | 'total_ok' | 'change_short' | 'change_over_returned' | 'thanks' | 'wait_long' | 'receive_dish' | 'leave_angry' | 'greet'
+export function makeSpeech({ request, persona, region, recipes, rand, gender?, name?, regularId?, firstVisit? }) → string   // câu gọi món tự nhiên; persona là id hoặc object {…, id}
+export function makeLine(kind, { persona, region, rand, vars }) → string           // kind: 'readback_ok' | 'readback_wrong' | 'total_too_high' | 'total_ok' | 'change_short' | 'change_over_returned' | 'thanks' | 'wait_long' | 'receive_dish' | 'leave_angry' | 'greet' (+ 'change_ok' | 'qr_paid' | 'complaint'); kind lạ → 'thanks'. vars: {total, diff, amount, line, mon, gender, name, regularId, self}
 // reviews.js
-export function makeReview({ stars, errors /*[mã lỗi]*/, dishName, ingredientName, rand }) → string
+export function makeReview({ stars, errors /*[mã lỗi | {code}]*/, dishName, ingredientName, rand }) → string   // nhận cả mã lỗi của lõi (thieu_phu, thua, bay, trai_ghi_chu, sai_cach, bo_qua, cho_goi_mon…) qua bảng bí danh
 ```
 
 ### balance.js
@@ -188,6 +197,7 @@ export const BALANCE = Object.freeze({
   loanAmount: 240000, loanRepayRate: 0.25, loanInterest: 0.10
 })
 ```
+Khóa thiếu trong `BALANCE` lấy từ `DEFAULT_BALANCE` (`src/core/state.js`, đọc bằng `cfg(ctx, key)`), gồm cả khóa bổ sung: `regularReturnRate 0.15, regionBacRate 0.3, maxLoad 0.9, firstArrival 3, tutorialGapMul 1.5, noteRateMid 0.2, noteRateLate 0.35, noteFromDay 3, splitFromDay 5, splitLineRate 0.15, surchargeFromDay 6, multiLineFromDay 3, lineCountWeights [70,25,5], changeAskRate 0.4, changeAskPatienceCost 0.05, roundingMax 5000, shortChangeDetectRate 0.9, overChangeReturnRate 0.5, loanOfferBelow 20000` (mời vay khi Tiền quán < chi phí cố định một ca).
 
 ### ingredients.js
 ```js
@@ -237,6 +247,8 @@ export const RECIPES = Object.freeze({
 })
 export const METHOD_LABELS = { thai_lat: 'Thái lát', thai_soi: 'Thái sợi', bao: 'Bào', ... }
 ```
+Trường bổ sung thực tế: `desc`; món Shop có `shopPrice`, `shopFromDay`; ghi chú loại trừ nhau có `group` (vd `do_chin`, `duong`, `cay`, `ngot`); ghi chú có thể có `surcharge` (phụ thu mỗi phần) và `adds`. Nguyên liệu bẫy có `trapOf` trong `INGREDIENTS`. `shelf` có thể 12 ô.
+
 Quy tắc:
 - Bước `chon` luôn là bước đầu, bắt buộc, **không** có "Tự làm", **không** tự kết thúc.
 - Các bước còn lại hiện trên **Thớt sơ chế**; người chơi tự chọn làm bước nào trước, trừ ràng buộc `after`. Bước có `ing` bị bỏ khi nguyên liệu đó bị ghi chú loại (`removes`).
@@ -288,7 +300,14 @@ export function advance(state, dt, ctx)               // dt giây; không làm g
 export function isShiftOver(state) → boolean          // mọi khách đã rời đi (served hoặc lost) và không còn phiếu
 export function endShift(state, ctx) → summary        // tất toán ví, cập nhật stats/ratings/history, day += 1, shift = null
 export function setPaused(state, paused)
+// bổ sung
+export function customerCount(state, ctx, day = state.day) → số khách
+export function planArrivals(shift, customers, ctx) → plan
+export function loadFactor(shift) → ρ
+export function gameTime(shift) → 'HH:MM' (06:00 → 10:00, ước lượng)
+export function emptyLedger() → ledger
 ```
+Thực tế: `advance` **tự gọi `beginCounter`** khi quầy trống và có khách đầu hàng (idempotent), tự báo QR về (`qr.arrived`; có `loa_bao_tien` thì tự xác nhận). `endShift` gọi được trước khi hết ca: khách còn dở bị đóng, ai đã trả tiền được hoàn. `state.shift` có thêm `rngText` (luồng ngẫu nhiên riêng cho lời thoại/review), `counts{}`, `reputationGain`, `tipsShown`, `reviews[]`, `receipts[]`, `fixedCost`, `loanRepayRate`, `walletStart`; `ledger` có thêm `rounding`.
 
 Cấu trúc `state.shift`:
 ```js
@@ -325,8 +344,13 @@ Cấu trúc `state.shift`:
   given: {bills} | null,
   tutorial: false,        // khách hướng dẫn ngày 1: không trừ sao
   penalties: [ {code, stars, source: 'quay'|'bep'|'cho'} ],
-  ticketId: null, dishes: [DishResult], stars: null, tip: 0, review: null }
+  ticketId: null, dishes: [DishResult], stars: null, tip: 0, review: null,
+  // bổ sung thực tế
+  gender: 'nam'|'nu'|null, strict, arriveAt, arrivedAt, orderErrors: [lỗi compareLines], starCap: 5, apologyBonus: 0,
+  complaint: null|{items, resolved}, reviewLate, lostReason, expectedSec, receipt, waitRatio, fakeQrCaught, returnedOver,
+  undercharge /* số báo thiếu */, overchanged /* đã thối dư */, remadeErrors /* lỗi bếp của món bị phàn nàn rồi làm lại */, refunded }
 ```
+`customer.js` xuất thêm: `STATUSES, canTransition, setStatus, stageOf(customer) → 'order'|'thanh_toan'|'tinh_tien'|'lam_do'|null` (cho thanh 4 khâu), `isGone, lineKey, normalizeLines, orderableRecipes, makeRequest, patienceSecFor, expectedServiceSec, personaObj, pickPersona, speechFor, lineFor, createCustomer, createRegular, drainPatience, loseCustomer`. Tên khách không trùng nhau trong một ca.
 
 Lịch khách: số khách N = `BALANCE.customersPerShift(day)` điều chỉnh ±1 theo sao trung bình (sàn 3, trần 8). Khoảng cách giữa hai khách = `arrivalLoad × thời gian phục vụ kỳ vọng` (= `counterTimeEstimate` + tổng `par` của đơn kỳ vọng) × ngẫu nhiên [0,85; 1,15]; đoạn giữa ca × `peakMul`. Có unit test: hệ số tải ρ = thời gian phục vụ kỳ vọng / khoảng cách ≤ 0,9.
 
@@ -342,7 +366,11 @@ Phiên quầy `CounterSession` (với `queue[0]`):
   reportedTotal: null, totalAttempts: 0,
   tray: {mệnh giá: số tờ},                     // tiền thối đang gom
   qrArriveAt: null, qrArrived: false,
-  receipt: null }                              // phiếu thu sau khi tính tiền xong
+  receipt: null,                               // phiếu thu sau khi tính tiền xong
+  // bổ sung thực tế
+  caught: [lỗi bị khách bắt khi đọc lại, có index dòng để tô đỏ], trueTotal, amountDue, payMethod, fakeQr, given,
+  changeDue, changePaid, changeDone, changeAttempts, cashDeposited, changeOptionsUsed: [], rounding, paid,
+  changeBills /* các tờ đã thối cho khách (để hoàn tác khi đổi cách trả) */ }
 ```
 
 Hàm (tất cả trong `order.js`, `customer.js` giữ FSM và kiên nhẫn):
@@ -351,21 +379,38 @@ Hàm (tất cả trong `order.js`, `customer.js` giữ FSM và kiên nhẫn):
 export function beginCounter(state, ctx)                       // khi quầy trống và có khách đầu hàng → status 'order'
 export function addLine(state, line) ; updateLine(state, index, line) ; removeLine(state, index)
 export function compareLines(request, draft) → { errors: [{type:'sai_mon'|'thieu_mon'|'thua_mon'|'sai_so_luong'|'sai_ghi_chu', index, …}] }
-export function readback(state, ctx) → { caught: [...], missed: [...] }   // khách bắt lỗi với xác suất readbackCatchRate (theo rng ca); mỗi lỗi bị bắt −8% kiên nhẫn; bắt buộc gọi trước confirmOrder
-export function confirmOrder(state, ctx)                       // yêu cầu readbackDone và phiếu khác rỗng → stage 'thanh_toan'
+export function readback(state, ctx) → { caught: [...], missed: [...], ok, readbackDone, line }   // khách bắt lỗi với xác suất readbackCatchRate (theo rng ca); mỗi lỗi bị bắt −8% kiên nhẫn; bắt buộc gọi trước confirmOrder; có lỗi bị bắt → readbackDone = false, sửa rồi đọc lại
+export function confirmOrder(state, ctx) → { ok, reason?: 'phieu_rong'|'chua_doc_lai'|'khong_hop_le' }   // yêu cầu readbackDone và phiếu khác rỗng → stage 'thanh_toan'
 // Thanh toán
 export function priceOfLines(lines, recipes) → đồng            // tổng theo giá niêm yết (+ phụ thu ghi chú nếu có)
-export function reportTotal(state, amount, ctx) → { result: 'dung'|'du'|'thieu', trueTotal }
-   // 'du' (báo cao hơn giá đúng của yêu cầu thật): khách phát hiện, phạt −1,5 sao (source quay), phải báo lại
+export function reportTotal(state, amount, ctx) → { result: 'dung'|'du'|'thieu'|'khong_hop_le', trueTotal, reason?, penalized?, method?, fake?, given?, line }
+   // 'du' (báo cao hơn giá đúng của yêu cầu thật): reason 'cong_sai' → phạt bao_du −1 sao (source quay, 1 lần), phải báo lại;
+   //      reason 'phieu_thua' (số báo = tổng phiếu ghi thừa món) → không trừ sao, −8% kiên nhẫn, stage QUAY LẠI 'order' để sửa phiếu và đọc lại
+   // amount ≤ 0 → 'khong_hop_le'
    // 'thieu': khách trả theo số đã báo; ledger.undercharge += chênh lệch
    // xong → khách chọn phương thức: cash (đưa tiền theo customerCash) hoặc qr (từ ngày 4) → stage 'tinh_tien'
 // Tính tiền
 export function trayAdd(state, bill) ; trayRemove(state, bill)  // lấy tờ từ két vào khay / trả lại
-export function giveChange(state, ctx) → { correct, due, given, optimal, diff }
+export function giveChange(state, ctx) → { ok, correct, due, given, optimal, diff, optimalCount, detected?, mustTopUp?, remaining?, returned?, done, line? }
    // tiền khách đưa vào két; khay trừ khỏi két; thiếu: 90% khách phát hiện (−1 sao, phải bù), dư: mất tiền (50% khách trả lại)
-export function confirmQr(state, ctx) → { ok, fake }          // chỉ hợp lệ khi qrArrived; fake → mất trọn hóa đơn (trừ khi có loa_bao_tien chặn)
-export function clipTicket(state, ctx) → Ticket               // tạo phiếu thu + phiếu bếp; cần chỗ trống trên dây; khách → 'cho_mon'; quầy trống
+export function confirmQr(state, ctx) → { ok, fake, blocked?, reason?: 'chua_ve'|'khong_hop_le' }   // QR thật chỉ hợp lệ khi qrArrived; fake → mất trọn hóa đơn (trừ khi có loa_bao_tien chặn)
+export function clipTicket(state, ctx) → { ok: true, ticket, receipt } | { ok: false, reason: 'bep_day'|'chua_thanh_toan'|'khong_hop_le' }
+   // tạo phiếu thu + phiếu bếp; cần chỗ trống trên dây; khách → 'cho_mon'; quầy trống.
+   // receipt = {no:'#001', shopName, day, time, lines:[{recipeId,name,qty,notes:[nhãn],unitPrice,amount}], listTotal, total, given (null nếu QR), change, rounding, method}
+   // Phiếu thu trên giao diện: có dòng "Thu thiếu/Thu thêm" khi total ≠ listTotal và dòng "Trong đó làm tròn cho khách" khi rounding > 0.
+   // (cũng lưu ở counter.receipt, customer.receipt, shift.receipts[]). Khách chờ gọi món lâu (kiên nhẫn < 0,4 / < 0,15 lúc kẹp, từ ngày 2) → cho_goi_mon −0,5/−1 sao.
+// bổ sung
+export function changeOptions(state, ctx?) → ['xin_tien_le', 'moi_qr'?, 'lam_tron'] | []   // rỗng nếu két thối được
+export function resolveNoChange(state, option, ctx) → { ok, success, option, newDue?, extra?, undone? }
+   // moi_qr / xin_tien_le (thành công) sau khi tiền khách ĐÃ vào két (thối thiếu rồi mới đổi cách): hoàn tác trọn —
+   // khách trả lại mọi tờ tiền thối đã cầm (changeBills), quán trả lại tiền khách đưa, ledger.cash −= amountDue,
+   // hủy phần làm tròn; undone = true. Khách không bao giờ trả hai lần.
+export function changeRemaining(state) → tiền thối còn phải đưa
+export function rejectQr(state, ctx) → { ok, fake }            // ảnh giả: khách ngượng bỏ đi (fakeQrCaught); QR thật: khách bực bỏ đi ('tu_choi_qr')
+export function railFull(state, ctx?) → boolean
+export function unitPriceOf(recipe, notes) → giá 1 phần (kèm phụ thu)
 ```
+Lỗi order lọt qua bị phạt khi giao (serveTicket): `sai_mon` −2, `sai_ghi_chu` −1 mỗi lỗi (tối đa −2), `thieu_mon`/`sai_so_luong` (thiếu) −1.
 
 Kiên nhẫn: khách xếp hàng mất kiên nhẫn theo `1/patienceSec` mỗi giây; khách đang ở quầy mất với tốc độ × `counterDrainMul`. Từ ngày `leaveFromDay`, hết kiên nhẫn khi còn đang xếp hàng → `bo_ve` (chưa trả tiền). Sau khi kẹp phiếu khách không bỏ về; vượt 75%/100%/150% `waitBudget` → phạt −0,5/−1/−2 sao (source cho, chỉ tính mức cao nhất).
 
@@ -378,19 +423,38 @@ CookSession = { ticketId, lineIndex, recipeId, qty, notes,
   phase: 'chon'|'thot'|'xong',
   picked: [ingredientId],             // kết quả bước chọn
   chonScore: null, chonMistakes: 0,
-  steps: { [stepId]: { score, grade, method, auto, retried } },   // bước đã chơi
-  activeStepId: null, retriesLeft: 1 }
+  steps: { [stepId]: { score, grade, method, auto, retried, tag } },   // bước đã chơi
+  activeStepId: null, retriesLeft: 1,
+  // bổ sung thực tế
+  board: [bước hiệu lực, trừ chon], cost: {cogs, waste}, retryPending: null|stepId, result: null|DishResult, remake: false }
+// Ticket thực tế có thêm receiptNo; phiếu làm lại có remake: true (kẹp đầu dây, có thể vượt ticketRailMax).
 
-export function effectiveSteps(recipe, notes, picked?) → steps[]   // áp removes/patch; nhân tham số theo qty (vd số trứng n × qty)
-export function startCook(state, ticketId, lineIndex, ctx) → CookSession    // trừ giá vốn khi chốt bước chọn, không phải lúc này
-export function submitChon(state, picked, mistakes, ctx) → { ok, blockedMissingMain }   // thiếu nguyên liệu chính → ok:false, không trừ tiền
+export function effectiveSteps(recipe, notes, picked = null, qty = 1) → steps[]
+   // áp removes/patch; bỏ bước của nguyên liệu bị loại, nguyên liệu tùy chọn không được dặn, hoặc (khi có picked) không được chọn;
+   // nhân n/N/cuts/strokes/targets × qty; par × (1 + 0,4(qty − 1)); lọc `after` theo bước còn lại
+export function startCook(state, ticketId, lineIndex, ctx) → CookSession | null   // null khi đang nấu dở món khác / dòng đã xong; trừ giá vốn khi chốt bước chọn
+export function submitChon(state, picked, mistakes, ctx) → { ok, blockedMissingMain, missing?, score, errors, cost }   // thiếu nguyên liệu chính → ok:false, không trừ tiền
 export function availableSteps(state) → [stepId]                 // chưa làm, đủ ràng buộc after
-export function submitStep(state, stepId, { score, method }, ctx) // lưu điểm (đã trừ −15 nếu method sai); emit step.done
-export function autoStep(state, stepId, ctx)                      // "Tự làm": chỉ bước w=1, không phải chon, cần thạo cấp 2 → 80 điểm
-export function retryStep(state, stepId, ctx)                     // 1 lượt/món, trừ retryCost vào ledger.waste; điểm mới tối đa 85
-export function finishDish(state, ctx) → DishResult               // "Ra món": bước chưa làm = 0 điểm; tính Q (scoring.js); ghi vào ticket.done
-export function abandonDish(state, ctx)                           // bỏ món: giá vốn đã trừ → ledger.waste
+export function submitStep(state, stepId, { score, method, tag?, details? }, ctx) → { ok, score, grade, methodWrong, tag } | { ok:false, reason: 'chua_mo'|'khong_hop_le' }
+   // lưu điểm (đã trừ −15 nếu method sai); details.value > 1,0 (lua) → tag 'chay'; details.level > 1,02 (rot) → 'tran'; emit step.done
+export function autoStep(state, stepId, ctx) → { ok, score, grade } | { ok:false, reason }   // "Tự làm": chỉ bước w=1, không phải chon, cần thạo cấp 2 → 80 điểm
+export function retryStep(state, stepId, ctx) → { ok, cost, step } | { ok:false, reason }   // 1 lượt/món, trừ retryCost vào ledger.waste; điểm mới tối đa 85
+export function finishDish(state, ctx) → DishResult               // "Ra món": bước chưa làm = 0 điểm; tính Q (scoring.js); ghi vào ticket.done; cook.phase = 'xong'
+export function abandonDish(state, ctx) → { ok, waste }           // bỏ món: giá vốn đã trừ → ledger.waste; phiếu quay lại dây
 export function serveTicket(state, ticketId, ctx) → ScoreSheet    // khi mọi dòng xong: chấm sao khách, tip, review, danh tiếng; khách 'roi_di'
+   // ScoreSheet = {customerId, name, final, tutorial, stars, base, cap, penalties, counterErrors, kitchenErrors, tip, reputation, review, dishes, waitRatio, apologyBonus, complaint}
+   // counterErrors có thêm mã 0 sao 'bao_thieu' (báo tổng thiếu), 'thoi_du' (thối dư, kể cả khi khách trả lại), 'qr_gia' (xác nhận ảnh giả):
+   //   không trừ sao, không vào review, nhưng hiện trên phiếu chấm và Tổng kết. Món bị phàn nàn rồi làm lại: kitchenErrors vẫn giữ 'hong' + lỗi của món cũ.
+   // có món Hỏng hoặc sai món (khách không phải hướng dẫn) → final:false, complaint:{items:[{kind:'hong'|'sai_mon', lineIndex, line, refund}], apologies:[text]}; khách chờ ở 'nhan_mon'
+   // refund = số khách THỰC TRẢ cho dòng đó theo phiếu thu (đơn giá trên phiếu × qty, nhân tỉ lệ total/listTotal khi báo thiếu),
+   //   sai_mon hoàn giá món ghi nhầm (món khách đã trả), QR giả → 0; tổng hoàn kẹp ≤ receipt.total.
+// bổ sung
+export function resolveComplaint(state, customerId, { apologyIndex, action: 'remake'|'refund' }, ctx) → { ok, apologyCorrect, ticket | sheet }
+   // xin lỗi đúng (DIALOGUE.apologies[i].correct) +1 sao; remake: phiếu làm lại đầu dây, sao tối đa 3; refund: hoàn tiền, chốt sao
+export function getStep(state, stepId) → bước đã áp patch + qty (để mount mini-game)
+export function boardSteps(state, ctx) → [{id,type,label,ing,w,critical,par,params,method,after,done,available,result,canAuto,canRetry}]
+export function beginStep(state, stepId) → bước | null           // đặt cook.activeStepId (tải lại giữa chừng thì chơi lại bước đó)
+export function linePar(recipe, line) ; linesPar(lines, recipes) → giây
 ```
 Một dòng phiếu có số lượng n = **một lượt nấu** (tham số nhân theo n, par × (1 + 0,4(n − 1))). Dòng khác ghi chú là lượt riêng.
 
@@ -400,28 +464,32 @@ Giá vốn: khi `submitChon` thành công, trừ tổng `cost × qty` của **m�
 
 `minigame-scoring.js` (hàm thuần, UI gọi để tính điểm từ dữ liệu thao tác):
 ```js
-export function zoneMul(state, type, recipeId) → hệ số vùng (chặng × hẹp dần theo ngày × dụng cụ × thạo món × hỗ trợ; trần 1,6)
+export function zoneMul(state, type, recipeId, balance?, upgradesData?) → hệ số vùng (chặng × hẹp dần theo ngày × dụng cụ × thạo món × hỗ trợ; trần 1,6)
+   // UI truyền app.data.BALANCE, app.data.UPGRADES (đọc effect.thaiMul/luaMul hoặc effect.zoneMul[type])
 export function scoreChon({ required, optional, decoys, picked, mistakes }) → { score, errors }
-export function scoreCha({ spots /*[0..1 độ sạch từng vết]*/, elapsed, par }) → score     // theo độ phủ, −15 nếu quá 2×par
+export function scoreCha({ spots /*[0..1 độ sạch từng vết]*/, reversals, strokes, elapsed, par }) → score     // theo độ phủ (hoặc reversals/strokes với bước lắc/trộn), −15 nếu quá 2×par
 export function scoreThai({ cuts /*[độ lệch px]*/, expected, extra, mul }) → score          // ≤6px:100, ≤14:80, ≤24:55, còn lại 20 (ngưỡng × mul); nhát thừa −10
 export function scoreChamExact({ taps, n, distances /*0..1*/, mul }) → score
 export function scoreChamMin({ taps, N }) → score
 export function scoreChamTargets({ counts, targets }) → score                               // 100 − 30 × tổng |lệch|
 export function scoreLua({ value, zone, mul }) → score                                       // hàm liên tục đối xứng quanh tâm; value > 1,0 là cháy → 0
 export function scoreRot({ level, zone, mul }) → score                                       // tràn > 1,02 → 0
-export function stepLabel(score) → 'Hoàn hảo'|'Tốt'|'Đạt'|'Hỏng'
+export function stepLabel(score, labels?) → 'Hoàn hảo'|'Tốt'|'Đạt'|'Hỏng'
+// bổ sung: thaiCutScore(px, mul), zoneScore(v, zone, mul), TOOL_ZONE_MUL, MASTERY_ZONE_MUL, ASSIST_ZONE_MUL (1,25)
 ```
 
 `scoring.js`:
 ```js
 export function ingredientErrors(recipe, notes, picked) → [{code, ing, penalty|cap}]
-   // mỗi nguyên liệu chỉ tính 1 lỗi, ưu tiên: trai_ghi_chu (Q ≤ 60, sao ≤ 2) > bay (Q ≤ 60) > thieu_phu (−10) > thua (−8)
-export function dishQuality(recipe, stepsResult, ingErrors) → { q, grade, flawless, capped }
+   // mỗi nguyên liệu chỉ tính 1 lỗi, ưu tiên: trai_ghi_chu (Q ≤ 60, sao ≤ 2) > bay (Q ≤ 60) > thieu_chinh (−30) > thieu_phu (−10) > thua (−8)
+export function dishQuality(recipe, stepsResult, ingErrors, opts?) → { q, grade, flawless, capped }
+   // opts {thresholds, assist}: assist (Hỗ trợ thao tác) → không Không tì vết, trần hạng Ngon (Q ≤ 89)
    // q = Σ(w × điểm)/Σw − phạt; bước critical < 50 → grade 'hong'; flawless khi mọi bước ≥ 90, không lỗi nguyên liệu, không làm lại, không tự làm
-export function customerStars(customer, dishes, recipes) → { stars, base, penalties }
+export function customerStars(customer, dishes, recipes, opts?) → { stars, base, penalties, cap }
    // base = hạng của Q trung bình có trọng số theo giá; có món Hỏng → base ≤ 2
    // sao = kẹp(làm_tròn_xuống(base − Σ phạt quầy − phạt chờ), 1, 5); khách khó tính: có lỗi → −1 thêm; khách tutorial không bị phạt
-export function tipFor(stars, flawlessAny, persona) → đồng   // 5 sao: 5.000đ; có món Không tì vết hoặc khách khó tính: 10.000đ
+export function tipFor(stars, flawlessAny, persona, balance?) → đồng   // 5 sao: 5.000đ; có món Không tì vết hoặc khách khó tính: 10.000đ
+// bổ sung: requiredIngredients(recipe, notes) → {required, main, side, optional, removed, decoys} ; noteObjects ; gradeOf(q, thresholds) ; ING_ERROR_REVIEW
 export function averageRating(ratings) → số (đệm 4 sao khi < 5 đánh giá)
 export function customerMultiplier(avg) → 1,15 | 1,0 | 0,85 | 0,7
 ```
@@ -430,17 +498,22 @@ export function customerMultiplier(avg) → 1,15 | 1,0 | 0,85 | 0,7
 
 ```js
 // economy.js
-export function summarizeShift(state) → Summary
+export function summarizeShift(state, data?) → Summary   // data để gắn lời khuyên từ TIPS (mã lỗi → trigger qua ERROR_TIP_TRIGGER)
+export const ERROR_TIP_TRIGGER ; export function tipForError(code, tips) → thẻ | null
    // { day, served, lost, missed, cashSales, qrSales, tips, cogs, waste, refunds, undercharge, overchange,
    //   fakeQrLoss, fixedCost, profit, drawerExpected, drawerActual, drawerDiff, avgStars, reputationGain,
    //   counterErrors: {code: số lần}, kitchenErrors: {code: số lần}, bestDish, advice }
+   // thực tế thêm: sales, listValue, rounding, qrBalance, tipJar, ratings[], lateReviews[], loanRepaid; advice = {code, count, tipId, text} | null
+   // bất biến (có test): ví sau ca − ví đầu ca = profit − loanRepaid
 export function settleShift(state, summary)   // wallet += (tiền mặt vượt quỹ lẻ) + QR + tip − chi phí cố định − hoàn tiền; trả nợ nếu có
 export function canAfford(state, price) ; spend(state, price, reason) ; earn(state, amount, reason)
-export function offerLoan(state) → boolean ; takeLoan(state)
+export function offerLoan(state, balance?) → boolean ; takeLoan(state, balance?)   // khoản vay {amount, remaining}
+export function buyUpgrade(state, upgradeId, ctx) → { ok, reason? }   // kiểm fromDay, tiền; không mua trong ca
+export function buyRecipe(state, recipeId, price, ctx) → { ok, reason? }
 // mastery.js
-export function masteryLevel(progress) → 1..3
-export function recordDish(state, recipeId, dishResult)   // cập nhật cooks/goodCooks/excellent/flawless/best
-export function canAutoStep(state, recipeId) → boolean     // cấp ≥ 2
+export function masteryLevel(progress, levels?) → 1..3
+export function recordDish(state, recipeId, dishResult, levels?) → { levelBefore, levelAfter, levelUp } | null   // cập nhật cooks/goodCooks/excellent/flawless/best
+export function canAutoStep(state, recipeId, levels?) → boolean     // cấp ≥ 2
 ```
 
 ## 12. Lưu — `src/core/save.js`
@@ -448,20 +521,23 @@ export function canAutoStep(state, recipeId) → boolean     // cấp ≥ 2
 ```js
 export const SAVE_KEY = 'bkn.save', BACKUP_KEY = 'bkn.bak'
 export function encodeSave(state) → 'BKN1.' + base64url(UTF-8 JSON) + '.' + fnv1a(SALT + payload)
-export function decodeSave(str) → state | null            // sai checksum → null
-export function migrate(state) → state                    // gộp với defaultState(), kẹp giá trị, bỏ id không còn trong dữ liệu
-export function saveTo(storage, state) ; loadFrom(storage) → state|null   // storage có getItem/setItem; thử bản chính rồi bản dự phòng
-export function exportCode(state) → chuỗi ; importCode(str) → state|null  // mã sao lưu (M3)
+export function decodeSave(str) → object thô (CHƯA migrate) | null            // sai checksum → null
+export function migrate(raw, data?) → state               // gộp với defaultState(), kẹp giá trị, bỏ id công thức/nâng cấp không còn trong data; giữ ca đang dở nếu đủ cấu trúc
+export function saveTo(storage, state, { backup }?) → boolean ; loadFrom(storage, data?) → state|null   // storage có getItem/setItem; thử bản chính rồi bản dự phòng; tự migrate
+export function exportCode(state) → chuỗi ; importCode(str, data?) → state|null  // mã sao lưu (M3)
 ```
 UI gọi `saveTo(localStorage, state)` có debounce 300 ms, sau mỗi hành động quan trọng, khi `visibilitychange`/`pagehide`, và cuối ca (kèm ghi bản dự phòng). Tải lại giữa ca: khôi phục `state.shift`; nếu đang ở giữa một mini-game thì bước đó chơi lại từ đầu (cùng tham số).
 
 ## 13. Giao diện — quy ước `src/ui`
 
 - `dom.js`: `h(tag, props, ...children)` tạo phần tử (props hỗ trợ `class`, `style`, `dataset`, `on*`), `clear(el)`, `$(sel, root)`.
-- `app.js`: `createApp({ root, storage, now })` → `app = { state, data /*mọi export từ src/data*/, bus, ctx /*{emit}*/, save(), go(screenName, params), toast(text, opts), modal(opts) → Promise, vibrate(ms), sound(name), now() }`.
+- `app.js`: `createApp({ root, storage, now, screens })` → `app = { state, data /*mọi export từ src/data*/, bus, ctx /*{emit, data}*/, save(), go(screenName, params), toast(text, opts), modal(opts) → Promise, vibrate(ms), sound(name), now() }`.
+  Thực tế thêm: `saveNow({backup}?)`, `modalOpen()`, `modalBlocking()` (hộp thoại chặn → tạm dừng thời gian ca), `settings()`, `applySettings()`, `router`, `switchTab(name)` (khi đang ở màn ca bán). `toast(text, {duration, kind:'info'|'good'|'bad'|'tip', title, icon, testid})` không chặn thao tác, tối đa 2 cái thường; thẻ Mẹo nghề (`kind:'tip'`) hiện gọn (tiêu đề + tối đa 2 dòng, chỉ che dải khách), mỗi lần 1 thẻ, thẻ sau xếp hàng (tối đa 2 thẻ chờ); thẻ trigger `shift_end` không nổi mà hiện trong mục "Mẹo của Dì Sáu" ở Tổng kết. `modal({title, text, icon, body, render(close), actions:[{label, value, testid, kind}], dismissible, testid, blocking = true})`.
+  Tham số URL: `?seed=N` chỉ có tác dụng khi chưa có save; `?test=1` (chỉ trên localhost/127.0.0.1) bật `settings.assistMotion` cho kiểm thử tự động.
+- `screens/counter.js`: `mountCounter(root, app, { switchTab })` → `{ el, update, onShow, onHide, unmount }`. Nút hành động mỗi khâu (Đọc lại đơn/Chốt order, Đưa tiền thối, QR, Kẹp phiếu bếp) nằm trong thanh `.act-bar` dính đáy panel; sang khâu mới panel tự cuộn để thấy phần thao tác. Phiếu chấm có 5 hàng: Order, Báo tổng (`bao_du`, `bao_thieu`), Thối tiền (`thoi_thieu`, `thoi_du`, `qr_gia`), Bếp, Thời gian chờ. `screens/kitchen.js`: `mountKitchen(root, app)` → `{ unmount, update, onShow, onHide, selectTicket(ticketId) }`; nút "‹ Phiếu" (và chạm phiếu trên dây chung) đưa về dây phiếu ở cả bước chọn lẫn Thớt, rổ đang chọn được giữ; ô "Đang làm" trên dây phiếu có "Bỏ món" + "Làm tiếp"; trên Thớt thẻ công thức thu gọn (chỉ ghi chú đỏ, nguyên liệu và các bước gập lại); màn `service` nạp bếp bằng `import()` động, gọi `update(dt)` mỗi khung hình và `onShow/onHide` khi đổi tab (rời tab giữa mini-game → bước đó chơi lại từ đầu).
 - `router.js`: mỗi màn là module `export default { mount(root, app, params) → { unmount(), update?(dt) } }`. Các màn: `title` (lần đầu: đặt tên xe; sau đó: vào game), `prep` (màn Chuẩn bị ca: thông tin ngày, nút "Mở hàng", nâng cấp — M2 thêm shop/nhiệm vụ/điểm danh), `service` (ca bán: chứa HUD + thanh tab Quầy/Bếp, gắn `counter` và `kitchen` làm panel con), `summary` (tổng kết ca).
 - `loop.js`: `requestAnimationFrame`, gọi `advance(state, dt)` (dt kẹp 0,05 s) và `screen.update(dt)`; tạm dừng khi tab ẩn (`visibilitychange`).
-- `input.js`: tiện ích Pointer Events: `bindPointer(el, {down, move, up, cancel})` với `setPointerCapture`, chỉ nhận con trỏ chính, `pointercancel` coi như thả tay; phím Space mô phỏng nhấn/giữ trên máy tính.
+- `input.js`: tiện ích Pointer Events: `bindPointer(el, {down, move, up, cancel}, { space }?) → unbind` với `setPointerCapture`, chỉ nhận con trỏ chính, `pointercancel` coi như thả tay; phím Space mô phỏng nhấn/giữ trên máy tính khi bật `{ space: true }` (lua, rot, cham bật sẵn). Mỗi handler nhận `(p, e)`, `p = {x, y, rx, ry, clientX, clientY, rect, t, pointerId, pointerType, synthetic, …}`.
 - CSS sân khấu mini-game: `touch-action: none; user-select: none; -webkit-touch-callout: none;` chặn `contextmenu`.
 - Bố cục dọc, chuẩn 390×844; khung tối đa 480px chiều ngang, căn giữa trên máy tính. Vùng chạm ≥ 44px, cách mép 16px.
 - Mọi phần tử quan trọng có `data-testid` (danh sách ở mục 14) để test tự động.
@@ -473,11 +549,13 @@ UI gọi `saveTo(localStorage, state)` có debounce 300 ms, sau mỗi hành đ�
 // mỗi file chon.js, cha.js, thai.js, cham.js, lua.js, rot.js:
 export default {
   type: 'thai',
-  mount(stage /*HTMLElement*/, step /*bước đã áp patch*/, ctx /*{ app, recipe, zoneMul, assist }*/)
-    → { result: Promise<{ score, details }>, destroy() }
+  mount(stage /*HTMLElement*/, step /*bước đã áp patch*/, ctx /*{ app, recipe, zoneMul, assist, data, notes, qty, rand, slowBurn, (chon:) shelf, basketHint }*/)
+    → { result: Promise<{ score, details }>, destroy() }       // destroy() → result nhận null
 }
-// index.js: export const MINIGAMES = { chon, cha, thai, cham, lua, rot }; export function playStep(stage, step, ctx)
+// index.js: export const MINIGAMES = { chon, cha, thai, cham, lua, rot }; export function playStep(stage, step, ctx); export function hintFor(step, data)
 ```
+Handle có thể có thêm `snapshot()` (chon: `{picked, mistakes}`); ctx của chon nhận `initial: {picked, mistakes}` để khôi phục rổ khi người chơi về dây phiếu/đổi tab rồi quay lại. Hỗ trợ thao tác ở bước chọn **không** gợi ý ngay: ô cần lấy chỉ nhấp nháy sau 1,5 × par (thường là 2,5 × par, kèm phạt). Rót (rot) rời tab khi đang giữ: chỉ tạm dừng, lượt đó rót tiếp được, không bật "Xong", không tự kết thúc.
+`details` theo loại (bếp chuyển thẳng vào `submitStep`): chon `{picked, mistakes, tapMistakes, overtime, elapsed}`; cha `{spots[] | reversals, strokes, elapsed}`; thai `{cuts[], extra, guides, elapsed}`; cham `{mode, taps, n, distances | taps, N, T | counts, targets, elapsed}`; lua `{value, zone, shown, elapsed}`; rot `{level, pours, zone, shown, elapsed}`. `rand` là bộ ngẫu nhiên tất định theo seed:ngày:phiếu:dòng:bước nên chơi lại một bước giữ nguyên vạch/vết.
 Mini-game chỉ đo thao tác và gọi hàm chấm trong `core/minigame-scoring.js`; không tự sửa state. Màn `kitchen` nhận `result` rồi gọi `submitStep`. Thời gian đo bằng `performance.now()`. Mỗi bước tự kết thúc ở 2,5 × par (trừ `chon`). Thẻ gợi ý 0,8 s trước bước, chạm để bỏ qua, tự ẩn sau 3 lần nấu món đó.
 
 ## 14. data-testid bắt buộc (cho e2e)
@@ -487,3 +565,9 @@ Mini-game chỉ đo thao tác và gọi hàm chấm trong `core/minigame-scoring
 - Quầy: `speech-bubble` (có `data-request` = JSON yêu cầu thật, để test tự động), `menu-item-<recipeId>`, `note-chip-<noteId>`, `qty-plus`, `qty-minus`, `add-line`, `order-line-<i>`, `readback`, `confirm-order`, `numpad-<0..9>`, `numpad-clear`, `report-total`, `drawer-<mệnh giá>`, `tray-<mệnh giá>`, `given-cash` (có `data-amount`), `give-change`, `qr-status` (có `data-arrived`), `qr-confirm`, `clip-ticket`, `receipt`.
 - Bếp: `ticket-<ticketId>`, `cook-line-<i>`, `shelf-<ingredientId>`, `chon-done`, `board-step-<stepId>`, `method-<methodId>`, `finish-dish`, `auto-step`, `retry-step`, `abandon-dish`, `minigame-stage` (có `data-type`), các phần tử mini-game: `thai-guide-<i>` (có `data-x`), `lua-needle` (có `data-v`), `lua-zone` (có `data-a`, `data-b`), `lua-lift`, `rot-level` (có `data-v`), `rot-zone`, `rot-pour`, `cha-spot-<i>`, `cham-target`, `cham-bottle-<id>`, `cham-done`, `cham-pad`.
 - Kết quả: `serve-ticket`, `score-sheet`, `complaint-apology-<i>`, `complaint-remake`, `complaint-refund`. Tổng kết: `summary`, `summary-profit`, `next-day`.
+- Bổ sung thực tế (dùng trong e2e `tests/e2e/helpers.mjs`):
+  - Chung: `screen-title`, `screen-prep`, `screen-service`, `prep-day`, `prep-wallet`, `hud-time`, `queue`, `queue-<customerId>`, `ticket-rail`, `rail-ticket-<ticketId>` (dây phiếu chung; `ticket-<id>` là thẻ phiếu trong Bếp, có `data-wait` = green|yellow|red, `data-status`), `panel-counter`, `panel-kitchen`, `modal`, `tip-card`. `progress-4` có thêm `data-customer`.
+  - Quầy: `counter-panel` (có `data-stage`), `order-sheet`, `qty-value`, `order-line-remove-<i>`, `caught-list`, `numpad-display` (`data-amount`), `amount-due`, `change-hint` (`data-amount`), `tray` (`data-amount`), `drawer-<mệnh giá>` có `data-count`, `no-change-modal`, `no-change-<xin_tien_le|moi_qr|lam_tron>`, `qr-reject`, `rail-full`, `complaint-modal`.
+  - Bếp: `kitchen`, `recipe-card`, `board`, `step-sheet`, `step-start`, `step-hint`, `step-result` (`data-score`), `critical-prompt`, `confirm-ok`, `confirm-cancel`, `dish-reveal` (`data-grade`, `data-q`), `dish-result`, `serve-ticket` có `data-ticket-id`; `board-step-<id>` có class `is-available`/`is-done` và `data-step-id`.
+  - Mini-game: `chon-basket`, `cha-area`, `cha-progress`, `cha-spot-<i>` (`data-clean`), `thai-board`, `thai-guide-<i>` (`data-x` tính từ mép trái `minigame-stage`), `cham-pan`, `cham-target` (`data-n`), `cham-pad` (`data-n`, `data-t`), `cham-bottle-<id>` (`data-target`, `data-count`), `rot-done`, `mg-time`.
+  - Tổng kết: `summary-drawer-diff`, `summary-stars`, `summary-advice`, `summary-reviews`, `summary-tip`.

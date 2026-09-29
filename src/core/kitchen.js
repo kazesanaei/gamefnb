@@ -77,6 +77,34 @@ function linePrice(recipes, line) {
   return unitPrice(recipes && recipes[line.recipeId], line.notes) * (line.qty || 1)
 }
 
+// Số tiền khách THỰC TRẢ cho `qty` phần của dòng phiếu `lineIndex` (theo phiếu thu):
+// đơn giá trên phiếu × tỉ lệ thực thu (báo thiếu thì khách trả ít hơn giá niêm yết).
+// QR giả (ảnh chụp) → khách chưa trả gì → 0.
+function paidForLine(customer, lineIndex, qty, fallback) {
+  const rc = customer.receipt
+  if (customer.payMethod === 'qr' && customer.fakeQr) return 0
+  if (!rc) return fallback
+  const rl = (rc.lines || [])[lineIndex]
+  const unit = rl ? Number(rl.unitPrice) || 0 : 0
+  const list = Number(rc.listTotal) || 0
+  const total = Number(rc.total) || 0
+  let amount = unit * qty
+  if (list > 0 && total < list) amount = Math.floor((amount * total) / list / 1000) * 1000
+  return Math.max(0, amount)
+}
+
+// Tổng hoàn cho các mục phàn nàn, kẹp theo số khách đã trả trừ phần đã hoàn trước đó.
+function clampRefunds(customer, items) {
+  const rc = customer.receipt
+  const paid = customer.payMethod === 'qr' && customer.fakeQr ? 0 : (rc ? Number(rc.total) || 0 : Infinity)
+  let left = Math.max(0, paid - (Number(customer.refunded) || 0))
+  for (const it of items) {
+    it.refund = Math.min(it.refund, left)
+    left -= it.refund
+  }
+  return items
+}
+
 function findTicket(shift, ticketId) {
   return (shift.tickets || []).find(t => t.id === ticketId) || null
 }
@@ -318,7 +346,9 @@ export function finishDish(state, ctx) {
   const mastery = recordDish(state, cook.recipeId, dish, cfg(ctx, 'masteryLevels'))
   dish.mastery = mastery
   if (dish.grade === 'hong') unlockTip(state, 'dish_hong', ctx)
-  if (cook.board.some(st => st.type === 'cha' && steps[st.id].skipped)) unlockTip(state, 'chua_rua', ctx)
+  // "Rửa rồi mới thái" chỉ mở khi bỏ bước RỬA, không mở khi bỏ bước lắc/trộn/gọt
+  const isWash = st => st.type === 'cha' && (String(st.id).startsWith('rua') || /^rửa/i.test(String(st.label || '')))
+  if (cook.board.some(st => isWash(st) && steps[st.id].skipped)) unlockTip(state, 'chua_rua', ctx)
   emit(ctx, 'dish.done', { recipeId: dish.recipeId, q: dish.q, grade: dish.grade, flawless: dish.flawless, errors: dish.errors.slice() })
   return dish
 }
@@ -391,9 +421,19 @@ function finalizeCustomer(state, customer, ctx) {
   if (flawlessAny) rep += 1
   const counterErrors = [...new Set(res.penalties.filter(p => p.source === 'quay' && p.code !== 'kho_tinh').map(p => p.code))]
   for (const e of customer.orderErrors || []) if (!counterErrors.includes(e.type)) counterErrors.push(e.type)
+  // lỗi quầy 0 sao (không trừ sao, không vào review) để phiếu chấm và Tổng kết ghi đúng nguồn lỗi
+  const silent = []
+  if (customer.undercharge > 0) silent.push('bao_thieu')
+  if (customer.overchanged) silent.push('thoi_du')
+  if (customer.payMethod === 'qr' && customer.fakeQr) silent.push('qr_gia')
+  for (const code of silent) if (!counterErrors.includes(code)) counterErrors.push(code)
   const kitchenErrors = []
+  // món bị phàn nàn rồi làm lại: vẫn ghi lỗi bếp của món cũ (và 'hong' nếu món cũ Hỏng)
+  const complaintItems = (customer.complaint && customer.complaint.items) || []
+  if (complaintItems.some(it => it.kind === 'hong')) kitchenErrors.push('hong')
+  for (const c of customer.remadeErrors || []) if (!kitchenErrors.includes(c)) kitchenErrors.push(c)
   for (const d of customer.dishes || []) for (const c of (d && d.errors) || []) if (!kitchenErrors.includes(c)) kitchenErrors.push(c)
-  const allErrors = [...counterErrors, ...kitchenErrors, ...res.penalties.filter(p => p.source === 'cho').map(p => p.code)]
+  const allErrors = [...counterErrors.filter(c => !silent.includes(c)), ...kitchenErrors, ...res.penalties.filter(p => p.source === 'cho').map(p => p.code)]
   const firstDish = (customer.dishes || []).find(Boolean)
   const firstIng = (customer.dishes || []).flatMap(d => (d && d.ingErrors) || [])[0]
   const INGS = (ctx.data && ctx.data.INGREDIENTS) || {}
@@ -442,6 +482,8 @@ export function serveTicket(state, ticketId, ctx) {
   if (ticket.remake) {
     // món làm lại: thay các món bị phàn nàn
     const keep = (customer.dishes || []).filter(d => d && !d.complained)
+    const old = (customer.dishes || []).filter(d => d && d.complained)
+    customer.remadeErrors = [...new Set(old.flatMap(d => d.errors || []))]
     customer.dishes = keep.concat(ticket.done.map(d => ({ ...d, remake: true })))
     customer.status = 'nhan_mon'
     return finalizeCustomer(state, customer, ctx)
@@ -464,16 +506,19 @@ export function serveTicket(state, ticketId, ctx) {
     for (const e of customer.orderErrors || []) {
       if (e.type !== 'sai_mon') continue
       const line = { recipeId: e.expectedRecipeId, qty: e.qty || 1, notes: (e.expectedNotes || []).slice() }
-      items.push({ kind: 'sai_mon', lineIndex: e.index, line, refund: linePrice(R, line) })
+      // hoàn đúng số khách đã trả cho món ghi nhầm (không phải giá món khách gọi)
+      const wrong = ticket.lines[e.index] || line
+      items.push({ kind: 'sai_mon', lineIndex: e.index, line, refund: paidForLine(customer, e.index, e.qty || 1, linePrice(R, { ...wrong, qty: e.qty || 1 })) })
       const d = customer.dishes[e.index]
       if (d) d.complained = true
     }
     customer.dishes.forEach((d, i) => {
       if (d.grade !== 'hong' || d.complained) return
       const line = { recipeId: d.recipeId, qty: d.qty, notes: d.notes.slice() }
-      items.push({ kind: 'hong', lineIndex: i, line, refund: linePrice(R, line) })
+      items.push({ kind: 'hong', lineIndex: i, line, refund: paidForLine(customer, i, d.qty, linePrice(R, line)) })
       d.complained = true
     })
+    clampRefunds(customer, items)
   }
   if (items.length) {
     unlockTip(state, 'complaint', ctx)
@@ -490,7 +535,7 @@ export function serveTicket(state, ticketId, ctx) {
 
 // Xử lý phàn nàn: xin lỗi đúng (DIALOGUE.apologies[i].correct) +1 sao (vẫn theo trần).
 // remake: thêm lại các dòng bị phàn nàn vào đầu dây phiếu (cờ remake, sao tối đa 3), khách về 'cho_mon'.
-// refund: ledger.refunds += giá các dòng đó, chốt sao ngay.
+// refund: ledger.refunds += số khách đã thực trả cho các dòng đó (item.refund), chốt sao ngay.
 export function resolveComplaint(state, customerId, choice, ctx) {
   const sh = state.shift
   const customer = sh && sh.customers[customerId]
