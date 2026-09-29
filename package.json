@@ -1,0 +1,11 @@
+{
+  "name": "bep-khoi-nghiep",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"tests/unit/**/*.test.mjs\"",
+    "serve": "node tests/helpers/static-server.mjs 8080",
+    "e2e": "node --test --test-concurrency=1 \"tests/e2e/**/*.e2e.mjs\""
+  }
+}
