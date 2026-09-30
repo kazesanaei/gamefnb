@@ -9,7 +9,8 @@ import { DATA, BALANCE, makeCtx } from '../fixtures/data.mjs'
 
 test('defaultState đúng hợp đồng', () => {
   const s = defaultState(0xdeadbeef)
-  assert.equal(s.version, 2); assert.equal(s.seed, 0xdeadbeef); assert.equal(s.day, 1); assert.equal(s.wallet, 200000)
+  // M4 (sửa có chủ ý): save lên version 3 (bản 0.4.0: tình huống/sự kiện tiền, kho hàng hiếm)
+  assert.equal(s.version, 3); assert.equal(s.seed, 0xdeadbeef); assert.equal(s.day, 1); assert.equal(s.wallet, 200000)
   assert.deepEqual(Object.keys(s.recipes), ['banh_mi_op_la', 'tra_tac'])
   assert.deepEqual(s.recipes.tra_tac, { cooks: 0, goodCooks: 0, excellent: 0, flawless: 0, best: 0, boughtDay: 0 })
   assert.equal(s.shift, null); assert.deepEqual(s.clock, { maxSeen: 0 })

@@ -2,7 +2,7 @@
 import { hashString } from './rng.js'
 import {
   defaultState, defaultStats, defaultSettings, defaultMeta, newRecipeProgress, STATE_VERSION, INCIDENT_FREQUENCIES,
-  defaultIncidents, defaultNotebook
+  defaultIncidents, defaultNotebook, defaultRare
 } from './state.js'
 
 export const SAVE_KEY = 'bkn.save'
@@ -225,11 +225,13 @@ export function migrateSettings(rawSettings) {
 }
 
 // Gộp với defaultState, kẹp giá trị âm/NaN, bỏ id không còn trong dữ liệu (khi có data).
-// Nâng version 1 → 2: thêm các trường meta M2 (migrateMeta).
+// Nâng version 1 → 2: thêm các trường meta M2 (migrateMeta). Version 2 → 3 (M4, bản 0.4.0): tình huống, kho hàng hiếm,
+// ca đang dở (migrateContentM4). Mọi bản cũ nâng thẳng lên STATE_VERSION trong một lần nạp.
 // report (tùy chọn, object): migrate ghi thêm điều người chơi nên biết:
 //   report.walletRounded = { from, to }      ví lẻ của bản cũ đã làm tròn lên bội 500đ
 //   report.shiftDropped = { day, refund }    ca dở không chơi tiếp được (bản khác đổi cấu trúc ca, save hỏng) → hủy ca,
-//                                            hoàn giá vốn/hao hụt đã trừ khỏi ví trong ca đó (tiền khách coi như đã trả lại)
+//                                            hoàn giá vốn/hao hụt đã trừ khỏi ví trong ca đó (tiền khách coi như đã trả lại),
+//                                            M4: cả tiền phạt/chi sự kiện và tiền lựa chọn ở màn Chuẩn bị của ca đó
 export function migrate(raw, data = null, report = null) {
   if (!isObj(raw)) return null
   const rep = isObj(report) ? report : {}
@@ -295,20 +297,148 @@ export function migrate(raw, data = null, report = null) {
     s.shift = null
     // Không bỏ ca im lặng: giá vốn/hao hụt của ca đã trừ khỏi ví lúc nấu (tiền khách nằm trong két/QR của ca, mất theo
     // ca) → hủy ca và hoàn phần đã trừ, người chơi không mất tiền vì bản game đổi giữa ca. Ngày game giữ nguyên.
+    // M4: hoàn cả tiền phạt/chi sự kiện (ledger.eventOut, đã trừ ví lúc phát sinh) — trừ phần tự bỏ tiền mua hàng hiếm đã
+    // vào kho (hàng vẫn giữ) — và tiền chi cho lựa chọn ở màn Chuẩn bị (mods.prepCost: mua đá cây, chuẩn bị đón đoàn…).
     if (isObj(sh)) {
       const L = isObj(sh.ledger) ? sh.ledger : {}
-      const refund = ceilTo(int(L.cogs, 0, 0) + int(L.waste, 0, 0), WALLET_STEP)
+      const refund = ceilTo(int(L.cogs, 0, 0) + int(L.waste, 0, 0) + droppedEventRefund(sh), WALLET_STEP)
       s.wallet += refund
       rep.shiftDropped = { day: int(sh.day, s.day, 1), refund }
     }
   }
   migrateMeta(raw, s, data)
   migrateContentM3(raw, s, data)
+  migrateContentM4(raw, s, data)
   return s
 }
 
+// M4: tiền sự kiện hoàn lại khi hủy ca dở (migrate): tiền phạt/chi sự kiện đã trừ ví (ledger.eventOut) trừ phần tự bỏ tiền
+// mua hàng hiếm đã vào kho (kết quả tình huống có spend và rare), cộng tiền lựa chọn ở màn Chuẩn bị (mods.prepCost).
+function droppedEventRefund(sh) {
+  const L = isObj(sh.ledger) ? sh.ledger : {}
+  const incs = [sh.incident, ...(Array.isArray(sh.incidentQueue) ? sh.incidentQueue : [])].filter(isObj)
+  const bought = incs.reduce((a, x) => {
+    const r = isObj(x.result) ? x.result : null
+    return a + (r && Array.isArray(r.rare) && r.rare.some(g => isObj(g) && int(g.n, 0, 0) > 0) ? int(r.spend, 0, 0) : 0)
+  }, 0)
+  const prep = isObj(sh.mods) ? int(sh.mods.prepCost, 0, 0) : 0
+  return Math.max(0, int(L.eventOut, 0, 0) - bought) + prep
+}
+
+// M4 (save v3, bản 0.4.0): các trường mới của M4.
+//   - incidents: lastKind, lastLoss, lastEvent (luật nhịp), day (sổ tiền sự kiện của ngày thật), warn (lần nhắc nhở của sự
+//     kiện ngày), announced (sự kiện ngày đã chốt);
+//   - rare: kho nguyên liệu và công thức hiếm (migrateRare);
+//   - ca đang dở của bản 0.3 (save v2): thêm các trường M4 còn thiếu với giá trị mặc định (migrateShiftM4), nên ca dở
+//     chơi tiếp được bằng mã M4. Lịch sử ca cũ (history) giữ nguyên: nơi đọc eventIn/eventOut/rare đều có mặc định.
+// Save v1/v2 nhận mặc định; save v3 hợp lệ giữ nguyên (lưu rồi tải lại không đổi).
+export function migrateContentM4(raw, s, data = null) {
+  const def = defaultIncidents()
+  const inc = isObj(raw.incidents) ? raw.incidents : {}
+  s.incidents = {
+    ...(isObj(s.incidents) ? s.incidents : def),
+    // luật nhịp: loại và tỉ lệ lỗ (so với trần) của tình huống gần nhất
+    lastKind: ['tot', 'chon', 'xau'].includes(inc.lastKind) ? inc.lastKind : def.lastKind,
+    lastLoss: Number.isFinite(Number(inc.lastLoss)) ? Math.min(1, Math.max(0, Math.round(Number(inc.lastLoss) * 100) / 100)) : def.lastLoss,
+    // sổ tiền sự kiện của ngày thật {key, loss, gain}
+    day: isObj(inc.day) && typeof inc.day.key === 'string'
+      ? { key: inc.day.key.slice(0, 20), loss: int(inc.day.loss, 0, 0), gain: int(inc.day.gain, 0, 0) }
+      : def.day,
+    // lần nhắc nhở gần nhất {eventId: ngày game}, chỉ giữ id sự kiện ngày có trong dữ liệu
+    warn: migrateWarn(inc.warn, data),
+    // loại sự kiện gần nhất trên dòng thời gian chung (sự kiện ngày + tình huống) và sự kiện ngày đã chốt
+    lastEvent: ['tot', 'chon', 'xau'].includes(inc.lastEvent) ? inc.lastEvent : def.lastEvent,
+    announced: migrateAnnounced(inc.announced, data, s.day)
+  }
+  migrateRare(raw, s, data)
+  if (isObj(s.shift)) s.shift = migrateShiftM4(s.shift)
+  return s
+}
+
+// Tiền trong sổ ca: số hữu hạn, không âm.
+const okMoney = v => typeof v === 'number' && Number.isFinite(v) && v >= 0
+
+// Khóa hiệu ứng M4 của sh.mods (events.prepareShiftMods) và giá trị khi ca không có sự kiện ngày.
+function modsM4Defaults() {
+  return { lineCountWeights: null, fixedCostDelta: 0, ingCostMul: {}, noQrSpeaker: false, queueMax: null, queueFine: null,
+    bigOrder: null, endCheck: null, rareRolls: 0 }
+}
+
+// Ca đang dở: thêm các trường M4 còn thiếu (ca mở ở bản 0.3 chưa có). Chỉ thêm hoặc sửa trường thiếu/hỏng, không đổi
+// trường hợp lệ. Trả bản sao nông của ca.
+//   ledger.eventIn / eventOut = 0; incidentQueue, eventNotes, rareMenu (ca cũ không có món hiếm), rareNotes = [];
+//   rareRolls, eventCostExtra, eventMissed = 0; dayKey = '' (trần tiền sự kiện tính theo ngày game); mods thêm khóa M4
+//   với giá trị "không có hiệu ứng". eventCap không thêm: thiếu thì trần là tình huống của ca tự mang (events.shiftEventCap).
+export function migrateShiftM4(sh) {
+  if (!isObj(sh)) return sh
+  const out = { ...sh }
+  const L = isObj(sh.ledger) ? sh.ledger : {}
+  if (!okMoney(L.eventIn) || !okMoney(L.eventOut)) {
+    out.ledger = { ...L, eventIn: okMoney(L.eventIn) ? L.eventIn : 0, eventOut: okMoney(L.eventOut) ? L.eventOut : 0 }
+  }
+  for (const k of ['incidentQueue', 'eventNotes', 'rareNotes']) if (!Array.isArray(sh[k])) out[k] = []
+  if (!Array.isArray(sh.rareMenu)) out.rareMenu = []
+  else if (sh.rareMenu.some(x => typeof x !== 'string')) out.rareMenu = sh.rareMenu.filter(x => typeof x === 'string')
+  for (const k of ['rareRolls', 'eventCostExtra', 'eventMissed']) if (!okMoney(sh[k])) out[k] = 0
+  // số lượt Giỏ chợ là số nguyên
+  if (!Number.isInteger(out.rareRolls)) out.rareRolls = Math.round(out.rareRolls)
+  if (typeof sh.dayKey !== 'string') out.dayKey = ''
+  if (isObj(sh.mods)) {
+    const md = modsM4Defaults()
+    const missing = Object.keys(md).filter(k => !(k in sh.mods))
+    if (missing.length) {
+      out.mods = { ...sh.mods }
+      for (const k of missing) out.mods[k] = md[k]
+    }
+  }
+  return out
+}
+
+// M4 (hàng hiếm): kho state.rare. Chỉ giữ id có trong dữ liệu (nguyên liệu rare: true, công thức source 'hiem', phiên
+// hàng STALLS); kẹp số phần 0..stockMax, mảnh 0..fragmentsNeed; pity, today, seen, pendingStall về dạng chuẩn. Save v1/v2
+// chưa có → mặc định. Giữ nguyên state hợp lệ (lưu rồi tải lại không đổi).
+export function migrateRare(raw, s, data = null) {
+  const def = defaultRare()
+  const r = isObj(raw.rare) ? raw.rare : {}
+  const C = (data && data.RARE_CONFIG) || {}
+  const stockMax = Number(C.stockMax) > 0 ? Number(C.stockMax) : 6
+  const need = Number(C.fragmentsNeed) > 0 ? Number(C.fragmentsNeed) : 3
+  const INGS = data && data.INGREDIENTS
+  const REC = data && data.RECIPES
+  const ingOk = id => /^[a-z0-9_]{1,40}$/.test(id) && (!INGS || !!(INGS[id] && INGS[id].rare))
+  const recOk = id => /^[a-z0-9_]{1,40}$/.test(id) && (!REC || !!(REC[id] && REC[id].source === 'hiem'))
+  const stallIds = data && Array.isArray(data.STALLS) ? data.STALLS.map(x => x.id) : null
+  const stock = {}
+  if (isObj(r.stock)) for (const [id, v] of Object.entries(r.stock)) if (ingOk(id)) stock[id] = int(v, 0, 0, stockMax)
+  const fragments = {}
+  if (isObj(r.fragments)) for (const [id, v] of Object.entries(r.fragments)) if (recOk(id)) fragments[id] = int(v, 0, 0, need)
+  const p = isObj(r.pity) ? r.pity : {}
+  const t = isObj(r.today) ? r.today : {}
+  const ps = r.pendingStall
+  s.rare = {
+    stock, fragments,
+    pity: { ing: int(p.ing, 0, 0, 99), frag: int(p.frag, 0, 0, 99) },
+    today: {
+      key: dayKeyOr(t.key), got: int(t.got, 0, 0, 999), frags: int(t.frags, 0, 0, 999),
+      stalls: strArr(t.stalls).filter(id => !stallIds || stallIds.includes(id)), strangerDay: dayKeyOr(t.strangerDay)
+    },
+    seen: strArr(r.seen).filter(ingOk),
+    pendingStall: isObj(ps) && typeof ps.id === 'string' && (!stallIds || stallIds.includes(ps.id)) && dayKeyOr(ps.dayKey)
+      ? { id: ps.id, dayKey: ps.dayKey, ...stallDraftOf(ps) } : def.pendingStall
+  }
+  return s
+}
+
+// Rổ đang lựa dở của phiên hàng (rare.saveStallDraft): {picked: [id ô kệ], mistakes: số lần chọn nhầm 0..99}; lượt lựa
+// chưa chạm ô nào (bản cũ) thì không có hai trường này.
+function stallDraftOf(ps) {
+  if (!Array.isArray(ps.picked) && ps.mistakes === undefined) return {}
+  const picked = [...new Set(strArr(ps.picked).filter(id => /^[a-z0-9_]{1,40}$/.test(id)))].slice(0, 12)
+  return { picked, mistakes: int(ps.mistakes, 0, 0, 99) }
+}
+
 // M3 nội dung: tình huống trong ca (bảo hiểm, loại gần đây, sổ ghi nợ, khách thêm) và Sổ tay nghề (nhóm đã nhận thưởng).
-// Save v1/v2 chưa có → mặc định. Không đổi STATE_VERSION (chỉ thêm trường).
+// Các trường M4 của incidents (lastKind, lastLoss, day, warn) do migrateContentM4 thêm.
 export function migrateContentM3(raw, s, data = null) {
   const def = defaultIncidents()
   const inc = isObj(raw.incidents) ? raw.incidents : {}
@@ -331,6 +461,33 @@ export function migrateContentM3(raw, s, data = null) {
   const groups = data && data.TIP_GROUPS ? Object.keys(data.TIP_GROUPS) : null
   s.notebook = { ...defaultNotebook(), claimed: strArr(nb.claimed).filter(g => !groups || groups.includes(g)) }
   return s
+}
+
+// Sự kiện ngày đã chốt {ngày game: id | ''}: khóa là số ngày trong khoảng [ngày − 20, ngày + 1] (lõi chỉ giữ 15 ngày
+// gần nhất), giá trị '' hoặc id sự kiện ngày có trong dữ liệu.
+function migrateAnnounced(raw, data, day) {
+  const out = {}
+  if (!isObj(raw)) return out
+  const ids = data && data.DAY_EVENTS ? Object.keys(data.DAY_EVENTS) : null
+  for (const [k, v] of Object.entries(raw)) {
+    if (!/^\d{1,6}$/.test(k)) continue
+    const d = Number(k)
+    if (d < 1 || d < day - 20 || d > day + 1) continue
+    if (v === '' || (typeof v === 'string' && /^[a-z0-9_]{1,40}$/.test(v) && (!ids || ids.includes(v)))) out[k] = v
+  }
+  return out
+}
+
+function migrateWarn(raw, data) {
+  const out = {}
+  if (!isObj(raw)) return out
+  const ids = data && data.DAY_EVENTS ? Object.keys(data.DAY_EVENTS) : null
+  for (const [id, day] of Object.entries(raw)) {
+    if (!/^[a-z0-9_]{1,40}$/.test(id) || (ids && !ids.includes(id))) continue
+    const d = int(day, 0, 0)
+    if (d > 0) out[id] = d
+  }
+  return out
 }
 
 // Số hiệu bản ghi (state.rev) của save đang nằm trong storage; null nếu không có hoặc hỏng.

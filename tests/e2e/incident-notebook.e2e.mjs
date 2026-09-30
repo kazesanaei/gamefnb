@@ -1,13 +1,16 @@
 // E2E M3 nội dung (giao diện thật, Chromium, đồng hồ giả chạy nhanh lúc chờ khách):
-//  1. Tình huống giữa hai khách: save ngày 5 dựng sẵn (seed 6, tần suất Nhiều + bảo hiểm đủ 3 ca → chắc chắn có
-//     tình huống "Khách quen xin ghi nợ" sau khách thứ nhất). Không hiện khi khách đang ở quầy; hiện ngay khi kẹp phiếu,
+//  1. Tình huống giữa hai khách: save ngày 5 dựng sẵn (seed 93, tần suất Nhiều + bảo hiểm → chắc chắn có tình huống
+//     "Khách quen xin ghi nợ" sau khách thứ nhất, ca không có tình huống thứ hai). M4: seed tìm lại bằng
+//     `node tools/tim-seed.mjs` (tần suất "dày", tối đa 2 tình huống mỗi ca, luật tip mới, M4 bước 4–5 thêm 8 sự kiện ngày
+//     và 8 tình huống làm đổi kết quả seed cũ; bước 6 có dữ liệu hàng hiếm: "Khách quê gửi quà" bốc được, khách lạ ở
+//     ca đầu ngày thật). Không hiện khi khách đang ở quầy; hiện ngay khi kẹp phiếu,
 //     quầy trống, thời gian ca (kiên nhẫn) đứng yên; mỗi lựa chọn ghi rõ cái giá, có 1 cách an toàn; chọn "Cho nợ"
 //     → ví trừ giá vốn, sổ ghi nợ; chơi hết ca → Tổng kết ghi nhận; hôm sau màn Chuẩn bị hiện sổ ghi nợ.
 //     Sau đó: Sổ tay nghề (4 nhóm, thẻ chưa mở có gợi ý, nhận thưởng đủ nhóm 1 lần) và Sổ công thức (số liệu món,
 //     chi tiết không lộ bẫy, Sổ từ vùng miền).
 //  2. Màn hẹp 360×740: lưới lối vào 7 ô + "Mở hàng" luôn thấy, Sổ tay nghề, Sổ công thức, hộp "Khách mở hàng bằng tờ
 //     500.000đ" (hiện trước khách đầu tiên): không tràn ngang, vùng chạm ≥ 44px, chữ ≥ 14px.
-//  3. "Khách đổi ý sau khi đã thanh toán" (seed 25) → "Đổi món": dây phiếu chung + thẻ phiếu trong Bếp vẽ lại theo món mới,
+//  3. "Khách đổi ý sau khi đã thanh toán" (seed 64) → "Đổi món": dây phiếu chung + thẻ phiếu trong Bếp vẽ lại theo món mới,
 //     tiền chênh vào sổ, yêu cầu thật đổi theo, nấu món mới → khách hài lòng.
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -20,7 +23,8 @@ import { playShift } from '../helpers/perfect-player.mjs'
 import { makeMetaCtx } from '../helpers/meta-helpers.mjs'
 
 // Save đã bán 4 ca (ngày 1–4, mỗi ca một ngày thật từ 26/09) → đang ở ngày game 5.
-// Tần suất "Nhiều" + bảo hiểm (3 ca liền chưa gặp tình huống) → ca ngày 5 chắc chắn có tình huống, bốc theo seed.
+// Tần suất "Nhiều" + bảo hiểm (M4: Nhiều bảo hiểm sau 1 ca; since = 3 luôn đủ) → ca ngày 5 chắc chắn có tình huống,
+// bốc theo seed. Hàm dựng này có bản sao ở tools/tim-seed.mjs (sửa ở đây thì sửa cả ở đó).
 function builtSave(seed) {
   const ctx = makeMetaCtx({ at: '2026-09-26T08:00', attach: true })
   const state = defaultState(seed, DATA)
@@ -88,8 +92,9 @@ test('tình huống giữa hai khách → chọn "Cho nợ" → Tổng kết ghi
   const g = await openGame({ clock: true, name: 'tinh-huong' })
   const { page, errors } = g
   try {
-    const built = builtSave(6)
-    // đã mở đủ 2 thẻ nhóm "Phục vụ, Quản lý" → nhóm đó chờ nhận thưởng
+    // M4 bước 6 (sửa có chủ ý): seed 29 → 93 (tools/tim-seed.mjs; dữ liệu hàng hiếm làm đổi loại tình huống bốc được)
+    const built = builtSave(93)
+    // đã mở đủ thẻ nhóm "Phục vụ, Quản lý" (M4: 3 thẻ) → nhóm đó chờ nhận thưởng
     for (const t of DATA.TIPS.filter(x => x.group === 'phuc_vu')) if (!built.tipsSeen.includes(t.id)) built.tipsSeen.push(t.id)
     await seedSave(page, built)
     await enterPrep(g, '?devNow=2026-09-30T09:00')
@@ -180,7 +185,9 @@ test('tình huống giữa hai khách → chọn "Cho nợ" → Tổng kết ghi
     await page.waitForSelector(T('screen-notebook'))
     const s3 = await readSave(page)
     const seen = s3.tipsSeen.filter(id => DATA.TIPS.some(t => t.id === id)).length
-    assert.equal(await page.getAttribute(T('notebook-progress'), 'data-total'), '20')
+    // M4 (sửa có chủ ý): 24 thẻ Mẹo nghề (thêm Soi tiền, Chờ tiền về, Kiểm hàng, Giữ lối đi)
+    assert.equal(await page.getAttribute(T('notebook-progress'), 'data-total'), String(DATA.TIPS.length))
+    assert.equal(DATA.TIPS.length, 24)
     assert.equal(await page.getAttribute(T('notebook-progress'), 'data-unlocked'), String(seen))
     for (const gid of Object.keys(DATA.TIP_GROUPS)) assert.ok(await page.$(T('notebook-tab-' + gid)), gid)
     // mở sẵn nhóm có thưởng chờ nhận
@@ -245,8 +252,9 @@ test('màn hẹp 360×740: lưới lối vào, Sổ tay nghề, Sổ công thứ
     for (const p of await layoutIssues(page, scope)) problems.push(`${label}: ${p}`)
   }
   try {
-    // seed 3: ca ngày 5 bốc "Khách mở hàng bằng tờ 500.000đ" (hiện trước khách đầu tiên)
-    await seedSave(page, builtSave(3))
+    // seed 8: ca ngày 5 bốc "Khách mở hàng bằng tờ 500.000đ" (hiện trước khách đầu tiên; M4 bước 4–5 tìm lại bằng
+    // tools/tim-seed.mjs)
+    await seedSave(page, builtSave(8))
     await enterPrep(g, '?devNow=2026-09-30T09:00')
     await page.waitForTimeout(2500)   // chờ thông báo thư tắt
     await check('Chuẩn bị')
@@ -310,8 +318,10 @@ test('khách đổi ý sau khi thanh toán → đổi món: phiếu trên dây v
   const { page, errors } = g
   const R = DATA.RECIPES
   try {
-    // seed 25: ca ngày 5 bốc "Khách đổi ý sau khi đã thanh toán" ngay sau khách thứ nhất
-    await seedSave(page, builtSave(25))
+    // seed 64 (M4 bước 6 đổi từ 55 → 29; soát lỗi M4 đổi 29 → 64 vì luật nhịp chung: ngày mai có sự kiện xấu thì ca không
+    // bốc tình huống xấu nên loại bốc được đổi; tools/tim-seed.mjs): ca ngày 5 bốc "Khách đổi ý sau khi đã thanh toán"
+    // ngay sau khách thứ nhất
+    await seedSave(page, builtSave(64))
     await enterPrep(g, '?devNow=2026-09-30T09:00')
     await page.tap(T('open-shift'))
     await page.waitForSelector(T('screen-service'))

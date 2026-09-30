@@ -7,7 +7,7 @@ import { incidentDue, openIncident, resolveIncident } from '../../core/incidents
 import { isShiftOver, endShift } from '../../core/shift.js'
 import { beginCounter } from '../../core/order.js'
 import { stageOf, personaObj } from '../../core/customer.js'
-import { resolveComplaint } from '../../core/kitchen.js'
+import { resolveComplaint, complaintRemakeOk } from '../../core/kitchen.js'
 import { createHud } from '../components/hud.js'
 import { createProgress4 } from '../components/progress4.js'
 import { createTicketRail } from '../components/ticket-rail.js'
@@ -134,10 +134,13 @@ export default {
         for (const c of inQueue) {
           const ring = createRing(62, 5)
           rings.set(c.id, { ring, kind: 'queue' })
-          queueBox.appendChild(h('div', { class: ['q-cust', c.id === counterId ? 'at-counter' : ''], testid: 'queue-' + c.id },
-            h('div', { class: 'q-face' }, ring.el, svgBox(face(c.persona, c.tutorial ? 'vui' : moodFor(c.patience), c.gender), 'face-img')),
+          // M4: khách lạ (quà quê là nguyên liệu hiếm) có dấu ★ riêng ở hàng chờ
+          queueBox.appendChild(h('div', { class: ['q-cust', c.id === counterId ? 'at-counter' : '', c.bigOrder ? 'is-order' : '', c.stranger ? 'is-stranger' : ''], testid: 'queue-' + c.id },
+            h('div', { class: 'q-face' }, ring.el, svgBox(face(c.persona, c.tutorial ? 'vui' : moodFor(c.patience), c.gender), 'face-img'),
+              c.stranger ? h('span', { class: 'q-stranger', testid: 'stranger-badge', title: 'Khách lạ', 'aria-label': 'Khách lạ' }, '★') : null),
             h('div', { class: 'q-name' }, c.name),
-            c.id === counterId ? h('div', { class: 'q-tag' }, 'Ở quầy') : null))
+            c.id === counterId ? h('div', { class: 'q-tag' }, 'Ở quầy') : c.bigOrder ? h('div', { class: 'q-tag is-order', testid: 'queue-order-tag' }, 'Đơn đặt trước')
+              : c.stranger ? h('div', { class: 'q-tag is-stranger' }, (S.rare && S.rare.strangerTag) || 'Khách lạ') : null))
         }
         waitBox.textContent = ''
         if (waiting.length) {
@@ -336,12 +339,27 @@ export default {
       if (mods && sh.t < 2) {
         const de = mods.dayEvent && app.data.DAY_EVENTS && app.data.DAY_EVENTS[mods.dayEvent.id]
         if (de) {
-          const ch = mods.dayEvent.choice && de.choice ? ` Đã ${de.choice.label.toLocaleLowerCase('vi-VN')}.` : ''
+          // M4: không chọn lựa chọn của sự kiện (vd không nhận đơn đặt trước) thì nhắc theo skipText
+          const ch = mods.dayEvent.choice && de.choice ? ` Đã ${de.choice.label.toLocaleLowerCase('vi-VN')}.`
+            : de.choice && de.choice.skipText ? ' ' + de.choice.skipText : ''
           app.toast(de.desc + ch, { title: de.name, kind: 'info', icon: icon(de.icon || de.id), testid: 'day-event-toast', duration: 3200 })
         }
         if (mods.cogsMul && mods.cogsMul < 1) app.toast(M.couponActive, { kind: 'good', icon: icon('phieu_cho_som'), duration: 2600 })
       }
     }
+    // M4: sự kiện ngày trong ca — nhắc trước khi sắp bị phạt, báo phạt rõ nguyên nhân (tiền của tình huống trong ca đã
+    // hiện trong hộp thoại tình huống, không báo lại)
+    offs.push(app.bus.on('event.warn', ({ name, text } = {}) => {
+      app.toast(text || '', { kind: 'info', title: name ? 'Dì Sáu nhắc · ' + name : 'Dì Sáu nhắc', icon: DI_SAU.lo, testid: 'event-warn-toast', duration: 3600 })
+      app.sound('nudge')
+    }))
+    offs.push(app.bus.on('event.fined', ({ name, text, amount, spared, source } = {}) => {
+      // phạt lúc kết ca (vd đoàn kiểm tra): Tổng kết đã ghi rõ, không báo nổi đè lên màn Tổng kết
+      if (source === 'incident' || ended) return
+      const money = amount > 0 ? `−${formatVND(amount)}. ` : ''
+      app.toast(money + (text || ''), { kind: spared > 0 && !(amount > 0) ? 'info' : 'bad', title: name || 'Sự kiện', icon: DI_SAU.lo, testid: 'event-fine-toast', duration: 4200 })
+      app.sound('error')
+    }))
     offs.push(app.bus.on('ui.tab', ({ tab } = {}) => { if (tab && tab !== active) showTab(tab) }))
 
     // ---------- M3: Tình huống trong ca ----------
@@ -362,6 +380,9 @@ export default {
     function incidentArt(view) {
       const sh = app.state.shift
       if (view.id === 'khach_mo_hang') return svgBox(billSvg((view.detail && view.detail.bill) || 500000), 'incident-art is-bill')
+      // M4: tình huống chạy theo dữ liệu khai báo hình minh họa (tờ tiền, hoặc khuôn mặt theo kiểu khách)
+      if (view.art && view.art.bill) return svgBox(billSvg(view.art.bill), 'incident-art is-bill')
+      if (view.art && view.art.persona) return svgBox(face(view.art.persona, 'binh_thuong', view.art.gender || null), 'incident-art')
       const c = view.detail && view.detail.customerId && sh && sh.customers[view.detail.customerId]
       if (c) return svgBox(face(c.persona, 'binh_thuong', c.gender), 'incident-art')
       const rg = view.detail && view.detail.regularId && app.data.REGULARS && app.data.REGULARS[view.detail.regularId]
@@ -369,17 +390,28 @@ export default {
       return svgBox(DI_SAU.lo, 'incident-art')
     }
 
+    // M4: thêm nhãn tiền thưởng, tiền mất, tiền chi (sổ sự kiện), phần Dì Sáu đỡ giùm, hàng hiếm, mảnh công thức, bếp chậm
     function effectChips(eff) {
       const out = []
-      if (eff.money > 0) out.push(['good', '+' + formatVND(eff.money) + ' tiền bán'])
-      if (eff.cost > 0) out.push(['bad', '−' + formatVND(eff.cost) + ' giá vốn'])
-      if (eff.refund > 0) out.push(['bad', '−' + formatVND(eff.refund) + ' hoàn khách'])
-      if (eff.rep > 0) out.push(['good', `+${eff.rep} danh tiếng`])
-      if (eff.bonus > 0) out.push(['good', `Ca sau thêm ${eff.bonus} khách`])
-      if (eff.debt) out.push(['info', `Sổ ghi nợ: ${eff.debt.name} ${formatVND(eff.debt.amount)}`])
-      if (eff.starLoss > 0) out.push(['bad', `−${eff.starLoss} sao khi nhận món`])
-      if (!out.length) out.push(['info', 'Không tốn gì'])
-      return h('div', { class: 'incident-effects', testid: 'incident-effects' }, out.map(([k, t]) => h('span', { class: 'incident-fx ' + k }, t)))
+      if (eff.money > 0) out.push(['good', '+' + formatVND(eff.money) + ' tiền bán', 'money'])
+      if (eff.gain > 0) out.push(['good', '+' + formatVND(eff.gain) + ' tiền thưởng', 'gain'])
+      if (eff.capped > 0) out.push(['info', `Hôm nay đủ mức thưởng sự kiện, ${formatVND(eff.capped)} không cộng`, 'capped'])
+      if (eff.cost > 0) out.push(['bad', '−' + formatVND(eff.cost) + ' giá vốn', 'cost'])
+      if (eff.fine > 0) out.push(['bad', '−' + formatVND(eff.fine) + ' mất tiền', 'fine'])
+      if (eff.spend > 0) out.push(['bad', '−' + formatVND(eff.spend) + ' chi mua', 'spend'])
+      if (eff.spared > 0) out.push(['info', `Dì Sáu đỡ giùm ${formatVND(eff.spared)}`, 'spared'])
+      if (eff.refund > 0) out.push(['bad', '−' + formatVND(eff.refund) + ' hoàn khách', 'refund'])
+      if (eff.rep > 0) out.push(['good', `+${eff.rep} danh tiếng`, 'rep'])
+      for (const x of eff.rare || []) out.push(['good', `+${x.n} phần ${x.name}`, 'rare'])
+      if (eff.fragment) out.push(['good', `+${eff.fragment.n} mảnh công thức ${eff.fragment.name}`, 'fragment'])
+      if (eff.spoons > 0) out.push(['good', `+${eff.spoons} Muỗng Vàng (kho hoặc mức hàng hiếm hôm nay đã đủ)`, 'spoons'])
+      if (eff.waitMul && eff.waitMul < 1) out.push(['bad', 'Bếp chậm hơn tới cuối ca', 'wait'])
+      if (eff.bonus > 0) out.push(['good', `Ca sau thêm ${eff.bonus} khách`, 'bonus'])
+      if (eff.debt) out.push(['info', `Sổ ghi nợ: ${eff.debt.name} ${formatVND(eff.debt.amount)}`, 'debt'])
+      if (eff.starLoss > 0) out.push(['bad', `−${eff.starLoss} sao khi nhận món`, 'star'])
+      if (!out.length) out.push(['info', 'Không tốn gì', 'none'])
+      return h('div', { class: 'incident-effects', testid: 'incident-effects' },
+        out.map(([k, t, key]) => h('span', { class: 'incident-fx ' + k, dataset: { fx: key } }, t)))
     }
 
     async function showIncident(view) {
@@ -405,18 +437,20 @@ export default {
               view.note ? h('p', { class: 'incident-note' }, view.note) : null,
               h('p', { class: 'incident-pause small muted' }, 'Khách đang chờ cũng tạm dừng, cứ bình tĩnh chọn.'),
               h('div', { class: 'choice-list incident-choices' }, view.choices.map(c => h('button', {
-                class: ['choice', 'incident-choice', c.safe ? 'is-safe' : ''], type: 'button', testid: 'incident-choice-' + c.id,
+                class: ['choice', 'incident-choice', c.safe ? 'is-safe' : '', c.green ? 'is-green' : ''], type: 'button', testid: 'incident-choice-' + c.id,
                 disabled: !c.available, dataset: { safe: String(c.safe), choice: c.id },
                 onclick: () => choose(c)
               },
               h('b', null, c.label),
               h('small', null, c.available ? c.cost : c.reason),
+              // M4: lựa chọn "xanh" nhờ hiện vật (vd Loa báo tiền)
+              c.hint && c.available ? h('small', { class: 'choice-hint', testid: 'incident-hint-' + c.id }, c.hint) : null,
               c.safe ? h('span', { class: 'safe-badge' }, cfgI.safeLabel || 'An toàn') : null))))
           }
           const choose = c => {
             const r = resolveIncident(app.state, c.id, app.ctx)
             if (!r.ok) { app.toast('Chưa chọn được cách này.', { kind: 'bad' }); return }
-            app.sound(r.effects.money > 0 ? 'coin' : 'paper')
+            app.sound(r.effects.money > 0 || r.effects.gain > 0 ? 'coin' : 'paper')
             app.saveNow()
             const tip = r.tipId ? tips.find(t => t.id === r.tipId) : null
             fillBox(
@@ -458,11 +492,13 @@ export default {
       for (let k = aps.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [aps[k], aps[j]] = [aps[j], aps[k]] }
       const items = customer.complaint.items || []
       const refund = items.reduce((s, it) => s + (it.refund || 0), 0)
+      // M4: dòng món hiếm mà kho hết nguyên liệu hiếm → chỉ hoàn tiền được
+      const remakeOk = complaintRemakeOk(app.state, customer.id, app.ctx)
       const says = (() => {
         try {
           return app.data.makeLine('complaint', {
             persona: personaObj(app.ctx, customer.persona), region: customer.region, rand: Math.random,
-            vars: { gender: customer.gender, name: customer.name, mon: items[0] && R[items[0].line.recipeId] ? R[items[0].line.recipeId].name : '' }
+            vars: { gender: customer.gender, name: customer.name, ...(customer.self ? { self: customer.self } : {}), mon: items[0] && R[items[0].line.recipeId] ? R[items[0].line.recipeId].name : '' }
           })
         } catch { return '' }
       })()
@@ -474,8 +510,9 @@ export default {
           let apology = null
           const step2 = h('div', { class: 'complaint-step', hidden: true },
             h('p', { class: 'modal-text' }, 'Giờ xử lý sao cho khách vui lòng?'),
+            remakeOk ? null : h('p', { class: 'small complaint-rare', testid: 'complaint-remake-blocked' }, (S.rare && S.rare.remakeBlocked) || 'Hết nguyên liệu hiếm, chỉ hoàn tiền được'),
             h('div', { class: 'modal-actions' },
-              h('button', { class: 'btn btn-primary', type: 'button', testid: 'complaint-remake', onclick: () => close({ apology, action: 'remake' }) }, S.buttons.remake),
+              h('button', { class: 'btn btn-primary', type: 'button', testid: 'complaint-remake', disabled: !remakeOk, onclick: () => close({ apology, action: 'remake' }) }, S.buttons.remake),
               h('button', { class: 'btn btn-secondary', type: 'button', testid: 'complaint-refund', onclick: () => close({ apology, action: 'refund' }) }, `${S.buttons.refund} (${formatVND(refund)})`)))
           const step1 = h('div', { class: 'complaint-step' },
             h('p', { class: 'modal-text' }, 'Chọn câu nói với khách:'),
@@ -557,6 +594,20 @@ export default {
 }
 
 // Phiếu chấm từng khách: trượt lên 2 giây, không chặn thao tác.
+// M4: dòng tip trên phiếu chấm: có tip thì "+5.000đ"; khách 5 sao mà không có tip thì ghi rõ lý do (hóa đơn khách thực
+// trả dưới 20.000đ, hoặc khách trả bằng ảnh chuyển khoản giả nên chưa trả tiền thật).
+function tipLine(app, sheet) {
+  const L = app.data.STRINGS.labels || {}
+  if (sheet.tip > 0) return h('div', { class: 'ss-tip', testid: 'score-sheet-tip', dataset: { tip: sheet.tip } }, 'Tip: +' + formatVND(sheet.tip))
+  if (sheet.stars !== 5 || sheet.bill === undefined || sheet.bill === null) return null
+  const min = Number(app.data.BALANCE && app.data.BALANCE.tipMinBill) || 20000
+  const fake = (sheet.counterErrors || []).includes('qr_gia')
+  if (!fake && !(Number(sheet.bill) < min)) return null
+  const text = fake ? (L.tipNotPaid || 'Tip 0 (khách chưa trả tiền thật)')
+    : (L.tipBelowMin || 'Tip 0 (hóa đơn dưới {min})').replace('{min}', formatVND(min))
+  return h('div', { class: 'ss-tip is-zero', testid: 'score-sheet-tip', dataset: { tip: 0 } }, text)
+}
+
 export function renderScoreSheet(app, sheet) {
   const S = app.data.STRINGS
   const counterErr = sheet.counterErrors || []
@@ -593,7 +644,10 @@ export function renderScoreSheet(app, sheet) {
     errNames.length ? h('div', { class: 'ss-errors small' }, errNames.join(' · ')) : null,
     incidentPen.length ? h('div', { class: 'ss-errors small', testid: 'score-sheet-incident' },
       incidentPen.map(p => `${S.errors[p.code] || p.code}: −${p.stars} sao`).join(' · ')) : null,
-    sheet.tip > 0 ? h('div', { class: 'ss-tip' }, 'Tip: +' + formatVND(sheet.tip)) : null,
+    tipLine(app, sheet),
+    // M4: khách lạ: quà quê theo số sao (trao cuối ca)
+    sheet.stranger ? h('div', { class: 'ss-tip ss-stranger', testid: 'score-sheet-stranger' },
+      sheet.stars >= 3 ? '★ Khách lạ hẹn gửi quà quê lúc cuối ca' : '★ Khách lạ cảm ơn rồi đi') : null,
     sheet.review ? h('p', { class: 'ss-review' }, '“' + sheet.review + '”') : null)
 }
 

@@ -127,6 +127,8 @@
 .k-card-ing { display: flex; align-items: center; gap: 4px; }
 .k-card-ing-icon { width: 20px; height: 20px; display: inline-block; }
 .k-card-ing.role-chinh span { font-weight: 700; }
+/* M4: số phần kho hàng hiếm còn, ngay trên thẻ công thức */
+.k-card-left { font-size: inherit; font-weight: 800; color: #8a5a00; white-space: nowrap; }
 .k-card-ing.role-tuy_chon { color: var(--k-muted); }
 .k-card-steps summary { cursor: pointer; margin-top: 4px; color: var(--k-muted); font-weight: 700; font-size: 14px; }
 .k-card.is-compact { padding: 0 10px; }
@@ -251,8 +253,9 @@
 .mg-time { width: 64px; height: 8px; border-radius: 4px; background: var(--k-line); overflow: hidden; }
 .mg-time-fill { width: 100%; height: 100%; background: var(--k-green); transform-origin: left center; }
 .mg-time.is-late .mg-time-fill { background: var(--k-red); }
-.mg-area { position: relative; flex: 1; min-height: 240px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
-.mg-foot { display: flex; align-items: center; gap: 10px; min-height: var(--k-tap); }
+.mg-area { position: relative; flex: 1; min-height: 240px; display: flex; flex-direction: column; align-items: center; justify-content: center; justify-content: safe center; gap: 16px; }
+/* thanh chân (nút Xong) luôn nằm trên nội dung vùng chơi lỡ tràn xuống (màn thấp), không bị che mất chỗ bấm */
+.mg-foot { position: relative; z-index: 2; display: flex; align-items: center; gap: 10px; min-height: var(--k-tap); }
 .mg-foot .mg-done { margin-left: auto; min-width: 96px; }
 .mg-count { font-weight: 800; font-variant-numeric: tabular-nums; min-width: 64px; }
 .mg-bar { flex: 1; height: 14px; border-radius: 7px; background: var(--k-line); overflow: hidden; }
@@ -283,9 +286,9 @@
 .chon-shelf[data-cols="4"] { grid-auto-rows: minmax(56px, 1fr); gap: 5px; padding: 5px; }
 .chon-shelf[data-cols="4"] .chon-cell { min-height: 56px; padding: 2px; }
 .chon-shelf[data-cols="4"] .chon-icon { width: 28px; height: 28px; }
-/* màn thấp (vd 360×740): kệ 12 ô gọn lại để cả 3 hàng nằm trên thanh "Trong rổ / Xong", không phải cuộn mới thấy
-   nguyên liệu chính */
-@media (max-height: 780px) {
+/* màn thấp (vd 360×740, 390×844): kệ 12 ô gọn lại để cả 3 hàng nằm trên thanh "Trong rổ / Xong", không phải cuộn mới
+   thấy nguyên liệu chính (món hiếm có thẻ công thức dài hơn) */
+@media (max-height: 900px) {
   .k-main[data-view="chon"] { gap: 6px; padding-top: 6px; }
   .chon-shelf[data-cols="4"] { grid-auto-rows: minmax(50px, auto); gap: 4px; padding: 4px; }
   .chon-shelf[data-cols="4"] .chon-cell { min-height: 50px; gap: 1px; padding: 2px 1px; }
@@ -305,6 +308,8 @@
 /* số lượng cần (1 lần chạm lấy đủ): chỉ hiện khi đã chọn, đối chiếu với "×2" trên thẻ công thức */
 .chon-qty { position: absolute; top: 3px; left: 5px; padding: 0 5px; border-radius: 999px; background: var(--k-green); color: #fff; font-size: 13px; font-weight: 800; line-height: 18px; display: none; }
 .chon-cell.is-picked .chon-qty { display: block; }
+/* M4: nguyên liệu hiếm trên kệ: số phần còn trong kho hàng hiếm */
+.chon-left { display: inline-block; padding: 0 6px; border-radius: 999px; background: #ffd23f; color: var(--k-ink); font-size: 13px; font-weight: 800; line-height: 17px; white-space: nowrap; }
 .chon-in { position: relative; }
 .chon-in-qty { position: absolute; right: -4px; bottom: -2px; padding: 0 4px; border-radius: 999px; background: var(--k-green); color: #fff; font-size: 13px; font-weight: 800; line-height: 16px; }
 .chon-cell.is-hint { animation: k-hint .8s ease-in-out infinite; }
@@ -379,12 +384,16 @@
 .cham-cup.is-over .cham-cup-fill { background: #f2b5a5; }
 .cham-pad { width: 190px; height: 190px; border-radius: 50%; }
 .cham-pad.is-pop, .cham-bottle.is-pop { animation: k-press .12s ease-out; }
-.cham-bottles { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 160px)); justify-content: center; gap: 12px; width: 100%; }
-.cham-bottle { position: relative; min-height: 150px; padding: 8px; }
-.cham-bottle-icon { width: 56px; height: 56px; }
-.cham-bottle-name { font-weight: 800; }
+/* nhiều chai (Nêm): một hàng chai chỉ cần vùng chơi thấp → nút Xong không bị đẩy xuống dưới thanh Quầy/Bếp ở màn thấp */
+.mg-cham.is-targets .mg-area { min-height: 140px; }
+/* nhiều chai (Nêm): cột co giãn (tối thiểu 96px) để 3 chai nằm một hàng cả ở màn 360px; vùng trống của lưới không nhận
+   chạm (chỉ từng chai nhận) để không che nút Xong */
+.cham-bottles { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); justify-content: center; gap: 10px; width: 100%; max-width: 520px; pointer-events: none; }
+.cham-bottle { position: relative; min-height: 150px; padding: 8px 6px; pointer-events: auto; }
+.cham-bottle-icon { width: 48px; height: 48px; }
+.cham-bottle-name { font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
 .cham-bottle-need { font-size: 14px; color: var(--k-muted); }
-.cham-bottle-count { position: absolute; top: 6px; right: 8px; min-width: 28px; height: 28px; line-height: 28px; border-radius: 14px; background: var(--k-ink); color: #fff; font-weight: 800; }
+.cham-bottle-count { position: absolute; top: 4px; right: 4px; min-width: 26px; height: 26px; line-height: 26px; border-radius: 13px; background: var(--k-ink); color: #fff; font-weight: 800; }
 .cham-bottle.is-ok { box-shadow: 0 4px 0 var(--k-line), inset 0 0 0 3px var(--k-green); }
 .cham-bottle.is-over { box-shadow: 0 4px 0 var(--k-line), inset 0 0 0 3px var(--k-red); }
 
@@ -454,6 +463,12 @@
 @keyframes k-press { 50% { transform: scale(.94); } }
 @keyframes k-steam { 50% { transform: translateY(-8px); opacity: .5; } }
 @keyframes k-wipe { 0% { transform: translateX(-30px); } 50% { transform: translateX(30px); } 100% { transform: translateX(0); } }
+
+/* màn thấp: chai Nêm gọn lại cho vừa vùng chơi */
+@media (max-height: 740px) {
+  .cham-bottle { min-height: 124px; }
+  .cham-bottle-icon { width: 44px; height: 44px; }
+}
 
 /* Giảm chuyển động */
 @media (prefers-reduced-motion: reduce) {

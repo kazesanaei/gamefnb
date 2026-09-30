@@ -8,7 +8,8 @@ function deepFreeze(o) {
 }
 
 export const MAIL_CONFIG = deepFreeze({
-  currentVersion: '0.2.0',
+  // phiên bản nội dung mới nhất (thư phiên bản ≤ số này được gửi cho save cũ); 0.3.0 không có thư riêng
+  currentVersion: '0.4.0',
   maxMails: 100,           // đầy thì bỏ thư cũ nhất đã nhận
   expireDays: 30,          // hạn nhận mặc định
   holidayExpireDays: 14,   // quà lễ
@@ -43,7 +44,18 @@ export const MAIL_VERSIONS = deepFreeze([
   { version: '0.2.0', id: 'phien_ban_0_2_0', kind: 'phien_ban',
     title: 'Có gì mới: Chợ Công Thức và Việc hôm nay',
     body: 'Xe đẩy đã có Chợ Công Thức, điểm danh, Việc hôm nay, Hộp thư, sự kiện ngày và chuỗi nhiệm vụ của Dì Sáu. Cảm ơn con đã chờ!',
-    reward: { gold: 10 } }
+    reward: { gold: 10 } },
+  // M4: luật tip mới, sự kiện thưởng/phạt, phiên hàng và khách lạ; quà làm quen hàng hiếm (không tính trần ngày).
+  // Save mới không nhận thư phiên bản (xem refreshMail), nên quà này chỉ đến người đã chơi từ bản trước.
+  { version: '0.4.0', id: 'phien_ban_0_4_0', kind: 'phien_ban',
+    title: 'Có gì mới: tip mới, sự kiện mới và hàng hiếm',
+    body: 'Luật tip mới: hóa đơn từ 20.000đ mà khách chấm 5 sao thì khách bỏ hũ tip 5.000đ; bán kèm món thứ hai là dễ đủ hóa đơn. ' +
+      'Đầu hẻm có thêm sự kiện ngày và tình huống trong ca, có cái được thưởng, có cái phải phòng trước, luôn có một cách xử lý an toàn ' +
+      '(chỉnh "Tần suất sự kiện" trong Cài đặt nếu muốn ít hơn). ' +
+      'Mỗi ngày có ba phiên hàng hiếm: Chợ sớm 05:00–09:00, Xe ba gác trưa 11:00–13:30, Gánh đặc sản tối 17:30–21:00, ' +
+      'cùng một vị khách lạ ghé ca đầu ngày mang quà quê. Gom đủ 3 mảnh công thức rồi nấu thử đạt hạng Được là mở món hiếm. ' +
+      'Dì gửi con 1 mảnh Trà tắc mật ong rừng và 1 phần Mật ong rừng U Minh để làm quen nha!',
+    reward: { fragments: { tra_tac_mat_ong: 1 }, rare: { mat_ong_rung: 1 } } }
 ])
 
 // Quà lễ: đẩy từ 04:00 ngày `date` tới hết `pushDays` ngày sau đó (mở game muộn vẫn nhận), hạn nhận 14 ngày.

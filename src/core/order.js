@@ -5,6 +5,7 @@ import { drawerTotal, addBills, billsCount, minBillsChange, canMakeChange, custo
 import { normalizeLines, lineKey, personaObj, lineFor, loseCustomer } from './customer.js'
 import { linesPar } from './kitchen.js'
 import { noteObjects } from './scoring.js'
+import { rareLinesFit } from './rare.js'
 
 function counterOf(state, stage) {
   const sh = state.shift
@@ -165,11 +166,13 @@ export function readback(state, ctx) {
 }
 
 // Chốt order: cần đã đọc lại và phiếu khác rỗng → 'thanh_toan'. Lỗi còn lại ghi vào customer.orderErrors.
+// M4: món hiếm trên phiếu vượt tồn kho (tồn kho trừ phần đã nằm trên phiếu bếp chưa ra món) → 'het_hang_hiem'.
 export function confirmOrder(state, ctx) {
   const c = counterOf(state, 'order')
   if (!c) return { ok: false, reason: 'khong_hop_le' }
   if (!c.draft.length) return { ok: false, reason: 'phieu_rong' }
   if (!c.readbackDone) return { ok: false, reason: 'chua_doc_lai' }
+  if (!rareLinesFit(state, c.draft, ctx)) return { ok: false, reason: 'het_hang_hiem' }
   const customer = customerOf(state)
   c.draft = normalizeLines(c.draft)
   customer.orderErrors = compareLines(customer.request, c.draft).errors
@@ -456,14 +459,20 @@ export function resolveNoChange(state, option, ctx) {
   return { ok: true, success: false, option }
 }
 
+// Loa báo tiền đang chạy: đã mua và ca không bị cúp điện (sự kiện ngày: sh.mods.noQrSpeaker).
+export function qrSpeakerOn(state) {
+  const sh = state && state.shift
+  return !!(state && state.upgrades && state.upgrades.loa_bao_tien) && !(sh && sh.mods && sh.mods.noQrSpeaker)
+}
+
 // Xác nhận QR: chỉ hợp lệ khi tiền đã về. Ảnh giả mà xác nhận → mất trọn hóa đơn
-// (có Loa báo tiền thì bị chặn: khách bỏ đi, tính là đã bắt được ảnh giả).
+// (có Loa báo tiền thì bị chặn: khách bỏ đi, tính là đã bắt được ảnh giả; M4: Loa tắt vì cúp điện thì không chặn).
 export function confirmQr(state, ctx) {
   const sh = state.shift
   const c = counterOf(state, 'tinh_tien')
   if (!c || c.payMethod !== 'qr' || c.paid) return { ok: false, fake: false, reason: 'khong_hop_le' }
   if (c.fakeQr) {
-    if (state.upgrades && state.upgrades.loa_bao_tien) {
+    if (qrSpeakerOn(state)) {
       emit(ctx, 'qr.confirmed', { fake: true, blocked: true })
       rejectQr(state, ctx, { blocked: true })
       return { ok: false, fake: true, blocked: true }
@@ -500,6 +509,14 @@ export function rejectQr(state, ctx, opts = {}) {
   emit(ctx, 'qr.rejected', { customerId: customer.id, fake, blocked: !!opts.blocked })
   loseCustomer(state, customer, fake ? 'qr_gia' : 'tu_choi_qr', ctx)
   return { ok: true, fake }
+}
+
+// Ngân sách chờ món của một phiếu (giây): waitBudgetBase + waitBudgetParMul × tổng thời gian chuẩn của các dòng.
+// M4: tình huống trong ca có thể làm bếp chậm đi tới cuối ca (vd mượn bếp hàng xóm: sh.waitBudgetMul 0,9).
+export function waitBudgetFor(sh, lines, R, ctx) {
+  const b = cfg(ctx, 'waitBudgetBase') + cfg(ctx, 'waitBudgetParMul') * linesPar(lines, R)
+  const mul = sh && Number(sh.waitBudgetMul) > 0 ? Number(sh.waitBudgetMul) : 1
+  return mul === 1 ? b : Math.round(b * mul * 10) / 10
 }
 
 // Dây phiếu đầy?
@@ -555,10 +572,16 @@ export function clipTicket(state, ctx) {
   // chuỗi "Quầy chuẩn": Hỗ trợ tính tiền (hiện sẵn tổng và tiền thối) thì không được đếm
   const assistCash = !!(state.settings && state.settings.assistCash)
   sh.counterStreak = counterErr || assistCash ? 0 : (sh.counterStreak || 0) + 1
+  // M4: chuỗi "Quầy chuẩn" chạm 5 khách lần đầu trong ca → +1 lượt Giỏ chợ (tối đa 1 lượt mỗi ca theo chuỗi, rút lúc
+  // cuối ca; bật Hỗ trợ tính tiền thì chuỗi luôn 0 nên không có lượt). Thay tip 10.000đ theo chuỗi của M2.
+  if (sh.counterStreak >= 5 && !assistCash && !sh.streakRoll) {
+    sh.streakRoll = true
+    sh.rareRolls = (Number(sh.rareRolls) || 0) + 1
+  }
   customer.ticketId = ticket.id
   customer.status = 'cho_mon'
   customer.waitStart = sh.t
-  customer.waitBudget = cfg(ctx, 'waitBudgetBase') + cfg(ctx, 'waitBudgetParMul') * linesPar(ticket.lines, R)
+  customer.waitBudget = waitBudgetFor(sh, ticket.lines, R, ctx)
   customer.receipt = receipt
   sh.counter = null
   sh.queue = sh.queue.filter(x => x !== customer.id)

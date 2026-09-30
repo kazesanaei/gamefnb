@@ -192,7 +192,7 @@ export function feedback(ctx, kind) {
 // Dựng khung chung của sân khấu: đầu (tên bước, nguyên liệu, thanh thời gian) + vùng chơi + chân (nút).
 export function buildFrame(stage, step, ctx, { title, sub } = {}) {
   const ingId = step.ing || null
-  const iconSvg = ingIcon(ingId, ctx)
+  const iconSvg = ingIcon(ingId, ctx, step.icon || null)
   const timeFill = h('div', { class: 'mg-time-fill' })
   const time = h('div', { class: 'mg-time', 'data-testid': 'mg-time' }, timeFill)
   const subEl = h('div', { class: 'mg-sub' }, sub || '')
@@ -215,8 +215,10 @@ export function buildFrame(stage, step, ctx, { title, sub } = {}) {
 }
 
 // SVG của nguyên liệu (không có nguyên liệu → hình món).
-export function ingIcon(ingId, ctx) {
+// iconId (tùy chọn): hình riêng của bước (step.icon, vd chén sữa muối) thay cho hình nguyên liệu.
+export function ingIcon(ingId, ctx, iconId = null) {
   const INGS = (ctx && ctx.data && ctx.data.INGREDIENTS) || {}
+  if (iconId) return icon(iconId)
   if (ingId) return icon((INGS[ingId] && INGS[ingId].icon) || ingId)
   return icon((ctx && ctx.recipe && ctx.recipe.icon) || 'fallback')
 }

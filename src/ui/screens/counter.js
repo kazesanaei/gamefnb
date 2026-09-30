@@ -5,9 +5,10 @@ import { face, icon, fakeQrSvg, DI_SAU } from '../art.js'
 import {
   addLine, updateLine, removeLine, readback, confirmOrder, reportTotal, priceOfLines, unitPriceOf,
   trayAdd, trayRemove, giveChange, changeOptions, resolveNoChange, changeRemaining,
-  confirmQr, rejectQr, clipTicket, railFull
+  confirmQr, rejectQr, clipTicket, railFull, qrSpeakerOn
 } from '../../core/order.js'
 import { orderableRecipes, personaObj } from '../../core/customer.js'
+import { rareLeft } from '../../core/rare.js'
 import { drawerTotal } from '../../core/money.js'
 import { renderDrawer, renderTray, renderGivenCash } from '../components/cash-drawer.js'
 import { createNumpad } from '../components/numpad.js'
@@ -54,7 +55,7 @@ export function mountCounter(root, app, opts = {}) {
     const fn = app.data.makeLine
     if (typeof fn !== 'function' || !customer) return ''
     try {
-      return fn(kind, { persona: personaObj(app.ctx, customer.persona), region: customer.region, rand: Math.random, vars: { gender: customer.gender, name: customer.name, regularId: customer.regularId, ...vars } })
+      return fn(kind, { persona: personaObj(app.ctx, customer.persona), region: customer.region, rand: Math.random, vars: { gender: customer.gender, name: customer.name, regularId: customer.regularId, ...(customer.self ? { self: customer.self } : {}), ...vars } })
     } catch { return '' }
   }
 
@@ -174,10 +175,18 @@ export function mountCounter(root, app, opts = {}) {
     body.appendChild(h('h3', { class: 'stage-title' }, 'Sổ order'))
     body.appendChild(h('div', { class: 'menu-grid' }, menu.map(id => {
       const r = R[id]
+      // M4: món hiếm: huy hiệu ★ và số phần còn ghi được (tồn kho trừ phần đã nằm trên phiếu bếp và phiếu đang ghi)
+      const rare = r.source === 'hiem'
+      const left = rare ? rareLeft(app.state, id, app.ctx) : null
       return h('button', {
-        class: 'menu-item', type: 'button', testid: 'menu-item-' + id,
-        onclick: () => { app.sound('click'); ui.sheet = { recipeId: id, qty: 1, notes: [], editIndex: null }; rerender() }
-      }, svgBox(icon(r.icon || id), 'dish-icon'), h('span', { class: 'menu-name' }, r.name), h('span', { class: 'menu-price' }, formatVND(r.price)))
+        class: ['menu-item', rare ? 'is-rare' : '', rare && left <= 0 ? 'is-out' : ''], type: 'button', testid: 'menu-item-' + id,
+        dataset: rare ? { left: String(left) } : undefined,
+        onclick: () => {
+          if (rare && left <= 0) { app.toast((S.rare && S.rare.outOfStock) || 'Hết nguyên liệu hiếm', { kind: 'bad' }); return }
+          app.sound('click'); ui.sheet = { recipeId: id, qty: 1, notes: [], editIndex: null }; rerender()
+        }
+      }, svgBox(icon(r.icon || id), 'dish-icon'), h('span', { class: 'menu-name' }, r.name), h('span', { class: 'menu-price' }, formatVND(r.price)),
+      rare ? h('span', { class: 'menu-rare', testid: 'rare-left-' + id }, `★ còn ${Math.max(0, left)}`) : null)
     })))
 
     // Phiếu đang ghi
@@ -225,7 +234,12 @@ export function mountCounter(root, app, opts = {}) {
         title: canConfirm ? '' : S.messages.readbackFirst,
         onclick: () => {
           const r = confirmOrder(app.state, app.ctx)
-          if (!r.ok) { app.toast(r.reason === 'phieu_rong' ? S.messages.emptyOrder : S.messages.readbackFirst, { kind: 'bad' }); return }
+          if (!r.ok) {
+            const msg = r.reason === 'phieu_rong' ? S.messages.emptyOrder
+              : r.reason === 'het_hang_hiem' ? ((S.reasons && S.reasons.het_hang_hiem) || 'Không đủ nguyên liệu hiếm') : S.messages.readbackFirst
+            app.toast(msg, { kind: 'bad' })
+            return
+          }
           app.sound('click')
           ui.talk = []
           app.save()
@@ -269,7 +283,10 @@ export function mountCounter(root, app, opts = {}) {
       app.sound('click')
       rerender()
     }
-    const setQty = q => { sheet.qty = Math.max(1, Math.min(3, q)); rerender() }
+    // M4: món hiếm chỉ ghi tới số phần còn trong kho (không tính dòng đang sửa)
+    const rareMax = r && r.source === 'hiem' ? Math.max(1, rareLeft(app.state, r.id, app.ctx, { skipDraftIndex: editing ? sheet.editIndex : -1 })) : 3
+    const qtyMax = Math.min(3, rareMax)
+    const setQty = q => { sheet.qty = Math.max(1, Math.min(qtyMax, q)); rerender() }
     const submit = () => {
       const line = { recipeId: sheet.recipeId, qty: sheet.qty, notes: sheet.notes.slice() }
       const index = editing ? sheet.editIndex : (counter() ? counter().draft.length : 0)
@@ -294,7 +311,8 @@ export function mountCounter(root, app, opts = {}) {
           h('span', null, S.labels.qty),
           h('button', { class: 'qty-btn', type: 'button', testid: 'qty-minus', disabled: sheet.qty <= 1, onclick: () => setQty(sheet.qty - 1), 'aria-label': 'Bớt' }, '−'),
           h('b', { class: 'qty-value', testid: 'qty-value' }, String(sheet.qty)),
-          h('button', { class: 'qty-btn', type: 'button', testid: 'qty-plus', disabled: sheet.qty >= 3, onclick: () => setQty(sheet.qty + 1), 'aria-label': 'Thêm' }, '+')),
+          h('button', { class: 'qty-btn', type: 'button', testid: 'qty-plus', disabled: sheet.qty >= qtyMax, onclick: () => setQty(sheet.qty + 1), 'aria-label': 'Thêm' }, '+'),
+          r && r.source === 'hiem' ? h('small', { class: 'sheet-rare muted' }, `★ còn ${rareMax} phần`) : null),
         notes.length ? h('div', { class: 'note-block' },
           h('div', { class: 'note-title' }, S.labels.notes),
           h('div', { class: 'note-chips' }, notes.map(n => h('button', {
@@ -509,6 +527,10 @@ export function mountCounter(root, app, opts = {}) {
           class: ['qr-status', arrived ? 'arrived' : 'waiting'], testid: 'qr-status', dataset: { arrived: arrived ? 'true' : 'false' }, 'aria-live': 'polite'
         }, arrived ? fill(S.labels.qrArrived, { amount: formatVND(c.amountDue) }) : S.labels.qrWaiting))))
     if (!c.paid) {
+      // M4: cúp điện theo lịch (sự kiện ngày) → Loa báo tiền tắt, không tự xác nhận, không chặn ảnh giả
+      if (app.state.upgrades && app.state.upgrades.loa_bao_tien && !qrSpeakerOn(app.state)) {
+        wrap.appendChild(h('p', { class: 'small qr-speaker-off', testid: 'qr-speaker-off' }, 'Cúp điện, Loa báo tiền đang tắt: tự xem tiền về đúng số rồi mới bấm.'))
+      }
       wrap.appendChild(h('p', { class: 'muted small' }, 'Chỉ bấm "Đã nhận đủ" khi thông báo tiền về đúng số. Ảnh chụp màn hình không phải là tiền.'))
       wrap.appendChild(h('div', { class: 'action-row act-bar' },
         h('button', {

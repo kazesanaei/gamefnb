@@ -11,7 +11,7 @@
 // VERSION trùng "version" trong package.json (có test đối chiếu); đổi tệp của game thì tăng VERSION.
 // Thêm/bớt tệp trong src/, css/, icons/ thì sửa PRECACHE (test tests/unit/pwa.test.mjs đối chiếu với cây thư mục thật).
 
-const VERSION = '0.3.0'
+const VERSION = '0.4.0'
 const CACHE_PREFIX = 'bkn-'
 const CACHE = CACHE_PREFIX + VERSION
 
@@ -46,6 +46,7 @@ const PRECACHE = [
   'src/core/order.js',
   'src/core/progression.js',
   'src/core/quests.js',
+  'src/core/rare.js',
   'src/core/recipe-book.js',
   'src/core/rewards.js',
   'src/core/rng.js',
@@ -69,6 +70,7 @@ const PRECACHE = [
   'src/data/minigame-types.js',
   'src/data/progression.js',
   'src/data/quests.js',
+  'src/data/rare.js',
   'src/data/recipes.js',
   'src/data/reviews.js',
   'src/data/shop.js',
@@ -106,6 +108,7 @@ const PRECACHE = [
   'src/ui/screens/event.js',
   'src/ui/screens/kitchen.js',
   'src/ui/screens/mailbox.js',
+  'src/ui/screens/market.js',
   'src/ui/screens/notebook.js',
   'src/ui/screens/prep.js',
   'src/ui/screens/quests.js',

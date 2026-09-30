@@ -42,7 +42,8 @@ export function billLabel(v) {
   return Math.round(v / 1000) + 'K'
 }
 
+// Số tiền có dấu: "+5.000đ", "−18.000đ" (dấu trừ dài như các dòng trừ của sổ lãi lỗ), "0đ".
 export function signedVND(n) {
   const v = Math.round(Number(n) || 0)
-  return (v > 0 ? '+' : '') + formatVND(v)
+  return (v > 0 ? '+' : v < 0 ? '−' : '') + formatVND(Math.abs(v))
 }

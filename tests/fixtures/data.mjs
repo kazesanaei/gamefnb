@@ -18,7 +18,7 @@ export const BALANCE = Object.freeze({
   gradeThresholds: [[90, 'tuyet_hao', 5], [75, 'ngon', 4], [60, 'duoc', 3], [40, 'kem', 2], [0, 'hong', 1]],
   gradeLabels: { tuyet_hao: 'Tuyệt hảo', ngon: 'Ngon', duoc: 'Được', kem: 'Kém', hong: 'Hỏng' },
   stepLabels: [[90, 'Hoàn hảo'], [70, 'Tốt'], [50, 'Đạt'], [0, 'Hỏng']],
-  tipFiveStar: 5000, tipBonus: 10000,
+  tipFiveStar: 5000, tipMinBill: 20000, strictFiveStarRep: 1,
   reputationByStars: { 5: 3, 4: 2, 3: 1, 2: 0, 1: 0 },
   masteryLevels: [0, 5, 15],
   autoStepScore: 80, retryScoreCap: 85,

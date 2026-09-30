@@ -202,7 +202,10 @@ async function maybeIncident(g, waitMs = 0) {
   if (r) {
     log('tình huống', JSON.stringify(r))
     const sv = await readSave(page)
-    const det = sv && sv.shift && sv.shift.incident && sv.shift.incident.detail
+    // M4: tối đa 2 tình huống mỗi ca (sh.incident, sh.incidentQueue): lấy tình huống vừa xử lý đúng loại
+    const plans = sv && sv.shift ? [sv.shift.incident, ...(sv.shift.incidentQueue || [])].filter(Boolean) : []
+    const hit = plans.filter(x => x.id === r.id && x.status === 'xong').pop()
+    const det = hit && hit.detail
     if (r.id === 'doi_y' && r.choice === 'doi_mon' && det) {
       // dây phiếu chung phải vẽ lại theo món mới
       const name = DATA.RECIPES[det.toId].name

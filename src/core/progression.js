@@ -30,7 +30,8 @@ export function checkStageUp(state, ctx) {
         done = current >= req.target
         break
       case 'recipes':
-        current = Object.keys(state.recipes || {}).length
+        // M4: món hiếm không tính vào "3 công thức" (mở bằng mảnh, không phải công thức bán chính)
+        current = Object.keys(state.recipes || {}).filter(id => !(R[id] && R[id].source === 'hiem')).length
         done = current >= req.target
         break
       case 'mastery': {

@@ -6,16 +6,26 @@ import { cfg } from './state.js'
 import { masteryLevel } from './mastery.js'
 import { effectiveSteps } from './kitchen.js'
 import { unitPriceOf } from './order.js'
+import { rareUnlockInfo, recipeRareNeed } from './rare.js'
 
 function D(ctx) { return (ctx && ctx.data) || {} }
 
-const SOURCE_ORDER = { default: 0, shop: 1, event: 2 }
+// M4: nguồn thứ 4 "Công thức hiếm" (mở bằng mảnh công thức + nấu thử)
+const SOURCE_ORDER = { default: 0, shop: 1, event: 2, hiem: 3 }
 
 // Giá vốn 1 phần (nguyên liệu không tùy chọn), đồng.
 export function bookCost(recipe, ctx) {
   const INGS = D(ctx).INGREDIENTS || {}
   return (recipe.ingredients || []).filter(i => i.role !== 'tuy_chon')
     .reduce((s, i) => s + ((INGS[i.id] && INGS[i.id].cost) || 0) * (i.qty || 1), 0)
+}
+
+// M4: phần giá vốn của nguyên liệu hiếm (giá quy đổi) trong 1 phần món, đồng. Hàng hiếm lấy từ kho, trong ca không trừ
+// Tiền quán (kitchen.submitChon tính 0đ) nên giá vốn thật trong ca = bookCost − rareBookCost.
+export function rareBookCost(recipe, ctx) {
+  const INGS = D(ctx).INGREDIENTS || {}
+  return (recipe.ingredients || []).filter(i => i.role !== 'tuy_chon' && INGS[i.id] && INGS[i.id].rare)
+    .reduce((s, i) => s + (INGS[i.id].cost || 0) * (i.qty || 1), 0)
 }
 
 // Nhãn nguồn món: "Có sẵn", "Chợ Công Thức", nhãn mùa sự kiện ("Tri ân 20/11 · 2026").
@@ -28,6 +38,7 @@ export function sourceLabel(state, recipe, ctx) {
     return (ev && ev.label) || S.event || 'Món sự kiện'
   }
   if (recipe.source === 'shop') return S.shop || 'Chợ Công Thức'
+  if (recipe.source === 'hiem') return S.hiem || 'Công thức hiếm'
   return S.default || 'Có sẵn'
 }
 
@@ -45,8 +56,10 @@ export function masteryInfo(progress, ctx) {
 
 /**
  * Danh sách món cho Sổ công thức.
- * → { owned, total, entries: [{ id, name, icon, desc, status: 'owned'|'shop'|'event'|'teaser', source, sourceLabel,
- *      chang, price, cost, profit, cooks, goodCooks, best, flawless, flawlessBadge, mastery, shopPrice, fromDay, note, locked }] }
+ * → { owned, total, entries: [{ id, name, icon, desc, status: 'owned'|'shop'|'event'|'hiem'|'teaser', source, sourceLabel,
+ *      chang, price, cost, profit, cooks, goodCooks, best, flawless, flawlessBadge, mastery, shopPrice, fromDay, note, locked,
+ *      rare? (M4, món hiếm: {n, need, ready, baseOwned, missing: [tên món nền], ings: [{id, name, n}]}), baseRecipe?,
+ *      rareCost? (M4, món hiếm: phần giá vốn là hàng hiếm quy đổi, lấy từ kho, không trừ Tiền quán) }] }
  */
 export function recipeBook(state, ctx) {
   const R = D(ctx).RECIPES || {}
@@ -63,12 +76,22 @@ export function recipeBook(state, ctx) {
     const p = owned[r.id] || null
     const cost = bookCost(r, ctx)
     const price = unitPriceOf(r, [])
-    const status = p ? 'owned' : (r.source === 'shop' ? 'shop' : r.source === 'event' ? 'event' : 'owned')
+    const status = p ? 'owned' : (r.source === 'shop' ? 'shop' : r.source === 'event' ? 'event' : r.source === 'hiem' ? 'hiem' : 'owned')
     let note = ''
+    let rare = null
     if (!p && r.source === 'shop') {
       note = state.day >= (r.shopFromDay || 1) ? 'Mua ở Chợ Công Thức' : `Chợ Công Thức mở bán từ ngày ${r.shopFromDay || 1}`
     } else if (!p && r.source === 'event') {
       note = 'Chỉ nhận qua chuỗi của sự kiện có thời hạn'
+    }
+    // M4: món hiếm: mảnh đã gom, món nền còn thiếu, nguyên liệu hiếm mỗi phần ("Mảnh 2/3 · Cần Bánh tráng trộn")
+    if (r.source === 'hiem') {
+      const u = rareUnlockInfo(state, r.id, ctx)
+      const missing = u.bases.filter(b => !owned[b]).map(b => (R[b] && R[b].name) || b)
+      const INGS = D(ctx).INGREDIENTS || {}
+      rare = { n: u.n, need: u.need, ready: u.ready, baseOwned: u.baseOwned, missing,
+        ings: Object.entries(recipeRareNeed(r)).map(([id, k]) => ({ id, name: (INGS[id] && INGS[id].name) || id, n: k })) }
+      if (!p) note = [`Mảnh ${u.n}/${u.need}`, missing.length ? `Cần ${missing.join(', ')}` : '', u.ready ? 'Đủ mảnh, nấu thử để mở' : ''].filter(Boolean).join(' · ')
     }
     entries.push({
       id: r.id, name: r.name, icon: r.icon || r.id, desc: r.desc || '', status, source: r.source,
@@ -77,7 +100,8 @@ export function recipeBook(state, ctx) {
       cooks: p ? p.cooks || 0 : 0, goodCooks: p ? p.goodCooks || 0 : 0, best: p ? p.best || 0 : 0,
       flawless: p ? p.flawless || 0 : 0, flawlessBadge: !!(p && p.flawless > 0),
       mastery: p ? masteryInfo(p, ctx) : null,
-      shopPrice: r.shopPrice || 0, fromDay: r.shopFromDay || 1, note, locked: !p
+      shopPrice: r.shopPrice || 0, fromDay: r.shopFromDay || 1, note, locked: !p,
+      ...(rare ? { rare, baseRecipe: r.baseRecipe || null, rareCost: rareBookCost(r, ctx) } : {})
     })
   }
   // bóng mờ Chặng sau (Chợ Công Thức): chỉ tên và hình

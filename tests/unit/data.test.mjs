@@ -62,9 +62,13 @@ test('BALANCE khớp hợp đồng', () => {
   assert.deepEqual([...BALANCE.masteryLevels], [0, 5, 15])
 })
 
-test('đủ 5 món MVP', () => {
+// M4 (sửa có chủ ý): 5 món MVP + 4 công thức hiếm (source 'hiem', thiết kế mục C.3).
+test('đủ 9 món: 5 món MVP + 4 công thức hiếm', () => {
   assert.deepEqual(Object.keys(RECIPES).sort(),
-    ['banh_mi_op_la', 'banh_trang_tron', 'ca_phe_sua_da', 'che_buoi', 'tra_tac'])
+    ['banh_mi_op_la', 'banh_mi_trung_ga_ta', 'banh_trang_tron', 'banh_trang_tron_tay_ninh', 'ca_phe_muoi', 'ca_phe_sua_da',
+      'che_buoi', 'tra_tac', 'tra_tac_mat_ong'])
+  assert.deepEqual(Object.values(RECIPES).filter(r => r.source === 'hiem').map(r => r.id).sort(),
+    ['banh_mi_trung_ga_ta', 'banh_trang_tron_tay_ninh', 'ca_phe_muoi', 'tra_tac_mat_ong'])
 })
 
 for (const [rid, r] of Object.entries(RECIPES)) {
@@ -72,10 +76,26 @@ for (const [rid, r] of Object.entries(RECIPES)) {
     assert.equal(r.id, rid)
     assert.ok(r.name && r.desc && r.icon)
     assert.ok(Number.isInteger(r.difficulty) && r.difficulty >= 1 && r.difficulty <= 5)
-    assert.ok(['default', 'shop', 'event'].includes(r.source))
+    // M4 (sửa có chủ ý): thêm nguồn 'hiem' (công thức hiếm)
+    assert.ok(['default', 'shop', 'event', 'hiem'].includes(r.source))
     if (r.source === 'shop') assert.ok(Number.isInteger(r.shopPrice) && r.shopPrice > 0, 'món shop cần shopPrice')
     if (r.source === 'event') assert.ok(typeof r.eventId === 'string' && r.eventId, 'món sự kiện cần eventId')
     else assert.equal(r.eventId, null)
+    if (r.source === 'hiem') {
+      // món nền có thật, không phải món hiếm; requires gồm món nền; rare {nguyên liệu hiếm có trong món: số phần}
+      assert.ok(RECIPES[r.baseRecipe] && RECIPES[r.baseRecipe].source !== 'hiem', 'món hiếm cần baseRecipe')
+      assert.ok(Array.isArray(r.requires) && r.requires.includes(r.baseRecipe))
+      assert.ok(r.rare && Object.keys(r.rare).length >= 1)
+      for (const [id, n] of Object.entries(r.rare)) {
+        assert.ok(INGREDIENTS[id] && INGREDIENTS[id].rare, `${id} phải là nguyên liệu hiếm`)
+        assert.ok(ingIds(r).includes(id), `${rid}: nguyên liệu hiếm ${id} phải có trong món`)
+        assert.ok(Number.isInteger(n) && n >= 1)
+      }
+      assert.equal(r.icon, RECIPES[r.baseRecipe].icon, 'món hiếm dùng hình của món nền')
+      assert.ok(r.price >= 15000, 'món hiếm từ 15.000đ')
+    } else {
+      assert.ok(!r.ingredients.some(i => INGREDIENTS[i.id].rare), `${rid}: món thường không dùng nguyên liệu hiếm`)
+    }
 
     // Giá: số nguyên, bội 5.000đ, lớn hơn giá vốn thật
     assert.ok(Number.isInteger(r.price))
@@ -189,6 +209,43 @@ test('giá vốn khoảng như thiết kế', () => {
   assert.equal(realCost(RECIPES.banh_trang_tron), 8000)
   assert.equal(realCost(RECIPES.ca_phe_sua_da), 5000)
   assert.equal(realCost(RECIPES.che_buoi), 5000)
+  // M4: công thức hiếm (giá vốn gồm giá quy đổi của nguyên liệu hiếm, bảng C.3)
+  assert.equal(realCost(RECIPES.tra_tac_mat_ong), 6000)
+  assert.equal(realCost(RECIPES.banh_mi_trung_ga_ta), 11000)
+  assert.equal(realCost(RECIPES.banh_trang_tron_tay_ninh), 12000)
+  assert.equal(realCost(RECIPES.ca_phe_muoi), 6000)
+})
+
+// M4 (thiết kế mục C.2, C.3): 5 nguyên liệu hiếm, giá/par/lãi của 4 công thức hiếm, quy tắc "món ngang giá trị".
+test('nguyên liệu hiếm: ★, quê, giá quy đổi, hàng thường dễ nhầm có thật và khác hình', () => {
+  const rare = Object.entries(INGREDIENTS).filter(([, g]) => g.rare).map(([id]) => id).sort()
+  assert.deepEqual(rare, ['ca_phe_bmt', 'kho_muc', 'mat_ong_rung', 'muoi_tom_tay_ninh', 'trung_ga_ta'])
+  const want = { mat_ong_rung: [2, 3300], trung_ga_ta: [1, 3500], muoi_tom_tay_ninh: [1, 1500], kho_muc: [2, 4100], ca_phe_bmt: [2, 3700] }
+  for (const id of rare) {
+    const g = INGREDIENTS[id]
+    assert.deepEqual([g.star, g.cost], want[id], id)
+    assert.ok(g.origin && Number.isInteger(g.portion) && g.portion >= 1, id)
+    assert.ok(Array.isArray(g.traps) && g.traps.length >= 1, id)
+    for (const t of g.traps) {
+      assert.ok(INGREDIENTS[t] && !INGREDIENTS[t].rare, `${id}: bẫy ${t}`)
+      assert.notEqual(ICONS[g.icon], ICONS[INGREDIENTS[t].icon], `${id} trùng hình ${t}`)
+    }
+    assert.ok(ICONS[g.icon].includes('#ffd23f'), `${id}: hình có ngôi sao vàng`)
+  }
+  assert.equal(INGREDIENTS.trung_ga_ta.portion, 2)
+})
+
+test('công thức hiếm: giá, lãi, tổng par theo bảng C.3; lãi/giây nấu ≤ 550đ (món ngang giá trị)', () => {
+  const par = r => r.steps.reduce((s, st) => s + st.par, 0)
+  const table = {
+    tra_tac_mat_ong: [15000, 6000, 19], banh_mi_trung_ga_ta: [25000, 11000, 26],
+    banh_trang_tron_tay_ninh: [25000, 12000, 34], ca_phe_muoi: [20000, 6000, 26]
+  }
+  for (const [id, [price, cost, p]] of Object.entries(table)) {
+    const r = RECIPES[id]
+    assert.deepEqual([r.price, r.cost, par(r)], [price, cost, p], id)
+    assert.ok((price - cost) / p <= 550, `${id}: ${Math.round((price - cost) / p)}đ/giây`)
+  }
 })
 
 test('nguyên liệu: tên, giá vốn, icon hợp lệ; cặp bẫy tồn tại', () => {
@@ -204,6 +261,8 @@ test('mọi icon được dùng đều có trong ICONS', () => {
   for (const r of Object.values(RECIPES)) assert.ok(ICONS[r.icon], `thiếu icon món ${r.icon}`)
   for (const u of Object.values(UPGRADES)) assert.ok(ICONS[u.icon], `thiếu icon nâng cấp ${u.icon}`)
   for (const m of Object.values(MINIGAME_TYPES)) assert.ok(ICONS[m.icon], `thiếu icon mini-game ${m.icon}`)
+  // hình riêng của bước (vd chén sữa muối của Cà phê muối)
+  for (const r of Object.values(RECIPES)) for (const st of r.steps || []) if (st.icon) assert.ok(ICONS[st.icon], `thiếu icon bước ${r.id}/${st.id}: ${st.icon}`)
 })
 
 test('art: SVG hợp lệ, không ảnh ngoài, không base64', () => {
@@ -424,9 +483,10 @@ test('makeReview: theo mã lỗi và theo sao, không rỗng, chèn đúng tên'
   assert.ok(/đá/i.test(withIng), withIng)
 })
 
-test('TIPS: 20 thẻ, id duy nhất, tối đa 2 câu', () => {
-  assert.equal(TIPS.length, 20)
-  assert.equal(new Set(TIPS.map(t => t.id)).size, 20)
+// M4 (sửa có chủ ý): thêm 4 thẻ Soi tiền, Chờ tiền về, Kiểm hàng, Giữ lối đi (20 → 24).
+test('TIPS: 24 thẻ, id duy nhất, tối đa 2 câu', () => {
+  assert.equal(TIPS.length, 24)
+  assert.equal(new Set(TIPS.map(t => t.id)).size, 24)
   for (const t of TIPS) {
     assert.ok(['quay', 'bep', 'kho', 'phuc_vu'].includes(t.group))
     assert.ok(t.title && t.text && t.trigger)
@@ -435,7 +495,7 @@ test('TIPS: 20 thẻ, id duy nhất, tối đa 2 câu', () => {
     if (/\d+\s*[–-]\s*\d+%|\d+%/.test(t.text)) assert.ok(t.text.includes('số liệu minh họa'), `${t.id} thiếu ghi chú số liệu`)
   }
   for (const trig of ['first_readback', 'readback_caught', 'change_wrong', 'fake_qr', 'thieu_nguyen_lieu', 'chua_rua',
-    'cho_lau', 'complaint', 'shift_end']) {
+    'cho_lau', 'complaint', 'shift_end', 'tien_gia', 'cho_tien_ve', 'kiem_hang', 'lan_chiem']) {
     assert.ok(TIPS.some(t => t.trigger === trig), `thiếu trigger ${trig}`)
   }
 })

@@ -5,6 +5,7 @@ import { scoreChon, stepLabel } from './minigame-scoring.js'
 import { recordDish, canAutoStep } from './mastery.js'
 import { makeRand } from './rng.js'
 import { roundCost } from './money.js'
+import { consumeRare, rareReputation, rareLinesFit } from './rare.js'
 
 const SCALE_KEYS = ['n', 'N', 'cuts', 'strokes']
 
@@ -94,6 +95,19 @@ function paidForLine(customer, lineIndex, qty, fallback) {
   return Math.max(0, amount)
 }
 
+// M4: "hóa đơn" để tính tip = số tiền khách THỰC TRẢ, cùng logic clampRefunds:
+// - trả bằng ảnh chuyển khoản giả: 0;
+// - có phiếu thu: receipt.total (số đã báo, báo thiếu thì nhỏ hơn giá niêm yết) trừ phần đã hoàn;
+// - chưa có phiếu thu (khách dựng trong test lõi): giá niêm yết theo yêu cầu thật, gồm phụ thu ghi chú.
+// (Không import order.js: order.js đã import kitchen.js.)
+export function billOf(customer, recipes) {
+  if (!customer) return 0
+  if (customer.payMethod === 'qr' && customer.fakeQr) return 0
+  const rc = customer.receipt
+  const paid = rc ? Number(rc.total) || 0 : (customer.request || []).reduce((s, l) => s + linePrice(recipes, l), 0)
+  return Math.max(0, paid - (Number(customer.refunded) || 0))
+}
+
 // Tổng hoàn cho các mục phàn nàn, kẹp theo số khách đã trả trừ phần đã hoàn trước đó.
 function clampRefunds(customer, items) {
   const rc = customer.receipt
@@ -162,21 +176,41 @@ export function submitChon(state, picked, mistakes, ctx) {
   const missingMain = req.main.filter(id => !uniq.includes(id))
   if (missingMain.length) return { ok: false, blockedMissingMain: true, missing: missingMain }
   const INGS = (ctx.data && ctx.data.INGREDIENTS) || {}
-  let cogs = 0, waste = 0
+  // M4: sự kiện ngày làm tăng giá nguyên liệu (sh.mods.ingCostMul, vd Tắc lên giá ×2); nấu thử không tính
+  const ingMul = !sh.tasting && sh.mods && sh.mods.ingCostMul ? sh.mods.ingCostMul : null
+  let cogs = 0, waste = 0, xCogs = 0, xWaste = 0
   for (const id of uniq) {
     const def = (recipe.ingredients || []).find(i => i.id === id)
-    const unit = (INGS[id] && INGS[id].cost) || 0
+    // M4: nguyên liệu hiếm lấy từ kho hàng hiếm (trừ kho lúc Ra món), không trừ Tiền quán
+    const unit = INGS[id] && INGS[id].rare ? 0 : (INGS[id] && INGS[id].cost) || 0
     const amount = Math.round(unit * ((def && def.qty) || 1) * cook.qty)
-    if (req.required.includes(id)) cogs += amount
-    else waste += amount
+    const mul = ingMul && Number(ingMul[id]) > 1 ? Number(ingMul[id]) : 1
+    const extra = mul > 1 ? Math.round(amount * (mul - 1)) : 0
+    if (req.required.includes(id)) { cogs += amount; xCogs += extra } else { waste += amount; xWaste += extra }
   }
-  // M2: Phiếu Chợ Sớm (sh.mods.cogsMul) giảm giá vốn trong ca
+  // M2: Phiếu Chợ Sớm (sh.mods.cogsMul) giảm giá vốn trong ca (giảm cả phần tăng giá)
   const cogsMul = sh.mods && sh.mods.cogsMul > 0 ? sh.mods.cogsMul : 1
-  if (cogsMul !== 1) { cogs = cogs * cogsMul; waste = waste * cogsMul }
   // M3: mỗi lượt nấu trừ giá vốn theo bội 500đ (nguyên liệu lẻ 100–400đ, ghi chú bớt/thêm, Phiếu Chợ Sớm ×0,8)
   // để Tiền quán không bao giờ lẻ dưới 500đ.
-  cogs = roundCost(cogs)
-  waste = roundCost(waste)
+  const base = { cogs: roundCost(cogs * cogsMul), waste: roundCost(waste * cogsMul) }
+  // M4: phần tăng giá (bội 500đ) có trần: tổng cả ca ≤ trần thiệt hại một sự kiện (sh.eventCap.loss); vượt thì bớt
+  // phần hao hụt trước. Ghi sh.eventCostExtra để Tổng kết ghi chú.
+  let eC = 0, eW = 0
+  if (xCogs > 0 || xWaste > 0) {
+    eC = Math.max(0, roundCost((cogs + xCogs) * cogsMul) - base.cogs)
+    eW = Math.max(0, roundCost((waste + xWaste) * cogsMul) - base.waste)
+    const capLoss = sh.eventCap && Number.isFinite(Number(sh.eventCap.loss)) ? Number(sh.eventCap.loss) : Infinity
+    const room = Math.max(0, Math.floor((capLoss - (Number(sh.eventCostExtra) || 0)) / 500) * 500)
+    if (eC + eW > room) {
+      const cut = eC + eW - room
+      const cw = Math.min(eW, cut)
+      eW -= cw
+      eC -= cut - cw
+    }
+    sh.eventCostExtra = (Number(sh.eventCostExtra) || 0) + eC + eW
+  }
+  cogs = base.cogs + eC
+  waste = base.waste + eW
   spend(state, cogs, 'cogs')
   spend(state, waste, 'waste')
   cook.cost = { cogs, waste }
@@ -350,6 +384,11 @@ export function finishDish(state, ctx) {
   cook.phase = 'xong'
   cook.result = dish
   cook.activeStepId = null
+  // M4: món hiếm trừ kho nguyên liệu hiếm lúc Ra món (bỏ món, làm lại bước không mất; nấu thử không trừ)
+  if (!sh.tasting) {
+    const used = consumeRare(state, cook.recipeId, cook.qty, ctx)
+    if (Object.keys(used).length) dish.rareUsed = used
+  }
   bumpCount(sh, 'dishesCooked')
   if (dish.flawless) bumpCount(sh, 'flawlessDishes')
   const mastery = recordDish(state, cook.recipeId, dish, cfg(ctx, 'masteryLevels'))
@@ -439,17 +478,20 @@ function finalizeCustomer(state, customer, ctx) {
   const persona = personaOf(ctx, customer.persona)
   const res = customerStars(customer, customer.dishes, R, { thresholds: cfg(ctx, 'gradeThresholds') })
   const flawlessAny = (customer.dishes || []).some(d => d && d.flawless)
-  const B = { tipFiveStar: cfg(ctx, 'tipFiveStar'), tipBonus: cfg(ctx, 'tipBonus') }
-  let tip = tipFor(res.stars, flawlessAny, persona, B)
-  // M2: đang trong chuỗi "Quầy chuẩn" (≥ 5 khách liên tiếp không lỗi quầy) → tip 10.000đ; không áp khi bật Hỗ trợ tính tiền
-  const assistCash = !!(state.settings && state.settings.assistCash)
-  if (tip > 0 && !assistCash && (sh.counterStreak || 0) >= 5) tip = Math.max(tip, B.tipBonus)
-  // M2: Ngày lãnh lương (sh.mods.tipMul), tip vẫn là bội 5.000đ
-  if (tip > 0 && sh.mods && sh.mods.tipMul > 0 && sh.mods.tipMul !== 1) tip = Math.max(5000, Math.round((tip * sh.mods.tipMul) / 5000) * 5000)
+  // M4: tip 5.000đ khi 5 sao và khách thực trả từ 20.000đ (không còn tip 10.000đ theo Không tì vết, khách khó tính,
+  // chuỗi "Quầy chuẩn" hay Ngày lãnh lương ×1,5 — xem scoring.tipFor)
+  const B = { tipFiveStar: cfg(ctx, 'tipFiveStar'), tipMinBill: cfg(ctx, 'tipMinBill') }
+  const bill = billOf(customer, R)
+  const tip = tipFor(res.stars, bill, B)
   const repTable = cfg(ctx, 'reputationByStars') || {}
   let rep = Number(repTable[res.stars]) || 0
   if (flawlessAny) rep += 1
+  // M4: khách khó tính chấm 5 sao → thêm danh tiếng (thay tip 10.000đ cũ)
+  const strict = !!(customer.strict || (persona && persona.strict))
+  if (res.stars === 5 && strict && !customer.tutorial) rep += Number(cfg(ctx, 'strictFiveStarRep')) || 0
   rep += festiveReputation(sh, customer.dishes, ctx)
+  // M4: mỗi phần món hiếm đạt Ngon trở lên +1 danh tiếng (RARE_CONFIG.repPerGood)
+  rep += rareReputation(customer.dishes, ctx)
   const counterErrors = [...new Set(res.penalties.filter(p => p.source === 'quay' && p.code !== 'kho_tinh').map(p => p.code))]
   for (const e of customer.orderErrors || []) if (!counterErrors.includes(e.type)) counterErrors.push(e.type)
   // lỗi quầy 0 sao (không trừ sao, không vào review) để phiếu chấm và Tổng kết ghi đúng nguồn lỗi
@@ -488,9 +530,11 @@ function finalizeCustomer(state, customer, ctx) {
   const sheet = {
     customerId: customer.id, name: customer.name, final: true, tutorial: !!customer.tutorial,
     stars: res.stars, base: res.base, cap: res.cap, penalties: res.penalties,
-    counterErrors, kitchenErrors, tip, reputation: rep, review,
+    counterErrors, kitchenErrors, tip, bill, reputation: rep, review,
     dishes: (customer.dishes || []).filter(Boolean).map(d => ({ recipeId: d.recipeId, qty: d.qty, notes: d.notes, q: d.q, grade: d.grade, flawless: d.flawless, errors: d.errors })),
-    waitRatio: customer.waitRatio ?? null, apologyBonus: customer.apologyBonus || 0, complaint: null
+    waitRatio: customer.waitRatio ?? null, apologyBonus: customer.apologyBonus || 0, complaint: null,
+    // M4: khách lạ (quà quê theo số sao, trao lúc cuối ca: rare.finishShiftRare)
+    ...(customer.stranger ? { stranger: customer.stranger } : {})
   }
   sh.scoreSheets.push(sheet)
   emit(ctx, 'customer.rated', { customerId: customer.id, stars: res.stars, counterErrors, kitchenErrors })
@@ -564,8 +608,18 @@ export function serveTicket(state, ticketId, ctx) {
   return finalizeCustomer(state, customer, ctx)
 }
 
+// M4: làm lại được không — các dòng bị phàn nàn có món hiếm thì kho phải còn đủ (như rareLeft: tồn kho trừ phần đã nằm
+// trên phiếu bếp chưa ra món và phiếu đang ghi ở quầy); hết thì chỉ hoàn tiền được.
+export function complaintRemakeOk(state, customerId, ctx) {
+  const sh = state.shift
+  const customer = sh && sh.customers[customerId]
+  if (!customer || !customer.complaint) return false
+  return rareLinesFit(state, (customer.complaint.items || []).map(it => it.line), ctx, { withDraft: true })
+}
+
 // Xử lý phàn nàn: xin lỗi đúng (DIALOGUE.apologies[i].correct) +1 sao (vẫn theo trần).
 // remake: thêm lại các dòng bị phàn nàn vào đầu dây phiếu (cờ remake, sao tối đa 3), khách về 'cho_mon'.
+//   M4: dòng món hiếm mà kho không đủ → {ok: false, reason: 'het_hang_hiem'} (chỉ hoàn tiền được).
 // refund: ledger.refunds += số khách đã thực trả cho các dòng đó (item.refund), chốt sao ngay.
 export function resolveComplaint(state, customerId, choice, ctx) {
   const sh = state.shift
@@ -573,6 +627,7 @@ export function resolveComplaint(state, customerId, choice, ctx) {
   if (!customer || !customer.complaint || customer.complaint.resolved) return { ok: false, reason: 'khong_co_phan_nan' }
   const { apologyIndex, action } = choice || {}
   if (action !== 'remake' && action !== 'refund') return { ok: false, reason: 'khong_hop_le' }
+  if (action === 'remake' && !complaintRemakeOk(state, customerId, ctx)) return { ok: false, reason: 'het_hang_hiem' }
   const apologies = (ctx.data && ctx.data.DIALOGUE && ctx.data.DIALOGUE.apologies) || []
   const ap = apologies[apologyIndex]
   const apologyCorrect = !!(ap && typeof ap === 'object' && ap.correct)

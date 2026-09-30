@@ -14,10 +14,11 @@ import { refreshMeta } from '../../core/meta.js'
 export const GEAR_SVG = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.4h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.4-2-1.6ZM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" transform="translate(-1 0)"/></svg>'
 
 const INCIDENT_LABELS = Object.freeze({ nhieu: 'Nhiều', vua: 'Vừa', it: 'Ít' })
+// M4: một cài đặt cho cả sự kiện ngày và tình huống trong ca ("Tần suất sự kiện")
 const INCIDENT_HINTS = Object.freeze({
-  nhieu: 'Hay gặp tình huống hơn, cả vui lẫn khó.',
-  vua: 'Thỉnh thoảng có tình huống (mặc định).',
-  it: 'Hiếm khi có tình huống, và chỉ gồm tình huống vui.'
+  nhieu: 'Sự kiện dày: phần lớn các ca có tình huống, có ca gặp 2 lần.',
+  vua: 'Mặc định: đa số ngày có sự kiện, hơn nửa số ca có tình huống.',
+  it: 'Ít tình huống hơn, và chỉ gồm sự kiện, tình huống vui (không có khoản phạt).'
 })
 
 // Câu báo lỗi thân thiện khi đọc mã sao lưu.
@@ -403,9 +404,10 @@ export default {
     function incidentRow() {
       const cur = app.state.settings.incidentFrequency || 'vua'
       return h('div', { class: 'set-row set-seg-row' },
-        h('span', { class: 'set-text' }, h('b', null, 'Tình huống trong ca'),
-          h('small', null, 'Chuyện bất ngờ giữa hai khách, lựa chọn nào cũng ghi rõ cái giá và luôn có cách an toàn. ' + INCIDENT_HINTS[cur])),
-        h('div', { class: 'set-seg', role: 'radiogroup', 'aria-label': 'Tần suất tình huống trong ca' },
+        h('span', { class: 'set-text' }, h('b', null, 'Tần suất sự kiện'),
+          h('small', null, 'Sự kiện ngày và tình huống giữa hai khách: sự kiện có phạt luôn có cách an toàn, vài sự kiện chỉ là chi phí nhỏ được báo trước. ' +
+            INCIDENT_HINTS[cur] + ' Đổi mức chỉ áp cho ngày chưa báo trước, sự kiện đã báo giữ nguyên.')),
+        h('div', { class: 'set-seg', role: 'radiogroup', 'aria-label': 'Tần suất sự kiện' },
           INCIDENT_FREQUENCIES.map(id => h('button', {
             class: ['btn', 'btn-small', 'set-seg-btn', id === cur ? 'is-on' : ''], type: 'button', role: 'radio',
             'aria-checked': String(id === cur), testid: 'setting-incident-' + id,

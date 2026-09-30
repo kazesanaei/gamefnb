@@ -1,6 +1,8 @@
 // State gốc của save và vài tiện ích dùng chung cho lõi (đọc cân bằng, phát sự kiện, mở Mẹo nghề).
 
-export const STATE_VERSION = 2
+// Phiên bản cấu trúc save: 1 = M1 (0.1), 2 = M2–M3 (0.2–0.3), 3 = M4 (0.4: tình huống/sự kiện tiền, hàng hiếm).
+// save.migrate nâng mọi bản cũ lên bản này.
+export const STATE_VERSION = 3
 export const DEFAULT_RECIPE_IDS = Object.freeze(['banh_mi_op_la', 'tra_tac'])
 
 // Giá trị mặc định khi ctx.data.BALANCE thiếu khóa (khớp mục 6 docs/kien-truc.md).
@@ -19,7 +21,7 @@ export const DEFAULT_BALANCE = Object.freeze({
   zoneMulStage: 1.2, zoneDailyNarrow: 0.02, zoneFloor: 0.75, zoneMulCap: 1.6,
   gradeThresholds: [[90, 'tuyet_hao', 5], [75, 'ngon', 4], [60, 'duoc', 3], [40, 'kem', 2], [0, 'hong', 1]],
   stepLabels: [[90, 'Hoàn hảo'], [70, 'Tốt'], [50, 'Đạt'], [0, 'Hỏng']],
-  tipFiveStar: 5000, tipBonus: 10000,
+  tipFiveStar: 5000, tipMinBill: 20000, strictFiveStarRep: 1,
   reputationByStars: { 5: 3, 4: 2, 3: 1, 2: 0, 1: 0 },
   masteryLevels: [0, 5, 15],
   autoStepScore: 80, retryScoreCap: 85,
@@ -33,7 +35,9 @@ export const DEFAULT_BALANCE = Object.freeze({
   loanOfferBelow: 20000,  // mời vay khi Tiền quán < chi phí cố định 1 ca (thiết kế mục Dì Sáu cho mượn)
   // M2: thu nhập tham chiếu một ca theo ngày game [từ ngày, đồng] (cơ sở tính thưởng; docs/can-bang.md mục 9)
   refIncomeTable: [[1, 20000], [3, 35000], [5, 65000], [7, 85000], [9, 100000]],
-  eventCustomerCap: 10
+  eventCustomerCap: 10,
+  // M4: trần tiền sự kiện mỗi ngày thật (hệ số × thu nhập tham chiếu): phạt/chi bắt buộc và tiền thưởng
+  eventDayCap: { lossIncomeMul: 1, gainIncomeMul: 1 }
 })
 
 // Thu nhập tham chiếu một ca của ngày game `day` (đồng).
@@ -94,12 +98,34 @@ export function defaultMeta() {
       records: { bestProfit: null, mostFiveStars: 0, longestStreak: 0 },
       cur: { fiveStars: 0 }
     },
-    track: { rbCustomer: null, rbFirst: false }
+    track: { rbCustomer: null, rbFirst: false },
+    // M4: kho nguyên liệu và công thức hiếm (src/core/rare.js)
+    rare: defaultRare()
   }
 }
 
-// Mức tần suất tình huống trong ca (Cài đặt, M3): Nhiều / Vừa / Ít. 'it' chỉ gồm tình huống tích cực.
+// M4: kho hàng hiếm (src/core/rare.js, thiết kế mục C.1): stock {ingId: số phần} (0..stockMax), fragments {recipeId: số
+// mảnh công thức hiếm}, pity {ing: số lượt Giỏ chợ liền không ra nguyên liệu, frag: số lần liền ở nguồn có tỉ lệ mà không
+// ra mảnh}, today = sổ của ngày thật đang chơi {key, got: phần đã nhận, frags: mảnh đã nhận, stalls: [phiên hàng đã ghé],
+// strangerDay: ngày thật khách lạ đã ghé}, seen: nguyên liệu hiếm đã từng có, pendingStall: {id, dayKey} khi đang lựa hàng.
+export function defaultRareToday() {
+  return { key: '', got: 0, frags: 0, stalls: [], strangerDay: '' }
+}
+
+export function defaultRare() {
+  return { stock: {}, fragments: {}, pity: { ing: 0, frag: 0 }, today: defaultRareToday(), seen: [], pendingStall: null }
+}
+
+// Mức "Tần suất sự kiện" (Cài đặt; M3 gọi là tần suất tình huống trong ca): Nhiều / Vừa / Ít. M4: áp cho cả sự kiện
+// ngày và tình huống trong ca; mức 'it' chỉ gồm sự kiện/tình huống loại tốt (kind 'tot'), không có khoản phạt.
 export const INCIDENT_FREQUENCIES = Object.freeze(['nhieu', 'vua', 'it'])
+
+// Mức tần suất sự kiện đang chọn trong Cài đặt (sai hoặc thiếu thì 'vua'). Dùng chung cho sự kiện ngày (events.js)
+// và tình huống trong ca (incidents.js).
+export function eventFrequency(state) {
+  const f = state && state.settings && state.settings.incidentFrequency
+  return INCIDENT_FREQUENCIES.includes(f) ? f : 'vua'
+}
 
 export function defaultSettings() {
   return {
@@ -112,8 +138,22 @@ export function defaultSettings() {
 // M3: tình huống trong ca (src/core/incidents.js): since = số ca liền (từ ngày có tình huống) chưa gặp tình huống nào
 // (bảo hiểm), recent = loại gặp gần nhất (không lặp), log = nhật ký ngắn, debts = sổ ghi nợ khách quen,
 // bonus = khách thêm ở ca sau ({day, customers}), total = số tình huống đã xử lý.
+// M4: lastKind = loại ('tot' | 'chon' | 'xau') của tình huống gần nhất đã xử lý, lastLoss = tỉ lệ lỗ của nó so với trần
+// (0..1) → luật nhịp (không 2 cái xấu liền nhau, vừa lỗ nặng thì ca sau nhẹ nhàng); day = sổ tiền sự kiện của ngày thật
+// đang chơi {key, loss, gain} (trần phạt/thưởng mỗi ngày thật, economy.eventMoneyIn/eventMoneyOut); warn = lần nhắc
+// nhở gần nhất của sự kiện ngày có "nhắc nhở trước, tái phạm mới phạt" {eventId: ngày game} (Kiểm tra vệ sinh an toàn
+// thực phẩm, events.finishShiftEvents).
+// M4 (soát lỗi): lastEvent = loại của sự kiện gần nhất trên dòng thời gian chung (sự kiện ngày lúc mở ca, rồi các tình
+// huống trong ca theo thứ tự xử lý) → tình huống kế tiếp không bốc loại xấu khi sự kiện ngay trước là loại xấu;
+// announced = sự kiện ngày đã chốt {ngày game: id | ''} (đã báo trước / đang diễn ra, đổi mức "Tần suất sự kiện" không
+// bốc lại; events.announceDayEvent).
+export function defaultEventDay() {
+  return { key: '', loss: 0, gain: 0 }
+}
+
 export function defaultIncidents() {
-  return { since: 0, recent: [], log: [], debts: [], bonus: null, total: 0 }
+  return { since: 0, recent: [], log: [], debts: [], bonus: null, total: 0, lastKind: null, lastLoss: 0, day: defaultEventDay(), warn: {},
+    lastEvent: null, announced: {} }
 }
 
 // M3: Sổ tay nghề (src/core/notebook.js): claimed = nhóm Mẹo nghề đã nhận thưởng đủ nhóm (mỗi nhóm 1 lần).

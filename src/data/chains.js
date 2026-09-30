@@ -23,14 +23,17 @@ export const CHAINS = deepFreeze({
         signal: 'change_correct', target: 3, reward: { money: 5000, tipId: 'dem_hai_lan' } },
       { id: 'doc_lai_dung', text: 'Ghi phiếu đúng ngay lần đọc lại đầu cho {n} khách', where: 'quay',
         signal: 'readback_clean', target: 3, reward: { money: 5000, tipId: 'doc_lai_order' } },
+      // M4 (cân bằng, docs/can-bang.md mục 10.1 và 16): tiền thưởng bước 4 / 5 / 6 giảm 15k / 30k / 30k → 10k / 15k / 10k.
+      // Luật tip mới làm lãi những ngày đầu của người chơi giỏi giảm khoảng 40%, chuỗi hướng dẫn trả gần hết vào ngày
+      // thật 1–2 nên tỉ lệ thưởng vượt trần 35% ở 19/200 ngày mô phỏng (40 hạt giống); sau khi giảm: cao nhất 34,1%.
       { id: 'hoan_hao', text: 'Đạt {n} lần Hoàn hảo ở bước bếp', where: 'bep',
-        signal: 'perfect_step', target: 5, reward: { money: 15000, tipId: 'thot_rieng' } },
+        signal: 'perfect_step', target: 5, reward: { money: 10000, tipId: 'thot_rieng' } },
       { id: 'mua_cong_thuc', text: 'Mua công thức đầu tiên ở Chợ Công Thức', where: 'shop',
-        check: { ownsShopRecipe: true }, reward: { money: 30000, tipId: 'dinh_luong_chuan' } },
+        check: { ownsShopRecipe: true }, reward: { money: 15000, tipId: 'dinh_luong_chuan' } },
       { id: 'tuyet_hao', text: 'Nấu {n} món Tuyệt hảo', where: 'bep',
         signal: 'dish_excellent', target: 3, assist: 'assistMotion', assistSignal: 'dish_good',
         assistText: 'Đang bật Hỗ trợ thao tác nên món đạt Ngon trở lên cũng được đếm.',
-        reward: { money: 30000, gold: 5, tipId: 'nem_tu_it' } },
+        reward: { money: 10000, gold: 5, tipId: 'nem_tu_it' } },
       // cùng ngưỡng danh tiếng với điều kiện lên Chặng 2 (src/data/progression.js) để bước cuối xong cùng lúc
       { id: 'danh_tieng', text: 'Đạt 150 danh tiếng và sao trung bình từ 3,8', where: 'chung',
         check: { reputation: 150, avgRating: 3.8 },

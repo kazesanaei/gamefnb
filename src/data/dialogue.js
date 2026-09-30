@@ -32,6 +32,23 @@ export const SPOKEN = deepFreeze({
     che_buoi: {
       nam: { unit: 'ly', names: ['chè bưởi'] },
       bac: { unit: 'cốc', names: ['chè bưởi'] }
+    },
+    // M4: món hiếm (tên gọi thường ngày, nghe gần giống món nền: phải nghe kỹ mới ghi đúng)
+    tra_tac_mat_ong: {
+      nam: { unit: 'ly', names: ['trà tắc mật ong', 'trà tắc mật ong rừng'] },
+      bac: { unit: 'cốc', names: ['trà quất mật ong'] }
+    },
+    banh_mi_trung_ga_ta: {
+      nam: { unit: 'ổ', names: ['bánh mì trứng gà ta', 'bánh mì hột gà ta'] },
+      bac: { unit: 'cái', names: ['bánh mì trứng gà ta'] }
+    },
+    banh_trang_tron_tay_ninh: {
+      nam: { unit: 'bịch', names: ['bánh tráng trộn khô mực', 'bánh tráng trộn muối tôm'] },
+      bac: { unit: 'túi', names: ['bánh tráng trộn khô mực'] }
+    },
+    ca_phe_muoi: {
+      nam: { unit: 'ly', names: ['cà phê muối'] },
+      bac: { unit: 'cốc', names: ['cà phê muối'] }
     }
   },
   notes: {
@@ -191,10 +208,12 @@ function noteWord(recipeId, noteId, region, recipes, rand) {
 }
 
 // Ghép ghi chú; bỏ chữ lặp với cuối tên món ("bánh mì trứng" + "trứng chín kỹ" → "bánh mì trứng chín kỹ").
+// M4: tên món có chữ "trứng" ở giữa ("bánh mì trứng gà ta") cũng bỏ chữ "trứng" lặp ("… gà ta chín kỹ").
 function notesPhrase(recipeId, notes, region, recipes, rand, dishName = '') {
   const last = dishName.split(' ').pop()
   const words = (notes || []).map(id => noteWord(recipeId, id, region, recipes, rand)).filter(Boolean)
   if (words.length && last && words[0].startsWith(last + ' ')) words[0] = words[0].slice(last.length + 1)
+  else if (words.length && dishName.split(' ').includes('trứng') && words[0].startsWith('trứng ')) words[0] = words[0].slice('trứng '.length)
   return words.join(', ')
 }
 
@@ -298,15 +317,17 @@ const TAILS = {
 
 /**
  * Câu gọi món tự nhiên: [xưng hô] + [số lượng + món] + [ghi chú] + [đuôi câu].
- * Tham số thêm (tùy chọn): gender ('nam'|'nu'), name (đoán giới theo tên), regularId, firstVisit.
+ * Tham số thêm (tùy chọn): gender ('nam'|'nu'), name (đoán giới theo tên), regularId, firstVisit, self (M4: cách tự xưng
+ * riêng của khách lạ, vd 'bà').
  */
-export function makeSpeech({ request, persona: personaIn, region, recipes, rand, gender, name, regularId, firstVisit } = {}) {
+export function makeSpeech({ request, persona: personaIn, region, recipes, rand, gender, name, regularId, firstVisit, self: selfIn } = {}) {
   const r = safeRand(rand)
   const persona = personaId(personaIn)
   const reg = normRegion(region)
   const g = resolveGender(gender, name, r)
   const regular = regularOf(regularId, null)
-  const self = (regular && regular.self) || resolveSelf(persona, g, r)
+  // M4: khách lạ có cách tự xưng riêng (vd cụ bà xưng "bà")
+  const self = (typeof selfIn === 'string' && selfIn) || (regular && regular.self) || resolveSelf(persona, g, r)
   const call = callFor(self, reg)
   const groups = groupLines(request)
   const single = groups.length === 1 && groups[0].lines.length === 1
@@ -512,8 +533,17 @@ export const DIALOGUE = deepFreeze({
     dayEvent: {
       troi_mua: ['Mưa lâm râm vầy khách thưa, nhưng ai ghé cũng chịu chờ hơn đó con.', 'Trời mưa nhớ căng bạt cho khách đứng đỡ ướt nha con.'],
       nang_nong: ['Nắng vầy ai đi ngang cũng khát, pha sẵn trà tắc cho kịp nha con.', 'Trời oi quá, khách hay dặn ít đường, nghe kỹ nha con.'],
-      lanh_luong: ['Bữa nay đầu tháng lãnh lương, khách vui là tip mạnh tay lắm đó.', 'Lãnh lương rồi, khách hào phóng, mình phục vụ cho chu đáo nha con.'],
-      cho_phien: ['Chợ phiên đông nghẹt, ca này dài hơn, giữ sức nha con.', 'Hẻm họp chợ, khách tới liên tục, đọc lại order cho kỹ nghen.']
+      lanh_luong: ['Bữa nay đầu tháng lãnh lương, khách hay gọi thêm món, hóa đơn từ 20.000đ mà khách vui là có tip đó con.', 'Lãnh lương rồi, khách gọi nhiều món, nhớ đọc lại order cho kỹ nha con.'],
+      cho_phien: ['Chợ phiên đông nghẹt, ca này dài hơn, giữ sức nha con.', 'Hẻm họp chợ, khách tới liên tục, đọc lại order cho kỹ nghen.'],
+      // M4: tám sự kiện ngày mới
+      hoi_thi_xe_sach: ['Phường chấm xe đẩy theo lời khen của khách, mình làm kỹ từng món là có giải nha con.', 'Hội thi xe sạch đó con, phục vụ chu đáo cho khách chấm 5 sao nghen.'],
+      don_van_phong: ['Văn phòng đầu hẻm đặt 3 ly trà tắc, nhận đơn thì nhớ pha cho ngon, giao cho đúng hẹn nha con.', 'Khách đặt trước là khách quý, làm kỹ để người ta đặt tiếp nghen.'],
+      tai_tro_dai_ly: ['Đại lý trà mời treo bảng hiệu, bán được nhiều trà tắc thì có thêm tiền tài trợ đó con.', 'Treo bảng hiệu cho đàng hoàng, ly trà tắc nào cũng pha cho ngon nghen.'],
+      tat_gia: ['Tắc lên giá rồi con, có Phiếu Chợ Sớm thì dùng hôm nay cho đỡ tiền vốn.', 'Giá tắc gấp đôi, lấy đúng 3 trái mỗi ly thôi, đừng để dư mà phí nha con.'],
+      tien_dien_nuoc: ['Tháng này tiền điện nước lên, chi phí cố định tăng chút xíu, bán kỹ là bù được con.', 'Điện nước tăng thì mình tiết kiệm, lấy nguyên liệu vừa đủ thôi nghen.'],
+      cup_dien: ['Cúp điện cả buổi đó con, không có đá thì khách ít gọi đồ lạnh, mua đá cây thì bán như thường.', 'Loa báo tiền tắt rồi, khách chuyển khoản thì tự coi tiền về đúng số rồi mới giao nha.'],
+      trat_tu_do_thi: ['Hôm nay phường đi nhắc giữ vỉa hè, đừng để khách đứng lấn lối đi nha con.', 'Hàng dài là bị phạt đó, thu gọn chỗ đứng hoặc bán nhanh tay cho hàng khỏi dồn nghen.'],
+      kiem_tra_attp: ['Cuối ca có đoàn kiểm tra vệ sinh, sơ chế đủ bước, lấy đúng nguyên liệu là đạt con à.', 'Bếp sạch là cái gốc của nghề, chuẩn bị đón đoàn cho chu đáo nha con.']
     },
     praise: ['Trời đất, khéo tay dữ vậy con!', 'Món này dì chấm mười điểm!', 'Làm vầy khách nhớ tới hoài.'],
     worry: ['Coi chừng lửa đó con!', 'Khách chờ lâu rồi, nhanh tay lên con.', 'Đọc kỹ phiếu trước khi làm nha.'],

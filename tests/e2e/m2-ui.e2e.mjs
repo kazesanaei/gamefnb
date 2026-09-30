@@ -13,7 +13,8 @@ import { requiredIngredients } from '../../src/core/scoring.js'
 import { playShift } from '../helpers/perfect-player.mjs'
 import { makeMetaCtx } from '../helpers/meta-helpers.mjs'
 
-// Save đã chơi `shifts` ca, mỗi ca một ngày thật từ `at`. Seed 3: ngày game 4 là "Trời mưa".
+// Save đã chơi `shifts` ca, mỗi ca một ngày thật từ `at`. Seed 3: ngày game 4 là "Trời mưa" (M4 vẫn đúng với sự kiện ngày
+// bốc tuần tự, kiểm bằng `node tools/tim-seed.mjs mua-ngay-4`; hàm dựng có bản sao ở tools/tim-seed.mjs).
 function builtSave({ seed = 3, shifts = 3, at = '2026-09-26T08:00' } = {}) {
   const ctx = makeMetaCtx({ at, attach: true })
   const state = defaultState(seed, DATA)

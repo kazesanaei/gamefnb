@@ -9,6 +9,19 @@ export function dayKeyVN(ms) {
   return new Date(Number(ms) + (7 - DAY_RESET_HOUR_VN) * HOUR).toISOString().slice(0, 10)
 }
 
+// M4: số phút kể từ 00:00 giờ Việt Nam của thời điểm ms (0..1439), cho phiên hàng hiếm theo khung giờ.
+export function vnMinutes(ms) {
+  const DAY = 24 * 60
+  const m = Math.floor((Number(ms) + 7 * HOUR) / 60000)
+  return ((m % DAY) + DAY) % DAY
+}
+
+// 'HH:MM' → số phút trong ngày (sai định dạng → NaN).
+export function hhmmToMinutes(s) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(s || '').trim())
+  return m ? Number(m[1]) * 60 + Number(m[2]) : NaN
+}
+
 // Mốc 04:00 giờ Việt Nam kế tiếp (ms) sau thời điểm ms.
 export function nextResetMs(ms) {
   const shifted = Number(ms) + (7 - DAY_RESET_HOUR_VN) * HOUR

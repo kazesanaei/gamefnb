@@ -33,7 +33,7 @@ function mount(stage, step, ctx = {}) {
   })
   const stream = h('div', { class: 'rot-stream' })
   const cup = h('div', { class: ['rot-cup', 'is-' + skinId] }, level, zoneEl, h('div', { class: 'rot-rim' }))
-  const bottle = h('div', { class: 'rot-bottle' }, svgBox(ingIcon(step.ing, ctx), 'rot-bottle-icon'))
+  const bottle = h('div', { class: 'rot-bottle' }, svgBox(ingIcon(step.ing, ctx, step.icon || null), 'rot-bottle-icon'))
   const pour = h('button', { class: 'btn btn-primary rot-pour', type: 'button', 'data-testid': 'rot-pour' }, actText)
   const done = h('button', { class: 'btn btn-ghost mg-done', type: 'button', 'data-testid': 'rot-done', disabled: true }, 'Xong')
   const counter = h('div', { class: 'mg-count', 'data-testid': 'rot-count' }, `${countText} 0/${ROT_MAX_POURS}`)

@@ -17,7 +17,9 @@ const BANNED = [
 // Từ nội bộ không được lộ trong các file chứa chuỗi hiển thị.
 const INTERNAL = ['TNC', 'seed']
 const INTERNAL_WORDS = ['par', 'toast', 'chip', 'MV'] // so khớp nguyên từ
-const DISPLAY_FILES = ['src/data/strings.js', 'src/data/dialogue.js', 'src/data/reviews.js', 'src/data/tips.js', 'src/data/incidents.js']
+// M4: thêm src/data/rare.js (gánh hàng quê, khách lạ), src/data/mail.js (thư phiên bản 0.4.0 giải thích luật tip)
+const DISPLAY_FILES = ['src/data/strings.js', 'src/data/dialogue.js', 'src/data/reviews.js', 'src/data/tips.js', 'src/data/incidents.js', 'src/data/rare.js',
+  'src/data/mail.js']
 
 const TEXT_EXT = new Set(['.js', '.mjs', '.css', '.html', '.json', '.md', '.svg', '.webmanifest', '.txt'])
 

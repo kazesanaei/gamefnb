@@ -50,7 +50,9 @@ test('roundCost: bội 500đ gần nhất (0,5 lên); roundReward: lên bội 1.
 test('mọi con số tiền trong dữ liệu và mọi khoản thưởng quy đổi đều là bội 1.000đ', () => {
   const ctx = { data: DATA, emit() {} }
   const B = DATA.BALANCE
-  for (const k of ['startWallet', 'fixedCostPerShift', 'tipFiveStar', 'tipBonus', 'loanAmount']) assert.equal(B[k] % 1000, 0, k)
+  // M4: bỏ tipBonus (tip một mức), thêm ngưỡng hóa đơn tipMinBill
+  assert.equal(B.tipBonus, undefined)
+  for (const k of ['startWallet', 'fixedCostPerShift', 'tipFiveStar', 'tipMinBill', 'loanAmount']) assert.equal(B[k] % 1000, 0, k)
   for (const r of Object.values(DATA.RECIPES)) {
     assert.equal(r.price % 5000, 0)
     if (r.shopPrice) assert.equal(r.shopPrice % 1000, 0)

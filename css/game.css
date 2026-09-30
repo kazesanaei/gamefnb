@@ -138,6 +138,9 @@
 .q-face .face-img { position: absolute; left: 7px; top: 7px; width: 48px; height: 48px; }
 .q-name { font-size: 14px; font-weight: 700; max-width: 78px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .q-tag { position: absolute; top: -6px; right: -4px; font-size: 13px; font-weight: 800; background: var(--brick); color: #fff; border-radius: 999px; padding: 0 6px; white-space: nowrap; }
+/* M4: khách lấy đơn đặt trước của sự kiện ngày */
+.q-tag.is-order { background: #1f4e7a; }
+.qr-speaker-off { color: var(--bad); font-weight: 700; }
 .at-counter .q-face { transform: scale(1.06); }
 .ring-bg { stroke: rgba(59, 42, 31, .12); }
 .ring-fg { transition: stroke-dashoffset .25s linear, stroke .3s; }
@@ -227,6 +230,7 @@
 .err-tag--bep { background: var(--brick); }
 .ss-errors { color: var(--bad); margin-top: 2px; }
 .ss-tip { font-weight: 800; color: var(--green-ink); }
+.ss-tip.is-zero { font-weight: 700; color: var(--muted); }   /* M4: 5 sao mà hóa đơn dưới ngưỡng tip */
 .ss-review { font-style: italic; color: var(--muted); margin-top: 2px; }
 
 /* ---------- Quầy ---------- */
@@ -441,3 +445,15 @@
   .numpad-key { min-height: 44px; }
   .numpad-grid { gap: 4px; }
 }
+
+/* ---------- M4: món hiếm ở quầy, khách lạ ở hàng chờ ---------- */
+.menu-item.is-rare { border-color: #f0d68a; background: #fffbea; position: relative; }
+.menu-item.is-out { opacity: .55; }
+.menu-rare { grid-column: 2; font-size: 14px; font-weight: 800; color: #9a6a00; }
+.sheet-rare { margin-left: auto; font-size: 14px; font-weight: 700; }
+.q-stranger { position: absolute; left: -2px; top: -4px; width: 22px; height: 22px; border-radius: 50%; background: #ffd23f;
+  color: var(--ink); font-size: 14px; font-weight: 900; line-height: 22px; text-align: center; box-shadow: 0 0 0 2px #fff; }
+.q-cust.is-stranger .q-name { color: #9a6a00; font-weight: 800; }
+.q-tag.is-stranger { background: #c98a00; }
+.ss-stranger { color: #9a6a00; font-weight: 800; }
+.complaint-rare { color: var(--brick-dark); font-weight: 700; }

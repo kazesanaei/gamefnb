@@ -21,13 +21,16 @@ import { formatVND } from './ui/format.js'
 import { DI_SAU } from './ui/art.js'
 import notebook from './ui/screens/notebook.js'
 import recipeBook from './ui/screens/recipe-book.js'
+import market from './ui/screens/market.js'
 
 // Bảng màn (tên dùng trong app.go → module màn). Thêm màn mới: import rồi thêm một dòng ở đây
 // (và thêm tệp vào PRECACHE của sw.js). Màn không phải 'title'/'prep' tự là màn con (Back → Chuẩn bị).
 const SCREENS = Object.freeze({
   title, prep, service, summary, shop, tasting, quests, mailbox, event, 'stage-up': stageUp, settings,
   // M3 nội dung: Sổ tay nghề, Sổ công thức
-  notebook, 'recipe-book': recipeBook
+  notebook, 'recipe-book': recipeBook,
+  // M4: gánh hàng quê (lựa hàng hiếm)
+  market
 })
 
 function getStorage() {
@@ -137,7 +140,7 @@ function bootNotices(app, { report, broken, versionNote }) {
   if (report.shiftDropped) {
     const d = report.shiftDropped
     notes.push(`Ca đang bán dở (ngày ${d.day}) không mở lại được sau khi game cập nhật nên được hủy.` +
-      (d.refund > 0 ? ` Giá vốn đã bỏ ra trong ca được hoàn ${formatVND(d.refund)} vào Tiền quán.` : '') + ` Bạn bán lại ngày ${app.state.day} nhé.`)
+      (d.refund > 0 ? ` Tiền đã bỏ ra trong ca (giá vốn, phạt và chi sự kiện) được hoàn ${formatVND(d.refund)} vào Tiền quán.` : '') + ` Bạn bán lại ngày ${app.state.day} nhé.`)
   }
   if (broken.length) {
     // nạp được bản chính thì bản dự phòng hỏng không ảnh hưởng gì (đã cất lại, không cần báo)

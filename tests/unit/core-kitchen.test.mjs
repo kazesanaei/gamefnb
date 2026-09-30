@@ -166,14 +166,40 @@ test('serveTicket hoàn hảo: 5 sao, tip, danh tiếng, khách rời đi', () =
   const sheet = serveTicket(env.state, 'p1', env.ctx)
   assert.equal(sheet.final, true)
   assert.equal(sheet.stars, 5)
-  assert.equal(sheet.tip, 10000)                // có món Không tì vết
+  // M4: tip một mức 5.000đ khi 5 sao và hóa đơn khách thực trả từ 20.000đ (bánh mì + trà tắc = 30.000đ);
+  // món Không tì vết không còn tip 10.000đ mà chỉ +1 danh tiếng
+  assert.equal(sheet.tip, 5000)
+  assert.equal(sheet.bill, 30000)
   assert.equal(sheet.reputation, 4)
   assert.equal(env.c.status, 'roi_di')
   assert.deepEqual(env.sh.served, ['k1'])
   assert.equal(env.sh.tickets.length, 0)
-  assert.equal(env.sh.tipJar, 10000)
+  assert.equal(env.sh.tipJar, 5000)
   assert.ok(env.ctx.events.some(e => e.type === 'dish.served'))
   assert.deepEqual(env.ctx.events.find(e => e.type === 'customer.rated').payload, { customerId: 'k1', stars: 5, counterErrors: [], kitchenErrors: [] })
+})
+
+test('M4: chỉ 1 ly trà tắc (10.000đ) chấm 5 sao thì không có tip; khách khó tính 5 sao +1 danh tiếng, tip vẫn 5.000đ', () => {
+  const env = kitchenEnv([{ recipeId: 'tra_tac', qty: 1, notes: [] }])
+  cookLine(env, 0)
+  const sheet = serveTicket(env.state, 'p1', env.ctx)
+  assert.equal(sheet.stars, 5)
+  assert.equal(sheet.bill, 10000)
+  assert.equal(sheet.tip, 0)
+  assert.equal(env.sh.tipJar, 0)
+  assert.equal(env.sh.ledger.tips, 0)
+  // 2 ly trà tắc = 20.000đ: đủ ngưỡng
+  const two = kitchenEnv([{ recipeId: 'tra_tac', qty: 2, notes: [] }])
+  cookLine(two, 0)
+  assert.equal(serveTicket(two.state, 'p1', two.ctx).tip, 5000)
+  // khách khó tính chấm 5 sao: tip như mọi khách, thêm strictFiveStarRep danh tiếng
+  const k = kitchenEnv([{ recipeId: 'banh_mi_op_la', qty: 1, notes: [] }], { persona: 'kho_tinh' })
+  k.c.strict = true
+  cookLine(k, 0)
+  const ks = serveTicket(k.state, 'p1', k.ctx)
+  assert.equal(ks.stars, 5)
+  assert.equal(ks.tip, 5000)
+  assert.equal(ks.reputation, 3 + 1 + 1, '5 sao +3, Không tì vết +1, khó tính 5 sao +1')
 })
 
 test('phạt chờ: vượt 75% / 100% / 150% ngân sách, chỉ mức cao nhất', () => {

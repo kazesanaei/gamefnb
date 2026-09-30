@@ -8,6 +8,9 @@
 //   - bất biến ví từng ca và từng ngày (mọi đồng vào/ra đều có nguồn), không NaN, lưu/tải nguyên vẹn.
 // Kịch bản thứ hai chạy trong mùa "Tri ân 20/11" (có quà lễ 20/11 bằng tiền) tới sau ân hạn (26/11): nhận Chè bưởi
 // qua chuỗi sự kiện rồi bán được; Tem dư đổi ra Tiền quán ngày 25/11 mà thưởng ngày đó vẫn ≤ 35%.
+// M4 (bước 8): người chơi tốt còn ghé phiên hàng hiếm đang mở trước mỗi ca (ca 08:00, 12:00, 17:30 trúng đủ 3 khung
+// giờ), lựa đúng hàng ("Lựa hàng" 100 điểm), đủ 3 mảnh thì nấu thử mở món hiếm, gặp tình huống trong ca thì chọn cách
+// an toàn. Tỉ lệ thưởng quy đổi tính cả giá trị quy đổi của nguyên liệu hiếm nhận được (trừ hàng tự bỏ tiền mua).
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { DATA } from '../../src/data/index.js'
@@ -28,6 +31,8 @@ import {
 } from '../../src/core/events.js'
 import { checkStageUp } from '../../src/core/progression.js'
 import { encodeSave, decodeSave, migrate } from '../../src/core/save.js'
+import { stallStatus, startStall, finishStall, rareRecipeIds, rareUnlockInfo, rareValue, rareConfig } from '../../src/core/rare.js'
+import { scoreChon } from '../../src/core/minigame-scoring.js'
 import { playShift, counterStep, cookTicket } from '../helpers/perfect-player.mjs'
 import { advance, isShiftOver, endShift } from '../../src/core/shift.js'
 import { makeMetaCtx, vn } from '../helpers/meta-helpers.mjs'
@@ -78,7 +83,8 @@ function simulate({ seed, start, days = 5, maxDays = 6, event = false }) {
   state.shopName = 'Xe mô phỏng'
   const dayStart = vn(start + 'T' + SHIFT_HOURS[0])
   const ni = () => makeNowInfo(state, ctx.clock.t)
-  const report = { state, ctx, days: [], eligibleAt: null, tasted: null, bought: {}, rerolled: false, exchanged: 0 }
+  const report = { state, ctx, days: [], eligibleAt: null, tasted: null, bought: {}, rerolled: false, exchanged: 0,
+    rareUnlocked: {}, incidents: [] }
   let cur = null
 
   // Mọi khoản thưởng đi qua đây: kiểm tiền vào ví đúng bằng phần thưởng, cộng dồn tiền và giá trị quy đổi.
@@ -140,6 +146,42 @@ function simulate({ seed, start, days = 5, maxDays = 6, event = false }) {
     }
   }
 
+  // M4: phiên hàng hiếm đang mở (màn Chuẩn bị, trước ca): lựa đúng hàng hiếm, không chạm hàng thường dễ nhầm.
+  function visitStall() {
+    const info = ni()
+    const st = stallStatus(state, info, ctx)
+    if (!st.current || !st.current.canStart) return null
+    const r = startStall(state, st.current.id, info, ctx)
+    assert.ok(r.ok, 'không vào được phiên hàng: ' + r.reason)
+    const picked = r.game.goods.slice()
+    const sc = scoreChon({ required: r.game.goods, decoys: r.game.recipe.decoys, picked, mistakes: 0 })
+    assert.equal(sc.score, 100)
+    const w = state.wallet
+    const out = finishStall(state, { score: sc.score, picked, mistakes: 0 }, info, ctx)
+    assert.ok(out.ok, 'phiên hàng không trao hàng: ' + out.reason)
+    assert.equal(state.wallet, w, 'phiên hàng không tốn Tiền quán')
+    // luôn có quà: ít nhất 1 phần (kho đầy hoặc quá trần ngày thì đổi Muỗng Vàng)
+    assert.ok(out.got.reduce((a, x) => a + x.n, 0) >= 1 || out.spoons > 0, 'phiên hàng về tay trắng')
+    assert.equal(stallStatus(state, info, ctx).current.canStart, false, 'mỗi phiên 1 lượt mỗi ngày thật')
+    cur.stalls.push(out.stallId)
+    return out
+  }
+
+  // M4: đủ 3 mảnh công thức hiếm (và có món nền) thì nấu thử; đạt hạng Được là mở món.
+  function tasteRare() {
+    for (const id of rareRecipeIds(ctx)) {
+      if (!rareUnlockInfo(state, id, ctx).ready) continue
+      const w = state.wallet
+      const stock = JSON.stringify(state.rare.stock)
+      const t = tasteRecipe(state, ctx, id)
+      assert.ok(t.ok && t.rare && t.unlocked, 'nấu thử hạng Tuyệt hảo mà chưa mở món hiếm ' + id)
+      assert.ok(state.recipes[id], 'chưa có món hiếm ' + id)
+      assert.equal(state.wallet, w, 'nấu thử không tốn Tiền quán')
+      assert.equal(JSON.stringify(state.rare.stock), stock, 'nấu thử không trừ kho hàng hiếm')
+      report.rareUnlocked[id] = { realDay: cur.realDay, day: state.day }
+    }
+  }
+
   // Mua sắm giữa các ca: nấu thử rồi mua Bánh tráng trộn, Dao thép tốt, Cà phê sữa đá; đủ điều kiện lên chặng rồi mới mua Loa.
   function shop() {
     const cat = shopCatalog(state, ctx)
@@ -181,7 +223,16 @@ function simulate({ seed, start, days = 5, maxDays = 6, event = false }) {
     if (p.coupon) assert.equal(sh.mods.cogsMul, 0.8)
     const walletStart = sh.walletStart
     const evFrom = ctx.events.length
-    const { summary } = playShift(state, ctx)
+    // M4: tình huống trong ca → luôn chọn cách an toàn
+    const { summary, incidents } = playShift(state, ctx, { incident: view => {
+      assert.ok(view.safeId, 'tình huống không có cách an toàn: ' + view.id)
+      return view.safeId
+    } })
+    for (const x of incidents) {
+      assert.equal(x.res.ok, true)
+      report.incidents.push({ id: x.view.id, choice: x.view.safeId, day: summary.day })
+      cur.incidents += 1
+    }
     // khách bỏ đi chỉ có thể là khách trả bằng ảnh chuyển khoản giả bị người chơi từ chối
     const lostReasons = ctx.events.slice(evFrom).filter(e => e.type === 'customer.lost').map(e => e.payload.reason)
     assert.equal(lostReasons.length, summary.lost)
@@ -194,7 +245,26 @@ function simulate({ seed, start, days = 5, maxDays = 6, event = false }) {
     cur.prepCost += prepCost
     // Phiếu Chợ Sớm quy đổi = phần giá vốn tiết kiệm được (giá vốn đã giảm 20%)
     if (p.coupon) cur.value += Math.round(summary.cogs / 0.8 * 0.2)
+    cur.eventIn += summary.eventIn || 0
+    cur.eventOut += summary.eventOut || 0
     cur.shifts.push({ day: summary.day, hour, profit: summary.profit, served: summary.served, dayEvent: p.dayEvent, coupon: p.coupon })
+  }
+
+  // M4: hàng hiếm trong ngày (bus 'rare.gained' / 'rare.fragment' / 'rare.used'). Nguyên liệu hiếm không trừ ví khi nấu
+  // (giá vốn món hiếm không có phần hàng hiếm), nên phần lãi thêm nằm trong lãi bán hàng: quy đổi vào tỉ lệ thưởng giống
+  // Phiếu Chợ Sớm (thiết kế M4 mục B.4), tức giá quy đổi (rareValue) của mỗi phần ĐÃ DÙNG khi Ra món trong ngày
+  // (rareUsedValue). Phần nhận vào kho (trừ hàng tự bỏ tiền mua) ghi riêng ở rareValue để theo dõi, chưa là tiền.
+  function tallyRare(from) {
+    for (const e of ctx.events.slice(from)) {
+      if (e.type === 'rare.gained' && !e.payload.bought) {
+        cur.rareGot += e.payload.n
+        cur.rareValue += e.payload.n * rareValue(ctx, e.payload.id)
+      } else if (e.type === 'rare.fragment') cur.rareFrags += e.payload.n
+      else if (e.type === 'rare.used') {
+        for (const [id, n] of Object.entries(e.payload.used)) { cur.rareUsed += n; cur.rareUsedValue += n * rareValue(ctx, id) }
+      }
+    }
+    cur.value += cur.rareUsedValue
   }
 
   for (let d = 1; d <= maxDays; d++) {
@@ -202,7 +272,9 @@ function simulate({ seed, start, days = 5, maxDays = 6, event = false }) {
     ctx.clock.t = dayStart + (d - 1) * DAY
     const info = ni()
     cur = { realDay: d, dayKey: info.dayKey, walletStart: state.wallet, sales: 0, bonus: 0, value: 0, spent: 0, prepCost: 0,
-      loanRepaid: 0, fakeRejected: 0, quests: 0, chests: 0, chainSteps: [], mails: [], shifts: [], checkin: null }
+      loanRepaid: 0, fakeRejected: 0, quests: 0, chests: 0, chainSteps: [], mails: [], shifts: [], checkin: null,
+      stalls: [], incidents: 0, eventIn: 0, eventOut: 0, rareGot: 0, rareValue: 0, rareFrags: 0, rareUsed: 0, rareUsedValue: 0 }
+    const dayEvFrom = ctx.events.length
     // mở game: làm mới meta (như main.js / màn Chuẩn bị), điểm danh, nhận thư
     refreshMeta(state, info, ctx)
     assert.equal(checkinStatus(state, info, ctx).canClaim, true, `ngày thật ${d} phải điểm danh được`)
@@ -221,6 +293,8 @@ function simulate({ seed, start, days = 5, maxDays = 6, event = false }) {
     for (let s = 0; s < SHIFT_HOURS.length; s++) {
       const [hh, mm] = SHIFT_HOURS[s].split(':').map(Number)
       ctx.clock.t = dayStart + (d - 1) * DAY + (hh - Number(SHIFT_HOURS[0].slice(0, 2))) * HOUR + mm * 60000
+      visitStall()
+      tasteRare()
       shop()
       playOne(SHIFT_HOURS[s])
       ctx.clock.t += 40 * 60000
@@ -228,6 +302,12 @@ function simulate({ seed, start, days = 5, maxDays = 6, event = false }) {
       if (!report.eligibleAt && checkStageUp(state, ctx).eligible) report.eligibleAt = { realDay: d, shift: state.day - 1, dayKey: cur.dayKey }
     }
     cur.walletEnd = state.wallet
+    tallyRare(dayEvFrom)
+    // M4: kho và trần hàng hiếm mỗi ngày thật
+    const RC = rareConfig(ctx)
+    for (const [id, n] of Object.entries(state.rare.stock)) assert.ok(n >= 0 && n <= RC.stockMax, `kho ${id} = ${n}`)
+    assert.ok(state.rare.today.got <= RC.dailyCap && state.rare.today.frags <= RC.dailyFragCap, `ngày thật ${d}: vượt trần hàng hiếm`)
+    assert.ok(cur.rareGot <= RC.dailyCap, `ngày thật ${d}: nhận ${cur.rareGot} phần hàng hiếm`)
     // bất biến ví theo ngày: mọi đồng vào/ra đều có nguồn
     assert.equal(cur.walletEnd - cur.walletStart, cur.sales - cur.loanRepaid + cur.bonus - cur.spent - cur.prepCost,
       `ngày thật ${d}: ví lệch sổ`)
@@ -247,12 +327,16 @@ function log(title, rep) {
   if (!process.env.META_SIM_LOG) return
   const e = rep.eligibleAt
   console.log(`${title}\n${describe(rep)}\nđủ điều kiện lên Chặng 2: ${e ? `ngày thật ${e.realDay}, ca ${e.shift}` : 'chưa'}; ` +
-    `Muỗng Vàng ${rep.state.goldSpoons}; danh tiếng ${rep.state.reputation}; mua ${JSON.stringify(rep.bought)}`)
+    `Muỗng Vàng ${rep.state.goldSpoons}; danh tiếng ${rep.state.reputation}; mua ${JSON.stringify(rep.bought)}; ` +
+    `mở món hiếm ${JSON.stringify(rep.rareUnlocked)}; kho ${JSON.stringify(rep.state.rare.stock)}; ` +
+    `tình huống ${JSON.stringify(rep.incidents.map(x => x.id))}`)
 }
 
 function describe(rep) {
   return rep.days.map(d => `ngày thật ${d.realDay} (${d.dayKey}): lãi ${d.sales}, thưởng ${d.bonus} (quy đổi ${d.value}), ` +
-    `tỉ lệ ${(d.ratio * 100).toFixed(1)}% / ${(d.ratioValue * 100).toFixed(1)}%, ví ${d.walletStart}→${d.walletEnd}`).join('\n')
+    `tỉ lệ ${(d.ratio * 100).toFixed(1)}% / ${(d.ratioValue * 100).toFixed(1)}%, ví ${d.walletStart}→${d.walletEnd}` +
+    (d.stalls ? `; phiên hàng ${d.stalls.length}, hàng hiếm +${d.rareGot} phần (${d.rareValue}đ) +${d.rareFrags} mảnh, ` +
+      `dùng ${d.rareUsed} phần (${d.rareUsedValue}đ); tình huống ${d.incidents}; sự kiện +${d.eventIn}/−${d.eventOut}` : '')).join('\n')
 }
 
 for (const seed of [42, 7, 2024]) {
@@ -293,8 +377,37 @@ for (const seed of [42, 7, 2024]) {
     for (const id of ['banh_trang_tron', 'ca_phe_sua_da']) assert.ok(state.recipes[id].cooks > 0, `khách có gọi ${id}`)
     assert.equal(state.loan, null)
     assert.ok(state.goldSpoons > 0)
+    // M4: phiên hàng theo giờ thật — ngày thật 1 chỉ kịp Gánh đặc sản tối (ca 17:30 là ngày game 3, hệ thống mở từ ngày 3),
+    // từ ngày thật 2 đủ 3 phiên (ca 08:00, 12:00, 17:30)
+    assert.deepEqual(rep.days[0].stalls, ['ganh_toi'])
+    for (const d of rep.days.slice(1)) assert.deepEqual(d.stalls, ['cho_som', 'ba_gac_trua', 'ganh_toi'], `ngày thật ${d.realDay}`)
+    // mở món hiếm bằng nấu thử: món đầu tiên trong ngày thật 1–2 (mục tiêu nhịp thiết kế C.4), ít nhất 2 món sau 5 ngày
+    const unlocked = Object.values(rep.rareUnlocked)
+    assert.ok(unlocked.length >= 2, 'mở được ' + JSON.stringify(rep.rareUnlocked))
+    assert.ok(Math.min(...unlocked.map(x => x.realDay)) <= 2, 'món hiếm đầu tiên sau ngày thật 2: ' + JSON.stringify(rep.rareUnlocked))
+    assert.ok(rep.days.reduce((a, d) => a + d.rareUsed, 0) > 0, 'chưa bán phần món hiếm nào')
+    assert.ok(Object.keys(rep.rareUnlocked).some(id => state.recipes[id].cooks > 0), 'khách chưa gọi món hiếm')
+    // tình huống trong ca: luôn chọn cách an toàn → không bị phạt, không mất tiền vì sự kiện
+    assert.ok(rep.incidents.length >= 3, 'quá ít tình huống: ' + rep.incidents.length)
+    assert.equal(rep.days.reduce((a, d) => a + d.eventOut, 0), 0, 'chọn cách an toàn mà vẫn bị phạt/chi')
   })
 }
+
+// M4 (bước 8): các hạt giống từng vượt trần tỉ lệ thưởng trước khi giảm thưởng chuỗi "Ngày đầu ra phố" (can-bang mục 10.1,
+// 16): người chơi giỏi dồn hết chuỗi vào ngày thật 1–2 trong khi lãi ngày đầu giảm vì luật tip mới. Khóa lại để lần chỉnh
+// sau không làm vượt trần lần nữa.
+test('cân bằng M4: tỉ lệ thưởng ≤ 35% mỗi ngày thật ở các hạt giống khó (tiền thật và quy đổi, có hàng hiếm)', () => {
+  const cases = [3, 13, 14, 21, 33, 36, 40].map(seed => ({ seed, start: '2026-10-05' })).concat([{ seed: 13, start: '2027-02-01' }])
+  for (const { seed, start } of cases) {
+    const rep = simulate({ seed, start })
+    log(`hạt giống khó ${seed} (${start})`, rep)
+    const msg = `\nseed ${seed} (${start})\n` + describe(rep)
+    for (const d of rep.days) {
+      assert.ok(d.ratio <= RATIO_CAP, `ngày thật ${d.realDay}: thưởng ${(d.ratio * 100).toFixed(1)}% > 35%` + msg)
+      assert.ok(d.ratioValue <= RATIO_CAP, `ngày thật ${d.realDay}: thưởng quy đổi ${(d.ratioValue * 100).toFixed(1)}% > 35%` + msg)
+    }
+  }
+})
 
 test('tích hợp meta: mùa "Tri ân 20/11" tới sau ân hạn — Chè bưởi qua chuỗi sự kiện, quà lễ 20/11, Tem dư, thưởng vẫn ≤ 35%', () => {
   const rep = simulate({ seed: 42, start: '2026-11-17', days: 10, maxDays: 10, event: true })

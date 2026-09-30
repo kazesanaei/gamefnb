@@ -1,6 +1,7 @@
 // Màn NẤU THỬ (Chợ Công Thức): dùng lại Thớt sơ chế và 6 mini-game của bếp trên một "hộp cát"
 // (state.tasting.shift, tách biệt ca thật): không đếm giờ, không tốn tiền, không tính thạo món, không đếm nhiệm vụ.
 // Ra món xong → ghi "đã nấu thử" (finishTasting), hiện kết quả, quay về Chợ Công Thức.
+// M4: công thức hiếm đủ mảnh: đạt hạng Được là mở món (grantReward), chưa đạt thì thử lại; không trừ kho hàng hiếm.
 import { h, svgBox } from '../dom.js'
 import { icon, DI_SAU } from '../art.js'
 import { createBus } from '../../core/bus.js'
@@ -15,7 +16,10 @@ export default {
     const state = app.state
     const recipeId = params.recipeId || (state.tasting && state.tasting.recipeId)
     const recipe = recipeId && app.data.RECIPES[recipeId]
-    const back = () => app.go(params.back || 'shop', { tab: 'recipes' })
+    // M4: công thức hiếm (đủ mảnh): nấu thử đạt hạng Được là mở món; thử lại không giới hạn; về màn đã mở (Chuẩn bị / Sổ
+    // công thức)
+    const rare = !!(recipe && recipe.source === 'hiem')
+    const back = () => app.go(params.back || (rare ? 'prep' : 'shop'), { tab: 'recipes' })
     if (!recipe) { setTimeout(back, 0); return { unmount() {} } }
     if (!state.tasting || state.tasting.recipeId !== recipeId) {
       const r = startTasting(state, recipeId, app.ctx)
@@ -39,13 +43,15 @@ export default {
     // chưa bắt đầu (hoặc tải lại trước khi chọn nguyên liệu): mở phiếu nấu thử; đang dở thì làm tiếp
     if (!sh.cook) startCook(sb.state, 'thu1', 0, sb.ctx)
 
-    const exitBtn = h('button', { class: 'btn btn-ghost meta-back', type: 'button', testid: 'tasting-exit', onclick: () => onExit() }, '‹ Về Chợ')
+    const exitBtn = h('button', { class: 'btn btn-ghost meta-back', type: 'button', testid: 'tasting-exit', onclick: () => onExit() }, rare ? '‹ Quay lại' : '‹ Về Chợ')
     const head = h('header', { class: 'tasting-head' },
       exitBtn,
       h('div', { class: 'tasting-title' },
         h('span', { class: 'tasting-badge', testid: 'tasting-label' }, 'Nấu thử'),
-        h('b', null, recipe.name)))
-    const note = h('p', { class: 'tasting-note' }, 'Không tính giờ · Có gợi ý · Miễn phí · Không tính thạo món')
+        h('b', null, recipe.name, rare ? h('span', { class: 'rare-star' }, ' ★') : null)))
+    const note = h('p', { class: 'tasting-note' }, rare
+      ? 'Không tính giờ · Có gợi ý · Không tốn hàng hiếm · Đạt hạng Được là mở món'
+      : 'Không tính giờ · Có gợi ý · Miễn phí · Không tính thạo món')
     const panel = h('section', { class: 'panel panel-kitchen', testid: 'panel-kitchen' })
     const el = h('section', { class: 'tasting-screen', testid: 'screen-tasting' }, head, note, h('div', { class: 'panels' }, panel))
     root.appendChild(el)
@@ -71,8 +77,14 @@ export default {
         h('div', { class: 'npc-talk' }, svgBox(DI_SAU[d ? moodForGrade(d.grade) : 'vui'] || DI_SAU.vui, 'npc-face small'),
           h('div', { class: 'bubble npc-bubble' }, h('b', null, 'Dì Sáu'),
             h('p', null, d ? dishComment(d, recipe, app.data) : 'Lần sau nấu thử tiếp nha con.'))),
-        h('p', { class: 'muted small center' }, 'Lượt nấu thử miễn phí của món này đã dùng. Kết quả không tính vào thạo món.'),
+        rare ? (res && res.unlocked
+          ? h('p', { class: 'tasting-unlock center', testid: 'tasting-unlocked' },
+            `Mở công thức ${recipe.name}! Khách sẽ gọi món này khi kho còn nguyên liệu hiếm.`)
+          : h('p', { class: 'small center', testid: 'tasting-not-yet' }, 'Chưa đạt hạng Được. Mảnh công thức vẫn giữ, nấu thử lại nha.'))
+          : h('p', { class: 'muted small center' }, 'Lượt nấu thử miễn phí của món này đã dùng. Kết quả không tính vào thạo món.'),
         h('div', { class: 'tasting-actions' },
+          rare && !(res && res.unlocked) ? h('button', { class: 'btn btn-primary btn-big', type: 'button', testid: 'tasting-retry',
+            onclick: () => app.go('tasting', { recipeId, back: params.back }) }, 'Nấu thử lại') : null,
           canBuy ? h('button', {
             class: 'btn btn-primary btn-big', type: 'button', testid: 'tasting-buy', disabled: app.state.wallet < recipe.shopPrice,
             onclick: async () => {
@@ -89,7 +101,8 @@ export default {
               back()
             }
           }, `Mua món · ${formatVND(recipe.shopPrice)}`) : null,
-          h('button', { class: ['btn', canBuy ? 'btn-ghost' : 'btn-primary', 'btn-big'], type: 'button', testid: 'tasting-back', onclick: back }, 'Về Chợ Công Thức'))))
+          h('button', { class: ['btn', canBuy || (rare && !(res && res.unlocked)) ? 'btn-ghost' : 'btn-primary', 'btn-big'], type: 'button', testid: 'tasting-back', onclick: back },
+            rare ? (params.back === 'recipe-book' ? 'Về Sổ công thức' : 'Về màn Chuẩn bị') : 'Về Chợ Công Thức'))))
     }
 
     async function onExit() {

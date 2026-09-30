@@ -1,5 +1,5 @@
 // Sổ tay nghề (src/core/notebook.js) và Sổ công thức (src/core/recipe-book.js), DATA thật:
-// 20 thẻ chia 4 nhóm, thẻ chưa mở có gợi ý cách mở, đủ nhóm → danh hiệu + 20 Muỗng Vàng đúng 1 lần (không nhận trong ca);
+// 24 thẻ chia 4 nhóm (M4: 20 → 24), thẻ chưa mở có gợi ý cách mở, đủ nhóm → danh hiệu + 20 Muỗng Vàng đúng 1 lần (không nhận trong ca);
 // Sổ công thức: đủ món (đã có / Chợ Công Thức / sự kiện / bóng mờ Chặng 2), giá, giá vốn, số lần nấu, điểm cao nhất,
 // cấp thạo và mốc kế, huy hiệu "Không tì vết", nguồn; chi tiết món không lộ bẫy; Sổ từ vùng miền từ SYNONYMS.
 import test from 'node:test'
@@ -18,13 +18,14 @@ const ctx = () => {
 }
 const tipsOf = g => DATA.TIPS.filter(t => t.group === g).map(t => t.id)
 
-test('Sổ tay nghề: 20 thẻ chia Quầy 12 / Bếp 5 / Kho 1 / Phục vụ-Quản lý 2; thẻ chưa mở có gợi ý cách mở', () => {
+// M4 (sửa có chủ ý): thêm 4 thẻ (Soi tiền, Chờ tiền về → Quầy; Kiểm hàng → Kho; Giữ lối đi → Phục vụ, Quản lý).
+test('Sổ tay nghề: 24 thẻ chia Quầy 14 / Bếp 5 / Kho 2 / Phục vụ-Quản lý 3; thẻ chưa mở có gợi ý cách mở', () => {
   const c = ctx()
   const s = defaultState(1, DATA)
   const st = notebookStatus(s, c)
-  assert.equal(st.total, 20)
+  assert.equal(st.total, 24)
   assert.equal(st.unlocked, 0)
-  assert.deepEqual(st.groups.map(g => [g.id, g.total]), [['quay', 12], ['bep', 5], ['kho', 1], ['phuc_vu', 2]])
+  assert.deepEqual(st.groups.map(g => [g.id, g.total]), [['quay', 14], ['bep', 5], ['kho', 2], ['phuc_vu', 3]])
   assert.equal(st.groups[3].name, 'Phục vụ, Quản lý')
   for (const g of st.groups) {
     assert.equal(g.complete, false)
@@ -88,7 +89,8 @@ test('Sổ tay nghề: đủ một nhóm → danh hiệu + 20 Muỗng Vàng, nh�
   assert.equal(notebookStatus(t, c).groups.find(g => g.id === 'phuc_vu').canClaim, true)
   // mẹo đã mở hiện ngẫu nhiên
   assert.equal(randomSeenTip(t, c, () => 0).id, tipsOf('phuc_vu')[0])
-  assert.equal(randomSeenTip(t, c, () => 0.99).id, tipsOf('phuc_vu')[1])
+  // M4: nhóm Phục vụ, Quản lý có 3 thẻ → rand 0,99 rơi vào thẻ cuối
+  assert.equal(randomSeenTip(t, c, () => 0.99).id, tipsOf('phuc_vu')[tipsOf('phuc_vu').length - 1])
 })
 
 test('Sổ công thức: đủ món theo nguồn (có sẵn, Chợ Công Thức, sự kiện, bóng mờ Chặng 2); giá, giá vốn, lãi', () => {
@@ -96,9 +98,15 @@ test('Sổ công thức: đủ món theo nguồn (có sẵn, Chợ Công Thức,
   const s = defaultState(4, DATA)
   const b = recipeBook(s, c)
   const byId = id => b.entries.find(e => e.id === id)
-  assert.equal(b.total, 5)
+  // M4 (sửa có chủ ý): thêm 4 công thức hiếm (nguồn "Công thức hiếm", trạng thái 'hiem', xếp sau món sự kiện)
+  assert.equal(b.total, 9)
   assert.equal(b.owned, 2)
-  assert.deepEqual(b.entries.map(e => e.status), ['owned', 'owned', 'shop', 'shop', 'event', 'teaser', 'teaser', 'teaser'])
+  assert.deepEqual(b.entries.map(e => e.status), ['owned', 'owned', 'shop', 'shop', 'event', 'hiem', 'hiem', 'hiem', 'hiem', 'teaser', 'teaser', 'teaser'])
+  // món hiếm: "Mảnh 0/3 · Cần …" khi chưa có món nền
+  assert.equal(byId('banh_trang_tron_tay_ninh').sourceLabel, 'Công thức hiếm')
+  assert.match(byId('banh_trang_tron_tay_ninh').note, /^Mảnh 0\/3 · Cần Bánh tráng trộn$/)
+  assert.equal(byId('tra_tac_mat_ong').note, 'Mảnh 0/3')
+  assert.deepEqual(byId('banh_trang_tron_tay_ninh').rare.ings.map(x => x.id).sort(), ['kho_muc', 'muoi_tom_tay_ninh'])
   assert.deepEqual(b.entries.filter(e => e.status === 'teaser').map(e => e.id), DATA.SHOP.teasers.map(t => t.id))
   const bm = byId('banh_mi_op_la')
   assert.equal(bm.price, 20000)
@@ -126,6 +134,12 @@ test('Sổ công thức: đủ món theo nguồn (có sẵn, Chợ Công Thức,
   assert.equal(che.sourceLabel, 'Tri ân 20/11 · 2026')
   assert.equal(sourceLabel(t, DATA.RECIPES.che_buoi, c), 'Tri ân 20/11 · 2026')
   assert.equal(tb.owned, 3)
+  // M4: có 2 mảnh + món nền → "Mảnh 2/3"; mở món hiếm → món đang bán, nhãn "Công thức hiếm"
+  t.rare.fragments.tra_tac_mat_ong = 2
+  assert.equal(recipeBook(t, c).entries.find(e => e.id === 'tra_tac_mat_ong').note, 'Mảnh 2/3')
+  grantReward(t, { recipe: 'tra_tac_mat_ong' }, c)
+  const rb = recipeBook(t, c).entries.find(e => e.id === 'tra_tac_mat_ong')
+  assert.deepEqual([rb.status, rb.sourceLabel, t.recipes.tra_tac_mat_ong.boughtDay], ['owned', 'Công thức hiếm', 0])
 })
 
 test('Sổ công thức: số lần nấu, điểm cao nhất, cấp thạo và mốc kế, huy hiệu Không tì vết lấy từ tiến độ thật', () => {

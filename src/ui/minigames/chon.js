@@ -2,8 +2,10 @@
 // Không tự kết thúc; quá 2,5 × par thì các ô cần lấy nhấp nháy (và tính thêm 1 lần nhầm = −15).
 // Hỗ trợ thao tác: gợi ý sớm hơn (1,5 × par, không phạt), không gợi ý ngay từ đầu.
 // Nấu thử (ctx.untimed, ctx.guide): gợi ý ngay từ đầu, không bao giờ tính quá giờ.
-// ctx.initial = {picked, mistakes} để khôi phục rổ đang chọn dở; handle.snapshot() trả rổ hiện tại.
-// Thiếu nguyên liệu chính: báo chung + khóa 1,5 giây, không cho qua.
+// ctx.initial = {picked, mistakes} để khôi phục rổ đang chọn dở; handle.snapshot() trả rổ hiện tại; ctx.onChange(snapshot)
+// gọi sau mỗi lần chạm ô kệ (vd gánh hàng quê lưu rổ dở vào save để tải lại trang không thành lượt lựa mới).
+// Thiếu nguyên liệu chính: báo chung + khóa 1,5 giây, không cho qua (ctx.missingText đổi câu báo, vd ở gánh hàng quê).
+// M4: ctx.stockLeft = {ingId: số phần còn trong kho hàng hiếm} → ô kệ hiện nhãn "còn n" (nguyên liệu hiếm).
 import { h, svgBox } from '../dom.js'
 import { requiredIngredients } from '../../core/scoring.js'
 import { scoreChon } from '../../core/minigame-scoring.js'
@@ -48,13 +50,15 @@ function mount(stage, step, ctx = {}) {
     return (ing && ing.qty > 1 ? ing.qty : 1) * portions
   }
   const cells = new Map()
+  const left = ctx.stockLeft && typeof ctx.stockLeft === 'object' ? ctx.stockLeft : {}
   for (const id of shelf) {
     const n = qtyOf(id)
     const cell = h('button', {
       class: 'chon-cell', type: 'button', 'data-testid': 'shelf-' + id, 'aria-pressed': 'false',
       dataset: { ing: id, qty: n }, 'aria-label': ingName(id, ctx) + (n > 1 ? ` ×${n}` : '')
     }, svgBox(ingIcon(id, ctx), 'chon-icon'), h('span', { class: 'chon-label' }, ingName(id, ctx)),
-    n > 1 ? h('span', { class: 'chon-qty', 'data-testid': 'shelf-qty-' + id, 'aria-hidden': 'true' }, '×' + n) : null)
+    n > 1 ? h('span', { class: 'chon-qty', 'data-testid': 'shelf-qty-' + id, 'aria-hidden': 'true' }, '×' + n) : null,
+    left[id] !== undefined ? h('span', { class: 'chon-left', 'data-testid': 'shelf-left-' + id }, 'còn ' + left[id]) : null)
     if (picked.includes(id)) { cell.classList.add('is-picked'); cell.setAttribute('aria-pressed', 'true') }
     cell.addEventListener('click', () => toggle(id))
     cells.set(id, cell)
@@ -98,6 +102,9 @@ function mount(stage, step, ctx = {}) {
     }
     renderBasket()
     renderHints()
+    if (typeof ctx.onChange === 'function') {
+      try { ctx.onChange({ picked: picked.slice(), mistakes }) } catch (err) { console.error(err) }
+    }
   }
 
   function lock(ms) {
@@ -116,7 +123,7 @@ function mount(stage, step, ctx = {}) {
     if (out.done || performance.now() < lockedUntil) return
     const missingMain = req.main.filter(id => !picked.includes(id))
     if (missingMain.length) {
-      msg.textContent = 'Còn thiếu nguyên liệu chính'
+      msg.textContent = ctx.missingText || 'Còn thiếu nguyên liệu chính'
       msg.dataset.kind = 'missing'
       feedback(ctx, 'bad')
       if (ctx.assist) { hinting = true; renderHints() }

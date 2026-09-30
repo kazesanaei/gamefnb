@@ -2,7 +2,7 @@
 
 Bếp Khởi Nghiệp là game bán hàng chơi trên trình duyệt, thiết kế cho điện thoại cầm dọc. Bạn khởi nghiệp với một chiếc xe đẩy đầu hẻm: tự tay nhận order, báo tổng tiền, thối tiền, rồi vào bếp chọn nguyên liệu, rửa, thái, chiên, nêm cho từng món. Mỗi khách chấm sao riêng phần quầy và phần bếp, nên bạn biết mình sai ở đâu để sửa. Game lồng nhẹ các "Mẹo nghề" về vận hành quán ăn, dùng được để giải trí lẫn để ôn nghề cho nhân viên mới.
 
-Bản hiện tại là **Chặng 1 "Xe đẩy đầu hẻm"** của bản MVP, đã xong cả ba mốc: M1 (lõi chơi được), M2 (kinh tế, nhiệm vụ, sự kiện) và M3 (hoàn thiện: chơi offline, sao lưu, Cài đặt, nội dung thêm).
+Bản hiện tại (**0.4.0**) là **Chặng 1 "Xe đẩy đầu hẻm"** của bản MVP, đã xong bốn mốc: M1 (lõi chơi được), M2 (kinh tế, nhiệm vụ, sự kiện), M3 (hoàn thiện: chơi offline, sao lưu, Cài đặt, nội dung thêm) và M4 (tip mới, sự kiện thưởng/phạt tiền, nguyên liệu và món hiếm).
 
 ---
 
@@ -22,7 +22,7 @@ Bản hiện tại là **Chặng 1 "Xe đẩy đầu hẻm"** của bản MVP, �
 **5 hệ thống giữ chân**:
 1. **Việc hôm nay**: 3 việc mỗi ngày (Quầy, Bếp, Chất lượng), đủ 3 việc mở Rương ngày.
 2. **Điểm danh**: 7 ô, lỡ ngày không mất ô; tuần đầu "Tuần Khai Trương" tặng hiện vật.
-3. **Sự kiện ngày**: Trời mưa, Nắng nóng, Ngày lãnh lương, Chợ phiên, báo trước từ hôm trước.
+3. **Sự kiện ngẫu nhiên**: 12 sự kiện ngày báo trước từ hôm trước (Trời mưa, Nắng nóng, Ngày lãnh lương, Chợ phiên, và từ M4 thêm Hội thi xe sạch, Văn phòng đặt trà, Đại lý tài trợ, Tắc lên giá, Tiền điện nước, Cúp điện, Trật tự đô thị, Kiểm tra vệ sinh) cùng 11 tình huống trong ca; luôn có một cách xử lý an toàn.
 4. **Chuỗi nhiệm vụ**: "Ngày đầu ra phố" của Dì Sáu (cổng lên chặng), "Làm quen QR" của Anh Khoa.
 5. **Hộp thư**: thư chào mừng, quà lễ, quà đời thường, việc quên nhận, review đến muộn.
 
@@ -35,8 +35,15 @@ Bản hiện tại là **Chặng 1 "Xe đẩy đầu hẻm"** của bản MVP, �
 **Hoàn thiện (M3)**:
 - **Chơi offline và cài như ứng dụng**: mở game khi có mạng một lần là lần sau chơi được cả khi mất mạng; cài vào màn hình chính từ Cài đặt → Cài game (cần trang chạy qua HTTPS).
 - **Sao lưu bằng mã**: Cài đặt → "Chép mã sao lưu" hoặc "Tải file sao lưu"; ở máy khác, màn mở đầu có nút "Đã chơi ở máy khác? Nhập mã sao lưu" (hoặc Cài đặt → Nhập mã sao lưu), xem trước rồi mới dùng. Bản đang chơi luôn được cất lại, không bị xóa.
-- **Màn Cài đặt**: âm thanh và âm lượng, rung, 2 công tắc Hỗ trợ, Mẹo nghề, giảm chuyển động, tần suất tình huống trong ca, sao lưu, "Chơi lại từ đầu" (xác nhận 2 bước, bản cũ được cất).
+- **Màn Cài đặt**: âm thanh và âm lượng, rung, 2 công tắc Hỗ trợ, Mẹo nghề, giảm chuyển động, tần suất sự kiện (M3 gọi là tần suất tình huống trong ca), sao lưu, "Chơi lại từ đầu" (xác nhận 2 bước, bản cũ được cất).
 - **Tình huống trong ca** (khách mở hàng bằng tờ 500k, khách quen xin ghi nợ, khách đổi ý), **Sổ tay nghề** (gom thẻ Mẹo nghề, đủ nhóm có thưởng), **Sổ công thức** (món, giá vốn, thạo món, Sổ từ vùng miền), âm thanh tổng hợp.
+
+**M4 (bản 0.4.0)**:
+- **Tip mới**: hóa đơn từ 20.000đ mà khách chấm 5 sao thì khách bỏ hũ tip 5.000đ (một mức duy nhất). Bán kèm món thứ hai là dễ đủ hóa đơn; báo tổng thiếu thì mất tip.
+- **Sự kiện thưởng/phạt tiền** theo nguyên tắc phạt công bằng: chỉ phạt khi có nguyên nhân phòng được hoặc đã báo trước, luôn có cách an toàn, có trần mỗi sự kiện và mỗi ngày (vượt thì Dì Sáu đỡ giùm). Tổng kết ca có dòng "Tiền từ sự kiện" và "Phạt, chi sự kiện". 8 sự kiện ngày và 8 tình huống mới (tiền nghi giả, người giao hàng nói đã chuyển khoản, gas hết, khách quên ví, ve chai, đoàn khách hỏi đường, khách quê gửi quà, chị bán dạo), 4 thẻ Mẹo nghề mới.
+- **Tần suất sự kiện** (Cài đặt): Nhiều / Vừa / Ít, áp cho cả sự kiện ngày và tình huống; mức Ít không có khoản phạt. Không bao giờ có 2 sự kiện xấu liền nhau (xét chung sự kiện ngày và tình huống trong ca); sự kiện đã báo trước được giữ nguyên, đổi mức chỉ áp cho ngày chưa báo.
+- **Nguyên liệu và món hiếm**: 3 gánh hàng quê theo giờ Việt Nam (Chợ sớm 05:00–09:00, Xe ba gác trưa 11:00–13:30, Gánh đặc sản tối 17:30–21:00) với mini-game "Lựa hàng" (lấy đúng hàng thật, tránh hàng dễ nhầm), khách lạ ghé ca đầu mỗi ngày mang quà quê, Giỏ chợ có tỉ lệ công khai. Gom 3 mảnh công thức rồi nấu thử đạt hạng Được để mở 4 món hiếm (Trà tắc mật ong rừng, Bánh mì trứng gà ta, Bánh tráng trộn Tây Ninh, Cà phê muối); mỗi phần món hiếm dùng nguyên liệu trong kho.
+- Bản lưu cũ (kể cả đang dở ca) tự nâng cấp khi mở bản mới; người chơi cũ nhận thư "Có gì mới" kèm quà làm quen.
 
 Tiến trình tự lưu trong trình duyệt của bạn. Game không có máy chủ, không cần đăng nhập, không có quảng cáo hay mua bán bằng tiền thật.
 
@@ -137,7 +144,7 @@ Khi dùng `?devNow`, game **lưu vào một bản lưu riêng** (lần đầu ch
 npm test
 ```
 
-Thêm biến môi trường `META_SIM_LOG=1` (ví dụ `META_SIM_LOG=1 npm test` trên macOS, Linux) để in số liệu mô phỏng từng ngày (lãi, thưởng, tỉ lệ thưởng), dùng khi chỉnh cân bằng.
+Thêm biến môi trường `META_SIM_LOG=1` (ví dụ `META_SIM_LOG=1 npm test` trên macOS, Linux) để in số liệu mô phỏng từng ngày (lãi, thưởng, tỉ lệ thưởng, phiên hàng và hàng hiếm, tình huống, tiền sự kiện) và chênh lãi giữa người chơi giỏi với người chơi ẩu, dùng khi chỉnh cân bằng.
 
 **Kiểm thử giao diện (e2e)** mở game trong trình duyệt Chromium ở khung điện thoại 390×844 và để "người chơi tự động" chơi thật qua giao diện:
 
@@ -160,16 +167,19 @@ src/main.js         khởi động game
 src/core/           luật chơi: ca bán, quầy, bếp, chấm điểm, kinh tế, lưu, nhiệm vụ, sự kiện…
                     (không đụng tới giao diện, nên kiểm thử được bằng Node)
 src/data/           nội dung và số cân bằng: món, nguyên liệu, giá, khách, lời thoại,
-                    Mẹo nghề, điểm danh, việc hôm nay, hộp thư, chuỗi, sự kiện, lên chặng
+                    Mẹo nghề, điểm danh, việc hôm nay, hộp thư, chuỗi, sự kiện, lên chặng,
+                    tình huống trong ca, hàng hiếm (gánh hàng quê, khách lạ)
 src/ui/             màn hình, mini-game, hình vẽ SVG, âm thanh
 tests/unit/         unit test
 tests/e2e/          kiểm thử giao diện bằng Playwright
 tests/helpers/      máy chủ tĩnh (npm run serve), người chơi tự động
+tests/fixtures/     dữ liệu mẫu cho test (bản lưu thật của bản 0.3.0)
+tools/              dựng biểu tượng, tìm seed cho kiểm thử giao diện
 docs/               tài liệu thiết kế, kiến trúc, cân bằng
 package.json        các lệnh npm (serve, test, e2e)
 ```
 
-M3 thêm `manifest.webmanifest` (khai báo ứng dụng), `sw.js` (service worker để chơi offline), `icons/` (bộ biểu tượng) và `tools/make-icons.mjs` (dựng biểu tượng PNG).
+M3 thêm `manifest.webmanifest` (khai báo ứng dụng), `sw.js` (service worker để chơi offline), `icons/` (bộ biểu tượng) và `tools/make-icons.mjs` (dựng biểu tượng PNG). M4 thêm `src/core/rare.js`, `src/data/rare.js`, màn "Lựa hàng" `src/ui/screens/market.js` và `tools/tim-seed.mjs` (tìm seed cho e2e: `node tools/tim-seed.mjs`).
 
 Muốn đổi giá món, giá nâng cấp, phần thưởng hay lịch sự kiện: sửa trong `src/data/` (xem `docs/can-bang.md` trước), rồi chạy lại `npm test`.
 
@@ -179,7 +189,9 @@ Muốn đổi giá món, giá nâng cấp, phần thưởng hay lịch sự ki�
 
 - [`docs/de-xuat-thiet-ke.md`](docs/de-xuat-thiet-ke.md): đề xuất thiết kế gameplay (luồng 4 khâu, bếp, 5 hệ thống, kinh tế, 7 chặng, lộ trình MVP → GĐ2 → GĐ3).
 - [`docs/kien-truc.md`](docs/kien-truc.md): hợp đồng kỹ thuật (cấu trúc thư mục, cấu trúc bản lưu, chữ ký hàm, danh sách `data-testid`). Khi tài liệu lệch nhau, tài liệu này là chuẩn về code.
-- [`docs/can-bang.md`](docs/can-bang.md): bảng số cân bằng Chặng 1 (giá, giá vốn, thời gian, thưởng, số đo mô phỏng) và các chỉ số cần đo khi thử với người chơi thật.
+- [`docs/can-bang.md`](docs/can-bang.md): bảng số cân bằng Chặng 1 (giá, giá vốn, thời gian, thưởng, sự kiện, hàng hiếm, số đo mô phỏng) và các chỉ số cần đo khi thử với người chơi thật.
+- [`docs/nghien-cuu-the-loai-game.md`](docs/nghien-cuu-the-loai-game.md): tư liệu nghiên cứu các game mô phỏng cùng thể loại: bản đồ 11 thể loại, 15 nguyên tắc thiết kế (nhịp sự kiện, phạt công bằng, hàng hiếm), 26 đề xuất xếp hạng theo tác động và chi phí; cơ sở cho M4.
+- [`docs/tham-khao/m4-thiet-ke.md`](docs/tham-khao/m4-thiet-ke.md): bản thiết kế triển khai M4 (tip, sự kiện thưởng/phạt, hàng hiếm).
 
 ---
 

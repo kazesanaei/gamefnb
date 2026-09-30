@@ -6,6 +6,8 @@ import { buyRecipe, buyUpgrade } from './economy.js'
 import { customerCount, emptyLedger } from './shift.js'
 import { effectiveSteps } from './kitchen.js'
 import { makeFloat } from './money.js'
+import { grantReward } from './rewards.js'
+import { isRareRecipe, rareUnlockInfo, gradeUnlocks, ensureRare } from './rare.js'
 
 function D(ctx) { return (ctx && ctx.data) || {} }
 
@@ -130,11 +132,20 @@ export function equipCosmetic(state, id, ctx, slot = null) {
 // ---------- Nấu thử ----------
 
 // Có được nấu thử miễn phí món này không.
+// M4: món hiếm (source 'hiem') chỉ nấu thử được khi đã có món nền và đủ mảnh công thức; được thử lại KHÔNG giới hạn cho
+// tới khi đạt hạng mở món (finishTasting).
 export function canTaste(state, recipeId, ctx) {
   const r = (D(ctx).RECIPES || {})[recipeId]
   if (!r) return { ok: false, reason: 'khong_co' }
   if (state.recipes && state.recipes[recipeId]) return { ok: false, reason: 'da_co' }
   if (state.shift) return { ok: false, reason: 'dang_ban' }
+  if (isRareRecipe(r)) {
+    const u = rareUnlockInfo(state, recipeId, ctx)
+    if (!u.baseOwned) return { ok: false, reason: 'thieu_mon_nen' }
+    if (!u.ready) return { ok: false, reason: 'chua_du_manh' }
+    if (state.tasting && state.tasting.recipeId !== recipeId) return { ok: false, reason: 'dang_nau_thu' }
+    return { ok: true, rare: true }
+  }
   if (((state.shop && state.shop.tried) || []).includes(recipeId)) return { ok: false, reason: 'da_nau_thu' }
   // đang nấu thử dở món khác: làm xong (Ra món) món đó trước, không cho mở phiên mới đè lên (mỗi món chỉ 1 lần)
   if (state.tasting && state.tasting.recipeId !== recipeId) return { ok: false, reason: 'dang_nau_thu' }
@@ -174,15 +185,31 @@ export function tastingSandbox(state, ctx) {
 }
 
 // Kết thúc nấu thử: ghi đã thử (miễn phí 1 lần), xóa phiên. Trả kết quả món (nếu đã Ra món).
+// M4: món hiếm đủ mảnh: đạt hạng mở món (RARE_CONFIG.unlockGrade, mặc định Được) → grantReward({recipe}) mở món, bỏ mảnh
+// đã dùng; chưa đạt thì giữ mảnh, thử lại được (không ghi "đã nấu thử"). Nấu thử không trừ kho hàng hiếm.
+// Trả { ok, result, rare?, unlocked? }.
 export function finishTasting(state, ctx) {
   const t = state.tasting
   if (!t) return { ok: false, reason: 'khong_co' }
   const cook = t.shift.cook
   const result = (cook && cook.result) || (t.shift.tickets[0] && t.shift.tickets[0].done[0]) || null
-  state.shop = state.shop || { tried: [] }
-  if (!state.shop.tried.includes(t.recipeId)) state.shop.tried.push(t.recipeId)
+  const r = (D(ctx).RECIPES || {})[t.recipeId]
+  const rare = isRareRecipe(r)
+  if (!rare) {
+    state.shop = state.shop || { tried: [] }
+    if (!state.shop.tried.includes(t.recipeId)) state.shop.tried.push(t.recipeId)
+  }
   state.tasting = null
   if (state.stats) state.stats.tastings = (state.stats.tastings || 0) + 1
   emit(ctx, 'recipe.tasted', { recipeId: t.recipeId, grade: result ? result.grade : null })
-  return { ok: true, result }
+  if (!rare) return { ok: true, result }
+  let unlocked = false
+  if (result && gradeUnlocks(result.grade, ctx) && rareUnlockInfo(state, t.recipeId, ctx).ready) {
+    grantReward(state, { recipe: t.recipeId }, ctx)
+    const R = ensureRare(state)
+    delete R.fragments[t.recipeId]
+    unlocked = !!(state.recipes && state.recipes[t.recipeId])
+    if (unlocked) emit(ctx, 'rare.unlocked', { recipeId: t.recipeId })
+  }
+  return { ok: true, result, rare: true, unlocked }
 }

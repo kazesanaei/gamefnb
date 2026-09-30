@@ -48,5 +48,19 @@ export const INGREDIENTS = deepFreeze({
   bot_mi:         { name: 'Bột mì',         icon: 'bot_mi',         cost: 400,  trapOf: 'bot_nang' },
   cot_dua:        { name: 'Nước cốt dừa',   icon: 'cot_dua',        cost: 1200 },
   dua_nao:        { name: 'Dừa nạo',        icon: 'dua_nao',        cost: 1000, trapOf: 'cot_dua' },
-  dau_xanh:       { name: 'Đậu xanh',       icon: 'dau_xanh',       cost: 800 }
+  dau_xanh:       { name: 'Đậu xanh',       icon: 'dau_xanh',       cost: 800 },
+
+  // M4: nguyên liệu hiếm (thiết kế mục C.2). Lấy từ kho hàng hiếm (state.rare), KHÔNG trừ Tiền quán khi nấu;
+  // `cost` là giá quy đổi để tính giá vốn tham khảo của món hiếm. rare: true; star: độ hiếm (★1–★2); origin: quê;
+  // portion: số đơn vị trong 1 phần kho (trứng gà ta: 2 quả mỗi phần); traps: hàng thường dễ nhầm (bẫy ở phiên hàng).
+  mat_ong_rung:      { name: 'Mật ong rừng U Minh',      icon: 'mat_ong_rung',      cost: 3300, rare: true, star: 2,
+    origin: 'Cà Mau', portion: 1, traps: ['duong', 'duong_phen'] },
+  trung_ga_ta:       { name: 'Trứng gà ta',              icon: 'trung_ga_ta',       cost: 3500, rare: true, star: 1,
+    origin: 'Long An', portion: 2, traps: ['trung_ga', 'trung_vit'] },
+  muoi_tom_tay_ninh: { name: 'Muối tôm Tây Ninh',        icon: 'muoi_tom_tay_ninh', cost: 1500, rare: true, star: 1,
+    origin: 'Tây Ninh', portion: 1, traps: ['muoi', 'sa_te'] },
+  kho_muc:           { name: 'Khô mực Phan Thiết',       icon: 'kho_muc',           cost: 4100, rare: true, star: 2,
+    origin: 'Bình Thuận', portion: 1, traps: ['kho_bo'] },
+  ca_phe_bmt:        { name: 'Cà phê hạt Buôn Ma Thuột', icon: 'ca_phe_bmt',        cost: 3700, rare: true, star: 2,
+    origin: 'Đắk Lắk', portion: 1, traps: ['ca_phe', 'ca_phe_hoa_tan'] }
 })

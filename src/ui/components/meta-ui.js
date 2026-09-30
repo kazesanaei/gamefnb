@@ -57,6 +57,15 @@ export function rewardParts(reward, data, opts = {}) {
     out.push({ icon: 'danh_hieu', text: 'Mở thẻ ' + (u ? `"${u.name}"` : r.unlock), kind: 'unlock' })
   }
   if (r.tipId) out.push({ icon: 'thot', text: r.tipCount > 1 ? `${r.tipCount} thẻ Mẹo nghề mới` : 'Thẻ Mẹo nghề mới', kind: 'tip' })
+  // M4: nguyên liệu hiếm và mảnh công thức hiếm
+  for (const [id, n] of Object.entries(r.rare || {})) {
+    const g = data.INGREDIENTS && data.INGREDIENTS[id]
+    out.push({ icon: (g && g.icon) || id, text: `${n} phần ${g ? g.name : id}`, kind: 'rare' })
+  }
+  for (const [id, n] of Object.entries(r.fragments || {})) {
+    const rec = data.RECIPES && data.RECIPES[id]
+    out.push({ icon: (rec && rec.icon) || id, text: `${n} mảnh công thức ${rec ? rec.name : id}`, kind: 'fragment' })
+  }
   return out
 }
 

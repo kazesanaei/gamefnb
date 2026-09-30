@@ -223,21 +223,26 @@ const NONE = { ...DATA, DAY_EVENTS: null }
 const only = (id, extra = {}) => ({ ...DATA, DAY_EVENT_CONFIG: { ...DATA.DAY_EVENT_CONFIG, fromDay: 1, chance: 1, ...extra },
   DAY_EVENTS: { [id]: DATA.DAY_EVENTS[id] } })
 
-test('sự kiện ngày: tất định theo seed + ngày, từ ngày game 3, khoảng 30%', () => {
+// M4 (sửa có chủ ý): tần suất "dày" — chance 0,65 + bảo hiểm 1 ngày (tỉ lệ thực khoảng 74%), không trùng loại hôm
+// trước; mô phỏng dài và các luật khác ở tests/unit/m4-frequency.test.mjs.
+test('sự kiện ngày: tất định theo seed + ngày, từ ngày game 3, khoảng 74%, không 2 ngày trống liền, không trùng hôm trước', () => {
   const ctx = makeMetaCtx()
   let hit = 0, total = 0
   for (let seed = 1; seed <= 100; seed++) {
     const s = newState(seed)
     assert.equal(rollDayEvent(s, 1, ctx), null)
     assert.equal(rollDayEvent(s, 2, ctx), null)
+    let prev = 'bat_dau'
     for (let d = 3; d <= 12; d++) {
       const a = rollDayEvent(s, d, ctx)
       assert.equal(a, rollDayEvent(newState(seed), d, ctx))
-      if (a) { hit++; assert.ok(DATA.DAY_EVENTS[a]) }
+      if (a) { hit++; assert.ok(DATA.DAY_EVENTS[a]); assert.notEqual(a, prev, `seed ${seed} ngày ${d}: trùng loại hôm trước`) }
+      else assert.notEqual(prev, null, `seed ${seed} ngày ${d}: 2 ngày liền không có sự kiện`)
+      prev = a
       total++
     }
   }
-  assert.ok(hit / total > 0.22 && hit / total < 0.38, String(hit / total))
+  assert.ok(hit / total > 0.66 && hit / total < 0.82, String(hit / total))
 })
 
 test('Trời mưa: khách ×0,8, kiên nhẫn ×1,2; Căng bạt 20.000đ còn ×0,95; có Bạt che mưa thì miễn phí', () => {
@@ -296,14 +301,31 @@ test('Nắng nóng: Trà tắc được gọi ×2, thêm ghi chú ít đường;
   assert.ok(itDuong / tra > (itDuongP / traP) * 1.5, `${itDuong / tra} vs ${itDuongP / traP}`)
 })
 
-test('Ngày lãnh lương: tip ×1,5 nhưng vẫn là bội 5.000đ', () => {
+// M4 (sửa có chủ ý): Ngày lãnh lương không còn nhân tip ×1,5 mà khách gọi thêm món (lineCountWeights [60, 32, 8] thay
+// [70, 25, 5]); luật tip không có ngoại lệ: tip chỉ là 0 hoặc 5.000đ.
+test('Ngày lãnh lương: khách gọi nhiều phần hơn ngày thường; tip chỉ 0 hoặc 5.000đ', () => {
   const ctx = makeMetaCtx({ data: only('lanh_luong') })
-  const s = newState(12); s.day = 3
-  const r = playShift(s, ctx)
-  const tips = r.sheets.map(x => x.tip).filter(t => t > 0)
-  assert.ok(tips.length > 0)
-  for (const t of tips) { assert.equal(t % 5000, 0); assert.ok(t >= 10000, String(t)) }
+  const plain = makeMetaCtx({ data: NONE })
+  const s0 = newState(12); s0.day = 3
+  const r = playShift(s0, ctx)
+  assert.equal(r.summary.day, 3)
+  for (const x of r.sheets) assert.ok(x.tip === 0 || x.tip === 5000, String(x.tip))
+  assert.ok(r.sheets.some(x => x.tip === 5000))
   assert.equal(r.walletAfter - r.walletBefore, r.summary.profit - r.summary.loanRepaid)
+  // số món khác nhau mỗi đơn: nhiều hơn ngày thường (cùng hạt giống, nhiều ca)
+  let lines = 0, cust = 0, linesP = 0, custP = 0
+  for (let seed = 1; seed <= 200; seed++) {
+    const a = newState(seed); a.day = 4
+    const b = newState(seed); b.day = 4
+    a.recipes.banh_trang_tron = { cooks: 0, goodCooks: 0, excellent: 0, flawless: 0, best: 0, boughtDay: 0 }
+    b.recipes.banh_trang_tron = { cooks: 0, goodCooks: 0, excellent: 0, flawless: 0, best: 0, boughtDay: 0 }
+    const sa = startShift(a, ctx), sb = startShift(b, plain)
+    assert.deepEqual(sa.mods.lineCountWeights, [60, 32, 8])
+    assert.equal(sb.mods.lineCountWeights, null)
+    for (const c of Object.values(sa.customers)) { cust++; lines += c.request.length }
+    for (const c of Object.values(sb.customers)) { custP++; linesP += c.request.length }
+  }
+  assert.ok(lines / cust > (linesP / custP) * 1.04, `${(lines / cust).toFixed(3)} vs ${(linesP / custP).toFixed(3)}`)
 })
 
 test('Chợ phiên: khách ×1,3 (trần 10) mà hệ số tải vẫn ≤ 0,9 nhờ giãn giờ ca; mọi sự kiện đều giữ ρ ≤ 0,9', () => {

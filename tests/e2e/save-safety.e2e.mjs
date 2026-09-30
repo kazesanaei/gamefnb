@@ -185,7 +185,8 @@ test('mã sao lưu từ bản game mới hơn: xem trước cảnh báo phần s
   const { page, errors } = g
   try {
     const s = namedState('Xe Bản Mới Hơn')
-    s.version = 3
+    // M4 (sửa có chủ ý): bản này đã là save v3, "bản mới hơn" phải là v4
+    s.version = 4
     s.recipes.pho_bo_moi = { cooks: 4, goodCooks: 4, excellent: 1, flawless: 0, best: 91, boughtDay: 2 }
     s.upgrades = { xe_moi_toanh: true }
     await page.goto(g.url('/?seed=42'))

@@ -8,7 +8,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { DATA } from '../../src/data/index.js'
-import { defaultState, unlockTip } from '../../src/core/state.js'
+import { defaultState, unlockTip, STATE_VERSION } from '../../src/core/state.js'
 import { startShift, advance, customerCount } from '../../src/core/shift.js'
 import {
   encodeSave, decodeSave, migrate, readCode, exportCode, loadFrom, archiveUnreadable, unreadableSaves, countBrokenArchives,
@@ -131,14 +131,15 @@ test('ca dở không đủ cấu trúc (bản khác đổi cấu trúc ca): hủ
   assert.equal(rep2.shiftDropped.refund, spent)
 })
 
-test('readCode: mã từ bản mới hơn (version 3, món/nâng cấp lạ) → warn ban_moi_hon + phần sẽ mất; mã thường không cảnh báo', () => {
+// M4 (sửa có chủ ý): save lên STATE_VERSION 3 (bản 0.4.0) nên "bản mới hơn" là STATE_VERSION + 1, không viết cứng 3.
+test('readCode: mã từ bản mới hơn (version lớn hơn STATE_VERSION, món/nâng cấp lạ) → warn ban_moi_hon + phần sẽ mất; mã thường không cảnh báo', () => {
   const s = defaultState(3, DATA)
   s.shopName = 'Xe Bản Mới'
   const normal = readCode(exportCode(s), DATA)
   assert.equal(normal.ok, true)
   assert.equal(normal.warn, null)
   assert.deepEqual(normal.lost, { recipes: [], upgrades: [] })
-  const newer = { ...JSON.parse(JSON.stringify(s)), version: 3 }
+  const newer = { ...JSON.parse(JSON.stringify(s)), version: STATE_VERSION + 1 }
   newer.recipes.pho_bo_moi = { cooks: 3 }
   newer.upgrades = { dao_thep: true, xe_moi_toanh: true }
   const r = readCode(exportCode(newer), DATA)
@@ -148,7 +149,9 @@ test('readCode: mã từ bản mới hơn (version 3, món/nâng cấp lạ) →
   assert.ok(!r.state.recipes.pho_bo_moi)
   assert.equal(r.state.upgrades.dao_thep, true)
   // chỉ version lớn hơn cũng cảnh báo
-  assert.equal(readCode(exportCode({ ...JSON.parse(JSON.stringify(s)), version: 3 }), DATA).warn, 'ban_moi_hon')
+  assert.equal(readCode(exportCode({ ...JSON.parse(JSON.stringify(s)), version: STATE_VERSION + 1 }), DATA).warn, 'ban_moi_hon')
+  // bản hiện tại (v3) không cảnh báo
+  assert.equal(readCode(exportCode({ ...JSON.parse(JSON.stringify(s)), version: STATE_VERSION }), DATA).warn, null)
 })
 
 test('chuỗi có bước vượt số bước trong dữ liệu (mã sửa tay/bản khác): migrate kẹp, refreshMeta/chainStatus không ném lỗi', () => {
@@ -227,6 +230,7 @@ test('tắt công tắc "Mẹo nghề": thẻ vẫn mở và vào Sổ tay ngh�
 function forceMoHang(s, ctx) {
   const sh = s.shift
   sh.incident = { id: 'khach_mo_hang', afterClips: 0, status: 'cho', rng: 12345, cap: incidentLossCap(s, sh, ctx), guaranteed: true, detail: null, choice: null, result: null }
+  sh.incidentQueue = []   // M4: bỏ tình huống thứ hai đã bốc sẵn (nếu có) để kiểm riêng tình huống ép
 }
 
 test('ly trà "mở hàng": ca sau đã đủ 8 khách → lựa chọn ghi rõ và cho +2 danh tiếng thay khách thêm', () => {

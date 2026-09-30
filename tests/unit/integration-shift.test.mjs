@@ -244,6 +244,10 @@ test('tích hợp: người chơi ẩu (thiếu nguyên liệu phụ, thối thi
     sloppyTotal += q
   }
   // "lãi hơn ít nhất 25%": P ≥ Q + 25% |Q|
+  // META_SIM_LOG=1 npm test: in chênh lệch (chỉ số 21, docs/can-bang.md mục 15)
+  if (process.env.META_SIM_LOG) {
+    console.log(`chỉ số 21: hoàn hảo ${perfectTotal}, ẩu ${sloppyTotal}, hơn ${((perfectTotal - sloppyTotal) / Math.abs(sloppyTotal) * 100).toFixed(0)}%`)
+  }
   assert.ok(perfectTotal >= sloppyTotal + 0.25 * Math.abs(sloppyTotal),
     `hoàn hảo ${perfectTotal} chưa hơn ẩu ${sloppyTotal} ít nhất 25%`)
 })

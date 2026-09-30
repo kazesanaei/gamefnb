@@ -137,11 +137,14 @@ export function customerStars(customer, dishes, recipes, opts = {}) {
   return { stars, base, penalties, cap }
 }
 
-// 5 sao: 5.000đ; có món Không tì vết hoặc khách khó tính: 10.000đ.
-export function tipFor(stars, flawlessAny, persona, balance = DEFAULT_BALANCE) {
+// M4: tip một mức duy nhất. Khách chấm 5 sao VÀ số tiền khách thực trả (bill, xem kitchen.billOf) từ tipMinBill
+// (20.000đ) → tipFiveStar (5.000đ); còn lại 0. Không còn tip 10.000đ (Không tì vết, khách khó tính, chuỗi Quầy chuẩn,
+// Ngày lãnh lương): các thưởng đó chuyển sang danh tiếng / lượt Giỏ chợ / khách gọi thêm món.
+export function tipFor(stars, bill, balance = DEFAULT_BALANCE) {
   if (stars < 5) return 0
-  if (flawlessAny || (persona && persona.strict)) return balance.tipBonus ?? 10000
-  return balance.tipFiveStar ?? 5000
+  const min = balance.tipMinBill ?? DEFAULT_BALANCE.tipMinBill
+  if (!((Number(bill) || 0) >= min)) return 0
+  return balance.tipFiveStar ?? DEFAULT_BALANCE.tipFiveStar
 }
 
 // Trung bình 30 đánh giá gần nhất; ít hơn 5 thì đệm 4 sao cho đủ 5.

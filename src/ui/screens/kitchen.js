@@ -12,6 +12,7 @@ import {
 import { zoneMul } from '../../core/minigame-scoring.js'
 import { playStep, hintFor, skinFor } from '../minigames/index.js'
 import { uiRand, hashKey } from '../minigames/_util.js'
+import { rareStock } from '../../core/rare.js'
 
 export const HINT_MS = 800
 export const REVEAL_MS = 1200
@@ -224,7 +225,12 @@ export function mountKitchen(root, app, opts = {}) {
         const by = (recipe.notes || []).filter(n => (n.adds || []).includes(i.id)).map(n => n.label)
         text += by.length ? ` (khi dặn ${by.join(', ')})` : ' (tùy chọn)'
       }
-      return h('li', { class: ['k-card-ing', 'role-' + i.role] }, svgBox(ingIconSvg(i.id), 'k-card-ing-icon'), h('span', null, text))
+      // M4: nguyên liệu hiếm: số phần kho còn (luôn thấy trên thẻ, kể cả khi ô kệ có nhãn "còn n" nằm dưới thanh Xong;
+      // nấu thử không trừ kho nên không ghi)
+      const INGS = D().INGREDIENTS || {}
+      const left = !tasting && INGS[i.id] && INGS[i.id].rare
+        ? h('small', { class: 'k-card-left', 'data-testid': 'card-left-' + i.id }, ` · kho còn ${rareStock(S(), i.id)}`) : null
+      return h('li', { class: ['k-card-ing', 'role-' + i.role] }, svgBox(ingIconSvg(i.id), 'k-card-ing-icon'), h('span', null, text, left))
     })
     const board = cook.board || effectiveSteps(recipe, cook.notes, null, cook.qty).filter(s => s.type !== 'chon')
     const steps = [{ id: 'chon', label: 'Chọn nguyên liệu' }, ...board].map(s => {
@@ -357,8 +363,12 @@ export function mountKitchen(root, app, opts = {}) {
     // ngày 1: lời Dì Sáu nằm ngay trong rổ (đỡ tốn chỗ trên màn dọc)
     const tut = tutorialLine('chon')
     const draft = ui.chonDraft && ui.chonDraft.key === cookKey(cook) ? ui.chonDraft : null
+    // M4: nguyên liệu hiếm trên kệ hiện "còn n" (số phần trong kho hàng hiếm; nấu thử không trừ kho nên không hiện)
+    const INGS = D().INGREDIENTS || {}
+    const stockLeft = {}
+    if (!tasting) for (const id of shelf) if (INGS[id] && INGS[id].rare) stockLeft[id] = rareStock(S(), id)
     const handle = playStep(stage, playable(step), {
-      ...pluginCtx(step, cook, recipe), shelf, basketHint: tut ? 'Dì Sáu: ' + tut : null,
+      ...pluginCtx(step, cook, recipe), shelf, basketHint: tut ? 'Dì Sáu: ' + tut : null, stockLeft,
       initial: draft ? { picked: draft.picked, mistakes: draft.mistakes } : null
     })
     const token = ++ui.token

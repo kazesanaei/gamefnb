@@ -96,6 +96,9 @@
 .day-ev-effects { display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
 .day-ev-effects li::before { content: '• '; color: var(--brick); font-weight: 900; }
 .day-ev-tip { color: var(--brick-dark); font-weight: 700; }
+/* M4: sự kiện cần phòng trước (loại xấu) viền ấm hơn; lời cảnh báo đã bị nhắc nhở */
+.day-event-card.kind-xau { background: #fdf5ee; border-color: #efc9a6; }
+.day-ev-warn { color: var(--bad); font-weight: 700; padding: 6px 10px; border-radius: 10px; background: #fdeceb; border: 1px solid #f0b8a8; }
 .day-choice { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: #fff; border: 2px solid var(--line); }
 .day-choice.is-on { border-color: var(--green); background: var(--green-soft); }
 .day-choice-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 15px; }
@@ -528,6 +531,8 @@
   border-radius: 999px; padding: 1px 8px; white-space: nowrap;
 }
 .book-money, .book-stats { display: flex; flex-wrap: wrap; gap: 2px 12px; }
+/* M4: món hiếm: dòng giải thích phần giá vốn là hàng hiếm quy đổi (một dòng riêng) */
+.book-rare-cost { flex-basis: 100%; font-size: 14px; line-height: 1.35; }
 .book-mastery { display: flex; flex-direction: column; gap: 4px; }
 .book-level { line-height: 1.35; }
 .book-note { line-height: 1.35; }
@@ -568,6 +573,9 @@
 .incident-choice { position: relative; }
 .incident-choice b { font-size: 16px; }
 .incident-choice.is-safe { border-color: #b6dbb0; }
+/* M4: lựa chọn "xanh" nhờ hiện vật (vd có Loa báo tiền) */
+.incident-choice.is-green { border-color: var(--green); background: var(--green-soft); }
+.choice-hint { color: var(--green-ink); font-weight: 700; }
 .incident-choice:disabled { opacity: .55; cursor: not-allowed; }
 .safe-badge {
   align-self: flex-start; margin-top: 2px; padding: 0 8px; border-radius: 999px;
@@ -587,6 +595,9 @@
 .sum-incident { display: flex; flex-direction: column; gap: 6px; }
 .sum-incident-item { display: flex; flex-direction: column; gap: 2px; }
 .sum-incident-fx { display: flex; flex-wrap: wrap; gap: 2px 12px; font-weight: 700; }
+/* M4: ghi chú tiền sự kiện ngày, mỗi khoản một dòng */
+.sum-event-notes { flex-direction: column; font-weight: 600; }
+.sum-event-notes li b { font-weight: 800; }
 .sum-debt.is-paid { color: var(--green-ink); font-weight: 700; }
 .sum-debt.is-unpaid { color: #2f4a63; }
 
@@ -596,3 +607,61 @@
   .nav-tile.icon-tile { padding: 8px 1px 6px; }
   .icon-tile .nav-icon { width: 30px; height: 30px; }
 }
+
+/* ---------- M4: hàng hiếm (phiên chợ quê, kho, công thức hiếm) ---------- */
+.rare-star { color: #c98a00; font-weight: 900; letter-spacing: -1px; }
+.stall-card { display: flex; flex-direction: column; gap: 6px; background: #fff8e8; border-color: #f0d68a; }
+.stall-card.st-open, .stall-card.st-pending { background: linear-gradient(135deg, #fff1c8 0%, #fffaf0 75%); border-color: var(--yellow); }
+.stall-card.st-locked, .stall-card.st-early { background: var(--paper); border-color: var(--line); }
+.stall-card > .btn { align-self: flex-start; min-height: 44px; }
+.stall-goods { font-weight: 700; }
+.stall-times { display: flex; flex-wrap: wrap; gap: 4px 10px; color: var(--muted); }
+.stall-times li.is-open { color: var(--green-ink); font-weight: 800; }
+.stall-times li.is-done { text-decoration: line-through; }
+.rare-stock-card { display: flex; flex-direction: column; gap: 8px; }
+.rare-stock { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.rare-stock-item { display: grid; grid-template-columns: 36px minmax(0, 1fr); grid-template-rows: auto auto; align-items: center;
+  column-gap: 6px; row-gap: 2px; padding: 6px 8px; border-radius: 12px; background: #fff; border: 1px solid var(--line); min-width: 0; }
+.rare-stock-item .rare-stock-icon { grid-row: 1 / span 2; }
+.rare-stock-item.empty { opacity: .6; }
+.rare-stock-item.has { border-color: #f0d68a; background: #fffbea; }
+.rare-stock-icon { width: 36px; height: 36px; display: inline-block; line-height: 0; }
+.rare-stock-icon svg { width: 100%; height: 100%; }
+.rare-stock-name { font-size: 14px; font-weight: 700; line-height: 1.15; }
+.rare-stock-n { font-size: 14px; color: var(--brick-dark); grid-column: 2; }
+.rare-h3 { font-size: 15px; font-weight: 900; color: var(--brick-dark); }
+.rare-frags { display: flex; flex-direction: column; gap: 6px; }
+.rare-frag { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 12px; background: #fff; border: 1px solid var(--line); }
+.rare-frag.st-owned { background: var(--green-soft); border-color: #b6dbb0; }
+.rare-frag.st-ready { background: #fff1c8; border-color: var(--yellow); }
+.rare-frag.st-locked { opacity: .75; }
+.rare-frag-icon { width: 36px; height: 36px; display: inline-block; line-height: 0; flex: none; }
+.rare-frag-icon svg { width: 100%; height: 100%; }
+.rare-frag-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1 1 auto; }
+.rare-frag .btn { flex: none; min-height: 44px; }
+.basket-luck { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 12px; background: #f3f8fc; border: 1px solid #bcd6ea; }
+.basket-head { display: flex; align-items: center; gap: 8px; }
+.pbar-luck .pbar-fill { background: linear-gradient(90deg, #7fbf6a, var(--green)); }
+.prep-dish.is-rare { border-color: #f0d68a; background: #fffbea; }
+.prep-dish-tag.is-rare { color: #9a6a00; }
+/* Màn Phiên chợ quê */
+.market-body { gap: 12px; }
+.market-intro, .market-result { display: flex; flex-direction: column; gap: 8px; }
+.market-intro > .btn, .market-result > .btn { min-height: 48px; }
+.market-goods, .market-got { display: flex; flex-direction: column; gap: 6px; }
+.market-good { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 12px; background: #fff; border: 1px solid var(--line); }
+.market-got li { display: flex; align-items: center; gap: 10px; font-weight: 800; }
+.market-good-icon { width: 44px; height: 44px; display: inline-block; line-height: 0; flex: none; }
+.market-good-icon svg { width: 100%; height: 100%; }
+.market-good-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.market-trap { color: var(--bad); font-weight: 700; }
+.market-rules { display: flex; flex-direction: column; gap: 2px; padding-left: 18px; list-style: disc; }
+.market-locked { color: var(--brick-dark); font-weight: 700; }
+.market-stage { display: flex; flex-direction: column; gap: 8px; }
+.market-stage .mg-stage { position: relative; min-height: 420px; }
+.market-hint { font-weight: 700; }
+.market-score { display: flex; align-items: baseline; gap: 10px; }
+.market-score b { font-size: 32px; color: var(--brick); }
+.book-rare { display: flex; flex-direction: column; gap: 4px; }
+.book-rare .btn { align-self: flex-start; min-height: 44px; }
+.tasting-unlock { font-weight: 800; color: var(--green-ink); }

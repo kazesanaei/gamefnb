@@ -1,5 +1,6 @@
 // Tình huống trong ca (M3, src/core/incidents.js + src/data/incidents.js), DATA thật:
-// xác suất theo mức Nhiều/Vừa/Ít (Ít chỉ tình huống tích cực), bảo hiểm 3 ca, không lặp 5 loại gần nhất,
+// xác suất theo mức Nhiều/Vừa/Ít (Ít chỉ loại tốt), bảo hiểm theo mức (M4: Nhiều 1 / Vừa 2 / Ít 3 ca; tối đa 2 tình
+// huống mỗi ca — luật tần suất M4 kiểm kỹ ở m4-frequency.test.mjs), không lặp 5 loại gần nhất,
 // trần thiệt hại, chỉ bật giữa hai khách (không chen mini-game, không khi đang có khách ở quầy), tất định theo seed,
 // hiệu ứng từng lựa chọn (khách thêm ca sau, sổ ghi nợ + trả nợ, đổi món sửa phiếu), tổng kết ca + bus.
 import test from 'node:test'
@@ -10,11 +11,15 @@ import { startShift, endShift, advance, isShiftOver } from '../../src/core/shift
 import { canMakeChange, drawerTotal } from '../../src/core/money.js'
 import {
   planIncident, incidentDue, openIncident, resolveIncident, incidentView, incidentLossCap, expectedRevenue,
-  incidentChance, miniGameBusy, ensureIncidents, itemCost
+  incidentChance, miniGameBusy, ensureIncidents, itemCost, incidentKind, shiftIncidents, incidentGuaranteeAfter,
+  rareIngredientIds
 } from '../../src/core/incidents.js'
 import { encodeSave, decodeSave, migrate } from '../../src/core/save.js'
 import { customerStars } from '../../src/core/scoring.js'
 import { playShift, counterStep, cookTicket, handleIncident } from '../helpers/perfect-player.mjs'
+
+// Bộ 3 tình huống M3 (kiểm các luật chung trên bộ nhỏ).
+const M3 = { ...DATA, INCIDENTS: { khach_mo_hang: DATA.INCIDENTS.khach_mo_hang, ghi_no: DATA.INCIDENTS.ghi_no, doi_y: DATA.INCIDENTS.doi_y } }
 
 function makeCtx() {
   const events = []
@@ -33,6 +38,7 @@ function stateAt(seed, day, freq = 'vua') {
 function forceIncident(s, ctx, id, after = 0) {
   const sh = s.shift
   sh.incident = { id, afterClips: after, status: 'cho', rng: (s.seed * 7919 + 13) >>> 0, cap: incidentLossCap(s, sh, ctx), guaranteed: true, detail: null, choice: null, result: null }
+  sh.incidentQueue = []   // M4: bỏ tình huống thứ hai đã bốc sẵn (nếu có) để kiểm riêng tình huống ép
   return sh.incident
 }
 
@@ -49,40 +55,71 @@ function clipCustomers(s, ctx, n) {
   }
 }
 
-test('xác suất có tình huống theo mức Nhiều/Vừa/Ít (50% / 35% / 15%); "Ít" chỉ tình huống tích cực; trước ngày 3 không có', () => {
+// M4 (sửa có chủ ý): tần suất "dày" — lần 1 mỗi ca Nhiều 75% / Vừa 55% / Ít 30% (tối đa 2 tình huống mỗi ca ở Nhiều/Vừa,
+// 1 ở Ít); loại lấy từ dữ liệu (kind 'tot' | 'chon' | 'xau'), mức Ít chỉ loại tốt. Tỉ lệ thực có bảo hiểm ở
+// tests/unit/m4-frequency.test.mjs.
+test('xác suất có tình huống theo mức Nhiều/Vừa/Ít (75% / 55% / 30%, lần 1); "Ít" chỉ loại tốt; tối đa 2 mỗi ca; trước ngày 3 không có', () => {
   const ctx = makeCtx()
   const N = 1200
-  for (const [freq, p] of [['nhieu', 0.5], ['vua', 0.35], ['it', 0.15]]) {
-    let hit = 0
+  const good = Object.values(DATA.INCIDENTS).filter(d => incidentKind(d) === 'tot').map(d => d.id)
+  assert.ok(good.length >= 1)
+  for (const [freq, p] of [['nhieu', 0.75], ['vua', 0.55], ['it', 0.3]]) {
+    let hit = 0, two = 0
     const kinds = new Set()
     for (let seed = 1; seed <= N; seed++) {
       const s = stateAt(seed, 5 + (seed % 6), freq)
       assert.equal(incidentChance(s, ctx), p)
       const sh = startShift(s, ctx)
-      if (sh.incident) { hit++; kinds.add(sh.incident.id) }
+      const list = shiftIncidents(sh)
+      assert.ok(list.length <= (freq === 'it' ? 1 : 2), `${freq}: ${list.length} tình huống`)
+      if (list.length) { hit++; for (const x of list) kinds.add(x.id) }
+      if (list.length === 2) {
+        two++
+        assert.ok(Object.keys(sh.customers).length >= 6, 'lần 2 chỉ khi ca từ 6 khách')
+        assert.ok(list[1].afterClips - list[0].afterClips >= 2, 'hai tình huống cách nhau ít nhất 2 khách')
+        assert.notEqual(list[0].id, list[1].id)
+      }
     }
     const rate = hit / N
     assert.ok(Math.abs(rate - p) < 0.045, `${freq}: tỉ lệ ${rate.toFixed(3)} lệch ${p}`)
-    if (freq === 'it') assert.deepEqual([...kinds], ['khach_mo_hang'], 'mức Ít chỉ có tình huống tích cực')
-    else assert.equal(kinds.size, 3, `${freq}: đủ 3 loại tình huống`)
+    if (freq === 'it') {
+      assert.equal(two, 0)
+      for (const id of kinds) assert.ok(good.includes(id), 'mức Ít chỉ có tình huống loại tốt: ' + id)
+    } else {
+      assert.ok(two > 0, `${freq}: có ca 2 tình huống`)
+      // M4 bước 5 (sửa có chủ ý): 11 tình huống; tình huống cần hàng hiếm (kho còn chỗ, đã có công thức hiếm) chỉ bốc
+      // được khi dữ liệu hàng hiếm đã có
+      // M4 bước 6 (sửa có chủ ý): đã có dữ liệu hàng hiếm → "khách quê gửi quà" (kho còn chỗ) bốc được; "chị bán dạo"
+      // cần đã có công thức hiếm mà người chơi trong test này chưa có nên vẫn không bốc
+      const rare = rareIngredientIds(ctx).length > 0
+      const expect = Object.values(DATA.INCIDENTS).filter(d => !(d.needs && d.needs.ownsRare) && (rare || !(d.needs && d.needs.stockRoom))).map(d => d.id)
+      assert.deepEqual([...kinds].sort(), expect.sort(), `${freq}: đủ mọi loại tình huống bốc được`)
+    }
   }
   for (const day of [1, 2]) {
     for (let seed = 1; seed <= 200; seed++) {
       const s = stateAt(seed, day, 'nhieu')
       s.incidents.since = 5
-      assert.equal(startShift(s, ctx).incident, null, 'trước ngày 3 không có tình huống')
+      const sh = startShift(s, ctx)
+      assert.equal(sh.incident, null, 'trước ngày 3 không có tình huống')
+      assert.deepEqual(sh.incidentQueue, [])
     }
   }
-  // positive trong dữ liệu: chỉ khách mở hàng
-  assert.deepEqual(Object.values(DATA.INCIDENTS).filter(d => d.positive).map(d => d.id), ['khach_mo_hang'])
+  // positive (nhãn "chuyện vui" cũ) khớp loại tốt
+  assert.deepEqual(Object.values(DATA.INCIDENTS).filter(d => d.positive).map(d => d.id), good)
 })
 
-test('bảo hiểm: 3 ca liền không có tình huống thì ca kế chắc chắn có; ca có tình huống đặt lại bộ đếm', () => {
+// M4 (sửa có chủ ý): bảo hiểm theo mức — Nhiều sau 1 ca, Vừa sau 2 ca, Ít sau 3 ca liền không có tình huống.
+test('bảo hiểm theo mức (Nhiều 1 / Vừa 2 / Ít 3 ca liền không có tình huống) thì ca kế chắc chắn có; ca có tình huống đặt lại bộ đếm', () => {
   const ctx = makeCtx()
-  for (const freq of ['nhieu', 'vua', 'it']) {
+  for (const [freq, after] of [['nhieu', 1], ['vua', 2], ['it', 3]]) {
+    const probe = stateAt(1, 5, freq)
+    assert.equal(incidentGuaranteeAfter(probe, ctx), after)
+    probe.incidents.since = after - 1
+    assert.ok(incidentChance(probe, ctx) < 1, `${freq}: chưa tới bảo hiểm`)
     for (let seed = 1; seed <= 150; seed++) {
       const s = stateAt(seed, 4 + (seed % 7), freq)
-      s.incidents.since = 3
+      s.incidents.since = after
       assert.equal(incidentChance(s, ctx), 1)
       const sh = startShift(s, ctx)
       assert.ok(sh.incident, `${freq} seed ${seed}: bảo hiểm phải ra tình huống`)
@@ -105,8 +142,9 @@ test('bảo hiểm: 3 ca liền không có tình huống thì ca kế chắc ch�
   }
 })
 
+// M4 bước 5 (sửa có chủ ý): kiểm luật không lặp trên bộ 3 tình huống M3 (dữ liệu thật nay có 11 tình huống).
 test('không lặp 5 tình huống gần nhất khi còn loại khác; hết loại mới thì lấy loại lâu chưa gặp nhất', () => {
-  const ctx = makeCtx()
+  const ctx = { ...makeCtx(), data: M3 }
   const pickWith = (recent, seed) => {
     const s = stateAt(seed, 6, 'nhieu')
     s.incidents.since = 3
@@ -150,8 +188,8 @@ test('trần thiệt hại: min(10% doanh thu dự kiến, 0,5 thu nhập tham c
     const inc = sh.incident
     if (inc.afterClips) clipCustomers(s, ctx, inc.afterClips)
     const view0 = openIncident(s, ctx)
-    // khách đổi ý mà khách vừa rồi đã gọi đủ mọi món: chờ khách sau (không kiểm ở đây)
-    if (!view0) { assert.equal(inc.id, 'doi_y', `seed ${seed}: tình huống ${inc.id} không mở được`); continue }
+    // khách đổi ý mà khách vừa rồi đã gọi đủ mọi món, cô ve chai khi chưa bán đủ 3 phần: chờ khách sau (không kiểm ở đây)
+    if (!view0) { assert.ok(['doi_y', 've_chai'].includes(inc.id), `seed ${seed}: tình huống ${inc.id} không mở được`); continue }
     const snap = JSON.stringify(s)
     for (const c of view0.choices.filter(x => x.available)) {
       const t = JSON.parse(snap)
@@ -411,29 +449,38 @@ test('tổng kết ghi nhận tình huống; bus incident.resolved; ví vẫn kh
     const s = stateAt(seed, 5, 'nhieu')
     s.incidents.since = 3
     const r = playShift(s, ctx, { incident: v => v.safeId })
-    assert.ok(r.incidents.length <= 1, 'tối đa 1 tình huống mỗi ca')
+    assert.ok(r.incidents.length <= 2, 'tối đa 2 tình huống mỗi ca')
     if (!r.incidents.length) { assert.equal(s.incidents.since, 4); continue }
-    kinds.add(r.incidents[0].view.id)
+    for (const x of r.incidents) kinds.add(x.view.id)
     assert.equal(r.walletAfter - r.walletBefore, r.summary.profit - r.summary.loanRepaid)
-    const inc = r.summary.incidents[0]
-    assert.equal(inc.id, r.incidents[0].view.id)
-    assert.equal(inc.safe, true)
-    assert.ok(inc.name && inc.label && inc.text)
+    assert.equal(r.summary.incidents.length, r.incidents.length)
+    r.summary.incidents.forEach((inc, i) => {
+      assert.equal(inc.id, r.incidents[i].view.id)
+      assert.equal(inc.safe, true)
+      assert.ok(inc.name && inc.label && inc.text)
+      assert.ok(['tot', 'chon', 'xau'].includes(inc.kind))
+    })
+    const inc = r.summary.incidents[r.summary.incidents.length - 1]
     const ev = ctx.events.filter(e => e.type === 'incident.resolved')
-    assert.equal(ev.length, 1)
-    assert.deepEqual(Object.keys(ev[0].payload).sort(), ['choice', 'cost', 'day', 'id', 'loss', 'money', 'rep', 'safe'])
-    assert.equal(s.incidents.total, 1)
+    assert.equal(ev.length, r.incidents.length)
+    // M4 bước 5: thêm tiền thưởng, tiền mất, tiền chi của tình huống chạy theo dữ liệu
+    assert.deepEqual(Object.keys(ev[0].payload).sort(), ['choice', 'cost', 'day', 'fine', 'gain', 'id', 'loss', 'money', 'rep', 'safe', 'spend'])
+    assert.equal(s.incidents.total, r.incidents.length)
     assert.equal(s.incidents.log[0].id, inc.id)
+    assert.equal(s.incidents.lastKind, inc.kind)
+    assert.equal(s.history[s.history.length - 1].incidents.length, r.incidents.length)
     const back = migrate(decodeSave(encodeSave(s)), DATA)
     assert.deepEqual(back, JSON.parse(JSON.stringify(s)))
   }
-  assert.equal(kinds.size, 3, 'đủ 3 loại tình huống hiện ra khi chơi')
+  assert.ok(kinds.size >= 3, 'đủ 3 loại tình huống hiện ra khi chơi')
   // save cũ (v1/v2, chưa có tình huống, Sổ tay nghề) nạp được với mặc định
   const old = defaultState(1, DATA)
   delete old.incidents
   delete old.notebook
   const m = migrate(JSON.parse(JSON.stringify(old)), DATA)
-  assert.deepEqual(m.incidents, { since: 0, recent: [], log: [], debts: [], bonus: null, total: 0 })
+  // (soát lỗi M4, sửa có chủ ý: thêm lastEvent — luật nhịp trên dòng thời gian chung — và announced — sự kiện ngày đã chốt)
+  assert.deepEqual(m.incidents, { since: 0, recent: [], log: [], debts: [], bonus: null, total: 0, lastKind: null, lastLoss: 0, day: { key: '', loss: 0, gain: 0 }, warn: {},
+    lastEvent: null, announced: {} })
   assert.deepEqual(m.notebook, { claimed: [] })
   const bad = migrate({ ...JSON.parse(JSON.stringify(old)), incidents: { since: -4, recent: ['la', 'ghi_no'], debts: [{ id: 'x', amount: 'abc' }, 3], bonus: 'x' } }, DATA)
   assert.equal(bad.incidents.since, 0)
@@ -441,26 +488,45 @@ test('tổng kết ghi nhận tình huống; bus incident.resolved; ví vẫn kh
   assert.equal(bad.incidents.debts.length, 1)
   assert.equal(bad.incidents.debts[0].amount, 0)
   assert.equal(bad.incidents.bonus, null)
+  // M4: trường luật nhịp và sổ tiền sự kiện hỏng → mặc định
+  const bad2 = migrate({ ...JSON.parse(JSON.stringify(old)), incidents: { lastKind: 'la', lastLoss: 'x', day: { key: 5 } } }, DATA)
+  assert.equal(bad2.incidents.lastKind, null)
+  assert.equal(bad2.incidents.lastLoss, 0)
+  assert.deepEqual(bad2.incidents.day, { key: '', loss: 0, gain: 0 })
+  const good2 = migrate({ ...JSON.parse(JSON.stringify(old)), incidents: { lastKind: 'xau', lastLoss: 0.57, day: { key: '2026-10-05', loss: 12000, gain: 5000 } } }, DATA)
+  assert.equal(good2.incidents.lastKind, 'xau')
+  assert.equal(good2.incidents.lastLoss, 0.57)
+  assert.deepEqual(good2.incidents.day, { key: '2026-10-05', loss: 12000, gain: 5000 })
 })
 
 test('dữ liệu tình huống: mỗi loại có đúng 1 lựa chọn an toàn, chữ hiển thị có dấu, không rỗng', () => {
   for (const d of Object.values(DATA.INCIDENTS)) {
     assert.ok(d.name && d.text, d.id)
     assert.equal(d.choices.filter(c => c.safe).length, 1, `${d.id}: cần đúng 1 lựa chọn an toàn`)
-    for (const c of d.choices) assert.ok(c.label && c.cost && c.result, `${d.id}/${c.id}`)
+    // M4: tình huống chạy theo dữ liệu ghi câu kết quả trong từng outcome
+    for (const c of d.choices) assert.ok(c.label && c.cost && (c.result || (c.outcomes && c.outcomes.length && c.outcomes.every(o => o.result))), `${d.id}/${c.id}`)
     assert.ok(/[à-ỹ]/i.test(d.text), `${d.id}: chữ tiếng Việt có dấu`)
   }
+  // M4 (sửa có chủ ý): tần suất "dày" theo mức
   const C = DATA.INCIDENT_CONFIG
-  assert.deepEqual(C.chance, { nhieu: 0.5, vua: 0.35, it: 0.15 })
-  assert.equal(C.guaranteeAfter, 3)
+  assert.deepEqual(C.chance, { nhieu: 0.75, vua: 0.55, it: 0.3 })
+  assert.deepEqual(C.secondChance, { nhieu: 0.45, vua: 0.3, it: 0 })
+  assert.deepEqual(C.maxPerShift, { nhieu: 2, vua: 2, it: 1 })
+  assert.deepEqual(C.guaranteeAfter, { nhieu: 1, vua: 2, it: 3 })
+  assert.equal(C.secondMinCustomers, 6)
+  assert.equal(C.minGap, 2)
   assert.equal(C.noRepeat, 5)
   assert.equal(C.fromDay, 3)
+  assert.equal(C.badFromDay, 5)
+  assert.deepEqual(C.goodOnly, ['it'])
+  for (const d of Object.values(DATA.INCIDENTS)) assert.ok(['tot', 'chon', 'xau'].includes(d.kind), `${d.id}: thiếu kind`)
   // lõi không cần tình huống khi dữ liệu thiếu (dữ liệu mẫu của test lõi)
   const s = defaultState(1)
   s.day = 5
   s.incidents.since = 9
   const sh = startShift(s, { data: { ...DATA, INCIDENTS: undefined }, emit() {} })
   assert.equal(sh.incident, null)
+  assert.deepEqual(sh.incidentQueue, [])
   assert.equal(planIncident(s, sh, { data: {} }), null)
   assert.equal(incidentView(s, { data: DATA }), null)
   assert.ok(ensureIncidents({}).recent)

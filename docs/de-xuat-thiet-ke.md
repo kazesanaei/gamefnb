@@ -1,9 +1,10 @@
 # Đề xuất thiết kế game F&B "Bếp Khởi Nghiệp" (tên làm việc)
 
-Phiên bản 0.3 · ngày 30/09/2026
+Phiên bản 0.4 · ngày 30/09/2026
 
 - Bản này biên tập lại bản đề xuất v0.1 (`docs/tham-khao/ban-tong-hop-v0.1.md`) và áp dụng các sửa đổi hợp lý trong bản phản biện (`docs/tham-khao/phan-bien-v0.1.md`).
 - **v0.3 đồng bộ với bản chơi được M1 + M2** (đọc `src/data/*.js`, `src/core/*.js`). Chỗ nào code khác đặc tả cũ, tài liệu đã sửa theo code và ghi ngắn *(đã chỉnh theo bản chơi được)*. Tóm tắt các thay đổi ở Phụ lục B.
+- **v0.4 thêm M4 (bản game 0.4.0)**: tip mới, sự kiện thưởng/phạt tiền có luật công bằng, tần suất sự kiện "dày", nguyên liệu và công thức hiếm, save v3. Thiết kế chi tiết: `docs/tham-khao/m4-thiet-ke.md`; tư liệu thể loại: `docs/nghien-cuu-the-loai-game.md`. Tóm tắt thay đổi ở Phụ lục C.
 - Hợp đồng kỹ thuật để code MVP nằm ở `docs/kien-truc.md`. Nếu hai tài liệu lệch nhau về tên hàm, cấu trúc dữ liệu hay hằng số, **`kien-truc.md` được ưu tiên** và tài liệu này sẽ được sửa theo.
 - Bảng số cân bằng của Chặng 1 nằm ở `docs/can-bang.md`. Cách chạy thử, triển khai và kiểm thử: `README.md`.
 
@@ -25,11 +26,11 @@ Phiên bản 0.3 · ngày 30/09/2026
 **Năm hệ thống người dùng yêu cầu** (mục 9):
 1. **Nhiệm vụ hằng ngày "Việc hôm nay"**: 3 việc mỗi ngày (Quầy, Bếp, Chất lượng) và một Rương ngày.
 2. **Điểm danh nhận quà**: 7 ô tích lũy, lỡ ngày không mất; vòng đầu "Tuần Khai Trương" tặng hiện vật.
-3. **Sự kiện ngẫu nhiên**: 4 sự kiện ngày báo trước (Trời mưa, Nắng nóng, Ngày lãnh lương, Chợ phiên; đã có ở M2) và tình huống trong ca (M3), luôn có lựa chọn an toàn.
+3. **Sự kiện ngẫu nhiên**: 12 sự kiện ngày báo trước (4 sự kiện M2 và 8 sự kiện thưởng/phạt tiền M4) và 11 tình huống trong ca (3 của M3, 8 của M4), luôn có lựa chọn an toàn; phạt chỉ khi có nguyên nhân phòng được hoặc báo trước, có trần (quyết định 31).
 4. **Chuỗi nhiệm vụ**: chuỗi chính "Ngày đầu ra phố" là cổng lên chặng; chuỗi "Làm quen QR"; chuỗi sự kiện "Nồi chè tri ân".
 5. **Quà hệ thống**: Hộp thư với thư chào mừng, quà lễ, quà đời thường, việc quên nhận, review muộn.
 
-Kèm theo là **Chợ Công Thức** (mua món mới bằng Tiền quán, được nấu thử miễn phí; mua nâng cấp; màu dù xe bằng Muỗng Vàng) và **món đặc biệt chỉ lấy qua sự kiện có thời hạn** (MVP có Chè bưởi của sự kiện Tri ân 20/11, kèm tiền sự kiện "Phấn Trắng" và Quầy đổi).
+Kèm theo là **Chợ Công Thức** (mua món mới bằng Tiền quán, được nấu thử miễn phí; mua nâng cấp; màu dù xe bằng Muỗng Vàng), **món đặc biệt chỉ lấy qua sự kiện có thời hạn** (MVP có Chè bưởi của sự kiện Tri ân 20/11, kèm tiền sự kiện "Phấn Trắng" và Quầy đổi) và (M4) **nguyên liệu, công thức hiếm** (gánh hàng quê theo giờ thật, khách lạ, Giỏ chợ; 4 món hiếm mở bằng mảnh công thức và nấu thử).
 
 **Đề xuất thêm nổi bật** (chi tiết ở mục 10):
 - [MVP] **Thớt sơ chế**: người chơi tự chọn sơ chế nguyên liệu nào trước, tự chọn cách sơ chế; quên sơ chế là bị chấm.
@@ -47,6 +48,7 @@ Kèm theo là **Chợ Công Thức** (mua món mới bằng Tiền quán, đư�
 | **M1** – lõi chơi được | **Đã xong** | 2 món có sẵn; luồng 4 khâu với tiền mặt; 6 mini-game và Thớt sơ chế; phiếu chấm tách lỗi quầy/lỗi bếp; 20 thẻ Mẹo nghề; tổng kết ca; lưu tiến trình; unit test; e2e |
 | **M2** – kinh tế và LiveOps | **Đã xong** | QR, ảnh chuyển khoản giả, Loa báo tiền; Chợ Công Thức 2 món và nấu thử; 5 nâng cấp; màu dù xe; thạo món cấp 1–3; điểm danh 7 ô; 3 việc ngày và Rương ngày; hộp thư; 2 chuỗi; 4 sự kiện ngày; sự kiện 20/11 với Chè bưởi, Tem và Quầy đổi; lên chặng; khóa quà khi lùi giờ; khóa một tab; nút Back |
 | **M3** – hoàn thiện | **Đã xong** | PWA offline; sao lưu bằng mã; màn Cài đặt; âm thanh; tình huống trong ca; Sổ tay nghề; Sổ công thức; tiền chẵn; vòng soát lỗi an toàn dữ liệu người chơi |
+| **M4** – tip mới, sự kiện tiền, hàng hiếm (bản 0.4.0) | **Đã xong** | Tip 5.000đ khi 5 sao và hóa đơn từ 20.000đ; sổ tiền sự kiện; tần suất sự kiện "dày"; 8 sự kiện ngày và 8 tình huống mới; 5 nguyên liệu hiếm, 4 công thức hiếm, gánh hàng quê, khách lạ, Giỏ chợ; save v3; thư phiên bản 0.4.0 |
 
 ---
 
@@ -88,7 +90,7 @@ Kèm theo là **Chợ Công Thức** (mua món mới bằng Tiền quán, đư�
 | 19 | QR ở Chặng 1 | **Từ ngày 4, khoảng 25–30% khách.** Từ ngày 7 có 4% ảnh chụp chuyển khoản giả | Bài học có thật, chi phí làm thấp |
 | 20 | Mệnh giá tiền | **Chặng 1–2: 7 tờ từ 5k đến 500k** (giá luôn tròn 5.000đ). Từ Chặng 3 thêm tờ 1k và 2k khi có khuyến mãi % | Két gọn trên màn hình nhỏ |
 | 21 | Lãi của món đặc biệt | **Lãi trên mỗi giây nấu không vượt món mua bằng Tiền quán tốt nhất cùng chặng quá 10%**. Mùa sự kiện **không tăng giá bán**, chỉ tăng Tem và danh tiếng | Món sự kiện không trở thành "bắt buộc phải có" |
-| 22 | Ngân sách thưởng ngoài bán hàng | **Mục tiêu 20–30%, trần 35%** tổng thu trong ngày thật (lãi bán hàng + thưởng) | Bán hàng vẫn là nguồn thu chính. Chặng 1 ước tính 20–31% mỗi ngày, 23,4% cả chặng (mục 11.5). Mô phỏng M2 (người chơi hoàn hảo, 3 ca/ngày thật): cao nhất 25,2% |
+| 22 | Ngân sách thưởng ngoài bán hàng | **Mục tiêu 20–30%, trần 35%** tổng thu trong ngày thật (lãi bán hàng + thưởng) | Bán hàng vẫn là nguồn thu chính. Chặng 1 ước tính 19,5–35% mỗi ngày, 22,3% cả chặng (mục 11.5, sau luật tip M4). Mô phỏng M2 (người chơi hoàn hảo, 3 ca/ngày thật): cao nhất 25,2%. **M4**: tính cả hàng hiếm quy đổi (lúc dùng, như Phiếu Chợ Sớm), 40 hạt giống × 4 mốc bắt đầu: cao nhất 34,1% sau khi giảm thưởng tiền chuỗi "Ngày đầu ra phố" (mục 9.4) |
 | 23 | Người dẫn dắt | **Dì Sáu** (cố vấn, kiêm mascot bếp) và **Anh Khoa** (kỹ thuật viên máy bán hàng) | Một cố vấn có cá tính, không trùng NPC của game tham khảo |
 | 24 | Trần chất lượng khi nhân viên làm | **88**, thấp hơn ngưỡng Tuyệt hảo | Luật "Ra tay": món Tuyệt hảo chỉ đến từ tay chủ quán |
 | 25 | Cách vẽ | **DOM/CSS + SVG**; nguyên liệu là SVG tự vẽ kèm nhãn chữ | Chữ Việt sắc nét, test được bằng `data-testid`; cặp bẫy phân biệt rõ |
@@ -96,7 +98,10 @@ Kèm theo là **Chợ Công Thức** (mua món mới bằng Tiền quán, đư�
 | 27 | Quảng cáo | **Không có ở MVP và GĐ2.** GĐ3 thử quảng cáo tặng thưởng tùy chọn, trần 10% thu nhập ngày, tắt ở chế độ đào tạo | Đo tỉ lệ giữ chân khi chưa có quảng cáo trước |
 | 28 | Cách kết thúc ca | **Số khách cố định, sinh bằng seed.** Ca kết thúc khi khách cuối cùng rời đi | Công bằng; tải lại trang không đổi được khách |
 | 29 | Nhịp khách | **Khoảng cách giữa hai khách = 1,15 × thời gian phục vụ kỳ vọng**, giờ cao điểm ×0,9 | Một người làm hết mọi việc thì không làm song song được; hệ số tải ρ ≤ 0,9 có test |
-| 30 | Tip | **Bội 5.000đ**: 5 sao được 5.000đ; có món Không tì vết, khách khó tính, hoặc đang trong chuỗi "Quầy chuẩn" được 10.000đ; Ngày lãnh lương ×1,5 (làm tròn bội 5.000đ); khách bỏ vào **hũ tip** | Chặng 1–2 không có tờ 1k, 2k; tip không làm rối két |
+| 30 | Tip | **(M4) Một mức 5.000đ**: khách chấm 5 sao **và** số tiền khách thực trả từ 20.000đ; khách bỏ vào **hũ tip**. Món Không tì vết +1 danh tiếng, khách khó tính 5 sao +1 danh tiếng, chuỗi "Quầy chuẩn" 5 khách +1 lượt Giỏ chợ, Ngày lãnh lương khách gọi thêm món *(trước M4: 10.000đ cho Không tì vết / khó tính / chuỗi Quầy chuẩn, Ngày lãnh lương ×1,5)* | Chặng 1–2 không có tờ 1k, 2k; tip không làm rối két |
+| 31 | Sự kiện phạt tiền | **(M4) Được phép, nhưng phải công bằng**: có nguyên nhân người chơi phòng được hoặc có báo trước; luôn có lựa chọn an toàn; có trần mỗi sự kiện (thiệt hại ≤ min(10% doanh thu dự kiến của ca, 0,5 TNC)) và trần mỗi ngày thật (phạt ≤ 1 TNC, vượt thì Dì Sáu đỡ giùm); sự kiện tốt chiếm đa số; không 2 sự kiện xấu liền nhau; mức "Tần suất sự kiện" Ít không có sự kiện phạt. Thay câu cũ "không bao giờ phạt ngẫu nhiên" | Đời thật có phạt (trật tự đô thị, kiểm tra vệ sinh, tiền giả); bài học chỉ có giá trị khi người chơi thấy nguyên nhân và có cách phòng. Tiền sự kiện ghi riêng trong sổ lãi lỗ ca (mục 9.3) |
+| 32 | Nguyên liệu và công thức hiếm | **(M4) Kho `state.rare`** 5 nguyên liệu (★1–★2, có quê), tối đa 6 phần mỗi loại; nhận tối đa 6 phần + 3 mảnh mỗi ngày thật (dư đổi 2 Muỗng Vàng); nguồn: 3 gánh hàng quê theo giờ thật (05:00–09:00, 11:00–13:30, 17:30–21:00), khách lạ ca đầu mỗi ngày thật (từ ngày game 3), Giỏ chợ có bảo hiểm công khai, tình huống; 4 công thức hiếm mở bằng 3 mảnh + nấu thử đạt hạng Được; mỗi phần món hiếm trừ kho lúc Ra món. Không bán lượt bốc, không hết hạn ở M4 | Thưởng gắn kỹ năng (lựa đúng hàng thật, phục vụ tốt khách lạ), dạy "kiểm hàng trước khi nhận" và "làm đúng một lần mới đưa lên thực đơn"; có trần để không thành nguồn tiền tự do (mục 7.1) |
+| 33 | Tần suất sự kiện | **(M4, quyết định của người dùng: "dày")** sự kiện ngày 65% + bảo hiểm 1 ngày (thực khoảng 74%), không trùng loại hôm trước, Trật tự đô thị và Kiểm tra ATTP cách nhau ≥ 7 ngày game; tình huống tối đa 2 mỗi ca, cách nhau ≥ 2 khách, mức Vừa 55%/30% + bảo hiểm 2 ca (thực khoảng 60% ca có ≥ 1), Nhiều 75%/45% (khoảng 80%), Ít 30%, tối đa 1, chỉ loại tốt (khoảng 40%) | Mỗi ngày chơi "có chuyện" để luyện xử lý tình huống; tăng tần suất thì giảm độ lớn mỗi lần và có trần ngày (quyết định 31) |
 
 ---
 
@@ -262,7 +267,7 @@ Ba mẫu thoại: khách gọi món quán chưa bán hoặc món đã hết, kh�
   - Gian lận không bao giờ có lời.
 - Thời gian mục tiêu: 4 giây, cộng 2 giây cho mỗi dòng thêm.
 - **Máy tính cầm tay** (nâng cấp 150.000đ, **mở từ ngày 7**): tự cộng tổng khi chạm món, **không hiện tiền thối**. Bước báo tổng còn 1 chạm, người chơi vẫn phải tự tính tiền thối.
-- **Hỗ trợ tính tiền** (công tắc trong Cài đặt; tới M3 đặt tạm ở thẻ "Cài đặt" của màn Chuẩn bị): hiện sẵn tổng tiền và tiền thối. Khi bật, chuỗi "Quầy chuẩn" và các nhiệm vụ Quầy không được đếm, không có tip 10.000đ theo chuỗi và không ghi kỷ lục ca.
+- **Hỗ trợ tính tiền** (công tắc trong Cài đặt; tới M3 đặt tạm ở thẻ "Cài đặt" của màn Chuẩn bị): hiện sẵn tổng tiền và tiền thối. Khi bật, chuỗi "Quầy chuẩn" và các nhiệm vụ Quầy không được đếm, không có lượt Giỏ chợ theo chuỗi (trước M4: tip 10.000đ theo chuỗi) và không ghi kỷ lục ca.
 
 ### 4.2 Khách chọn cách trả
 
@@ -505,10 +510,10 @@ Thang nhãn bước: **Hoàn hảo** (≥90), **Tốt** (≥70), **Đạt** (≥
 
 ### 6.9 Chờ món, tip, danh tiếng, sao trung bình
 - **Ngân sách chờ món** B = 30 giây + 2 × tổng par của phiếu (par đã nhân theo số lượng). Tính từ lúc kẹp phiếu. Vượt 75% B: −0,5 sao; vượt 100%: −1 sao; vượt 150%: −2 sao (chỉ tính mức cao nhất). Khách không bỏ về.
-- **Tip** chỉ có khi khách chấm 5 sao, khách bỏ vào **hũ tip** (không đi qua két):
-  - 5.000đ mặc định.
-  - 10.000đ nếu có món Không tì vết, hoặc là khách khó tính, hoặc (M2) đang trong chuỗi "Quầy chuẩn".
-  - (M2) Ngày lãnh lương: tip ×1,5, làm tròn bội 5.000đ (5.000đ → 10.000đ; 10.000đ → 15.000đ).
+- **Tip** (M4) chỉ có khi khách chấm 5 sao **và** số tiền khách thực trả từ 20.000đ, khách bỏ vào **hũ tip** (không đi qua két):
+  - 5.000đ duy nhất. Chữ hiển thị: "Hóa đơn từ 20.000đ, khách vui (5 sao) sẽ bỏ hũ tip 5.000đ"; phiếu chấm ghi "Tip 0 (hóa đơn dưới 20.000đ)" khi khách 5 sao mà hóa đơn chưa tới ngưỡng.
+  - Báo tổng thiếu làm khách trả dưới 20.000đ thì mất tip; bán kèm món thứ hai hoặc phụ thu thì đủ ngưỡng.
+  - Thay tip 10.000đ cũ: món Không tì vết +1 danh tiếng (như cũ), khách khó tính 5 sao +1 danh tiếng, chuỗi "Quầy chuẩn" 5 khách +1 lượt Giỏ chợ mỗi ca; Ngày lãnh lương khách gọi thêm món (không nhân tip).
   - Câu thoại: "Ngon quá, cô bỏ hũ tip cho con nha."
 - **Danh tiếng mỗi khách**: 5 sao +3, 4 sao +2, 3 sao +1, 2 sao trở xuống 0. Món Không tì vết +1. Khách trả lại tiền thối dư +1. (M2) Trong mùa sự kiện, mỗi phần món lễ đạt Ngon trở lên +1.
 - **Sao trung bình** tính trên 30 đánh giá gần nhất; khi chưa đủ 5 đánh giá, phần thiếu tính là 4 sao.
@@ -679,7 +684,7 @@ Tổng par 27 giây, Σw = 11.
 
 ## 7. Shop công thức và món giới hạn theo sự kiện
 
-### 7.1 Bốn nguồn công thức
+### 7.1 Năm nguồn công thức
 1. **Có sẵn**: 2 món ở đầu mỗi chặng, hoặc được tặng khi lên chặng. Chặng 1: Bánh mì ốp la, Trà tắc.
 2. **Shop "Chợ Công Thức"**:
    - **Kệ Chính** [MVP, M2 đã làm]: cố định theo chặng, trả bằng Tiền quán. Chặng 1 có **2 món**: Bánh tráng trộn (250.000đ, từ ngày 2) và Cà phê sữa đá (200.000đ, từ ngày 4). Món của chặng cao hơn hiện bóng mờ kèm dòng "Cần Quán cóc vỉa hè" (Gỏi cuốn, Bún thịt nướng, Chè ba màu).
@@ -689,6 +694,7 @@ Tổng par 27 giây, Σw = 11.
    - **Tủ Kỷ Niệm** [GĐ3]: bán lại món sự kiện đã qua, sau 90 ngày, giá 600 Muỗng Vàng hoặc 30 Mảnh công thức.
 3. **Bí truyền qua chuỗi nhiệm vụ** [GĐ2]: "Sổ tay thất lạc của Dì Sáu" có 12 trang (4 trang từ cốt truyện, 4 từ sự kiện, 4 từ thành tựu nghề). Đủ 12 trang mở món bí truyền "Hủ tiếu gõ của Dì Sáu". Món bí truyền cũng tuân theo trần lãi +10% (mục 7.2).
 4. **Sự kiện có thời hạn**: MVP nhận món qua chuỗi sự kiện; MVP đã có Tem của sự kiện (Tri ân 20/11: "Phấn Trắng") và Quầy đổi Tem lấy đồ trang trí, Muỗng Vàng. GĐ2 thêm đổi món thứ hai, món đặc biệt bằng Tem.
+5. **Công thức hiếm** [M4]: 4 món biến tấu của món nền dùng nguyên liệu hiếm (Trà tắc mật ong rừng, Bánh mì trứng gà ta, Bánh tráng trộn Tây Ninh, Cà phê muối). Gom 3 mảnh công thức (gánh hàng quê theo giờ thật, khách lạ, Giỏ chợ, tình huống) rồi nấu thử đạt hạng Được là mở món; nấu thử không tốn hàng hiếm, thử lại không giới hạn. Món hiếm chỉ được gọi khi kho còn nguyên liệu hiếm (kho 6 phần mỗi loại, trần 6 phần + 3 mảnh mỗi ngày thật), không tính vào điều kiện "3 công thức" lên chặng, tuân theo trần lãi +10% (tối đa 550đ/giây nấu ở Chặng 1). Chi tiết: `docs/tham-khao/m4-thiet-ke.md` mục C, `docs/can-bang.md` mục 2.1b và 14.5.
 
 ### 7.2 Thẻ xem trước, nấu thử, quy tắc ngang giá trị
 - **Thẻ xem trước** ghi: số bước, cơ chế mới (nếu có), độ khó 1–5 (biểu tượng dao), giá vốn, giá bán, lãi mỗi phần, **số ca hoàn vốn ước tính**, dụng cụ bắt buộc.
@@ -842,21 +848,39 @@ Ngày âm lịch lấy từ **bảng tra sẵn cho 2026–2030** trong `src/data
 - Khi đồng hồ máy bị lùi hơn 10 phút so với mốc lớn nhất từng thấy thì quà theo ngày bị khóa (điểm danh thường và sự kiện, Rương ngày, nhận quà lễ trong Hộp thư; không đẩy thêm quà lễ và quà đời thường mới), màn Chuẩn bị hiện một dòng nhắc nhẹ; game vẫn chơi bình thường. *(đã chỉnh theo bản chơi được: làm sớm ở M2 thay vì M3; mục 13.)*
 
 ### 9.3 Sự kiện ngẫu nhiên
-Có ba lớp. Chúng có trần thiệt hại, có bảo hiểm tần suất và không bao giờ phạt ngẫu nhiên.
+Có ba lớp (a–c), M4 thêm lớp (d) hàng hiếm trong ngày. Chúng có trần thiệt hại và có bảo hiểm tần suất.
 
-**(a) Sự kiện ngày** [MVP, M2 đã làm]: báo trước ở màn tổng kết ca hôm trước ("Ngày mai: …"), hiện ở màn Chuẩn bị kèm lời Dì Sáu và dòng Dự báo khách. Từ ngày game 3, mỗi ngày game có 30% xảy ra (bốc theo seed của save + ngày game, dữ liệu ở `src/data/day-events.js`).
+**Nguyên tắc phạt công bằng** (M4, thay câu cũ "không bao giờ phạt ngẫu nhiên"; quyết định 31). Được phép có sự kiện làm mất tiền, nhưng mỗi sự kiện phải đạt đủ:
+1. **Có nguyên nhân người chơi phòng được, hoặc được báo trước** (sự kiện ngày báo ở Tổng kết hôm trước và màn Chuẩn bị; Dì Sáu nhắc trước khi hàng chờ chạm mốc phạt; kiểm tra vệ sinh lần đầu chỉ nhắc nhở).
+2. **Luôn có lựa chọn an toàn**, ghi rõ cái giá (thường là miễn phí hoặc một khoản nhỏ biết trước).
+3. **Có trần**: mỗi sự kiện ≤ min(10% doanh thu dự kiến của ca, 0,5 TNC); tổng phạt mỗi ngày thật ≤ 1 TNC, vượt thì "Dì Sáu đỡ giùm con lần này".
+4. **Tốt chiếm đa số** (sự kiện ngày: tốt 58% theo trọng số; tình huống mức Vừa: khoảng 45% tốt, 43% chọn, 12% xấu), không 2 sự kiện xấu liền nhau (xét chung sự kiện ngày và tình huống trong ca theo thứ tự thời gian), vừa lỗ nặng thì lần sau nhẹ nhàng. Sự kiện ngày đã báo trước được chốt: đổi mức "Tần suất sự kiện" chỉ áp cho ngày chưa báo.
+5. **Mức "Tần suất sự kiện" Ít không có khoản phạt nào.**
+6. **Gắn với nghiệp vụ và dạy một bài học** (thẻ Mẹo nghề: soi tiền, thấy tiền về mới giao món, giữ lối đi); không hối lộ, không cờ bạc hay bốc thăm, không hướng dẫn làm tiền giả (chỉ nêu cách nhận biết).
 
-| Sự kiện | Trọng số | Tác động | Có ở |
+Tiền sự kiện ghi riêng trong sổ lãi lỗ ca ("Tiền từ sự kiện", "Phạt, chi sự kiện").
+
+**(a) Sự kiện ngày** [MVP, M2 đã làm]: báo trước ở màn tổng kết ca hôm trước ("Ngày mai: …"), hiện ở màn Chuẩn bị kèm lời Dì Sáu và dòng Dự báo khách. Từ ngày game 3, mỗi ngày game có 30% xảy ra (bốc theo seed của save + ngày game, dữ liệu ở `src/data/day-events.js`). *(M4, tần suất "dày": 65% và 1 ngày không có sự kiện thì ngày kế chắc chắn có, tỉ lệ thực khoảng 74%; không trùng loại hôm trước; bốc tuần tự nên "Ngày mai" luôn đúng; mức Ít chỉ sự kiện loại tốt.)*
+
+| Sự kiện | Trọng số (M4) | Tác động | Có ở |
 |---|---|---|---|
-| Trời mưa | 30 | Khách ×0,8 (làm tròn, sàn 3), kiên nhẫn ×1,2. Có lựa chọn "Căng bạt" 20.000đ (trừ lúc mở ca) để khách còn ×0,95 (miễn phí và tự căng nếu có Bạt che mưa) | MVP |
-| Nắng nóng | 30 | Trà tắc và Cà phê sữa đá được gọi ×2; dòng chưa có ghi chú có 35% được thêm "Ít đường" / "Ít ngọt"; +1 khách (trong trần 8) | MVP |
-| Ngày lãnh lương | 20 | Tip ×1,5, làm tròn bội 5.000đ *(đã chỉnh theo bản chơi được: làm sớm ở M2)* | MVP |
-| Chợ phiên | 20 | Khách ×1,3, trần 10 khách (`BALANCE.eventCustomerCap`); lịch khách tự giãn nên ρ vẫn ≤ 0,9, ca dài hơn một chút *(làm sớm ở M2)* | MVP |
+| Trời mưa | 13 | Khách ×0,8 (làm tròn, sàn 3), kiên nhẫn ×1,2. Có lựa chọn "Căng bạt" 20.000đ (trừ lúc mở ca) để khách còn ×0,95 (miễn phí và tự căng nếu có Bạt che mưa) | MVP |
+| Nắng nóng | 13 | Trà tắc và Cà phê sữa đá được gọi ×2; dòng chưa có ghi chú có 35% được thêm "Ít đường" / "Ít ngọt"; +1 khách (trong trần 8) | MVP |
+| Ngày lãnh lương | 10 | (M4) Khách hay gọi thêm món (số món mỗi đơn [60, 32, 8] thay [70, 25, 5]), không nhân tip *(trước M4: tip ×1,5; đã chỉnh theo bản chơi được: làm sớm ở M2)* | MVP |
+| Chợ phiên | 10 | Khách ×1,3, trần 10 khách (`BALANCE.eventCustomerCap`); lịch khách tự giãn nên ρ vẫn ≤ 0,9, ca dài hơn một chút *(làm sớm ở M2)*; (M4) +1 lượt Giỏ chợ | MVP |
+| Hội thi "Xe đẩy sạch, ngon" của phường (tốt) | 9 | Sao trung bình ca ≥ 4,5: +20.000đ +5 danh tiếng; ≥ 4: +10.000đ +2 | M4 |
+| Văn phòng đầu hẻm đặt 3 ly trà tắc (tốt) | 9 | Nhận đơn (miễn phí): thêm 1 khách lấy 3 ly giữa ca; giao đạt từ 4 sao +5.000đ "đúng hẹn" | M4 |
+| Đại lý trà tài trợ bảng hiệu (tốt) | 7 | Nhận tài trợ (miễn phí): bán ≥ 3 ly Trà tắc +15.000đ, ít hơn +5.000đ | M4 |
+| Tắc lên giá (xấu nhẹ) | 6 | Giá tắc ×2 (Trà tắc +1.200đ giá vốn mỗi ly, có trần); Phiếu Chợ Sớm giảm cả phần tăng | M4 |
+| Tiền điện nước tăng (xấu nhẹ) | 5 | Chi phí cố định ca 25.000đ (báo trước) | M4 |
+| Cúp điện theo lịch (chọn) | 6 | Khách ×0,85, món có đá được gọi ×0,5, Loa báo tiền tắt. Mua đá cây 10.000đ: chỉ còn Loa tắt | M4 |
+| Trật tự đô thị nhắc giữ vỉa hè (xấu, phòng được) | 6 | Hàng chờ chạm 3 người phạt 20.000đ 1 lần (Dì Sáu nhắc trước ở 2 người). Thu gọn chỗ đứng (miễn phí, an toàn): tối đa 2 người chờ | M4 |
+| Đoàn kiểm tra vệ sinh an toàn thực phẩm (chọn) | 6 | Không lỗi bếp: +3 danh tiếng; lỗi lần đầu chỉ nhắc nhở, tái phạm trong 14 ngày game phạt 20.000đ. Chuẩn bị đón đoàn 10.000đ: chắc chắn đạt, +5 danh tiếng | M4 |
 | Chợ giảm giá / khan hàng / trận bóng đội tuyển / rằm và mùng 1 (30% khách ăn chay) / khách đoàn du lịch / người review ẩm thực | — | Theo từng sự kiện | GĐ2 |
 
-Kỳ vọng chung xấp xỉ 0, hơi dương khi đã có Bạt che mưa. Phiếu Chợ Sớm (giá vốn ×0,8 trong 1 ca) cũng chọn dùng ở màn Chuẩn bị, trừ phiếu lúc mở ca.
+Kỳ vọng chung xấp xỉ 0, hơi dương khi đã có Bạt che mưa. Phiếu Chợ Sớm (giá vốn ×0,8 trong 1 ca) cũng chọn dùng ở màn Chuẩn bị, trừ phiếu lúc mở ca. *(M4: 12 sự kiện, tốt 58% theo trọng số; sự kiện xấu từ ngày 5, không 2 ngày xấu liền; mức Ít chỉ sự kiện tốt; tiền sự kiện có trần mỗi sự kiện và mỗi ngày thật; người chơi luôn chọn cách an toàn được trung bình +2,4k tiền sự kiện mỗi ca, không bị phạt — `docs/can-bang.md` mục 14.1, 14.4.)*
 
-**(b) Tình huống trong ca** [MVP, M3 đã làm]: từ ngày game 3, mỗi ca có 35% (mức Vừa) ra tối đa 1 tình huống *(đã chỉnh theo bản chơi được: giới hạn tính theo ca, không thêm giới hạn 1 lần mỗi ngày thật)*. Tình huống chỉ bật khi đang ở tab Quầy, giữa hai khách, **không chen vào mini-game nấu**. Kiên nhẫn tạm dừng khi hộp thoại mở. Mỗi lựa chọn ghi rõ cái giá và luôn có 1 lựa chọn an toàn. Thiệt hại tối đa của một tình huống là mức nhỏ hơn giữa 10% doanh thu dự kiến của ca và 0,5 TNC (làm tròn xuống bội 500đ); tình huống nào có lựa chọn lỗ quá trần thì không ra ở ca đó. Nếu 3 ca liền không có tình huống thì ca kế chắc chắn có. Không lặp lại 5 tình huống gần nhất. Tình huống bốc theo seed của save + ngày game nên tải lại không đổi.
+**(b) Tình huống trong ca** [MVP, M3 đã làm]: từ ngày game 3, mỗi ca có 35% (mức Vừa) ra tối đa 1 tình huống *(đã chỉnh theo bản chơi được: giới hạn tính theo ca, không thêm giới hạn 1 lần mỗi ngày thật)*. *(M4, tần suất "dày": tối đa 2 tình huống mỗi ca, cách nhau ít nhất 2 khách; mức Vừa lần 1 55%, lần 2 30% khi ca từ 6 khách, bảo hiểm sau 2 ca liền không có — thực khoảng 60% ca có tình huống; Nhiều 75%/45%, bảo hiểm sau 1 ca — khoảng 80%; Ít 30%, tối đa 1, chỉ loại tốt, bảo hiểm sau 3 ca — khoảng 40%.)* Tình huống chỉ bật khi đang ở tab Quầy, giữa hai khách, **không chen vào mini-game nấu**. Kiên nhẫn tạm dừng khi hộp thoại mở. Mỗi lựa chọn ghi rõ cái giá và luôn có 1 lựa chọn an toàn. Thiệt hại tối đa của một tình huống là mức nhỏ hơn giữa 10% doanh thu dự kiến của ca và 0,5 TNC (làm tròn xuống bội 500đ); tình huống nào có lựa chọn lỗ quá trần thì không ra ở ca đó. Nếu 3 ca liền không có tình huống thì ca kế chắc chắn có. Không lặp lại 5 tình huống gần nhất. Tình huống bốc theo seed của save + ngày game nên tải lại không đổi.
 
 MVP có 3 tình huống *(đã chỉnh theo bản chơi được: 2 tình huống sau làm sớm từ GĐ2)*:
 - **Khách mở hàng bằng tờ 500k** (tích cực, trước khách đầu tiên của ca): thối hết tiền lẻ (nếu két đủ; két đầu ca 200.000đ nên thường bị khóa kèm lý do, dạy thẻ "Đủ tiền lẻ đầu ca") / mời chuyển QR (khi đã mở QR) / tặng ly trà tắc "mở hàng" (an toàn: −3.000đ vốn, ca sau +1 khách trong trần 8).
@@ -865,12 +889,16 @@ MVP có 3 tình huống *(đã chỉnh theo bản chơi được: 2 tình huốn
 
 Kết quả tình huống ghi ở màn Tổng kết ca (và sổ nợ ở màn Chuẩn bị).
 
+**M4 thêm 8 tình huống chạy theo dữ liệu** (không viết code riêng cho từng tình huống; mỗi lựa chọn khai báo kết quả có xác suất, bốc 1 lần lúc mở nên tải lại không đổi): Tờ 20.000đ nghi giả (chỉ nêu cách nhận biết), Người giao hàng nói "khách chuyển rồi" (có Loa báo tiền thì lựa chọn an toàn "xanh"), Bình gas mini hết, Khách bỏ quên ví, Cô Hai ve chai, Đoàn khách hỏi đường, Khách quen từ quê gửi quà (hàng hiếm), Cô bán dạo mời hàng hiếm (món đã biết trước, không phải hộp ngẫu nhiên). Mỗi tình huống có ít nhất 1 lựa chọn an toàn, thiệt hại và tiền thưởng tối đa phải nằm trong trần của ca; bảng đủ ở `docs/can-bang.md` mục 14.2.
+
 GĐ2 thêm:
-- Cúp điện (bán ngoại tuyến, ghi order giấy), hết gas, chảo dầu bốc lửa (chọn "dội nước" là sai và được giải thích), hàng rau hỏng, đoàn kiểm tra ATTP, khách quên ví, tiệc trong hẻm đặt cọc.
+- Cúp điện giữa ca (bán ngoại tuyến, ghi order giấy), chảo dầu bốc lửa (chọn "dội nước" là sai và được giải thích), hàng rau hỏng, tiệc trong hẻm đặt cọc. *(Hết gas, đoàn kiểm tra ATTP, khách quên ví, cúp điện theo lịch đã làm ở M4.)*
 
 **(c) Đơn bất chợt ngoài ca** [GĐ2]: từ ngày thật thứ 3, mỗi ngày có 30% ra một đơn ở màn Chuẩn bị, ví dụ "Văn phòng đặt 6 phần". Hạn tới 04:00 hôm sau. Trả 1,5 lần giá và 10 Muỗng Vàng. Bỏ qua thì chỉ mất cơ hội.
 
-Trong Cài đặt (M3) có mức **Nhiều / Vừa / Ít** thay cho nút tắt hẳn. Mức "Ít" là 15%/ca và chỉ gồm tình huống tích cực.
+Trong Cài đặt (M3) có mức **Nhiều / Vừa / Ít** thay cho nút tắt hẳn. *(M4: đổi tên "Tần suất sự kiện", áp cho cả sự kiện ngày; mức "Ít" 30%/ca, tối đa 1, chỉ gồm sự kiện và tình huống loại tốt, không có khoản phạt. Trước M4: 15%/ca.)*
+
+**(d) Hàng hiếm trong ngày** [M4]: 3 gánh hàng quê theo giờ thật Việt Nam (Chợ sớm 05:00–09:00, Xe ba gác trưa 11:00–13:30, Gánh đặc sản tối 17:30–21:00; mỗi phiên 1 lượt mỗi ngày thật, chỉ ở màn Chuẩn bị, khóa khi lùi giờ, lỡ không bị phạt) với mini-game "Lựa hàng" (lấy đúng hàng hiếm, tránh hàng thường dễ nhầm; luôn được ít nhất 1 phần); khách lạ ở ca đầu mỗi ngày thật từ ngày game 3 (quà theo số sao); Giỏ chợ rút cuối ca (chuỗi "Quầy chuẩn" 5 khách, Chợ phiên) với tỉ lệ và thanh may mắn công khai. Chi tiết mục 7.1 (nguồn 5) và `docs/can-bang.md` mục 14.5.
 
 ### 9.4 Chuỗi nhiệm vụ [MVP, M2 đã làm]
 - **Chuỗi chính "Hành trình khởi nghiệp"**: mỗi chặng có một chuỗi 5–7 bước, cũng là cổng lên chặng. Luôn có đúng 1 bước đang làm, ghim ở màn Chuẩn bị, có gợi ý "làm ở đâu". Không hạn giờ, không thể thất bại.
@@ -881,12 +909,12 @@ Trong Cài đặt (M3) có mức **Nhiều / Vừa / Ít** thay cho nút tắt h
 | 1 | Phục vụ khách đầu tiên | 5 Muỗng Vàng |
 | 2 | Thối đúng 3 lần | 5.000đ |
 | 3 | Ghi phiếu đúng ngay lần đọc lại đầu cho 3 khách | 5.000đ |
-| 4 | Đạt 5 lần Hoàn hảo ở bước bếp | 15.000đ |
-| 5 | Mua công thức đầu tiên | 30.000đ |
-| 6 | Nấu 3 món Tuyệt hảo (bật Hỗ trợ thao tác: món Ngon trở lên cũng được đếm) | 30.000đ + 5 Muỗng Vàng |
+| 4 | Đạt 5 lần Hoàn hảo ở bước bếp | 10.000đ *(trước M4: 15.000đ)* |
+| 5 | Mua công thức đầu tiên | 15.000đ *(trước M4: 30.000đ)* |
+| 6 | Nấu 3 món Tuyệt hảo (bật Hỗ trợ thao tác: món Ngon trở lên cũng được đếm) | 10.000đ + 5 Muỗng Vàng *(trước M4: 30.000đ)* |
 | 7 | Đạt 150 danh tiếng và sao trung bình ≥3,8 (cùng ngưỡng với điều kiện lên Chặng 2) | Hoàn thành chuỗi: danh hiệu "Chủ xe đầu hẻm", 20 Muỗng Vàng, mở thẻ "Quán cóc vỉa hè – sắp khai trương". *Trang 1 Sổ tay của Dì Sáu chưa có ở bản chơi được, dời sang GĐ2 cùng chuỗi "Sổ tay thất lạc".* |
 
-  Mỗi bước kèm 1 thẻ Mẹo nghề liên quan, mở khi nhận thưởng bước *(đã làm ở M2)*. Tổng tiền cả chuỗi 85.000đ. Thưởng chuỗi nhận ở màn Chuẩn bị (nút gộp khi có nhiều bước chờ), không nhận được khi đang trong ca.
+  Mỗi bước kèm 1 thẻ Mẹo nghề liên quan, mở khi nhận thưởng bước *(đã làm ở M2)*. Tổng tiền cả chuỗi 45.000đ *(M4, cân bằng: trước là 85.000đ; luật tip mới làm lãi những ngày đầu của người chơi giỏi giảm khoảng 40%, mà người chơi giỏi xong bước 2–6 ngay ngày thật 1–2, nên tỉ lệ thưởng vượt trần 35% ở 44/800 ngày mô phỏng; sau khi giảm cao nhất 34,1% — `docs/can-bang.md` mục 10, 16)*. Thưởng chuỗi nhận ở màn Chuẩn bị (nút gộp khi có nhiều bước chờ), không nhận được khi đang trong ca.
 - **"Làm quen QR"** (Anh Khoa, MVP, từ ngày 4):
   1. Nhận đúng 3 thanh toán QR → 5 Muỗng Vàng.
   2. Phát hiện 1 ảnh chuyển khoản giả: mỗi ca sau khi tới bước này, một khách (không phải khách đầu ca) chắc chắn trả bằng ảnh giả, kể cả trước ngày 7, cho tới khi bắt được. **Nếu Loa báo tiền đã chặn ảnh giả thì cũng tính là xong bước này**, để chuỗi không bao giờ kẹt → 5 Muỗng Vàng.
@@ -910,7 +938,7 @@ Trong Cài đặt (M3) có mức **Nhiều / Vừa / Ít** thay cho nút tắt h
 | Loại | Quà | Có ở |
 |---|---|---|
 | Chào mừng | 10 Muỗng Vàng + 1 Phiếu Chợ Sớm (không tặng tiền) | MVP |
-| Phiên bản mới (thư "Có gì mới: …") | 10 Muỗng Vàng (thư `phien_ban_0_2_0` chỉ gửi cho save cũ từ bản M1; save mới không nhận) | MVP |
+| Phiên bản mới (thư "Có gì mới: …") | Chỉ gửi cho save cũ, save mới không nhận. `phien_ban_0_2_0`: 10 Muỗng Vàng (save từ bản M1). `phien_ban_0_4_0` (M4): giải thích luật tip "hóa đơn từ 20.000đ mà khách chấm 5 sao thì khách bỏ hũ tip 5.000đ", giới thiệu sự kiện mới, 3 gánh hàng quê và khách lạ; quà làm quen 1 mảnh Trà tắc mật ong rừng + 1 phần Mật ong rừng U Minh (save từ bản 0.1–0.3) | MVP, M4 |
 | Đền bù lỗi | Theo id, không nhận trùng | MVP |
 | Quà lễ (đẩy từ 04:00 ngày lễ, trong 7 ngày) | 20/10: 20 Muỗng Vàng; 20/11: 20 Muỗng Vàng + 0,5 TNC; Tết Đinh Mùi (06/02/2027): 88 Muỗng Vàng + lì xì 1 TNC | MVP (cả 3 quà đã có trong dữ liệu M2) |
 | Quà đời thường | Từ ngày thật thứ 3, mỗi ngày 10% nhận 0,3–0,6 TNC (khách quen lì xì, trả ví rơi, bán ve chai); cần ít nhất 5 đánh giá và sao trung bình ≥ 3,8; tối đa 2 thư mỗi tháng | MVP |
@@ -1090,16 +1118,19 @@ Giả định người chơi trung bình 4,2 sao, chơi 3 ca ở ngày thật 1 
 
 | Ngày thật (ca) | Lãi bán hàng | Nhiệm vụ + Rương ngày | Chuỗi C1 | Điểm danh (quy đổi) | Hộp thư (quy đổi, kỳ vọng) | **Tổng thưởng** | **Tỉ lệ** |
 |---|---|---|---|---|---|---|---|
-| 1 (ca 1–3) | khoảng 78k | 20k | 10k (bước 2, 3) | 0 (Muỗng Vàng, thẩm mỹ) | khoảng 5k (Phiếu Chợ Sớm của thư chào mừng) | **35k** | **31%** |
-| 2 (ca 4–7) | khoảng 265k | 52k | 45k (bước 4, 5) | khoảng 7k (Phiếu Chợ Sớm) | 0 | **104k** | **28%** |
-| 3 (ca 8–11) | khoảng 405k | 80k | 30k (bước 6) | 0 (Muỗng Vàng) | khoảng 4,5k (quà đời thường) | **114,5k** | **22%** |
-| 4 (ca 12–15) | khoảng 421k | 80k | 0 (bước 7 thưởng Muỗng Vàng) | khoảng 20k (Bạt che mưa, danh nghĩa) | khoảng 4,5k | **104,5k** | **20%** |
-| **Cả Chặng 1** | **khoảng 1,17tr** | 232k | 85k | 27k | 14k | **358k** | **23,4%** |
+| 1 (ca 1–3) | khoảng 65k | 20k | 10k (bước 2, 3) | 0 (Muỗng Vàng, thẩm mỹ) | khoảng 5k (Phiếu Chợ Sớm của thư chào mừng) | **35k** | **35%** |
+| 2 (ca 4–7) | khoảng 253k | 52k | 25k (bước 4, 5) | khoảng 7k (Phiếu Chợ Sớm) | 0 | **84k** | **25%** |
+| 3 (ca 8–11) | khoảng 389k | 80k | 10k (bước 6) | 0 (Muỗng Vàng) | khoảng 4,5k (quà đời thường) | **94,5k** | **19,5%** |
+| 4 (ca 12–15) | khoảng 404k | 80k | 0 (bước 7 thưởng Muỗng Vàng) | khoảng 20k (Bạt che mưa, danh nghĩa) | khoảng 4,5k | **104,5k** | **20,6%** |
+| **Cả Chặng 1** | **khoảng 1,11tr** | 232k | 45k | 27k | 14k | **318k** | **22,3%** |
 
-- Mọi ngày đều dưới trần 35%. Ngày thật 1 cao nhất (31%) vì lãi bán hàng ca đầu còn thấp; đây là chủ ý, giúp người mới có tiền mua Dao thép tốt ngay ngày đầu.
+*(M4: lãi bán hàng tính lại theo luật tip mới — `docs/can-bang.md` mục 9; thưởng tiền chuỗi C1 giảm 85k → 45k — mục 9.4. Bảng v0.3: lãi 78k / 265k / 405k / 421k, chuỗi 85k, tỉ lệ 31% / 28% / 22% / 20%, cả chặng 23,4%.)*
+
+- Mọi ngày không vượt trần 35%. Ngày thật 1 cao nhất và chạm trần trong mô hình (35%) vì lãi ba ca đầu còn thấp (ngày 1–2 phần lớn đơn 1 món, hóa đơn dưới 20.000đ không có tip); đây là ngày cần đo kỹ ở người chơi thật. Mô phỏng người chơi giỏi (lãi cao hơn mô hình) ngày thật 1 trung bình 20%, cao nhất 33,8%.
 - Quà lễ (20/10, 20/11) phụ thuộc lịch nên không nằm trong bảng; quà 20/11 là 0,5 TNC.
-- Muỗng Vàng cả Chặng 1: khoảng 90 (mô phỏng M2: 85–90 sau 5 ngày thật), đủ mua 1–2 màu dù xe (30 mỗi màu) và vài lần đổi nhiệm vụ.
+- Muỗng Vàng cả Chặng 1: khoảng 90 (mô phỏng M2: 85–90 sau 5 ngày thật), đủ mua 1–2 màu dù xe (30 mỗi màu) và vài lần đổi nhiệm vụ. *M4: hàng hiếm dư (kho đầy hoặc quá 6 phần/3 mảnh mỗi ngày thật) đổi 2 Muỗng Vàng mỗi phần, người chơi giỏi ghé đủ 3 phiên hàng có thêm khoảng 7 Muỗng Vàng mỗi ngày thật (mô phỏng: 115–135 sau 5 ngày thật).*
 - **Số đo mô phỏng M2** (`tests/unit/integration-meta.test.mjs`, người chơi hoàn hảo, 3 ca mỗi ngày thật, 5 ngày thật, seed 42, 7, 2024): tỉ lệ thưởng mỗi ngày 4–25%, cao nhất 25,2% (ngày nhận Rương Khai Trương trong lượt có sự kiện), ngày có quà lễ 20/11 là 18,3%, ngày tất toán Tem dư là 21,2%. Lãi bán hàng của người chơi hoàn hảo cao hơn mô hình người chơi trung bình khoảng 3 lần, nên tỉ lệ thật thấp hơn bảng trên; chi tiết ở `docs/can-bang.md` mục 10.3.
+- **Số đo mô phỏng M4** (cùng test, người chơi giỏi còn ghé 3 phiên hàng, nấu thử mở món hiếm, chọn cách an toàn ở tình huống; hàng hiếm quy đổi lúc dùng, như Phiếu Chợ Sớm): seed 42, 7, 2024 cao nhất 26,7%; lượt Tri ân 20/11 cao nhất 33,5% (ngày Rương Khai Trương); chạy rộng 40 hạt giống × 4 mốc bắt đầu cao nhất 34,1% (trước khi giảm thưởng chuỗi C1: 41,7%, vượt trần ở 44/800 ngày).
 - Nếu số liệu thử nghiệm cho thấy tỉ lệ vượt 35% ở bất kỳ ngày nào thì giảm hệ số thưởng nhiệm vụ trước.
 
 ### 11.6 Lưới an toàn và phạt
@@ -1107,7 +1138,7 @@ Giả định người chơi trung bình 4,2 sao, chơi 3 ca ở ngày thật 1 
 - **"Dì Sáu cho mượn"** [MVP, M1]: khi Tiền quán thấp hơn chi phí cố định một ca (20.000đ), Dì Sáu cho mượn **240.000đ** (3 lần TNC trung bình Chặng 1). Trả 110% (264.000đ) bằng cách tự trừ 25% lãi mỗi ca có lãi. Mỗi lần chỉ được 1 khoản. Đang nợ thì không lên chặng được.
 - **Gói cứu trợ** [GĐ2]: nguyên liệu đủ 1 ca, tối đa 1 lần mỗi 3 ngày game (khi đã có kho).
 - **Chơi lại ca** [GĐ2]: luật ở mục 10.E.
-- **Mọi phạt đều có trần**: không bao giờ tính theo % Tiền quán đang giữ. Mỗi tình huống lỗ tối đa 0,5 TNC và không quá 20% doanh thu ca.
+- **Mọi phạt đều có trần**: không bao giờ tính theo % Tiền quán đang giữ. Mỗi tình huống (và mỗi sự kiện ngày có phạt) lỗ tối đa bằng mức nhỏ hơn giữa 10% doanh thu dự kiến của ca và 0,5 TNC, làm tròn xuống bội 500đ (khớp code `incidentLossCap`); tổng phạt vì sự kiện trong một ngày thật tối đa 1 TNC, vượt thì Dì Sáu đỡ giùm (`BALANCE.eventDayCap`). Tiền thưởng sự kiện cũng có trần (min(15% doanh thu dự kiến, 0,75 TNC) mỗi sự kiện, 1 TNC mỗi ngày thật). *(Bản trước ghi "20% doanh thu ca", lệch code.)*
 
 ---
 
@@ -1169,7 +1200,7 @@ Chi tiết (tên file, chữ ký hàm, cấu trúc save, danh sách `data-testid
 - Chỉ **Chặng 1 "Xe đẩy đầu hẻm"**. Người chơi chơi từ ngày 1 tới khi đủ điều kiện lên Chặng 2 (150 danh tiếng, sao trung bình ≥3,8, 3 công thức, 2 món thạo cấp 2, xong chuỗi "Ngày đầu ra phố", 500.000đ). Khi đó hiện màn "Quán cóc vỉa hè – sắp khai trương" với nút bị khóa, và người chơi vẫn chơi tiếp Chặng 1 với các mục tiêu sau khi đủ điều kiện. Bản đồ hiện đủ 7 chặng, các chặng sau hiện mờ.
 - Quy mô ước tính: **khoảng 9.000–12.000 dòng**, nên chia thành 3 mốc. Mỗi mốc là một bản chạy được, có commit riêng.
 - Dữ liệu của cả 5 món được viết ngay từ M1; món Shop và món sự kiện chỉ bán được từ M2.
-- **Trạng thái ngày 30/09/2026**: M1, M2 và M3 **đã xong**, kể cả vòng soát lỗi M3 (an toàn dữ liệu người chơi, giao diện ngày 1): 271 unit test và 33 kịch bản e2e đều xanh (e2e khoảng 18 phút).
+- **Trạng thái ngày 30/09/2026**: M1, M2 và M3 **đã xong**, kể cả vòng soát lỗi M3 (an toàn dữ liệu người chơi, giao diện ngày 1): 271 unit test và 33 kịch bản e2e đều xanh (e2e khoảng 18 phút). **M4 (bản 0.4.0) đã xong** (mục 14.4b): 344 unit test và 33 kịch bản e2e xanh.
 
 ### 14.2 M1 — Lõi chơi được [Đã xong]
 **Nội dung**
@@ -1231,6 +1262,22 @@ Chi tiết (tên file, chữ ký hàm, cấu trúc save, danh sách `data-testid
 - `npm test` và `npm run e2e` của M1, M2 vẫn xanh; save v1 và v2 vẫn nạp được.
 - E2E nội dung M3 (`incident-notebook.e2e.mjs`): tình huống bật giữa hai khách ở tab Quầy, thời gian ca đứng yên khi hộp thoại mở, kết quả ghi ở Tổng kết; nhận thưởng nhóm Sổ tay nghề 1 lần; Sổ công thức; khung 360×740 không tràn. Unit: xác suất, bảo hiểm, không lặp, trần thiệt hại, không chen mini-game, ví luôn là bội 500đ.
 
+### 14.4b M4 — Tip mới, sự kiện thưởng/phạt tiền, hàng hiếm (bản 0.4.0) [Đã xong]
+Thiết kế chi tiết: `docs/tham-khao/m4-thiet-ke.md` (có điều chỉnh của người dùng: tần suất "dày", 3 khung giờ phiên hàng, hàng hiếm tiêu hao mỗi phần). Tư liệu thể loại: `docs/nghien-cuu-the-loai-game.md`.
+
+**Nội dung**
+- **Tip mới** (quyết định 30, mục 6.9): 5.000đ duy nhất khi khách 5 sao và hóa đơn khách thực trả từ 20.000đ; khách khó tính 5 sao +1 danh tiếng; chuỗi "Quầy chuẩn" 5 khách +1 lượt Giỏ chợ; Ngày lãnh lương khách gọi thêm món.
+- **Sổ tiền sự kiện**: dòng "Tiền từ sự kiện" và "Phạt, chi sự kiện" ở Tổng kết; trần mỗi sự kiện và mỗi ngày thật; bất biến ví giữ nguyên.
+- **Tần suất "dày"** (quyết định 33), luật nhịp (không 2 cái xấu liền), mức Ít không có sự kiện phạt; Cài đặt đổi tên "Tần suất sự kiện".
+- **8 sự kiện ngày mới và 8 tình huống mới** chạy theo dữ liệu, luôn có lựa chọn an toàn (quyết định 31, mục 9.3); 4 thẻ Mẹo nghề mới (24 thẻ).
+- **Hàng hiếm** (quyết định 32, mục 7.1, 9.3d): kho, 5 nguyên liệu, 4 công thức hiếm, màn "Lựa hàng" ở 3 gánh hàng quê theo giờ thật, khách lạ, Giỏ chợ, món hiếm ở quầy/bếp với "★ còn n", tiêu hao lúc Ra món.
+- **Save v3** (thêm trường M4, ca dở của bản 0.3 chơi tiếp được), **bản 0.4.0** (PWA cache mới), **thư phiên bản 0.4.0** giải thích luật tip, quà làm quen 1 mảnh Trà tắc mật ong rừng + 1 phần Mật ong rừng.
+- **Cân bằng**: thưởng tiền chuỗi "Ngày đầu ra phố" 85k → 45k để tỉ lệ thưởng giữ ≤ 35% sau luật tip mới (mục 9.4, 11.5).
+
+**Điều kiện hoàn thành M4** (đã đạt)
+- Unit test mới: `m4-tip`, `m4-frequency`, `m4-events`, `m4-incidents`, `m4-rare`, `m4-save` (nâng save thật của bản 0.3.0 đang dở ca lên v3 rồi chơi tiếp). Mô phỏng `integration-meta` thêm phiên hàng, nấu thử món hiếm, chọn cách an toàn, quy đổi hàng hiếm vào tỉ lệ thưởng (≤ 35% mỗi ngày thật), và các hạt giống khó.
+- `npm test` và `npm run e2e` của M1–M3 vẫn xanh; save v1 và v2 vẫn nạp được; mã sao lưu v1/v2 dùng được ở bản 0.4.
+
 ### 14.5 Đường cắt khi thiếu thời gian (cắt từ trên xuống)
 1. Âm thanh.
 2. Tình huống trong ca (giữ sự kiện ngày).
@@ -1241,7 +1288,7 @@ Chi tiết (tên file, chữ ký hàm, cấu trúc save, danh sách `data-testid
 
 **Không bao giờ cắt:** luồng 4 khâu và thanh 4 chấm; 3 lớp đơn (yêu cầu thật – phiếu – món); đọc lại đơn; báo tổng và thối tiền; Thớt sơ chế; 6 cơ chế bếp; phiếu chấm tách lỗi quầy/lỗi bếp; lưu cùng ca dở; điểm danh; nhiệm vụ ngày; hộp thư; chuỗi "Ngày đầu ra phố"; Shop 2 món; sự kiện 20/11 với Chè bưởi; unit test; các kịch bản e2e.
 
-**Để sau, không làm ở MVP:** kho, hạn dùng, sơ chế đầu ca, nấu mẻ, bếp chạy nền; 6 cơ chế còn lại; ăn tại chỗ, 6 khách quen có tên, Sổ khách quen; máy POS, khuyến mãi, thẻ, tờ 1k/2k, chốt ca đếm két; nhân viên; đổi món bằng Tem; Kệ Đặc biệt, kệ xoay, Mảnh công thức; lịch tháng, nhiệm vụ tuần, chuỗi ngày, thành tựu, giftcode; trang trí theo chặng; "Món của ngày"; Chặng 2–7; thử thách ngày; `lab.html`, Sổ số liệu chi tiết; giờ máy chủ; backend, bảng xếp hạng, Web Push; Chế độ Học việc; nhạc nền. *(Tem, Quầy đổi và màu dù xe đã làm sớm ở M2.)*
+**Để sau, không làm ở MVP:** kho, hạn dùng, sơ chế đầu ca, nấu mẻ, bếp chạy nền; 6 cơ chế còn lại; ăn tại chỗ, 6 khách quen có tên, Sổ khách quen; máy POS, khuyến mãi, thẻ, tờ 1k/2k, chốt ca đếm két; nhân viên; đổi món bằng Tem; Kệ Đặc biệt, kệ xoay, Mảnh công thức (của Tủ Kỷ Niệm; M4 chỉ có mảnh cho 4 công thức hiếm); lịch tháng, nhiệm vụ tuần, chuỗi ngày, thành tựu, giftcode; trang trí theo chặng; "Món của ngày"; Chặng 2–7; thử thách ngày; `lab.html`, Sổ số liệu chi tiết; giờ máy chủ; backend, bảng xếp hạng, Web Push; Chế độ Học việc; nhạc nền. *(Tem, Quầy đổi và màu dù xe đã làm sớm ở M2.)*
 
 ### 14.6 GĐ2 (mục tiêu: Chặng 2–3 chơi được, LiveOps đầy đủ khi offline)
 Hai mốc lịch: sự kiện **Giáng sinh 2026** và nội dung **Tết Đinh Mùi** chốt trước giữa tháng 01/2027.
@@ -1361,3 +1408,25 @@ Các mục dưới đây là chỗ code M1 + M2 khác đặc tả v0.2. Tài li�
 | Khóa một tab, `?devNow` lưu riêng, nút Back | Chưa có | Đã làm ở vòng soát lỗi M2 | 13 |
 | "Món của ngày" | M2 | Không làm (đường cắt), dời GĐ2 | 10.D, 14 |
 | Nhóm thẻ "Định lượng chuẩn" | Bếp | Kho | 12 |
+
+---
+
+## Phụ lục C. Thay đổi v0.4: M4 (bản game 0.4.0)
+
+Thiết kế chi tiết và lý do: `docs/tham-khao/m4-thiet-ke.md`; tư liệu thể loại (nguyên tắc sự kiện, phạt công bằng, hàng hiếm): `docs/nghien-cuu-the-loai-game.md`. Hợp đồng kỹ thuật: `docs/kien-truc.md` mục 19–22. Số liệu: `docs/can-bang.md` mục 7, 9, 10, 14.1–14.5, 15, 16.
+
+| Nội dung | v0.3 (bản 0.3.0) | v0.4 (bản 0.4.0) | Mục |
+|---|---|---|---|
+| Tip | 5.000đ khi 5 sao; 10.000đ nếu có món Không tì vết, khách khó tính, chuỗi "Quầy chuẩn" ≥ 5; Ngày lãnh lương ×1,5 | 5.000đ duy nhất khi khách 5 sao **và** hóa đơn khách thực trả từ 20.000đ; thưởng thay thế bằng danh tiếng (khó tính) và lượt Giỏ chợ (chuỗi Quầy chuẩn); Ngày lãnh lương khách gọi thêm món | 0.2 (30), 6.9 |
+| Phạt vì sự kiện | "Không bao giờ phạt ngẫu nhiên" | Được phạt khi có nguyên nhân phòng được hoặc báo trước, luôn có lựa chọn an toàn, có trần mỗi sự kiện và mỗi ngày thật, tốt chiếm đa số, không 2 xấu liền, mức Ít không phạt | 0.2 (31), 9.3, 11.6 |
+| Sổ lãi lỗ ca | Chưa tách tiền sự kiện | Thêm "Tiền từ sự kiện" (vào ví lúc tất toán) và "Phạt, chi sự kiện" (trừ ví ngay); bất biến ví giữ nguyên | 9.3 |
+| Tần suất sự kiện | Sự kiện ngày 30%/ngày; tình huống tối đa 1 mỗi ca, 50/35/15% | Sự kiện ngày 65% + bảo hiểm (thực khoảng 74%); tình huống tối đa 2 mỗi ca, thực khoảng 80/60/40% ca có ≥ 1; Cài đặt "Tần suất sự kiện" áp cho cả sự kiện ngày | 0.2 (33), 9.3 |
+| Sự kiện ngày | 4 (Trời mưa, Nắng nóng, Ngày lãnh lương, Chợ phiên; 30/30/20/20) | 12: thêm Hội thi xe sạch, Văn phòng đặt 3 ly, Đại lý tài trợ, Tắc lên giá, Tiền điện nước, Cúp điện, Trật tự đô thị, Kiểm tra vệ sinh ATTP (trọng số cũ 13/13/10/10) | 9.3a |
+| Tình huống trong ca | 3 | 11: thêm Tiền nghi giả, Người giao hàng, Gas hết, Khách quên ví, Ve chai, Đoàn khách hỏi đường, Khách quê gửi quà, Cô bán dạo (chạy theo dữ liệu) | 9.3b |
+| Thẻ Mẹo nghề | 20 | 24 (Soi tiền trước khi thối, Thấy tiền về mới giao món, Kiểm hàng trước khi nhận, Giữ lối đi cho người đi bộ) | 12 |
+| Nguồn công thức | 4 nguồn | Thêm nguồn 5 "Công thức hiếm": 4 món, mở bằng 3 mảnh + nấu thử đạt hạng Được | 7.1 |
+| Hàng hiếm | Không có | Kho 5 nguyên liệu (6 phần/loại, 6 phần + 3 mảnh mỗi ngày thật); gánh hàng quê 05:00–09:00, 11:00–13:30, 17:30–21:00 với "Lựa hàng"; khách lạ ca đầu mỗi ngày thật; Giỏ chợ có bảo hiểm công khai; món hiếm trừ kho mỗi phần lúc Ra món | 0.2 (32), 9.3d |
+| Chuỗi "Ngày đầu ra phố" | Bước 4 / 5 / 6: 15.000 / 30.000 / 30.000đ (cả chuỗi 85.000đ) | 10.000 / 15.000 / 10.000đ (cả chuỗi 45.000đ) để tỉ lệ thưởng ≤ 35% sau luật tip mới | 9.4, 11.5 |
+| Trần phạt ở mục 11.6 | Ghi "không quá 20% doanh thu ca" (lệch code) | min(10% doanh thu dự kiến, 0,5 TNC), khớp code; thêm trần ngày thật 1 TNC | 11.6 |
+| Save | `STATE_VERSION = 2` | `STATE_VERSION = 3`; save v1/v2 (kể cả ca đang dở của bản 0.3) nâng lên v3 khi nạp; mã v3 đưa vào bản 0.3 báo "bản mới hơn" | 14.4b |
+| Phiên bản và thư | 0.3.0, không có thư riêng | 0.4.0; thư "Có gì mới" giải thích luật tip, sự kiện mới, hàng hiếm; quà làm quen 1 mảnh Trà tắc mật ong rừng + 1 phần Mật ong rừng (chỉ save cũ nhận) | 9.5, 14.4b |

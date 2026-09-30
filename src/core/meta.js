@@ -6,7 +6,7 @@ import { signalsFor, lastHistory } from './stats.js'
 import { ensureDaily, applyQuestSignal } from './quests.js'
 import { refreshMail, queueLateReviews } from './mail.js'
 import { refreshChains, applyChainSignal } from './chains.js'
-import { markEventDay, awardDishTem, ensureEventQuests, applyEventQuestSignal, settleEvents } from './events.js'
+import { markEventDay, awardDishTem, ensureEventQuests, applyEventQuestSignal, settleEvents, announceDayEvent } from './events.js'
 import { updateStageUp } from './progression.js'
 
 // Sự kiện do chính hệ thống meta phát ra (bỏ qua để không tự gọi lại).
@@ -40,6 +40,8 @@ export function refreshMeta(state, nowInfo, ctx) {
   const eventQuestsAuto = ensureEventQuests(state, nowInfo, ctx)
   const chains = refreshChains(state, nowInfo, ctx)
   settleEvents(state, nowInfo, ctx)
+  // M4 (soát lỗi): sự kiện ngày của hôm nay (đang hiện ở màn Chuẩn bị) đã chốt, đổi mức "Tần suất sự kiện" không bốc lại
+  announceDayEvent(state, state.day, ctx)
   const stageUp = updateStageUp(state, ctx)
   const newMail = ((state.mail && state.mail.list) || []).map(m => m.id).filter(id => !before.has(id))
   return { questsRolled: daily.rolled, newMail, chains, stageUp, eventQuestsAuto }

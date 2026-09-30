@@ -252,7 +252,10 @@ test('R5: món hợp lệ chốt lúc bốc việc, chơi thêm ca (món hết "
 
 // ---------- R6: Hỗ trợ tính tiền và chuỗi "Quầy chuẩn" ----------
 
-test('R6: bật Hỗ trợ tính tiền thì chuỗi Quầy chuẩn không đếm, không tip 10.000đ theo chuỗi, không ghi kỷ lục', () => {
+// M4 (sửa có chủ ý): tip một mức 5.000đ khi 5 sao và hóa đơn khách thực trả từ 20.000đ; chuỗi "Quầy chuẩn" 5 khách không
+// còn tip 10.000đ mà cho 1 lượt Giỏ chợ mỗi ca (sh.rareRolls). Bật Hỗ trợ tính tiền: chuỗi không đếm, không có lượt,
+// không ghi kỷ lục (giữ như M2).
+test('R6: bật Hỗ trợ tính tiền thì chuỗi Quầy chuẩn không đếm, không có lượt Giỏ chợ theo chuỗi, không ghi kỷ lục; tip chỉ 0 hoặc 5.000đ', () => {
   const run = assistCash => {
     const ctx = makeMetaCtx({ at: '2026-10-10T08:00', attach: true })
     const s = defaultState(3, DATA)
@@ -260,19 +263,29 @@ test('R6: bật Hỗ trợ tính tiền thì chuỗi Quầy chuẩn không đế
     s.day = 9
     s.settings.assistCash = assistCash
     const streaks = []
-    ctx.bus.on('ticket.clipped', () => streaks.push(s.shift.counterStreak))
-    // bước đầu 89 điểm: món Tuyệt hảo nhưng không Không tì vết → tip 10.000đ chỉ có thể đến từ chuỗi Quầy chuẩn
+    let rolls = null
+    // M4 bước 4 (sửa có chủ ý): ngày Chợ phiên có sẵn +1 lượt Giỏ chợ (mods.rareRolls) → chỉ đếm lượt theo chuỗi
+    ctx.bus.on('ticket.clipped', () => { streaks.push(s.shift.counterStreak); rolls = s.shift.rareRolls - (Number(s.shift.mods.rareRolls) || 0) })
     const { sheets } = playCustom(s, ctx, { firstScore: 89 })
-    // khách khó tính 5 sao vốn được tip 10.000đ: bỏ ra khỏi phép so
-    return { streaks, tips: sheets.filter(x => x.stars === 5 && !x.strict).map(x => x.tip), longest: s.progression.records.longestStreak }
+    return { streaks, rolls, sheets, longest: s.progression.records.longestStreak }
+  }
+  for (const assist of [false, true]) {
+    const r = run(assist)
+    // tip mọi khách: 0 hoặc 5.000đ; 5 sao + hóa đơn từ 20.000đ ⇔ 5.000đ
+    for (const x of r.sheets) {
+      assert.ok(x.tip === 0 || x.tip === 5000, `tip ${x.tip}`)
+      assert.equal(x.tip, x.stars === 5 && x.bill >= 20000 ? 5000 : 0, JSON.stringify({ stars: x.stars, bill: x.bill, tip: x.tip }))
+    }
+    assert.ok(r.sheets.some(x => x.tip === 5000))
   }
   const off = run(false)
-  assert.ok(off.tips.includes(10000), 'không bật Hỗ trợ: chuỗi ≥ 5 có tip 10.000đ')
   assert.ok(off.longest >= 5)
+  assert.ok(Math.max(...off.streaks) >= 5)
+  assert.equal(off.rolls, 1, 'không bật Hỗ trợ: chuỗi chạm 5 → 1 lượt Giỏ chợ (tối đa 1 mỗi ca)')
   const on = run(true)
   assert.ok(on.streaks.length >= 5)
   assert.ok(on.streaks.every(x => x === 0), 'chuỗi Quầy chuẩn không đếm')
-  assert.ok(on.tips.length && on.tips.every(x => x === 5000), 'tip khách 5 sao chỉ 5.000đ')
+  assert.equal(on.rolls, 0, 'bật Hỗ trợ: không có lượt Giỏ chợ')
   assert.equal(on.longest, 0)
 })
 

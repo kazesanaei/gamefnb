@@ -13,11 +13,11 @@ import { DI_SAU } from './art.js'
 export const SAVE_DEBOUNCE_MS = 300
 
 // Phiên bản game: trùng "version" trong package.json và VERSION của sw.js (có test đối chiếu).
-export const APP_VERSION = '0.3.0'
+export const APP_VERSION = '0.4.0'
 
 // Màn con: nút Back của điện thoại / cử chỉ vuốt lùi đưa về màn Chuẩn bị thay vì rời game.
 // (Danh sách tham khảo; thực tế mọi màn không phải màn gốc của router.js đều là màn con — isSubScreen.)
-export const SUB_SCREENS = Object.freeze(['shop', 'tasting', 'quests', 'mailbox', 'event', 'stage-up', 'service', 'summary', 'settings', 'notebook', 'recipe-book'])
+export const SUB_SCREENS = Object.freeze(['shop', 'tasting', 'quests', 'mailbox', 'event', 'stage-up', 'service', 'summary', 'settings', 'notebook', 'recipe-book', 'market'])
 
 // Trạng thái riêng của lần mở trang (không lưu): đã hiện bảng điểm danh ngày nào, đã báo thư mới…
 export function freshSession() {

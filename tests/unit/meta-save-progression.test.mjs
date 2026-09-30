@@ -26,7 +26,8 @@ function v1Save(seed = 5) {
   return s
 }
 
-test('migrate save version 1 → 2: giữ tiến trình M1, thêm trường meta mặc định, ca đang dở vẫn giữ', () => {
+// M4 (sửa có chủ ý): save v1 nay nâng thẳng lên STATE_VERSION 3; nhận cả thư phiên bản 0.2.0 và 0.4.0.
+test('migrate save version 1 → STATE_VERSION: giữ tiến trình M1, thêm trường meta mặc định, ca đang dở vẫn giữ', () => {
   const ctx = makeMetaCtx()
   const old = v1Save()
   startShift(old, { data: DATA, emit: () => {} })
@@ -35,7 +36,7 @@ test('migrate save version 1 → 2: giữ tiến trình M1, thêm trường meta
   assert.equal(raw.version, 1)
   const s = migrate(raw, DATA)
   assert.equal(s.version, STATE_VERSION)
-  assert.equal(STATE_VERSION, 2)
+  assert.equal(STATE_VERSION, 3)
   assert.equal(s.day, 4)
   assert.equal(s.wallet, 321000)
   assert.equal(s.reputation, 40)
@@ -53,6 +54,7 @@ test('migrate save version 1 → 2: giữ tiến trình M1, thêm trường meta
   const r = refreshMeta(s, ni, ctx)
   assert.ok(r.newMail.includes('chao_mung'))
   assert.ok(r.newMail.includes('phien_ban_0_2_0'))
+  assert.ok(r.newMail.includes('phien_ban_0_4_0'))
   assert.equal(s.daily.quests.length, 3)
   assert.equal(claimCheckin(s, ni, ctx).ok, true)
   // chuỗi "Làm quen QR" mở ngay vì đã ngày game 4

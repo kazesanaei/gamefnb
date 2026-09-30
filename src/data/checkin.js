@@ -5,7 +5,8 @@
 //   { money?: đồng, incomeMul?: bội thu nhập tham chiếu một ca (làm tròn lên bội 1.000đ lúc nhận),
 //     gold?: Muỗng Vàng, rep?: danh tiếng, items?: {itemId: số lượng}, upgrade?: upgradeId,
 //     fallback?: Reward (quy đổi khi đã có nâng cấp/hiện vật vĩnh viễn), cosmetic?: id, title?: id,
-//     recipe?: recipeId, tem?: số Tem (của sự kiện theo ngữ cảnh), tipId?: id thẻ Mẹo nghề, unlock?: id }
+//     recipe?: recipeId, tem?: số Tem (của sự kiện theo ngữ cảnh), tipId?: id thẻ Mẹo nghề, unlock?: id,
+//     rare?: {ingId: số phần nguyên liệu hiếm}, fragments?: {recipeId: số mảnh công thức hiếm} (M4) }
 
 function deepFreeze(o) {
   for (const v of Object.values(o)) if (v && typeof v === 'object') deepFreeze(v)

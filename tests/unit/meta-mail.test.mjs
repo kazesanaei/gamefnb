@@ -115,12 +115,19 @@ test('thư phiên bản mới cho save cũ; so sánh phiên bản', () => {
   const s = newState(7)
   s.mail.seenVersion = '0.1.0'
   refreshMail(s, at(s, '2026-10-01T09:00'), ctx)
-  const v = s.mail.list.find(m => m.kind === 'phien_ban')
+  // M4 (sửa có chủ ý): bản 0.4.0 có thêm thư phiên bản 0.4.0 → save từ 0.1.0 nhận cả hai thư, seenVersion lên 0.4.0
+  const v = s.mail.list.find(m => m.id === 'phien_ban_0_2_0')
   assert.ok(v)
   assert.deepEqual(v.reward, { gold: 10 })
-  assert.equal(s.mail.seenVersion, '0.2.0')
+  assert.ok(s.mail.list.some(m => m.id === 'phien_ban_0_4_0'))
+  assert.equal(s.mail.seenVersion, '0.4.0')
   refreshMail(s, at(s, '2026-10-02T09:00'), ctx)
-  assert.equal(s.mail.list.filter(m => m.kind === 'phien_ban').length, 1)
+  assert.equal(s.mail.list.filter(m => m.kind === 'phien_ban').length, 2)
+  // save của bản 0.2/0.3 (seenVersion '0.2.0') chỉ nhận thư 0.4.0
+  const s2 = newState(8)
+  s2.mail.seenVersion = '0.2.0'
+  refreshMail(s2, at(s2, '2026-10-01T09:00'), ctx)
+  assert.deepEqual(s2.mail.list.filter(m => m.kind === 'phien_ban').map(m => m.id), ['phien_ban_0_4_0'])
 })
 
 test('review muộn: thối thiếu không bị phát hiện → hôm sau có thư review 2 sao', () => {

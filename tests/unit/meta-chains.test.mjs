@@ -67,7 +67,8 @@ test('C1: bước "làm N lần" chỉ đếm từ lúc bước hiện ra; luôn
   assert.equal(s.goldSpoons, g + 5)
   assert.ok(s.tipsSeen.includes('tra_truoc'))
   for (const k of [1, 2, 3]) assert.equal(claimChainReward(s, C1, k, ni, ctx).ok, true)
-  assert.equal(s.wallet, w + 5000 + 5000 + 15000)
+  // M4 (sửa có chủ ý): thưởng bước 4 giảm 15.000đ → 10.000đ (cân bằng tỉ lệ thưởng sau luật tip mới, can-bang mục 10.1)
+  assert.equal(s.wallet, w + 5000 + 5000 + 10000)
   assert.equal(claimChainReward(s, C1, 3, ni, ctx).reason, 'chua_xong')
   // không nhận trong ca
   ev(s, ctx, ni, 'recipe.bought', {})

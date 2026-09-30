@@ -1,4 +1,5 @@
-// Màn Sổ công thức (M3): mọi món (đã có / Chợ Công Thức / món sự kiện / bóng mờ Chặng 2). Mỗi món: hình, giá, giá vốn,
+// Màn Sổ công thức (M3): mọi món (đã có / Chợ Công Thức / món sự kiện / bóng mờ Chặng 2; M4: công thức hiếm — mảnh đã
+// gom, món nền còn thiếu, nấu thử khi đủ mảnh). Mỗi món: hình, giá, giá vốn,
 // số lần nấu, điểm cao nhất, cấp thạo món và mốc kế, huy hiệu "Không tì vết", nguồn. Chạm món để xem nguyên liệu và
 // các bước (không lộ bẫy). Thẻ "Sổ từ vùng miền": cặp từ Nam – Bắc khách hay nói.
 // Mở từ màn Chuẩn bị (open-recipe-book). params: { tab: 'mon' | 'tu', recipeId } mở sẵn thẻ / chi tiết món.
@@ -53,6 +54,8 @@ export default {
       const groups = [
         ['Món đang bán', book.entries.filter(e => e.status === 'owned')],
         ['Chưa có', book.entries.filter(e => e.status === 'shop' || e.status === 'event')],
+        // M4: công thức hiếm chưa mở (gom mảnh, nấu thử)
+        [(S.sources && S.sources.hiem) || 'Công thức hiếm', book.entries.filter(e => e.status === 'hiem')],
         ['Chặng sau', book.entries.filter(e => e.status === 'teaser')]
       ]
       for (const [title, list] of groups) {
@@ -74,7 +77,7 @@ export default {
       const head = h('div', { class: 'book-card-head' },
         svgBox(icon(e.icon), 'dish-icon book-icon'),
         h('div', { class: 'book-card-title' },
-          h('b', null, e.name),
+          h('b', null, e.name, e.source === 'hiem' ? h('span', { class: 'rare-star', 'aria-label': 'món hiếm' }, ' ★') : null),
           h('span', { class: 'book-tags' },
             h('span', { class: ['book-source', 'src-' + e.source] }, e.sourceLabel),
             e.flawlessBadge ? h('span', { class: 'book-flawless', testid: 'book-flawless-' + e.id, title: S.flawless }, '★ ' + S.flawless) : null)))
@@ -84,7 +87,10 @@ export default {
       const money = h('div', { class: 'book-money small' },
         h('span', null, `${S.labels.price}: `, h('b', null, formatVND(e.price))),
         h('span', null, `${S.labels.cost}: `, h('b', null, formatVND(e.cost))),
-        h('span', null, 'Lãi mỗi phần: ', h('b', null, formatVND(e.profit))))
+        h('span', null, 'Lãi mỗi phần: ', h('b', null, formatVND(e.profit))),
+        // M4: món hiếm: giá vốn có phần hàng hiếm quy đổi (lấy từ kho, trong ca không trừ Tiền quán)
+        e.rareCost > 0 ? h('span', { class: 'book-rare-cost muted', testid: 'book-hiem-cost-' + e.id },
+          `Giá vốn gồm ${formatVND(e.rareCost)} hàng hiếm quy đổi (lấy từ kho, không trừ Tiền quán): trong ca chỉ trừ ${formatVND(Math.max(0, e.cost - e.rareCost))} mỗi phần.`) : null)
       let progress = null
       if (m) {
         progress = h('div', { class: 'book-mastery' },
@@ -95,6 +101,14 @@ export default {
             h('span', null, `${S.labels.mastery}: `, h('b', { testid: 'book-level-' + e.id }, `${m.name} (cấp ${m.level})`)),
             m.next ? h('span', { class: 'muted' }, ` · còn ${m.next.need} lần Ngon để lên ${m.next.name}`) : h('span', { class: 'muted' }, ' · đã lên cấp cao nhất của chặng')),
           m.next ? progressBar(m.goodCooks, m.next.target, { label: `${S.labels.mastery} ${e.name}` }) : progressBar(1, 1))
+      } else if (e.status === 'hiem' && e.rare) {
+        // M4: "Mảnh 2/3 · Cần Bánh tráng trộn"; đủ mảnh → nấu thử (thử lại tới khi đạt hạng Được)
+        progress = h('div', { class: 'book-rare', testid: 'book-rare-' + e.id, dataset: { n: String(e.rare.n), ready: String(!!e.rare.ready) } },
+          h('p', { class: 'small book-note' }, e.note),
+          progressBar(e.rare.n, e.rare.need, { label: 'Mảnh công thức ' + e.name }),
+          h('p', { class: 'small muted' }, 'Mỗi phần dùng: ' + e.rare.ings.map(x => `${x.n} ${x.name}`).join(', ')),
+          e.rare.ready ? h('button', { class: 'btn btn-primary btn-small', type: 'button', testid: 'book-taste-' + e.id,
+            onclick: () => { app.sound('click'); app.go('tasting', { recipeId: e.id, back: 'recipe-book' }) } }, 'Nấu thử để mở món') : null)
       } else {
         progress = h('p', { class: 'small muted book-note' },
           e.status === 'shop' ? `${e.note} · ${formatVND(e.shopPrice)}` : e.note)

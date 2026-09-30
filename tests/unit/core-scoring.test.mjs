@@ -90,10 +90,15 @@ test('customerStars: làm tròn xuống (4 − 0,5 → 3), Hỏng, khó tính, t
 })
 
 test('tip, sao trung bình, hệ số khách', () => {
-  assert.equal(tipFor(5, false, PERSONAS.hoc_sinh), 5000)
-  assert.equal(tipFor(5, true, PERSONAS.hoc_sinh), 10000)
-  assert.equal(tipFor(5, false, PERSONAS.kho_tinh), 10000)
-  assert.equal(tipFor(4, true, PERSONAS.kho_tinh), 0)
+  // M4: tipFor(sao, hóa đơn khách thực trả, balance): 5.000đ duy nhất khi 5 sao và hóa đơn từ 20.000đ
+  assert.equal(tipFor(5, 20000, BALANCE), 5000)
+  assert.equal(tipFor(5, 15000, BALANCE), 0)
+  assert.equal(tipFor(5, 19999, BALANCE), 0)
+  assert.equal(tipFor(4, 30000, BALANCE), 0)
+  assert.equal(tipFor(5, 100000, BALANCE), 5000, 'không có mức tip cao hơn')
+  assert.equal(tipFor(5, 0, BALANCE), 0)
+  assert.equal(tipFor(5, 20000), 5000, 'thiếu balance thì theo DEFAULT_BALANCE')
+  assert.ok(PERSONAS.kho_tinh.strict)
   assert.equal(averageRating([]), 4)
   assert.equal(averageRating([5, 5]), (5 + 5 + 4 + 4 + 4) / 5)
   assert.equal(averageRating(new Array(40).fill(1).concat(new Array(30).fill(5))), 5)

@@ -3,6 +3,8 @@
 // chuỗi "Dì Sáu dặn", "Giấc mơ tiếp theo", thẻ "Hôm nay" (dự báo khách + thực đơn), Mẹo nghề đã mở (ngẫu nhiên),
 // mượn Dì Sáu, nút "Mở hàng" luôn nhìn thấy (dính đáy màn).
 // M3: thẻ nhắc sao lưu mỗi 7 ngày thật, nút "Có bản mới – Tải lại"; khách thêm nhờ ly trà "mở hàng", sổ ghi nợ khách quen.
+// M4: thẻ gánh hàng quê (đang mở / phiên kế tiếp / đã ghé hôm nay), thẻ Kho hàng hiếm (tồn kho, mảnh công thức, thanh
+// may mắn Giỏ chợ và tỉ lệ công khai), món hiếm trong thực đơn hôm nay có huy hiệu ★ và số phần còn.
 // Vào màn: cập nhật meta theo ngày thật; lần đầu trong ngày thật (kể cả lần mở game đầu tiên) → bảng điểm danh.
 import { h, svgBox } from '../dom.js'
 import { DI_SAU, icon } from '../art.js'
@@ -30,26 +32,105 @@ import { RECIPE_BOOK_SVG } from './recipe-book.js'
 import { backupDue } from '../../core/save.js'
 import { notebookBadge, randomSeenTip } from '../../core/notebook.js'
 import { incidentBonusFor, pendingDebts } from '../../core/incidents.js'
+import { stallStatus, rareOverview, rarePortions, rareConfig } from '../../core/rare.js'
+import { starText } from './market.js'
 
 function pickRandom(arr) {
   return arr.length ? arr[Math.floor(Math.random() * arr.length)] : null
 }
 
-// Hiệu ứng của sự kiện ngày thành các dòng ngắn cho người chơi.
+// Hiệu ứng của sự kiện ngày thành các dòng ngắn cho người chơi (màn Chuẩn bị, thẻ "Ngày mai" ở Tổng kết).
+// M4: thêm dòng cho chi phí cố định tăng, giá nguyên liệu tăng, Loa báo tiền tắt, luật hàng chờ, đơn đặt trước, chấm
+// cuối ca (hội thi, tài trợ, kiểm tra vệ sinh), lượt Giỏ chợ.
 export function dayEffectLines(effects, data, state = null) {
   const e = effects || {}
   const R = data.RECIPES || {}
+  const ING = data.INGREDIENTS || {}
   const out = []
   const pct = v => Math.round(Math.abs(v - 1) * 100) + '%'
+  const owned = id => R[id] && (!state || (state.recipes && state.recipes[id]))
+  const stars = v => String(v).replace('.', ',')
   if (e.customerMul && e.customerMul < 1) out.push(`Khách ít hơn khoảng ${pct(e.customerMul)}`)
   if (e.customerMul && e.customerMul > 1) out.push(`Khách đông hơn khoảng ${pct(e.customerMul)}, ca dài hơn`)
   if (e.extraCustomers) out.push(`Thêm ${e.extraCustomers} khách`)
   if (e.patienceMul && e.patienceMul > 1) out.push(`Khách chịu chờ lâu hơn ${pct(e.patienceMul)}`)
-  if (e.tipMul && e.tipMul > 1) out.push(`Tiền tip nhiều hơn khoảng ${pct(e.tipMul)}`)
+  // M4: Ngày lãnh lương không còn nhân tip, khách gọi thêm món (luật tip không có ngoại lệ)
+  if (Array.isArray(e.lineCountWeights)) out.push('Khách hay gọi thêm món, hóa đơn dễ qua 20.000đ để có tip')
   // chỉ kể món đang bán (có state thì lọc món đã sở hữu)
-  const hot = Object.keys(e.recipeWeight || {}).filter(id => R[id] && (!state || (state.recipes && state.recipes[id]))).map(id => R[id].name)
+  const rw = Object.entries(e.recipeWeight || {}).filter(([id]) => owned(id))
+  const hot = rw.filter(([, w]) => w > 1).map(([id]) => R[id].name)
+  const cold = rw.filter(([, w]) => w < 1).map(([id]) => R[id].name)
   if (hot.length) out.push(`${hot.join(', ')} được gọi nhiều gấp đôi`)
+  if (cold.length) out.push(`${cold.join(', ')} ít được gọi hơn (món có đá)`)
+  // M4: chi phí, giá vốn
+  if (Number(e.fixedCostDelta) > 0) {
+    const base = Number(data.BALANCE && data.BALANCE.fixedCostPerShift) || 20000
+    out.push(`Chi phí cố định ca này ${formatVND(base)} → ${formatVND(base + Number(e.fixedCostDelta))}`)
+  }
+  for (const [ing, mul] of Object.entries(e.ingCostMul || {})) {
+    if (!(Number(mul) > 1) || !ING[ing]) continue
+    const per = Object.values(R).filter(r => owned(r.id)).map(r => {
+      const it = (r.ingredients || []).find(i => i.id === ing && i.role !== 'tuy_chon')
+      return it ? { name: r.name, extra: Math.round((ING[ing].cost || 0) * (it.qty || 1) * (Number(mul) - 1)) } : null
+    }).filter(Boolean)
+    const times = Number(mul) === 2 ? 'gấp đôi' : `×${String(mul).replace('.', ',')}`
+    out.push(`Giá ${ING[ing].name.toLocaleLowerCase('vi-VN')} ${times}` +
+      (per.length ? `: ${per.map(x => `${x.name} tốn thêm khoảng ${formatVND(x.extra)} mỗi phần`).join(', ')}` : '') +
+      ' (phần tăng có mức trần)')
+  }
+  if (e.noQrSpeaker && state && state.upgrades && state.upgrades.loa_bao_tien) out.push('Loa báo tiền tắt: tự xem tiền về đúng số rồi mới bấm xác nhận')
+  // M4: hàng chờ
+  if (e.queueFine) out.push(`Hàng chờ chạm ${e.queueFine.at} người thì bị phạt tối đa ${formatVND(e.queueFine.fine)} (1 lần)`)
+  if (Number(e.queueMax) > 0) out.push(`Chỉ cho ${e.queueMax} người đứng chờ, người đến sau sẽ đi ngang`)
+  // M4: đơn đặt trước
+  const bo = e.bigOrder
+  if (bo && R[bo.recipeId]) {
+    const qty = Number(bo.qty) || 1
+    out.push(`Thêm 1 khách lấy ${qty} ly ${R[bo.recipeId].name} (${formatVND((R[bo.recipeId].price || 0) * qty)})` +
+      (Number(bo.bonus) > 0 ? `, giao đạt từ ${bo.minStars} sao được thêm ${formatVND(bo.bonus)}` : ''))
+  }
+  // M4: chấm cuối ca. Tiền thưởng có trần theo doanh thu dự kiến của ca (ca ít khách nhận ít hơn) nên ghi "tối đa",
+  // giống dòng phạt; dòng cuối nói rõ vì sao.
+  const E = e.endCheck
+  let capNote = false
+  if (E && E.type === 'stars') {
+    for (const t of E.tiers || []) {
+      out.push(`Sao trung bình của ca từ ${stars(t.min)}: ${t.label || 'có giải'}` +
+        (t.money ? ` tối đa +${formatVND(t.money)}` : '') + (t.rep ? `, +${t.rep} danh tiếng` : ''))
+      if (t.money) capNote = true
+    }
+  } else if (E && E.type === 'portions') {
+    const names = (E.recipes || []).filter(id => R[id]).map(id => R[id].name).join(', ')
+    const tiers = (E.tiers || []).slice().sort((a, b) => b.min - a.min)
+    if (tiers.length) {
+      out.push(tiers.map((t, i) => (i === 0 ? `Bán từ ${t.min} ly ${names}: tối đa +${formatVND(t.money)}` : `ít hơn: +${formatVND(t.money)}`)).join('; '))
+      capNote = true
+    }
+  } else if (E && E.type === 'hygiene') {
+    if (E.sure) out.push(`Chắc chắn đạt kiểm tra` + (E.passRep ? `, +${E.passRep} danh tiếng` : ''))
+    else {
+      out.push(`Bếp không có lỗi sơ chế, lấy nhầm, món hỏng: +${E.passRep || 0} danh tiếng`)
+      out.push(`Có lỗi: lần đầu chỉ nhắc nhở, tái phạm trong ${E.warnDays || 14} ngày bị phạt tối đa ${formatVND(E.fine || 0)}`)
+    }
+  }
+  // M4: lượt Giỏ chợ (nguyên liệu hiếm)
+  if (Number(e.rareRolls) > 0 && data.RARE_CONFIG) out.push(`+${e.rareRolls} lượt Giỏ chợ cuối ca`)
+  if (capNote) out.push('Tiền thưởng mỗi sự kiện có mức trần theo doanh thu ca: ca ít khách có thể nhận ít hơn')
   return out
+}
+
+// M4: đã bị nhắc nhở ở lần kiểm tra trước (sự kiện có "nhắc nhở trước, tái phạm mới phạt") → dòng cảnh báo; không thì ''.
+export function dayEventWarnLine(state, info, data) {
+  const def = info && data.DAY_EVENTS && data.DAY_EVENTS[info.id]
+  const E = def && def.effects && def.effects.endCheck
+  const last = Number(state && state.incidents && state.incidents.warn && state.incidents.warn[info && info.id]) || 0
+  if (!E || E.type !== 'hygiene' || !(last > 0) || state.day - last > (E.warnDays || 14)) return ''
+  return `Ngày ${last} đã bị nhắc nhở: lần này còn lỗi sẽ bị phạt tối đa ${formatVND(E.fine || 0)}. Chuẩn bị đón đoàn là chắc chắn đạt.`
+}
+
+// M4: giá của lựa chọn cho người chơi: "miễn phí" khi 0đ.
+export function choiceCostText(c) {
+  return c.cost > 0 ? formatVND(c.cost) : 'miễn phí'
 }
 
 // Số khách dự báo sau sự kiện ngày (không trừ tiền, không dùng phiếu). Đã chọn Căng bạt (hoặc tự căng nhờ Bạt che mưa)
@@ -63,8 +144,9 @@ export function forecastCustomers(state, ctx, info) {
 // khi ca đã đủ khách) } — giống startShift, để màn Chuẩn bị không ghi "thêm 1 khách" khi ca đã đủ trần.
 export function forecastDetail(state, ctx, info) {
   let n = customerCount(state, ctx, state.day)
+  let eff = {}
   if (info) {
-    const eff = dayEventEffects(info, ctx)
+    eff = dayEventEffects(info, ctx)
     n = applyCustomerMods(n, { customerMul: eff.customerMul ?? 1, extraCustomers: eff.extraCustomers || 0 }, ctx)
   }
   const base = n
@@ -73,8 +155,14 @@ export function forecastDetail(state, ctx, info) {
   const added = n - base
   const b = state.incidents && state.incidents.bonus
   const rep = bonus > 0 && added === 0 && b ? Math.max(0, Math.round(Number(b.rep) || 0)) : 0
+  // M4: đơn đặt trước (đã nhận đơn): thêm 1 khách, trong trần khách của sự kiện (giống startShift)
+  const bo = eff.bigOrder
+  const cap = Number(dataOf(ctx).BALANCE && dataOf(ctx).BALANCE.eventCustomerCap) || 10
+  if (bo && state.recipes && state.recipes[bo.recipeId] && n < cap) n += 1
   return { n, base, added, rep }
 }
+
+function dataOf(ctx) { return (ctx && ctx.data) || {} }
 
 // Lời Dì Sáu lúc chuẩn bị ca: ngày 1 là lời hướng dẫn; có sự kiện ngày thì nói theo sự kiện (không nói "trời đẹp"
 // khi trời mưa); còn lại bốc câu thường.
@@ -179,6 +267,10 @@ export default {
       if (dayEv) el.appendChild(dayEventCard(dayEv))
       const coupons = (state.items && state.items.phieu_cho_som) || 0
       if (coupons > 0) el.appendChild(couponCard(coupons))
+      // M4: gánh hàng quê theo giờ thật (không hiện ở lần mở đầu tiên)
+      const rareOv = rareOverview(state, nowInfo, app.ctx)
+      const rareOn = rareOv.active && !first && (state.day >= rareOv.fromDay || rareOv.total > 0 || rareOv.fragments.some(f => f.n > 0 || f.owned))
+      if (rareOn) el.appendChild(stallCard(nowInfo))
 
       if (!first) {
         for (const c of chainEls) el.appendChild(c)
@@ -222,14 +314,19 @@ export default {
           const p = state.recipes[id]
           const lv = masteryLevel(p, levels)
           const evLabel = state.eventRecipes && state.eventRecipes[id] ? state.eventRecipes[id].label : ''
-          return h('div', { class: 'prep-dish', testid: 'prep-dish-' + id },
+          // M4: món hiếm: huy hiệu ★ và số phần kho còn làm được
+          const rareLeftN = r.source === 'hiem' ? rarePortions(state, r) : null
+          return h('div', { class: ['prep-dish', rareLeftN !== null ? 'is-rare' : ''], testid: 'prep-dish-' + id },
             svgBox(icon(r.icon || id), 'dish-icon small'),
             h('div', { class: 'prep-dish-info' },
               h('div', { class: 'prep-dish-name' }, r.name),
               h('div', { class: 'prep-dish-price' }, formatVND(r.price)),
               h('div', { class: 'prep-dish-lv' }, `${S.labels.mastery}: ${S.masteryLevels[lv] || lv}`),
-              evLabel ? h('div', { class: 'prep-dish-tag' }, evLabel) : null))
+              evLabel ? h('div', { class: 'prep-dish-tag' }, evLabel) : null,
+              rareLeftN !== null ? h('div', { class: 'prep-dish-tag is-rare', testid: 'rare-left-' + id }, `★ còn ${rareLeftN} phần`) : null))
         }))))
+      // M4: kho hàng hiếm (tồn kho, mảnh công thức, Giỏ chợ)
+      if (rareOn) el.appendChild(rareStockCard(rareOv))
 
       // Lời Dì Sáu + Mẹo nghề đã mở (ngẫu nhiên, chọn 1 lần mỗi lần vào màn) + lối vào Sổ tay nghề
       if (!first) el.appendChild(talkEl)
@@ -325,7 +422,7 @@ export default {
       if (c) {
         choiceEl = h('div', { class: ['day-choice', c.chosen ? 'is-on' : ''] },
           h('div', { class: 'day-choice-text' },
-            h('b', null, c.label + (c.free ? ' (miễn phí nhờ Bạt che mưa)' : ` · ${formatVND(c.cost)}`)),
+            h('b', null, c.label + (c.free ? ' (miễn phí nhờ Bạt che mưa)' : ` · ${choiceCostText(c)}`)),
             h('small', null, c.desc)),
           h('button', {
             class: ['btn', 'btn-small', c.chosen ? 'btn-ghost' : 'btn-secondary'], type: 'button', testid: 'day-event-choice-' + c.id,
@@ -334,18 +431,111 @@ export default {
               const r = setDayEventChoice(app.state, c.chosen ? null : c.id, app.ctx)
               if (!r.ok) { app.toast(reasonText(app, r.reason), { kind: 'bad' }); return }
               app.sound('click')
-              if (!c.chosen) app.toast(`Sẽ ${c.label.toLocaleLowerCase('vi-VN')} lúc mở hàng${c.cost ? ` (${formatVND(c.cost)})` : ''}.`, { kind: 'info' })
+              if (!c.chosen) app.toast(`Sẽ ${c.label.toLocaleLowerCase('vi-VN')} lúc mở hàng${c.cost ? ` (${formatVND(c.cost)})` : ''}.`, { kind: 'info', testid: 'day-choice-toast' })
               app.saveNow()
               render()
             }
           }, c.free ? 'Tự căng' : c.chosen ? 'Bỏ chọn' : 'Chọn'))
       }
-      return h('section', { class: 'card day-event-card', testid: 'day-event-card', dataset: { event: info.id } },
+      const warn = dayEventWarnLine(app.state, info, app.data)
+      // M4: nhãn loại sự kiện (có lợi / có lựa chọn / cần phòng) để người chơi biết trước
+      const kindLabel = { tot: 'Có lợi', chon: 'Có lựa chọn', xau: 'Cần phòng trước' }[info.kind] || ''
+      return h('section', { class: ['card', 'day-event-card', 'kind-' + (info.kind || 'tot')], testid: 'day-event-card', dataset: { event: info.id, kind: info.kind || 'tot' } },
         h('div', { class: 'day-ev-head' }, svgBox(icon(info.icon || info.id), 'day-ev-icon'),
-          h('div', null, h('small', { class: 'muted' }, M.dayEvent), h('b', { class: 'day-ev-name' }, info.name))),
+          h('div', null, h('small', { class: 'muted' }, M.dayEvent + (kindLabel ? ' · ' + kindLabel : '')), h('b', { class: 'day-ev-name' }, info.name))),
         h('p', { class: 'small' }, info.desc),
         lines.length ? h('ul', { class: 'day-ev-effects' }, lines.map(t => h('li', null, t))) : null,
+        warn ? h('p', { class: 'small day-ev-warn', testid: 'day-event-warn' }, warn) : null,
         choiceEl)
+    }
+
+    // ---------- M4: gánh hàng quê và kho hàng hiếm ----------
+    function stallCard(nowInfo) {
+      const RS = S.rare || {}
+      const st = stallStatus(app.state, nowInfo, app.ctx)
+      const find = id => st.stalls.find(x => x.id === id) || null
+      // tiêu đề nói rõ trạng thái (không lặp tên thẻ; phiên chưa mở thì không ghi tên phiên như đang mở)
+      let key = 'closed', stall = null, sub = '', btn = null, title = ''
+      const go = id => h('button', { class: 'btn btn-primary btn-small', type: 'button', testid: 'open-market',
+        onclick: () => { app.sound('click'); app.go('market', { stallId: id }) } }, id === st.pending ? 'Lựa tiếp' : 'Ghé gánh hàng')
+      const who = x => `${x.name} · ${x.seller}`
+      if (st.tooEarly) { key = 'early'; title = 'Chưa tới ngày mở'; sub = `Gánh hàng quê mở từ ngày ${rareOverview(app.state, nowInfo, app.ctx).fromDay}.` }
+      else if (st.locked) { key = 'locked'; title = 'Tạm khóa'; sub = RS.stallLocked || '' }
+      else if (st.pending) { key = 'pending'; stall = find(st.pending); title = stall ? who(stall) : 'Đang lựa dở'; sub = 'Đang lựa hàng dở, vào lựa tiếp nha.'; btn = go(st.pending) }
+      else if (st.current && !st.current.done) {
+        key = 'open'; stall = st.current; title = who(stall)
+        sub = (RS.stallOpen || 'Đang mở tới {to}').replace('{to}', stall.to)
+        btn = go(stall.id)
+      } else if (st.current && st.current.done) {
+        key = 'done'; stall = st.current; title = `Đã ghé ${stall.name}`
+        sub = (RS.stallDone || 'Hôm nay đã ghé') + (st.next ? ` · ${(RS.stallNext || 'Phiên kế tiếp {from}').replace('{from}', st.next.from)}: ${st.next.name}` : '')
+      } else if (st.next) {
+        key = 'closed'; stall = st.next; title = 'Chưa có phiên đang mở'
+        sub = (RS.stallNext || 'Phiên kế tiếp {from}').replace('{from}', st.next.from) + ` – ${st.next.to}: ${who(st.next)}`
+      } else if (st.tomorrow) {
+        key = 'closed'; stall = st.tomorrow; title = 'Hôm nay hết phiên'
+        sub = (RS.stallTomorrow || 'Hẹn sáng mai, {from}').replace('{from}', st.tomorrow.from) + `: ${who(st.tomorrow)}`
+      }
+      const INGS = app.data.INGREDIENTS || {}
+      const goods = stall ? (stall.goods || []).filter(g => INGS[g]) : []
+      return h('section', { class: ['card', 'stall-card', 'st-' + key], testid: 'stall-card', dataset: { state: key, stall: stall ? stall.id : '' } },
+        h('div', { class: 'day-ev-head' }, svgBox(icon(goods[0] ? INGS[goods[0]].icon : 'ro'), 'day-ev-icon'),
+          h('div', null, h('small', { class: 'muted' }, S.screens.market || 'Gánh hàng quê'),
+            h('b', { class: 'day-ev-name', testid: 'stall-title' }, title || (S.screens.market || 'Gánh hàng quê')))),
+        h('p', { class: 'small' }, sub),
+        goods.length ? h('p', { class: 'small stall-goods' }, (key === 'closed' ? 'Phiên kế tiếp có: ' : 'Hàng hiếm: ') +
+          goods.map(g => `${INGS[g].name} ${starText(INGS[g].star)}`).join(', ')) : null,
+        h('ul', { class: 'stall-times small' }, st.stalls.map(x => h('li', { class: [x.open ? 'is-open' : '', x.done ? 'is-done' : ''], dataset: { stall: x.id } },
+          `${x.name} ${x.from}–${x.to}` + (x.done ? ' · đã ghé' : x.open ? ' · đang mở' : '')))),
+        btn)
+    }
+
+    function rareStockCard(ov) {
+      const RS = S.rare || {}
+      const b = ov.basket
+      const pct = v => Math.round(v * 100) + '%'
+      // 100% nguyên liệu: nói đúng lý do (hôm nay đủ mảnh / còn món cần món nền / đã đủ mảnh mọi món hiếm)
+      const allText = b.allReason === 'het_muc_ngay' ? (RS.basketAllIngDay || RS.basketAllIng || '').replace('{fragCap}', String(ov.today.fragCap))
+        : b.allReason === 'can_mon_nen' ? (RS.basketAllIngBase || RS.basketAllIng || '') : (RS.basketAllIng || '')
+      const fragPity = rareConfig(app.ctx).fragmentPityAfter
+      const luck = b.allIng ? allText
+        : b.sure ? (RS.basketSure || '')
+          : b.fragSure ? (RS.basketFragSure || '').replace('{n}', String(fragPity))
+            : (RS.basketLuck || '').replace('{n}', String(b.pity)).replace('{max}', String(b.pityAfter)).replace('{left}', String(Math.max(0, b.pityAfter - b.pity)))
+      return h('section', { class: 'card rare-stock-card', testid: 'rare-stock-card' },
+        h('h2', { class: 'card-title' }, RS.stockTitle || 'Kho hàng hiếm'),
+        h('p', { class: 'small muted' }, (RS.dayCap || '').replace('{got}', String(ov.today.got)).replace('{cap}', String(ov.today.cap))
+          .replace('{frags}', String(ov.today.frags)).replace('{fragCap}', String(ov.today.fragCap))),
+        h('ul', { class: 'rare-stock' }, ov.stock.map(x => h('li', { class: ['rare-stock-item', x.n > 0 ? 'has' : 'empty'], testid: 'rare-stock-' + x.id,
+          dataset: { n: String(x.n) }, title: `${x.name} (${x.origin})` },
+        svgBox(icon(x.icon), 'rare-stock-icon'),
+        h('span', { class: 'rare-stock-name' }, x.name),
+        h('b', { class: 'rare-stock-n' }, `Kho ${x.n}/${x.max}`)))),
+        ov.total === 0 ? h('p', { class: 'small muted' }, RS.stockEmpty || '') : null,
+        h('h3', { class: 'rare-h3' }, 'Công thức hiếm'),
+        h('ul', { class: 'rare-frags' }, ov.fragments.map(f => {
+          const status = f.owned ? 'owned' : f.ready ? 'ready' : f.baseOwned ? 'collecting' : 'locked'
+          const text = f.owned ? `Đã mở · kho đủ cho ${f.portions} phần`
+            : f.ready ? (RS.readyToTaste || '')
+              : [(RS.fragments || 'Mảnh {n}/{need}').replace('{n}', String(f.n)).replace('{need}', String(f.need)),
+                f.needBase.length ? (RS.needBase || 'Cần {base}').replace('{base}', f.needBase.join(', ')) : ''].filter(Boolean).join(' · ')
+          return h('li', { class: ['rare-frag', 'st-' + status], testid: 'rare-fragments-' + f.recipeId, dataset: { n: String(f.n), status } },
+            svgBox(icon(f.icon), 'rare-frag-icon'),
+            h('div', { class: 'rare-frag-text' },
+              h('b', null, f.name, ' ', h('span', { class: 'rare-star' }, '★')),
+              h('small', null, text),
+              h('small', { class: 'muted' }, 'Mỗi phần: ' + f.rare.map(x => `${x.n} ${x.name}`).join(', '))),
+            f.ready ? h('button', { class: 'btn btn-primary btn-small', type: 'button', testid: 'rare-taste-' + f.recipeId,
+              onclick: () => { app.sound('click'); app.go('tasting', { recipeId: f.recipeId, back: 'prep' }) } }, 'Nấu thử') : null)
+        })),
+        h('div', { class: 'basket-luck', testid: 'basket-luck', dataset: { pity: String(b.pity), sure: String(!!b.sure), fragSure: String(!!b.fragSure), all: b.allReason || '' } },
+          h('div', { class: 'basket-head' }, svgBox(icon('ro'), 'rare-frag-icon'), h('b', null, RS.basketTitle || 'Giỏ chợ')),
+          h('p', { class: 'small' }, b.allIng ? allText
+            : (RS.basketOdds || '').replace('{ing}', pct(b.ingredient)).replace('{frag}', pct(b.fragment))),
+          b.allIng ? null : progressBar(b.pity, b.pityAfter, { label: 'May mắn Giỏ chợ', kind: 'luck' }),
+          b.allIng ? null : h('p', { class: 'small muted' }, luck),
+          h('p', { class: 'small muted' }, RS.basketHow || '')),
+        h('p', { class: 'small muted' }, (RS.stockNote || '').replace('{max}', String(ov.stockMax)).replace('{gold}', String(ov.overflowGold))))
     }
 
     function couponCard(n) {
@@ -451,10 +641,15 @@ export default {
     render()
     greet(res)
     // qua mốc 04:00 khi đang ở màn này: đổi việc, điểm danh mới
+    // M4: gánh hàng quê mở/đóng theo giờ thật → vẽ lại thẻ phiên hàng
+    const stallSig = () => { try { const st = stallStatus(app.state, app.nowInfo(), app.ctx); return JSON.stringify([st.current && st.current.id, st.next && st.next.id, st.locked]) } catch { return '' } }
+    let lastStall = stallSig()
     const timer = setInterval(() => {
       if (destroyed) return
       const k = app.nowInfo().dayKey
-      if (k !== lastDayKey) { const r = refresh(); render(); greet(r.res) }
+      if (k !== lastDayKey) { const r = refresh(); render(); greet(r.res); lastStall = stallSig(); return }
+      const sg = stallSig()
+      if (sg !== lastStall) { lastStall = sg; render() }
     }, 30000)
     return { unmount() { destroyed = true; clearInterval(timer) } }
   }

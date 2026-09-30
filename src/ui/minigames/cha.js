@@ -40,7 +40,7 @@ function mount(stage, step, ctx = {}) {
 
   const hint = isStrokes ? 'Vuốt qua lại thật đều tay.' : 'Vuốt qua lại lên các vết bẩn cho sạch.'
   const fr = buildFrame(stage, step, ctx, { sub: hint })
-  const food = h('div', { class: 'cha-food' }, svgBox(ingIcon(step.ing, ctx), 'cha-food-icon'))
+  const food = h('div', { class: 'cha-food' }, svgBox(ingIcon(step.ing, ctx, step.icon || null), 'cha-food-icon'))
   const pad = h('div', { class: 'cha-pad', 'data-testid': 'cha-area' }, food)
   const barFill = h('div', { class: 'mg-bar-fill' })
   const bar = h('div', { class: 'mg-bar', 'data-testid': 'cha-progress', 'data-v': '0' }, barFill)

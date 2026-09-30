@@ -1,5 +1,6 @@
 // Màn Tổng kết ca: sổ lãi lỗ, két, lỗi quầy/bếp, sao, danh tiếng, thạo món, review, Mẹo của Dì Sáu.
 // M3: thẻ "Tình huống trong ca" (lựa chọn và kết quả), dòng "Khách quen trả nợ", nhắc Sổ tay nghề đủ nhóm.
+// M4: dòng "Tiền từ sự kiện" và "Phạt, chi sự kiện" trong sổ lãi lỗ, các khoản tiền sự kiện trong thẻ tình huống.
 import { h, svgBox } from '../dom.js'
 import { DI_SAU, icon } from '../art.js'
 import { averageRating } from '../../core/scoring.js'
@@ -10,7 +11,7 @@ import { chainStatus } from '../../core/chains.js'
 import { dayEventInfo, dayEventEffects, eventsOverview } from '../../core/events.js'
 import { progressBar } from '../components/meta-ui.js'
 import { chainTitle } from '../components/chain-card.js'
-import { dayEffectLines, forecastCustomers } from './prep.js'
+import { dayEffectLines, forecastCustomers, dayEventWarnLine, choiceCostText } from './prep.js'
 import { notebookBadge } from '../../core/notebook.js'
 
 export default {
@@ -53,10 +54,14 @@ export default {
       [SM.tips, n(sum.tips), 'plus'],
       // M3: tiền khách quen trả nợ (tình huống ghi nợ ở ca trước)
       ...(n(sum.debtIn) ? [['Khách quen trả nợ', n(sum.debtIn), 'plus']] : []),
+      // M4: tiền thưởng từ sự kiện ngày / tình huống trong ca
+      [SM.eventIn || 'Tiền từ sự kiện', n(sum.eventIn), 'plus'],
       [SM.drawerDiff, n(sum.drawerDiff), 'signed'],
       [SM.cogs, n(sum.cogs), 'minus'],
       [SM.waste, n(sum.waste), 'minus'],
       [SM.refunds, n(sum.refunds), 'minus'],
+      // M4: phạt, chi phí, tiền mua vì sự kiện (đã trừ Tiền quán lúc phát sinh)
+      [SM.eventOut || 'Phạt, chi sự kiện', n(sum.eventOut), 'minus'],
       [SM.fixedCost, n(sum.fixedCost), 'minus']
     ]
     const ledger = h('table', { class: 'ledger' }, h('tbody', null,
@@ -77,6 +82,8 @@ export default {
         info.map(([label, v]) => h('li', null, `${label}: ${formatVND(v)}`)),
         h('li', { class: 'muted' }, 'Các khoản trên đã nằm trong tiền két và lãi.')) : null,
       n(sum.loanRepaid) ? h('p', { class: 'small' }, `Trả nợ Dì Sáu: ${formatVND(sum.loanRepaid)}`) : null,
+      // M4: nhắc luật tip một mức (viết theo hướng thưởng)
+      S.labels.tipRule ? h('p', { class: 'small muted', testid: 'summary-tip-rule' }, S.labels.tipRule + '.') : null,
       h('p', { class: 'small muted' }, `${S.labels.wallet} hiện có: ${formatVND(state.wallet)}`)))
 
     // M3: Tình huống trong ca và sổ ghi nợ
@@ -88,17 +95,43 @@ export default {
       return { ...r, name: d ? d.name : r.id, label: c ? c.label.replace(/\{\w+\}/g, '').replace(/,\s*$/, '') : r.choice, text: '' }
     })
     const debtNotes = sum.debtNotes || []
-    if (incidents.length || debtNotes.length) {
+    // M4: tiền sự kiện của ca (giải thưởng, phạt, chi phí) — mỗi khoản một dòng, kèm lời Dì Sáu khi chạm trần ngày.
+    // Tiền của tình huống trong ca (source 'incident') đã ghi trong thẻ tình huống nên không lặp lại.
+    const eventNotes = (sum.eventNotes || []).filter(x => x && x.source !== 'incident' && (n(x.money) || x.text || x.fx))
+    if (incidents.length || debtNotes.length || eventNotes.length) {
       el.appendChild(h('section', { class: 'card sum-incident', testid: 'summary-incident', dataset: {
         incident: incidents[0] ? incidents[0].id : '', choice: incidents[0] ? incidents[0].choice : '' } },
-      h('h2', { class: 'card-title' }, 'Tình huống trong ca'),
+      h('h2', { class: 'card-title' }, incidents.length && eventNotes.length ? 'Tình huống và sự kiện trong ca'
+        : incidents.length || debtNotes.length ? 'Tình huống trong ca' : 'Sự kiện trong ca'),
       incidents.map(r => h('div', { class: 'sum-incident-item' },
         h('b', null, r.name),
         h('p', { class: 'small' }, 'Bạn chọn: ' + r.label + (r.safe ? ' (cách an toàn)' : '')),
         h('p', { class: 'small' }, r.text),
         h('ul', { class: 'sum-incident-fx small' }, incidentLines(r).map(t => h('li', null, t))))),
+      eventNotes.length ? h('ul', { class: 'sum-incident-fx small sum-event-notes', testid: 'summary-event-money' }, eventNotes.map(x =>
+        h('li', { dataset: { event: x.id || '', money: String(n(x.money)) } },
+          (x.name ? h('b', null, x.name + ': ') : null),
+          [n(x.money) ? signedVND(n(x.money)) : '', x.fx || ''].filter(Boolean).join(', ') || 'không tính tiền',
+          x.text ? ' · ' + x.text : ''))) : null,
       debtNotes.map(d => h('p', { class: ['small', 'sum-debt', d.kind === 'tra' ? 'is-paid' : 'is-unpaid'], testid: 'summary-debt' }, d.text)),
-      h('p', { class: 'small muted' }, 'Tiền của tình huống đã nằm trong sổ lãi lỗ ở trên.')))
+      h('p', { class: 'small muted' }, 'Tiền của tình huống và sự kiện đã nằm trong sổ lãi lỗ ở trên.')))
+    }
+
+    // M4: quà hàng hiếm cuối ca (khách lạ, Giỏ chợ) — không phải tiền nên không nằm trong sổ lãi lỗ
+    const rareNotes = sum.rareNotes || sum.rare || []
+    if (rareNotes.length) {
+      el.appendChild(h('section', { class: 'card sum-rare', testid: 'summary-rare' },
+        h('h2', { class: 'card-title' }, 'Hàng hiếm cuối ca'),
+        rareNotes.map(x => h('div', { class: 'sum-incident-item', dataset: { kind: x.kind || '' } },
+          h('b', null, x.kind === 'khach_la' ? `${x.name} (khách lạ${x.stars ? `, ${x.stars} sao` : ''})` : (x.name || 'Giỏ chợ')),
+          x.text ? h('p', { class: 'small' }, x.text) : null,
+          h('ul', { class: 'sum-incident-fx small' },
+            (x.got || []).filter(g => g.n > 0).map(g => h('li', null, `+${g.n} phần ${g.name}`)),
+            x.fragment && x.fragment.n > 0 ? h('li', null, `+${x.fragment.n} mảnh công thức ${x.fragment.name}`) : null,
+            x.spoons > 0 ? h('li', null, `+${x.spoons} Muỗng Vàng (kho hoặc mức hôm nay đã đủ)`) : null))),
+        h('p', { class: 'small muted' }, rareNotes.some(x => (x.got || []).some(g => g.n > 0))
+          ? 'Hàng hiếm cất vào kho, xem ở màn Chuẩn bị. Không tính vào Tiền quán.'
+          : 'Hàng hiếm và Muỗng Vàng không tính vào Tiền quán.')))
     }
 
     // Két
@@ -192,9 +225,10 @@ export default {
           h('div', null, h('small', { class: 'muted' }, 'Báo trước'), h('b', { class: 'day-ev-name' }, S.meta.tomorrowEvent.replace('{name}', tomorrow.name)))),
         h('p', { class: 'small' }, tomorrow.desc),
         lines.length ? h('ul', { class: 'day-ev-effects' }, lines.map(t => h('li', null, t))) : null,
+        dayEventWarnLine(state, tomorrow, app.data) ? h('p', { class: 'small day-ev-warn' }, dayEventWarnLine(state, tomorrow, app.data)) : null,
         tomorrow.choice ? h('p', { class: 'small day-ev-tip' }, tomorrow.choice.free
           ? `Bạt che mưa sẽ tự căng, không tốn tiền.`
-          : `Có thể chọn "${tomorrow.choice.label}" (${formatVND(tomorrow.choice.cost)}) ở màn Chuẩn bị.`) : null))
+          : `Có thể chọn "${tomorrow.choice.label}" (${choiceCostText(tomorrow.choice)}) ở màn Chuẩn bị.`) : null))
     }
     // Sao trung bình của 30 lượt gần nhất (khác "Sao ca này" ở trên); dưới 5 lượt là số tạm tính (đệm 4 sao)
     const fewRatings = (state.ratings || []).length < 5
@@ -216,12 +250,21 @@ export default {
 }
 
 // Các dòng hiệu ứng của một tình huống đã xử lý (tiền, giá vốn, danh tiếng, khách thêm, ghi nợ, sao).
-function incidentLines(r) {
+// M4: tiền thưởng, tiền mất, tiền chi (sổ sự kiện), phần Dì Sáu đỡ giùm, hàng hiếm, mảnh công thức, bếp chậm hơn.
+export function incidentLines(r) {
   const out = []
   if (r.money > 0) out.push('Tiền bán: +' + formatVND(r.money))
+  if (r.gain > 0) out.push('Tiền thưởng: +' + formatVND(r.gain))
   if (r.cost > 0) out.push('Giá vốn: −' + formatVND(r.cost))
+  if (r.fine > 0) out.push('Mất tiền: −' + formatVND(r.fine))
+  if (r.spend > 0) out.push('Chi mua: −' + formatVND(r.spend))
+  if (r.spared > 0) out.push(`Dì Sáu đỡ giùm ${formatVND(r.spared)}`)
   if (r.refund > 0) out.push('Hoàn cho khách: −' + formatVND(r.refund))
   if (r.rep > 0) out.push(`Danh tiếng: +${r.rep}`)
+  for (const x of r.rare || []) out.push(`Hàng hiếm: +${x.n} phần ${x.name}`)
+  if (r.fragment) out.push(`Mảnh công thức ${r.fragment.name}: +${r.fragment.n}`)
+  if (r.spoons > 0) out.push(`Kho hoặc mức hàng hiếm hôm nay đã đủ: +${r.spoons} Muỗng Vàng`)
+  if (r.waitMul && r.waitMul < 1) out.push('Bếp chậm hơn một chút tới cuối ca')
   if (r.bonus > 0) out.push(`Ca sau thêm ${r.bonus} khách`)
   if (r.debt) out.push(`Ghi sổ nợ: ${r.debt.name} ${formatVND(r.debt.amount)}`)
   if (r.starLoss > 0) out.push(`Khách phật ý: −${r.starLoss} sao`)

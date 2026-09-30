@@ -4,6 +4,7 @@ import { h, svgBox } from '../dom.js'
 import { icon } from '../art.js'
 import { shopCatalog, buyShopRecipe, buyShopUpgrade, buyUmbrella, equipCosmetic } from '../../core/shop.js'
 import { formatVND } from '../format.js'
+import { rareActive, rareConfig } from '../../core/rare.js'
 import { screenHead, reasonText, spoonPill, cartView, DEFAULT_UMBRELLA } from '../components/meta-ui.js'
 
 const TABS = [
@@ -207,12 +208,28 @@ export default {
       const I = app.data.ITEMS || {}
       const items = Object.entries(state.items || {}).filter(([id, n]) => I[id] && n > 0)
       const titles = (state.titles || []).map(id => app.data.TITLES && app.data.TITLES[id]).filter(Boolean)
-      if (items.length || titles.length) {
+      // M4: nguyên liệu hiếm trong kho (lấy từ kho khi nấu món hiếm, không bán lại)
+      const INGS = app.data.INGREDIENTS || {}
+      const rares = Object.entries((state.rare && state.rare.stock) || {}).filter(([id, n]) => INGS[id] && INGS[id].rare && n > 0)
+      // M4: tỉ lệ Giỏ chợ ghi công khai (không bán lượt bốc; lượt có từ chuỗi Quầy chuẩn và ngày Chợ phiên)
+      const RC = rareConfig(app.ctx)
+      const basketOn = rareActive(app.ctx) && (state.day >= RC.fromDay || rares.length > 0)
+      const pct = v => Math.round(v * 100) + '%'
+      const basketLine = basketOn ? h('li', { testid: 'bag-basket' }, svgBox(icon('ro'), 'bag-icon'),
+        h('div', null, h('b', null, 'Giỏ chợ (tỉ lệ công khai)'),
+          h('small', null, `Mỗi lượt: ${pct(RC.basket.ingredient)} ra 1 phần nguyên liệu hiếm, ${pct(1 - RC.basket.ingredient)} ra 1 mảnh công thức. ` +
+            `Bảo hiểm: ${RC.basket.pityAfter} lượt liền không ra nguyên liệu thì lượt sau chắc chắn có; ${RC.fragmentPityAfter} lần liền không ra mảnh thì lần sau chắc chắn có. ` +
+            'Có lượt khi giữ chuỗi Quầy chuẩn 5 khách hoặc ngày Chợ phiên, không mua bằng tiền.'))) : null
+      if (items.length || titles.length || rares.length || basketLine) {
         body.appendChild(h('h2', { class: 'meta-section' }, 'Túi đồ'))
         body.appendChild(h('ul', { class: 'bag-list', testid: 'bag' },
           items.map(([id, n]) => h('li', null, svgBox(icon(I[id].icon || id), 'bag-icon'),
             h('div', null, h('b', null, I[id].name + (I[id].consumable ? ` ×${n}` : '')), h('small', null, I[id].desc)))),
-          titles.map(t => h('li', null, svgBox(icon('danh_hieu'), 'bag-icon'), h('div', null, h('b', null, 'Danh hiệu: ' + t.name))))))
+          rares.map(([id, n]) => h('li', { testid: 'bag-rare-' + id }, svgBox(icon(INGS[id].icon || id), 'bag-icon'),
+            h('div', null, h('b', null, `${INGS[id].name} ×${n}`),
+              h('small', null, `Hàng hiếm ${'★'.repeat(INGS[id].star || 1)} · quê ${INGS[id].origin || ''} · dùng cho món hiếm, xem kho ở màn Chuẩn bị`)))),
+          titles.map(t => h('li', null, svgBox(icon('danh_hieu'), 'bag-icon'), h('div', null, h('b', null, 'Danh hiệu: ' + t.name)))),
+          basketLine))
       }
     }
 

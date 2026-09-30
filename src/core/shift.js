@@ -2,17 +2,21 @@
 import { seedFrom, nextRange, chance, nextInt, pick } from './rng.js'
 import { makeFloat, drawerTotal } from './money.js'
 import { cfg, emit, unlockTip } from './state.js'
-import { createCustomer, createRegular, drainPatience, isGone, loseCustomer, customerCount, MAX_CUSTOMERS } from './customer.js'
-import { beginCounter, confirmQr } from './order.js'
+import { createCustomer, createRegular, drainPatience, isGone, loseCustomer, customerCount, MAX_CUSTOMERS,
+  normalizeLines, expectedServiceSec, speechFor, patienceSecFor, personaObj } from './customer.js'
+import { beginCounter, confirmQr, qrSpeakerOn } from './order.js'
 import { abandonDish } from './kitchen.js'
-import { summarizeShift, settleShift } from './economy.js'
-import { prepareShiftMods, applyCustomerMods } from './events.js'
+import { summarizeShift, settleShift, eventMoneyOut } from './economy.js'
+import { prepareShiftMods, applyCustomerMods, finishShiftEvents, shiftEventCap, announceDayEvent } from './events.js'
 import { chainForcesFakeQr } from './chains.js'
-import { planIncident, takeIncidentBonusInfo, collectDebts, finishShiftIncidents } from './incidents.js'
+import { planIncidents, takeIncidentBonusInfo, collectDebts, finishShiftIncidents, incidentLossCap, incidentGainCap, ensureIncidents } from './incidents.js'
+import { dayKeyVN, REWIND_TOLERANCE_MS } from './clock.js'
+import { rareMenuFor, capRareRequests, pickStranger, finishShiftRare } from './rare.js'
 
+// M4: eventIn (tiền thưởng từ sự kiện, ví nhận lúc tất toán), eventOut (phạt, chi sự kiện, trừ ví lúc phát sinh).
 export function emptyLedger() {
   return { sales: 0, cash: 0, qr: 0, listValue: 0, undercharge: 0, overchange: 0, rounding: 0,
-    cogs: 0, waste: 0, refunds: 0, tips: 0, fakeQrLoss: 0 }
+    cogs: 0, waste: 0, refunds: 0, tips: 0, fakeQrLoss: 0, eventIn: 0, eventOut: 0 }
 }
 
 // Số khách của ca: customersPerShift(day) ±1 theo sao trung bình (sàn 3, trần 8). Cài ở customer.js
@@ -66,7 +70,13 @@ export function startShift(state, ctx) {
   if (state.shift) return state.shift
   const day = state.day
   const nowMs = ctx && typeof ctx.now === 'function' ? Number(ctx.now()) : null
+  // M4 (soát lỗi): chốt sự kiện ngày của hôm nay và ngày mai (đổi mức "Tần suất sự kiện" sau đó không bốc lại; tình
+  // huống trong ca biết trước ngày mai có sự kiện xấu không)
+  announceDayEvent(state, day, ctx)
+  announceDayEvent(state, day + 1, ctx)
   const mods = prepareShiftMods(state, ctx, Number.isFinite(nowMs) ? nowMs : null)
+  // luật nhịp trên dòng thời gian chung: sự kiện ngày của ca đứng trước các tình huống trong ca
+  if (mods.dayEvent) ensureIncidents(state).lastEvent = mods.dayEvent.kind || 'tot'
   const float = makeFloat()
   const sh = {
     day, rng: seedFrom(state.seed, day), rngText: seedFrom(state.seed, day, 'text'),
@@ -78,9 +88,18 @@ export function startShift(state, ctx) {
     served: [], lost: [], missed: 0,
     scoreSheets: [], counterStreak: 0, nextTicketNo: 1,
     counts: {}, reputationGain: 0, tipsShown: 0, reviews: [], receipts: [],
-    fixedCost: cfg(ctx, 'fixedCostPerShift'), loanRepayRate: cfg(ctx, 'loanRepayRate'),
+    // M4: sự kiện ngày "Tiền điện nước tăng" cộng thêm vào chi phí cố định của ca (mods.fixedCostDelta)
+    fixedCost: cfg(ctx, 'fixedCostPerShift') + (Number(mods.fixedCostDelta) || 0), loanRepayRate: cfg(ctx, 'loanRepayRate'),
     walletStart: state.wallet,
-    mods
+    mods,
+    // M4: ngày thật lúc mở ca (trần tiền sự kiện mỗi ngày thật; '' khi không có giờ thật → theo ngày game),
+    // ghi chú tiền sự kiện của ca, lượt Giỏ chợ (chuỗi "Quầy chuẩn" 5 khách: order.clipTicket; Chợ phiên +1),
+    // phần giá vốn tăng vì sự kiện ngày (kitchen.submitChon, có trần), khách đi ngang vì thu gọn chỗ đứng
+    // (giờ tin cậy: max(giờ máy, mốc lớn nhất từng thấy), giống khách lạ — lùi giờ máy không mở lại sổ trần ngày)
+    dayKey: Number.isFinite(nowMs) ? dayKeyVN(Math.max(nowMs, Number(state.clock && state.clock.maxSeen) || 0)) : '',
+    eventNotes: [], rareRolls: Math.max(0, Math.round(Number(mods.rareRolls) || 0)), eventCostExtra: 0, eventMissed: 0,
+    // M4: món hiếm bán được trong ca (chốt lúc mở ca theo tồn kho, rare.rareMenuFor), ghi chú quà hàng hiếm cuối ca
+    rareMenu: rareMenuFor(state, ctx), rareNotes: []
   }
   let N = applyCustomerMods(customerCount(state, ctx, day), mods, ctx)
   // M3: ly trà "mở hàng" tặng ở ca trước → ca này thêm khách (trong trần 8 khách). Ca đã đủ khách (vd Chợ phiên)
@@ -116,14 +135,27 @@ export function startShift(state, ctx) {
     list.push(c)
     sh.customers[id] = c
   }
+  // M4: đơn đặt trước của sự kiện ngày (Văn phòng đầu hẻm đặt 3 ly trà tắc): thêm 1 khách giữa ca (trong trần
+  // eventCustomerCap), đánh số lại khách theo thứ tự đến
+  addBigOrderCustomer(state, sh, ctx, list)
   // chuỗi "Làm quen QR" ở bước phát hiện ảnh giả: ép 1 khách (không phải khách đầu) trả bằng ảnh giả
   if (chainForcesFakeQr(state, ctx)) {
-    const target = list.find((c, i) => i >= Math.min(1, list.length - 1) && !c.tutorial)
+    const target = list.find((c, i) => i >= Math.min(1, list.length - 1) && !c.tutorial && !c.bigOrder)
     if (target) target.forcePay = 'qr_fake'
   }
+  // M4: đơn món hiếm không vượt tồn kho: vòng tất định theo thứ tự khách (không dùng thêm số ngẫu nhiên), dòng vượt
+  // tồn kho đổi về món nền
+  for (const c of capRareRequests(state, list, ctx)) refreshRequest(c, sh, ctx)
+  // M4: khách lạ ở ca đầu mỗi ngày thật (từ ngày game 3), mang quà quê là nguyên liệu hiếm
+  applyStranger(state, sh, list, ctx, nowMs)
   sh.plan = planArrivals(sh, list, ctx)
-  // M3: tình huống trong ca (bốc theo luồng ngẫu nhiên riêng, không đổi lịch khách) và khách quen trả nợ tới hạn
-  sh.incident = planIncident(state, sh, ctx)
+  // M4: trần tiền của một sự kiện trong ca (chốt theo lịch khách lúc mở ca): thiệt hại ≤ lossCap, tiền thưởng ≤ gainCap
+  sh.eventCap = { loss: incidentLossCap(state, sh, ctx), gain: incidentGainCap(state, sh, ctx) }
+  // M3: tình huống trong ca (bốc theo luồng ngẫu nhiên riêng, không đổi lịch khách) và khách quen trả nợ tới hạn.
+  // M4: tối đa 2 tình huống mỗi ca: sh.incident là tình huống thứ nhất, sh.incidentQueue các tình huống sau (theo thứ tự)
+  const plans = planIncidents(state, sh, ctx)
+  sh.incident = plans[0] || null
+  sh.incidentQueue = plans.slice(1)
   sh.debtIn = 0
   sh.debtNotes = []
   collectDebts(state, sh, ctx)
@@ -132,12 +164,89 @@ export function startShift(state, ctx) {
   return sh
 }
 
+// M4: khách đặt trước của sự kiện ngày (mods.bigOrder): chèn giữa lịch khách (không phải khách đầu), trong trần
+// eventCustomerCap; món phải đang bán. Đánh số lại id khách theo thứ tự đến (k1, k2…).
+function addBigOrderCustomer(state, sh, ctx, list) {
+  const bo = sh.mods && sh.mods.bigOrder
+  const R = (ctx.data && ctx.data.RECIPES) || {}
+  if (!bo || !R[bo.recipeId] || !(state.recipes && state.recipes[bo.recipeId])) return null
+  if (list.length >= cfg(ctx, 'eventCustomerCap')) return null
+  const P = (ctx.data && ctx.data.PERSONAS) || {}
+  const who = Array.isArray(bo.who) && bo.who.length ? pick(sh, bo.who) : null
+  const c = createCustomer(state, sh, ctx, {
+    id: 'k0', request: [{ recipeId: bo.recipeId, qty: Math.max(1, Math.round(Number(bo.qty) || 1)), notes: [] }],
+    personaId: P[bo.persona] ? bo.persona : null, name: (who && who.name) || null, gender: (who && who.gender) || null
+  })
+  c.bigOrder = true
+  c.eventId = (sh.mods.dayEvent && sh.mods.dayEvent.id) || ''
+  list.splice(Math.max(1, Math.floor(list.length / 2)), 0, c)
+  sh.customers = {}
+  list.forEach((x, i) => { x.id = 'k' + (i + 1); sh.customers[x.id] = x })
+  return c
+}
+
+// Đơn của khách vừa đổi (món hiếm vượt tồn kho → món nền): gộp dòng, tính lại thời gian phục vụ kỳ vọng và câu gọi món.
+function refreshRequest(c, sh, ctx) {
+  c.request = normalizeLines(c.request)
+  c.expectedSec = expectedServiceSec(c.request, ctx)
+  c.speech = speechFor(c, sh, ctx)
+}
+
+// M4: khách lạ (rare.pickStranger): đổi một khách thường thành khách lạ (tên, giới, kiểu khách, giọng, cách tự xưng),
+// giữ nguyên đơn. Ngày thật tin cậy = max(giờ máy lúc mở ca, mốc lớn nhất từng thấy); giờ máy bị lùi thì không có khách lạ.
+function applyStranger(state, sh, list, ctx, nowMs) {
+  if (!Number.isFinite(nowMs)) return null
+  const maxSeen = Number(state.clock && state.clock.maxSeen) || 0
+  if (maxSeen > 0 && nowMs < maxSeen - REWIND_TOLERANCE_MS) return null
+  const got = pickStranger(state, sh, list, ctx, dayKeyVN(Math.max(nowMs, maxSeen)))
+  if (!got) return null
+  const c = list[got.index]
+  const def = got.def
+  const P = (ctx.data && ctx.data.PERSONAS) || {}
+  c.stranger = def.id
+  c.name = def.name
+  if (def.gender === 'nam' || def.gender === 'nu') c.gender = def.gender
+  if (P[def.persona]) { c.persona = def.persona; c.strict = !!P[def.persona].strict }
+  if (def.region === 'nam' || def.region === 'bac') c.region = def.region
+  if (def.self) c.self = def.self
+  c.patienceSec = patienceSecFor(state, personaObj(ctx, c.persona), ctx, sh.day)
+  if (sh.mods && sh.mods.patienceMul && sh.mods.patienceMul !== 1) c.patienceSec = Math.round(c.patienceSec * sh.mods.patienceMul * 10) / 10
+  c.speech = speechFor(c, sh, ctx)
+  return c
+}
+
+function fillText(tpl, vars) {
+  return String(tpl || '').replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined && vars[k] !== null ? String(vars[k]) : m))
+}
+
+// M4: luật hàng chờ của sự kiện ngày "Trật tự đô thị": hàng chờ (kể cả khách ở quầy) còn 1 người nữa là chạm mốc → nhắc
+// trước ('event.warn', 1 lần); chạm mốc `at` người → phạt 1 lần (eventMoneyOut, trần lossCap của sự kiện và trần ngày thật).
+function checkQueueFine(state, ctx) {
+  const sh = state.shift
+  const qf = sh.mods && sh.mods.queueFine
+  if (!qf || sh.queueFined) return
+  const n = sh.queue.length
+  const def = ctx.data && ctx.data.DAY_EVENTS && sh.mods.dayEvent ? ctx.data.DAY_EVENTS[sh.mods.dayEvent.id] : null
+  const note = { id: (sh.mods.dayEvent && sh.mods.dayEvent.id) || '', name: def ? def.name : '' }
+  if (n >= qf.at) {
+    sh.queueFined = true
+    eventMoneyOut(state, Number(qf.fine) || 0, { ...note, text: fillText(qf.text, { n }) }, ctx, { cap: shiftEventCap(sh).loss })
+    unlockTip(state, 'lan_chiem', ctx)
+  } else if (n >= qf.at - 1 && n > 0 && !sh.queueWarned) {
+    sh.queueWarned = true
+    emit(ctx, 'event.warn', { ...note, text: fillText(qf.warn, { n }) })
+  }
+}
+
 // Tiến thời gian dt giây: khách tới, mở quầy, trừ kiên nhẫn, khách bỏ về, báo QR về.
+// M4: sự kiện ngày giới hạn hàng chờ (mods.queueMax: thu gọn chỗ đứng), phạt hàng chờ dài (mods.queueFine), Loa báo tiền
+// tắt vì cúp điện (mods.noQrSpeaker: không tự xác nhận QR).
 export function advance(state, dt, ctx) {
   const sh = state.shift
   if (!sh || sh.paused || !(dt > 0)) return
   sh.t += dt
-  const qmax = cfg(ctx, 'queueMax')
+  const qcap = cfg(ctx, 'queueMax')
+  const qmax = sh.mods && Number(sh.mods.queueMax) > 0 ? Math.min(qcap, Number(sh.mods.queueMax)) : qcap
   for (const p of sh.plan) {
     const c = sh.customers[p.customerId]
     if (!c || c.status !== 'den' || p.arriveAt > sh.t) continue
@@ -151,9 +260,15 @@ export function advance(state, dt, ctx) {
       c.status = 'bo_ve'
       c.lostReason = 'hang_day'
       sh.missed += 1
+      // thu gọn chỗ đứng theo sự kiện ngày: khách này lẽ ra còn chỗ đứng
+      if (sh.queue.length < qcap) {
+        sh.eventMissed = (Number(sh.eventMissed) || 0) + 1
+        unlockTip(state, 'lan_chiem', ctx)
+      }
       emit(ctx, 'customer.lost', { customerId: c.id, reason: 'hang_day' })
     }
   }
+  checkQueueFine(state, ctx)
   beginCounter(state, ctx)
   const left = drainPatience(state, dt, ctx)
   if (left.length) beginCounter(state, ctx)
@@ -161,7 +276,7 @@ export function advance(state, dt, ctx) {
   if (c && c.payMethod === 'qr' && !c.paid && c.qrArriveAt !== null && !c.qrArrived && sh.t >= c.qrArriveAt) {
     c.qrArrived = true
     emit(ctx, 'qr.arrived', { customerId: c.customerId, amount: c.amountDue })
-    if (state.upgrades && state.upgrades.loa_bao_tien) confirmQr(state, ctx)
+    if (qrSpeakerOn(state)) confirmQr(state, ctx)
   }
 }
 
@@ -221,7 +336,11 @@ function compactHistory(s) {
     lateReviews: (s.lateReviews || []).map(r => ({ customerId: r.customerId, name: r.name, amount: r.amount || 0 })),
     // M3: tình huống trong ca đã xử lý, tiền khách quen trả nợ
     incidents: (s.incidents || []).map(r => ({ id: r.id, choice: r.choice })),
-    debtIn: s.debtIn || 0
+    debtIn: s.debtIn || 0,
+    // M4: tiền từ sự kiện, phạt/chi sự kiện; quà hàng hiếm cuối ca (khách lạ, Giỏ chợ)
+    eventIn: s.eventIn || 0, eventOut: s.eventOut || 0,
+    rare: (s.rareNotes || []).map(n => ({ kind: n.kind, name: n.name || '', got: (n.got || []).map(g => ({ id: g.id, name: g.name, n: g.n })),
+      fragment: n.fragment ? { recipeId: n.fragment.recipeId, name: n.fragment.name, n: n.fragment.n } : null, spoons: n.spoons || 0 }))
   }
 }
 
@@ -231,6 +350,10 @@ export function endShift(state, ctx) {
   if (!sh) return null
   if (!isShiftOver(state)) closeRemaining(state, ctx)
   unlockTip(state, 'shift_end', ctx)
+  // M4: chấm cuối ca của sự kiện ngày (giải thưởng, tiền đúng hẹn, kiểm tra vệ sinh) TRƯỚC khi tổng kết
+  finishShiftEvents(state, ctx)
+  // M4: quà khách lạ và các lượt Giỏ chợ (nguyên liệu hiếm, mảnh công thức) TRƯỚC khi tổng kết
+  finishShiftRare(state, ctx)
   const summary = summarizeShift(state, ctx && ctx.data)
   settleShift(state, summary)
   const st = state.stats

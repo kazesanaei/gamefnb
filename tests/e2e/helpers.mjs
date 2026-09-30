@@ -372,7 +372,10 @@ export async function playShiftUi(g, { useClock = false, until = null, maxCustom
 // ---------- Khâu bếp ----------
 
 // Nấu hết các dòng của phiếu (ticketId dạng 'p1') và giao. Trả số sao trên phiếu chấm.
-export async function cookAndServe(g, ticketId, { shots = true } = {}) {
+// M4: trả thêm tip trên phiếu chấm ({tip: số đồng ở data-tip, tipText: chữ dòng tip, '' nếu phiếu không có dòng tip}).
+// Tùy chọn: onChon(line, recipe, i) chạy lúc kệ Chọn nguyên liệu vừa hiện (vd soát nhãn "còn n" của nguyên liệu hiếm);
+// wrongPick: true → dòng đầu tiên lấy thêm 1 hàng bẫy có trên kệ (cố ý lỗi "lấy nhầm nguyên liệu").
+export async function cookAndServe(g, ticketId, { shots = true, onChon = null, wrongPick = false } = {}) {
   const { page } = g
   await resolveIncidentIfShown(g)
   if (!(await page.isVisible(T('panel-kitchen')))) await page.click(T('tab-kitchen'))
@@ -387,8 +390,15 @@ export async function cookAndServe(g, ticketId, { shots = true } = {}) {
     if (!(await page.$(T('cook-line-' + i)))) await page.click(T('ticket-' + ticketId))
     await page.click(T('cook-line-' + i))
     await page.waitForSelector(`${T('minigame-stage')}[data-type="chon"]`)
+    if (onChon) await onChon(line, recipe, i)
     const req = requiredIngredients(recipe, line.notes)
     for (const id of req.required) await page.click(T('shelf-' + id))
+    if (wrongPick && i === 0) {
+      const decoy = []
+      for (const id of recipe.decoys || []) if (await page.$(T('shelf-' + id))) decoy.push(id)
+      assert.ok(decoy.length, 'kệ không có hàng bẫy để cố ý lấy nhầm')
+      await page.click(T('shelf-' + decoy[0]))
+    }
     if (shots) await g.shot('bep-ke-chon')
     await page.click(T('chon-done'))
     await page.waitForSelector(T('board'))
@@ -403,8 +413,16 @@ export async function cookAndServe(g, ticketId, { shots = true } = {}) {
   await page.click(`${T('serve-ticket')}[data-ticket-id="${ticketId}"]`)
   const sheet = await page.waitForSelector(`${T('score-sheet')}[data-customer-id="${ticket.customerId}"]`, { timeout: 5000 })
   const stars = Number(await sheet.getAttribute('data-stars'))
+  const tipInfo = await readSheetTip(sheet)
   if (shots) { await page.waitForTimeout(300); await g.shot('phieu-cham') }
-  return { stars, customerId: ticket.customerId }
+  return { stars, customerId: ticket.customerId, ...tipInfo }
+}
+
+// M4: dòng tip trên phiếu chấm (ElementHandle của score-sheet) → {tip, tipText}.
+export async function readSheetTip(sheet) {
+  const el = await sheet.$(T('score-sheet-tip'))
+  if (!el) return { tip: 0, tipText: '' }
+  return { tip: Number(await el.getAttribute('data-tip')) || 0, tipText: ((await el.textContent()) || '').trim() }
 }
 
 // Làm mọi bước trên Thớt sơ chế theo thứ tự có thể làm (dùng cả cho Nấu thử ở Chợ Công Thức).

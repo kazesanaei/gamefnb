@@ -24,7 +24,9 @@ export const BALANCE = Object.freeze({
   stepLabels: Object.freeze([
     Object.freeze([90, 'Hoàn hảo']), Object.freeze([70, 'Tốt']), Object.freeze([50, 'Đạt']), Object.freeze([0, 'Hỏng'])
   ]),
-  tipFiveStar: 5000, tipBonus: 10000,                    // bội 5.000đ, bỏ vào hũ tip
+  // M4: tip một mức 5.000đ khi khách chấm 5 sao VÀ số tiền khách thực trả (billOf) từ tipMinBill; bỏ tip 10.000đ.
+  // Khách khó tính chấm 5 sao được thêm strictFiveStarRep danh tiếng (thay tip 10.000đ cũ).
+  tipFiveStar: 5000, tipMinBill: 20000, strictFiveStarRep: 1,
   reputationByStars: Object.freeze({ 5: 3, 4: 2, 3: 1, 2: 0, 1: 0 }),
   masteryLevels: Object.freeze([0, 5, 15]),              // goodCooks cần cho cấp 1,2,3
   autoStepScore: 80, retryScoreCap: 85,
@@ -35,5 +37,8 @@ export const BALANCE = Object.freeze({
     Object.freeze([1, 20000]), Object.freeze([3, 35000]), Object.freeze([5, 65000]),
     Object.freeze([7, 85000]), Object.freeze([9, 100000])
   ]),
-  eventCustomerCap: 10                                   // trần khách khi sự kiện ngày tăng khách (Chợ phiên)
+  eventCustomerCap: 10,                                  // trần khách khi sự kiện ngày tăng khách (Chợ phiên)
+  // M4: trần tiền sự kiện mỗi ngày thật (sự kiện ngày + tình huống trong ca), theo thu nhập tham chiếu của ca:
+  // tổng phạt/chi bắt buộc ≤ lossIncomeMul, tổng tiền thưởng ≤ gainIncomeMul (vượt thì Dì Sáu đỡ giùm phần dư)
+  eventDayCap: Object.freeze({ lossIncomeMul: 1, gainIncomeMul: 1 })
 })

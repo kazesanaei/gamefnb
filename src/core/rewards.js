@@ -2,6 +2,7 @@
 // Lược đồ Reward xem src/data/checkin.js. Lõi đọc dữ liệu qua ctx.data.
 import { emit, refIncomeFor, newRecipeProgress } from './state.js'
 import { roundReward } from './money.js'
+import { grantRare, grantFragment } from './rare.js'
 
 const isObj = v => v && typeof v === 'object' && !Array.isArray(v)
 
@@ -57,6 +58,13 @@ export function resolveReward(state, reward, ctx, opts = {}) {
     for (const [id, n] of Object.entries(src.items)) { const v = Math.round(Number(n) || 0); if (v > 0) items[id] = v }
     if (Object.keys(items).length) out.items = items
   }
+  // M4: nguyên liệu hiếm {ingId: số phần} và mảnh công thức hiếm {recipeId: số mảnh}
+  for (const k of ['rare', 'fragments']) {
+    if (!isObj(src[k])) continue
+    const m = {}
+    for (const [id, n] of Object.entries(src[k])) { const v = Math.round(Number(n) || 0); if (v > 0) m[id] = v }
+    if (Object.keys(m).length) out[k] = m
+  }
   for (const k of ['upgrade', 'cosmetic', 'title', 'recipe', 'tipId', 'unlock', 'label']) if (src[k]) out[k] = src[k]
   if (reward.label && !out.label) out.label = reward.label
   if (converted) out.converted = true
@@ -103,9 +111,29 @@ export function grantReward(state, reward, ctx, opts = {}) {
   if (r.title) { state.titles = state.titles || []; addUnique(state.titles, r.title) }
   if (r.unlock) { state.unlocks = state.unlocks || []; addUnique(state.unlocks, r.unlock) }
   if (r.tipId) { state.tipsSeen = state.tipsSeen || []; addUnique(state.tipsSeen, r.tipId) }
+  // M4: hàng hiếm vào kho (trong sức chứa, dư đổi Muỗng Vàng; phần thưởng cố định của thư/chuỗi không tính trần mỗi
+  // ngày thật), mảnh cho đúng món (món đã có hoặc chưa có món nền thì mảnh đi món đang cần).
+  const got = { rare: [], fragments: [], spoons: 0 }
+  if (isObj(r.rare)) {
+    for (const [id, n] of Object.entries(r.rare)) {
+      const g = grantRare(state, id, n, ctx, { dayCap: false, source: 'thuong' })
+      if (g.got > 0) got.rare.push({ id, name: g.name, n: g.got })
+      got.spoons += g.spoons
+    }
+  }
+  if (isObj(r.fragments)) {
+    for (const [id, n] of Object.entries(r.fragments)) {
+      const f = grantFragment(state, n, ctx, { dayCap: false, recipeId: id, source: 'thuong' }) ||
+        grantFragment(state, n, ctx, { dayCap: false, source: 'thuong' })
+      if (f && f.n > 0) got.fragments.push({ recipeId: f.recipeId, name: f.name, n: f.n })
+      if (f) got.spoons += f.spoons
+    }
+  }
+  if (got.rare.length || got.fragments.length || got.spoons) r.rareGot = got
   if (r.recipe && data && data.RECIPES && data.RECIPES[r.recipe] && !state.recipes[r.recipe]) {
-    state.recipes[r.recipe] = newRecipeProgress(state.day)
     const rec = data.RECIPES[r.recipe]
+    // món hiếm không tính là "món vừa mua" (không ×2 hai ca đầu, không vào việc "Nấu món vừa mua"): boughtDay 0
+    state.recipes[r.recipe] = newRecipeProgress(rec.source === 'hiem' ? 0 : state.day)
     if (rec.source === 'event') {
       const ev = rec.eventId && data.EVENTS && data.EVENTS[rec.eventId]
       state.eventRecipes = state.eventRecipes || {}

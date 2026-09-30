@@ -25,7 +25,11 @@ test('mô phỏng ca với "người chơi hoàn hảo": bất biến ví = lãi
       assert.equal(summary.undercharge, 0)
       assert.equal(summary.overchange, 0)
       assert.equal(summary.drawerDiff + summary.rounding, 0)
-      const recomputed = summary.cashSales + summary.qrSales + summary.tips - summary.cogs - summary.waste - summary.fixedCost - summary.refunds - summary.rounding
+      // M4: lãi gồm cả sổ tiền sự kiện (+ tiền từ sự kiện − phạt, chi sự kiện)
+      assert.equal(summary.eventIn, 0)
+      assert.equal(summary.eventOut, 0)
+      const recomputed = summary.cashSales + summary.qrSales + summary.tips + summary.eventIn - summary.cogs - summary.waste -
+        summary.fixedCost - summary.refunds - summary.rounding - summary.eventOut
       assert.equal(summary.profit, recomputed)
     }
     assert.equal(state.history.length, 9)

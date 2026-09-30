@@ -30,7 +30,8 @@ export const STRINGS = deepFreeze({
     recipeBook: 'Sổ công thức',
     notebook: 'Sổ tay nghề',
     dialectBook: 'Sổ từ vùng miền',
-    settings: 'Cài đặt'
+    settings: 'Cài đặt',
+    market: 'Gánh hàng quê'
   },
 
   buttons: {
@@ -93,6 +94,10 @@ export const STRINGS = deepFreeze({
     method: 'Cách sơ chế',
     queue: 'Hàng chờ',
     tipJar: 'Hũ tip',
+    // M4: luật tip một mức (BALANCE.tipFiveStar, tipMinBill), viết theo hướng thưởng
+    tipRule: 'Hóa đơn từ 20.000đ, khách vui (5 sao) sẽ bỏ hũ tip 5.000đ',
+    tipBelowMin: 'Tip 0 (hóa đơn dưới {min})',
+    tipNotPaid: 'Tip 0 (khách chưa trả tiền thật)',
     cash: 'Tiền mặt',
     qr: 'Chuyển khoản QR',
     qrWaiting: 'Đang chờ tiền về…',
@@ -120,7 +125,37 @@ export const STRINGS = deepFreeze({
   masteryLevels: { 1: 'Tập làm', 2: 'Quen tay', 3: 'Thạo', 4: 'Tinh thông', 5: 'Bậc thầy' },
   speedLabels: { nhanh: 'Nhanh', on: 'Ổn', cham: 'Chậm' },
   roles: { chinh: 'Chính', phu: 'Phụ', tuy_chon: 'Tùy chọn' },
-  sources: { default: 'Có sẵn', shop: 'Chợ Công Thức', event: 'Món sự kiện' },
+  sources: { default: 'Có sẵn', shop: 'Chợ Công Thức', event: 'Món sự kiện', hiem: 'Công thức hiếm' },
+
+  // M4: nguyên liệu và công thức hiếm (kho, Giỏ chợ, phiên hàng, khách lạ)
+  rare: {
+    stockTitle: 'Kho hàng hiếm',
+    stockEmpty: 'Kho còn trống. Ghé gánh hàng quê hoặc phục vụ khách lạ để có hàng hiếm.',
+    stockNote: 'Hàng hiếm lấy từ kho, không trừ Tiền quán. Mỗi loại chứa tối đa {max} phần, dư đổi {gold} Muỗng Vàng mỗi phần.',
+    dayCap: 'Hôm nay đã nhận {got}/{cap} phần, {frags}/{fragCap} mảnh.',
+    basketTitle: 'Giỏ chợ',
+    basketOdds: 'Mỗi lượt: {ing} ra 1 phần nguyên liệu, {frag} ra 1 mảnh công thức.',
+    basketAllIng: 'Mỗi lượt chắc chắn ra 1 phần nguyên liệu (đã đủ mảnh mọi món hiếm).',
+    basketAllIngBase: 'Mỗi lượt chắc chắn ra 1 phần nguyên liệu (chưa món hiếm nào nhận thêm mảnh: đã đủ mảnh, hoặc cần có món nền trước).',
+    basketAllIngDay: 'Hôm nay đã nhận đủ {fragCap} mảnh, lượt Giỏ chợ còn lại trong hôm nay chắc chắn ra nguyên liệu.',
+    basketFragSure: 'Bảo hiểm mảnh: đã {n} lần liền không ra mảnh, lượt Giỏ chợ kế tiếp chắc chắn ra 1 mảnh công thức.',
+    basketLuck: 'May mắn {n}/{max}: {left} lượt nữa không ra nguyên liệu thì lượt sau chắc chắn có.',
+    basketSure: 'Lượt Giỏ chợ kế tiếp chắc chắn ra nguyên liệu.',
+    basketHow: 'Có lượt Giỏ chợ khi giữ chuỗi Quầy chuẩn 5 khách trong ca, hoặc ngày Chợ phiên. Rút lúc cuối ca.',
+    fragments: 'Mảnh {n}/{need}',
+    needBase: 'Cần {base}',
+    readyToTaste: 'Đủ mảnh, nấu thử đạt hạng Được để mở món',
+    stallOpen: 'Đang mở tới {to}',
+    stallNext: 'Phiên kế tiếp {from}',
+    stallDone: 'Hôm nay đã ghé',
+    stallLocked: 'Tạm khóa vì giờ trên máy bị lùi',
+    stallTomorrow: 'Hẹn sáng mai, {from}',
+    strangerTag: 'Khách lạ',
+    leftTag: '★ còn {n}',
+    outOfStock: 'Hết nguyên liệu hiếm cho món này',
+    remakeBlocked: 'Hết nguyên liệu hiếm, chỉ hoàn tiền được',
+    overflow: 'đổi {gold} Muỗng Vàng'
+  },
 
   // 7 chặng (MVP chỉ mở chặng 1)
   chang: {
@@ -189,6 +224,9 @@ export const STRINGS = deepFreeze({
     cashSales: 'Doanh thu tiền mặt',
     qrSales: 'Doanh thu chuyển khoản',
     tips: 'Tiền tip',
+    // M4: sổ tiền sự kiện (sự kiện ngày, tình huống trong ca)
+    eventIn: 'Tiền từ sự kiện',
+    eventOut: 'Phạt, chi sự kiện',
     cogs: 'Giá vốn',
     waste: 'Hao hụt',
     refunds: 'Hoàn tiền',
@@ -305,6 +343,12 @@ export const STRINGS = deepFreeze({
     khong_co: 'Không tìm thấy',
     da_nau_thu: 'Món này đã nấu thử rồi',
     dang_nau_thu: 'Đang nấu thử dở món khác, ra món đó trước đã',
-    het_su_kien: 'Sự kiện đã kết thúc'
+    het_su_kien: 'Sự kiện đã kết thúc',
+    // M4: hàng hiếm
+    het_hang_hiem: 'Không đủ nguyên liệu hiếm cho món này',
+    ngoai_gio: 'Phiên chợ này chưa mở hoặc đã tan',
+    chua_du_manh: 'Chưa đủ mảnh công thức',
+    thieu_mon_nen: 'Cần có món nền trước',
+    chua_toi_ngay: 'Chưa tới ngày mở gánh hàng quê'
   }
 })

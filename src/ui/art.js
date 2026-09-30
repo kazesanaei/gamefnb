@@ -66,6 +66,17 @@ function serratedLeaf(cx, cy, r, teeth, fill, rot = 0) {
 }
 
 // Chấm nhỏ không viền.
+// Ngôi sao vàng nhỏ ở góc hình nguyên liệu hiếm (M4).
+function rareStar(cx, cy, R = 7) {
+  const pts = []
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5
+    const rr = i % 2 ? R * 0.45 : R
+    pts.push(`${r1(cx + rr * Math.cos(a))},${r1(cy + rr * Math.sin(a))}`)
+  }
+  return `<polygon points="${pts.join(' ')}" fill="#ffd23f" stroke-width="1.8"/>`
+}
+
 function dots(list, fill, r = 1.4) {
   return list.map(([x, y, rr]) => `<circle cx="${x}" cy="${y}" r="${rr || r}" fill="${fill}" stroke="none"/>`).join('')
 }
@@ -301,7 +312,58 @@ const ING = {
   dau_xanh: svg(
     `<path d="M11 36 C13 25 22 19 32 19 C42 19 51 25 53 36Z" fill="#f2c94c"/>` +
     dots([[18, 32], [24, 27], [30, 24], [36, 25], [42, 28], [46, 33], [27, 32], [34, 31], [40, 34], [21, 35], [33, 35]], '#d9a92a', 2.4) +
-    bowl('#9ccf8f') + `<path d="M12 42 H52" stroke="#ffffff" stroke-width="2"/>`)
+    bowl('#9ccf8f') + `<path d="M12 42 H52" stroke="#ffffff" stroke-width="2"/>`),
+
+  // ---------- M4: nguyên liệu hiếm (mỗi hình có ngôi sao vàng ở góc; khác hẳn hàng thường dễ nhầm về hình và màu) ----------
+
+  // Mật ong rừng: lọ thủy tinh màu hổ phách, nắp gỗ buộc dây, nhãn tổ ong (khác đường viên trong chén, đường phèn cục)
+  mat_ong_rung: svg(
+    `<rect x="17" y="9" width="28" height="8" rx="2" fill="#8a5a2b"/>` +
+    `<path d="M17 17 H45" stroke="#d7b98a" stroke-width="2"/>` +
+    `<path d="M15 19 H47 V54 C47 58 43 60 39 60 H23 C19 60 15 58 15 54Z" fill="#e39b1d"/>` +
+    `<path d="M19 24 V52" stroke="#f7d27a" stroke-width="3"/>` +
+    `<path d="M15 21 C15 25 19 25 19 29" fill="none" stroke="#b86e0c" stroke-width="2"/>` +
+    `<path d="M22 34 l4 -3 l4 3 v5 l-4 3 l-4 -3Z M30 34 l4 -3 l4 3 v5 l-4 3 l-4 -3Z M26 42 l4 -3 l4 3 v5 l-4 3 l-4 -3Z" fill="#fbe39a" stroke-width="1.5"/>` +
+    rareStar(52, 12)),
+
+  // Trứng gà ta: 2 quả nhỏ vỏ nâu hồng lấm tấm trong ổ rơm (khác trứng gà 1 quả cam, trứng vịt to xanh nhạt)
+  trung_ga_ta: svg(
+    `<path d="M6 40 C8 32 56 32 58 40 C58 54 6 54 6 40Z" fill="#d4a24c"/>` +
+    egg(23, 33, 13, 17, '#c98e63') + dots([[20, 28], [25, 34], [21, 38], [27, 29]], '#8e5a37', 1.2) +
+    egg(40, 31, 13, 17, '#d8a57c') + dots([[37, 26], [43, 33], [38, 36], [44, 27]], '#8e5a37', 1.2) +
+    `<path d="M6 42 C18 50 46 50 58 42" fill="none" stroke="#a8772e" stroke-width="2"/>` +
+    `<path d="M10 46 l6 -3 M20 49 l5 -4 M32 50 l3 -5 M42 49 l-3 -5 M52 46 l-5 -3" stroke="#f1d08a" stroke-width="2"/>` +
+    rareStar(53, 11)),
+
+  // Muối tôm Tây Ninh: túi zip muối màu cam có hình con tôm (khác hũ muối trắng nắp xanh, hũ sa tế đỏ)
+  muoi_tom_tay_ninh: svg(
+    `<path d="M13 15 H51 L53 58 H11Z" fill="#fff6ea"/>` +
+    `<rect x="13" y="11" width="38" height="5" fill="#d7472a"/>` +
+    `<path d="M12 36 H52 L53 58 H11Z" fill="#f08a2c"/>` +
+    dots([[17, 42], [24, 47], [31, 42], [38, 50], [45, 43], [20, 53], [34, 55], [47, 52]], '#b9531a', 1.3) +
+    `<path d="M22 26 C27 19 39 20 40 26 C41 31 35 33 31 30" fill="none" stroke="#e8662c" stroke-width="3.5"/>` +
+    `<path d="M40 26 l5 -3 M40 26 l5 1" stroke="#e8662c" stroke-width="2"/>` +
+    rareStar(53, 10)),
+
+  // Khô mực Phan Thiết: con mực khô dẹt màu kem, có râu (khác khô bò miếng đỏ sẫm)
+  kho_muc: svg(
+    `<path d="M22 13 L11 8 L20 22Z M42 13 L53 8 L44 22Z" fill="#e2c07e"/>` +
+    `<path d="M32 5 C45 11 47 25 43 37 H21 C17 25 19 11 32 5Z" fill="#f2dcac"/>` +
+    `<path d="M27 16 C29 22 29 28 27 33 M37 16 C35 22 35 28 37 33" stroke="#e0bf82" stroke-width="2"/>` +
+    `<path d="M23 37 C21 45 17 50 14 58 M28 37 C27 46 25 52 24 59 M32 37 V60 M36 37 C37 46 39 52 40 59 M41 37 C43 45 47 50 50 58" ` +
+    `fill="none" stroke="#d9b36c" stroke-width="3"/>` +
+    rareStar(53, 30)),
+
+  // Cà phê hạt Buôn Ma Thuột: bao bố cột dây đựng hạt rang, hạt vãi ra trước (khác túi cà phê phin nâu, gói hòa tan)
+  ca_phe_bmt: svg(
+    `<path d="M15 18 C13 32 11 46 15 58 H49 C53 46 51 32 49 18 C41 22 23 22 15 18Z" fill="#c9a46a"/>` +
+    `<path d="M21 13 C27 18 37 18 43 13 L41 20 H23Z" fill="#b18a4f"/>` +
+    `<path d="M22 20 H42" stroke="#7a4a22" stroke-width="3"/>` +
+    `<path d="M19 30 H45 M18 40 H46 M19 50 H45" stroke="#b08a52" stroke-width="1.5"/>` +
+    [[22, 56], [31, 58], [40, 56], [27, 51], [36, 51]].map(([x, y], i) =>
+      `<ellipse cx="${x}" cy="${y}" rx="5" ry="3.5" fill="#4a2a18" transform="rotate(${(i * 35) % 90 - 30} ${x} ${y})"/>` +
+      `<path d="M${x - 3} ${y} q3 -1.5 6 0" stroke="#b07d4f" stroke-width="1" fill="none"/>`).join('') +
+    rareStar(53, 11))
 }
 
 // ---------- Icon món ----------
@@ -363,6 +425,14 @@ const MON = {
 // ---------- Icon dụng cụ, nâng cấp, giao diện ----------
 
 const TOOLS = {
+  // M4: chén sữa muối (sữa đánh bông, hạt muối rắc lên) — bước "Đánh sữa muối", "Rưới lớp sữa muối" của Cà phê muối
+  sua_muoi: svg(
+    bowl('#cfe3ee', 34) +
+    `<path d="M12 34 C10 26 18 22 24 25 C26 18 38 18 40 24 C46 20 54 25 52 34Z" fill="#fffaf0"/>` +
+    `<path d="M18 30 C22 28 26 29 28 31 M34 28 C38 26 42 27 44 30" stroke="#e8dcc3" stroke-width="2"/>` +
+    `<rect x="27" y="7" width="6" height="6" rx="1" fill="#ffffff" transform="rotate(20 30 10)"/>` +
+    `<rect x="38" y="11" width="5" height="5" rx="1" fill="#ffffff" transform="rotate(-15 40 13)"/>` +
+    `<rect x="19" y="12" width="5" height="5" rx="1" fill="#ffffff" transform="rotate(10 21 14)"/>`),
   dao_thep: svg(
     `<path d="M8 44 L40 12 C46 8 52 10 54 14 L22 50Z" fill="#dfe5ec"/>` +
     `<path d="M14 42 L42 14" stroke="#ffffff" stroke-width="2"/>` +
@@ -413,7 +483,7 @@ const TOOLS = {
     `<path d="M32 6 L39 23 L57 24 L43 36 L48 54 L32 44 L16 54 L21 36 L7 24 L25 23Z" fill="#f5c542"/>`)
 }
 
-// ---------- M2: icon cho hiện vật, sự kiện ngày, Hộp thư, Rương, điểm danh, món Chặng 2 (bóng mờ) ----------
+// ---------- M2: icon cho hiện vật, sự kiện ngày, Hộp thư, Rương, điểm danh, món Chặng 2 (bóng mờ); M4: 8 sự kiện ngày mới ----------
 const META = {
   phieu_cho_som: svg(
     `<path d="M6 18 H58 V28 C54 28 52 30 52 32 C52 34 54 36 58 36 V46 H6 V36 C10 36 12 34 12 32 C12 30 10 28 6 28Z" fill="#f5c542"/>` +
@@ -439,6 +509,63 @@ const META = {
     `<path d="M16 10 L14 22 M24 10 L23 22 M32 10 V22 M40 10 L41 22 M48 10 L50 22" stroke="#ffffff" stroke-width="2.5"/>` +
     `<rect x="10" y="22" width="44" height="30" fill="#f7e3bd"/>` +
     `<circle cx="22" cy="40" r="6" fill="#f5a623"/><circle cx="34" cy="42" r="5" fill="#7cc242"/><circle cx="44" cy="39" r="5" fill="#d6362b"/>`),
+  // ---------- M4: tám sự kiện ngày mới ----------
+  // Hội thi "Xe đẩy sạch, ngon": cúp vàng có ngôi sao
+  hoi_thi_xe_sach: svg(
+    `<path d="M20 14 H12 C12 25 16 29 23 29 M44 14 H52 C52 25 48 29 41 29" fill="none" stroke-width="3.5"/>` +
+    `<path d="M19 9 H45 V23 C45 33 39 40 32 40 C25 40 19 33 19 23Z" fill="#f5c542"/>` +
+    `<rect x="28" y="40" width="8" height="8" fill="#e0a82e"/>` +
+    `<rect x="17" y="48" width="30" height="9" rx="2" fill="#6b3f24"/>` +
+    `<path d="M32 15 L34.6 20.4 L40.4 21 L36 25 L37.3 30.8 L32 27.8 L26.7 30.8 L28 25 L23.6 21 L29.4 20.4Z" fill="#fff4c2" stroke-width="1.5"/>`),
+  // Văn phòng đặt 3 ly trà tắc: phiếu đặt hàng và ly trà "×3"
+  don_van_phong: svg(
+    `<rect x="7" y="11" width="30" height="44" rx="4" fill="#ffffff"/>` +
+    `<rect x="14" y="6" width="16" height="9" rx="2" fill="#b9bec6"/>` +
+    `<path d="M13 25 H31 M13 33 H28 M13 41 H25" stroke="#9aa3ad" stroke-width="2.5"/>` +
+    `<path d="M36 26 H57 L54 58 H39Z" fill="#e6a23a"/>` +
+    `<path d="M34 26 H59" stroke-width="3"/>` +
+    txt(46.5, 47, '×3', 12, '#ffffff', 900)),
+  // Đại lý trà tài trợ bảng hiệu: bảng hiệu có lá trà
+  tai_tro_dai_ly: svg(
+    `<path d="M15 40 V58 M49 40 V58" stroke-width="4"/>` +
+    `<rect x="6" y="9" width="52" height="33" rx="4" fill="#3f9a52"/>` +
+    `<rect x="11" y="14" width="42" height="23" rx="3" fill="#e9f5e3" stroke-width="1.5"/>` +
+    `<path d="M20 33 C20 23 30 18 42 18 C42 28 33 35 20 33Z" fill="#6bb64f"/>` +
+    `<path d="M20 33 L37 22" stroke-width="1.5"/>`),
+  // Tắc lên giá: trái tắc và mũi tên đi lên
+  tat_gia: svg(
+    `<circle cx="25" cy="39" r="16" fill="#f5a623"/>` +
+    `<path d="M25 23 C23 17 27 12 32 12 C30 17 30 21 25 23Z" fill="#6bb64f" stroke-width="2"/>` +
+    `<circle cx="20" cy="34" r="3.5" fill="#ffd27a" stroke="none"/>` +
+    `<path d="M49 46 V15 M40 24 L49 13 L58 24" stroke="#d6362b" stroke-width="5" fill="none"/>`),
+  // Tiền điện nước tăng: tia điện và giọt nước
+  tien_dien_nuoc: svg(
+    `<path d="M27 5 L10 34 H24 L18 59 L41 26 H29 L35 5Z" fill="#f5c542"/>` +
+    `<path d="M48 26 C48 26 38 40 38 46 C38 52 42 57 48 57 C54 57 58 52 58 46 C58 40 48 26 48 26Z" fill="#5aa9e6"/>` +
+    `<path d="M43 46 C43 50 45 53 48 53" stroke="#ffffff" stroke-width="2" fill="none"/>`),
+  // Cúp điện theo lịch: bóng đèn tắt có gạch chéo
+  cup_dien: svg(
+    `<path d="M32 7 C20 7 14 16 14 25 C14 33 20 37 22 42 H42 C44 37 50 33 50 25 C50 16 44 7 32 7Z" fill="#dfe3e8"/>` +
+    `<rect x="23" y="42" width="18" height="9" rx="2" fill="#9aa3ad"/>` +
+    `<path d="M24 46.5 H40" stroke-width="1.5"/>` +
+    `<path d="M27 56 H37" stroke-width="3.5"/>` +
+    `<path d="M10 54 L54 10" stroke="#d6362b" stroke-width="5"/>`),
+  // Trật tự đô thị nhắc giữ vỉa hè: cọc giao thông trên mép vỉa hè
+  trat_tu_do_thi: svg(
+    `<rect x="4" y="52" width="56" height="8" rx="2" fill="#c9cdd3"/>` +
+    `<path d="M14 52 V60 M26 52 V60 M38 52 V60 M50 52 V60" stroke-width="2"/>` +
+    `<path d="M32 6 L44 48 H20Z" fill="#f08a24"/>` +
+    `<path d="M27.4 26 H36.6 L39 34.5 H25Z" fill="#ffffff" stroke="none"/>` +
+    `<rect x="14" y="46" width="36" height="6" rx="2" fill="#f08a24"/>`),
+  // Kiểm tra vệ sinh an toàn thực phẩm: bảng kiểm có dấu tích và kính lúp
+  kiem_tra_attp: svg(
+    `<rect x="7" y="10" width="34" height="46" rx="4" fill="#ffffff"/>` +
+    `<rect x="15" y="6" width="18" height="8" rx="2" fill="#b9bec6"/>` +
+    `<path d="M13 26 L17 30 L24 22 M13 40 L17 44 L24 36" stroke="#3f9a52" stroke-width="3" fill="none"/>` +
+    `<path d="M28 27 H35 M28 41 H35" stroke="#9aa3ad" stroke-width="2.5"/>` +
+    `<path d="M51 47 L58 54" stroke-width="6"/>` +
+    `<circle cx="45" cy="40" r="10" fill="#cfe8f5"/>` +
+    `<path d="M40 37 C41 34 44 33 46 33" stroke="#ffffff" stroke-width="2" fill="none"/>`),
   thu: svg(
     `<rect x="8" y="16" width="48" height="34" rx="4" fill="#fff8e6"/>` +
     `<path d="M9 18 L32 36 L55 18" fill="none"/>` +

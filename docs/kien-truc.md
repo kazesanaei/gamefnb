@@ -70,13 +70,14 @@ M2 giao diện (đã có — mục 13.1): `css/meta.css`, `ui/screens/shop.js ta
 M3 nền tảng (đã có — mục 16): `manifest.webmanifest`, `sw.js`, `icons/`, `tools/make-icons.mjs`, `css/settings.css`, `ui/screens/settings.js`, mã sao lưu trong `core/save.js`, âm thanh `ui/audio.js`; test `tests/unit/pwa.test.mjs backup-code.test.mjs audio.test.mjs`, e2e `tests/e2e/pwa-backup.e2e.mjs`.
 Vòng soát lỗi M3 (mục 18.5): test `tests/unit/review-m3-fixes.test.mjs`, e2e `tests/e2e/save-safety.e2e.mjs`, `tests/e2e/review-m3-ux.e2e.mjs`.
 M3 nội dung (đã có — mục 17): `core/incidents.js notebook.js recipe-book.js`, `data/incidents.js`, `ui/screens/notebook.js recipe-book.js` (đăng ký trong `SCREENS` của `src/main.js`, có trong PRECACHE của `sw.js`); màn Chuẩn bị gọn (lưới 7 ô lối vào); test `tests/unit/incidents.test.mjs notebook-recipe-book.test.mjs money-rounding.test.mjs`, e2e `tests/e2e/incident-notebook.e2e.mjs`.
+M4 (bản 0.4.0 — mục 19–22): `core/rare.js`, `data/rare.js`, `ui/screens/market.js` (màn "Lựa hàng", có trong `SCREENS` và PRECACHE), sổ tiền sự kiện trong `core/economy.js`, 8 sự kiện ngày và 8 tình huống mới trong dữ liệu; `tools/tim-seed.mjs` (tìm seed cho e2e, ngoài `src/` nên không vào PRECACHE); test `tests/unit/m4-tip.test.mjs m4-frequency.test.mjs m4-events.test.mjs m4-incidents.test.mjs m4-rare.test.mjs m4-save.test.mjs review-m4-fixes.test.mjs`; `tests/fixtures/save-v2.mjs` (save thật của bản 0.3.0 đang dở ca, dùng cho `m4-save`); e2e `tests/e2e/m4-rare.e2e.mjs`, `tests/e2e/m4-tip-events.e2e.mjs` với hàm dựng save dùng chung `tests/helpers/m4-saves.mjs` (mục 23).
 
 ## 3. package.json
 
 ```json
 {
   "name": "bep-khoi-nghiep",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -88,7 +89,7 @@ M3 nội dung (đã có — mục 17): `core/incidents.js notebook.js recipe-boo
 }
 ```
 
-`version` trùng `VERSION` của `sw.js` và `APP_VERSION` của `src/ui/app.js` (có test). Đổi tệp của game khi phát hành thì tăng cả ba.
+`version` trùng `VERSION` của `sw.js` và `APP_VERSION` của `src/ui/app.js` (có test). Đổi tệp của game khi phát hành thì tăng cả ba. Bản hiện tại **0.4.0** (M4); thư phiên bản tương ứng ở `MAIL_CONFIG.currentVersion` (mục 15.5).
 E2E nạp Playwright bằng `createRequire`, thử `require('playwright')` rồi tới `/opt/node22/lib/node_modules/playwright`. Biến `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers` đã có sẵn trong môi trường.
 
 ## 4. Cấu trúc save (state gốc)
@@ -97,7 +98,7 @@ E2E nạp Playwright bằng `createRequire`, thử `require('playwright')` rồi
 
 ```js
 {
-  version: 2,              // M1 là 1; M2 nâng lên 2 (save.migrate tự nâng, mục 12 và 15)
+  version: 3,              // STATE_VERSION: M1 là 1; M2–M3 là 2; M4 (bản 0.4.0) là 3 (save.migrate tự nâng, mục 12)
   seed: 0,                 // số nguyên 32-bit, sinh 1 lần khi tạo save
   shopName: '',            // tên xe do người chơi đặt ở ngày 1
   day: 1,                  // ngày game = số thứ tự ca kế tiếp
@@ -124,7 +125,8 @@ E2E nạp Playwright bằng `createRequire`, thử `require('playwright')` rồi
     assistCash: false,     // Hỗ trợ tính tiền: hiện tổng và tiền thối
     assistMotion: false,   // Hỗ trợ thao tác: vùng mục tiêu rộng hơn, chậm hơn
     volume: 0.8,           // M3: âm lượng 0..1
-    incidentFrequency: 'vua'   // M3: tần suất tình huống trong ca 'nhieu' | 'vua' | 'it' (INCIDENT_FREQUENCIES của state.js)
+    incidentFrequency: 'vua'   // M3: tần suất tình huống trong ca 'nhieu' | 'vua' | 'it' (INCIDENT_FREQUENCIES của state.js);
+                               // M4: tên hiển thị "Tần suất sự kiện", áp cho cả sự kiện ngày (mức Ít chỉ loại tốt); đọc bằng eventFrequency(state)
   },
   history: [],             // tối đa 60 bản tổng kết ca (xem economy.summarizeShift)
   shift: null,             // ca đang chơi (mục 7) hoặc null
@@ -132,20 +134,32 @@ E2E nạp Playwright bằng `createRequire`, thử `require('playwright')` rồi
   rev: 0,                  // số hiệu bản ghi: tăng mỗi lần lưu (writeSave); tab cũ thấy bản lưu có rev lớn hơn thì không ghi đè
   backup: { lastAt: 0, since: 0 },  // M3: ms lần chép/tải mã sao lưu gần nhất; since = mốc bắt đầu tính nhắc (main.js ghi lần đầu mở)
   incidents: {             // M3 (mục 17.1): tình huống trong ca
-    since: 0,              //   số ca liền (từ ngày 3) chưa gặp tình huống nào → bảo hiểm khi đủ 3
+    since: 0,              //   số ca liền (từ ngày 3) chưa gặp tình huống nào → bảo hiểm (M4: đủ 1 / 2 / 3 ca ở mức Nhiều / Vừa / Ít)
     recent: [],            //   id tình huống đã gặp, mới nhất cuối (tối đa 10) → không lặp 5 loại gần nhất
     log: [],               //   nhật ký ngắn [{day, id, choice, money, cost, refund, rep}] (tối đa 20, mới nhất đầu)
     debts: [],             //   sổ ghi nợ khách quen [{id, regularId, name, amount, fromDay, dueDay, repayDay|null, status: 'cho'|'da_tra'|'quen', paidDay?}]
     bonus: null,           //   {day, customers, rep}: khách thêm ở ca `day` (ly trà "mở hàng"); ca đó đã đủ trần khách
                            //   thì thay bằng `rep` danh tiếng (vòng soát lỗi M3)
-    total: 0               //   số tình huống đã xử lý
+    total: 0,              //   số tình huống đã xử lý
+    lastKind: null,        //   M4: loại ('tot'|'chon'|'xau') của tình huống gần nhất đã xử lý (luật nhịp: không 2 xấu liền)
+    lastLoss: 0,           //   M4: tỉ lệ lỗ của tình huống đó so với trần (0..1); ≥ calmAfterLoss → lần sau nhẹ nhàng
+    day: { key: '', loss: 0, gain: 0 },  // M4: sổ tiền sự kiện của ngày thật đang chơi (trần phạt/thưởng mỗi ngày thật)
+    warn: {},              //   M4 bước 4: lần nhắc nhở gần nhất {eventId: ngày game} (Kiểm tra vệ sinh ATTP: nhắc trước, tái phạm mới phạt)
+    lastEvent: null,       //   soát lỗi M4: loại của sự kiện gần nhất trên dòng thời gian CHUNG (sự kiện ngày lúc mở ca, rồi tình
+                           //   huống theo thứ tự) → luật "không 2 sự kiện xấu liền nhau" xét chung hai lớp (mục 17.1)
+    announced: {}          //   soát lỗi M4: sự kiện ngày đã chốt {ngày game: id | ''} (hôm nay khi vào màn Chuẩn bị, ngày mai lúc
+                           //   mở ca); đổi mức "Tần suất sự kiện" không bốc lại; chỉ giữ 15 ngày gần nhất (events.announceDayEvent)
   },
   notebook: { claimed: [] }  // M3 (mục 17.2): nhóm Mẹo nghề đã nhận thưởng đủ nhóm
   // M2 thêm (defaultMeta() trong state.js, mô tả ở mục 15): items, cosmetics, titles, unlocks, prep, checkin, daily,
   // mail, chains, shop, eventRecipes, tasting, events, realDays, progression, track; stats có thêm các khóa M2.
+  // M4 bước 6 (defaultMeta().rare = state.defaultRare(), mục 21): kho nguyên liệu và công thức hiếm
+  //   rare: { stock: {ingId: 0..6}, fragments: {recipeId: 0..3}, pity: {ing, frag},
+  //           today: {key, got, frags, stalls: [stallId], strangerDay}, seen: [ingId],
+  //           pendingStall: {id, dayKey, picked?: [ingId], mistakes?: 0..99} | null }   // rổ lựa dở lưu mỗi lần chạm (soát lỗi M4)
 }
 ```
-`version` vẫn là 2: các trường M3 (`settings.volume`, `settings.incidentFrequency`, `backup`, `incidents`, `notebook`) chỉ thêm, `save.migrate` điền mặc định cho save v1/v2 (`migrateSettings`, `migrateContentM3`). `settings.tips = false` chỉ tắt thẻ Mẹo nghề **nổi** trong ca: lõi (`state.unlockTip`) vẫn mở thẻ, ghi `tipsSeen` và phát `tip.unlocked` (Sổ tay nghề vẫn đầy), `app.js` không hiện thẻ.
+`version` là **3** từ M4 (bản 0.4.0). Các trường M3 (`settings.volume`, `settings.incidentFrequency`, `backup`, `incidents`, `notebook`) được thêm khi còn version 2; M4 thêm `incidents.lastKind/lastLoss/day/warn/lastEvent/announced`, `rare`, các trường M4 của ca và nâng lên 3. `save.migrate` nâng mọi bản cũ (v1, v2) lên 3 trong một lần nạp và điền mặc định (`migrateSettings`, `migrateMeta`, `migrateContentM3`, `migrateContentM4`; mục 12). `settings.tips = false` chỉ tắt thẻ Mẹo nghề **nổi** trong ca: lõi (`state.unlockTip`) vẫn mở thẻ, ghi `tipsSeen` và phát `tip.unlocked` (Sổ tay nghề vẫn đầy), `app.js` không hiện thẻ.
 
 ## 5. Module lõi dùng chung
 
@@ -205,7 +219,7 @@ Sự kiện bổ sung (thực tế): `qr.rejected {customerId, fake, blocked}` (
 export const DATA = Object.freeze({ BALANCE, INGREDIENTS, RECIPES, METHOD_LABELS, MINIGAME_TYPES,
   PERSONAS, REGULARS, NAMES, DIALOGUE, makeSpeech, makeLine, makeReview, TIPS, UPGRADES, STRINGS })
 ```
-`DATA` thực tế có thêm (chỉ thêm, không đổi): `ROLE_LABELS, SPOKEN, SYNONYMS, LINE_KINDS, REVIEWS, TIP_GROUPS, describeLine, readbackText, tipsForTrigger`; M2: `CHECKIN, QUESTS, QUEST_GROUPS, QUEST_CONFIG, MAIL_CONFIG, MAIL_WELCOME, MAIL_VERSIONS, MAIL_HOLIDAYS, MAIL_EVERYDAY, MAIL_LATE_REVIEW, MAIL_QUEST, CHAINS, NPCS, CHAIN_WHERE, SHOP, ITEMS, COSMETICS, TITLES, UNLOCKS, EVENTS, DAY_EVENTS, DAY_EVENT_CONFIG, STAGE_UP, POST_GOALS` (mục 15). `BALANCE` thêm `refIncomeTable`, `eventCustomerCap`; `STRINGS` thêm `meta`, `reasons`. M3 nội dung thêm `INCIDENTS, INCIDENT_CONFIG` (`data/incidents.js`, mục 17.1), `TIP_GROUP_REWARDS` (`data/tips.js`, mục 17.2); mỗi thẻ `TIPS[]` có thêm `hint` (gợi ý cách mở); `TITLES` thêm 4 danh hiệu nhóm Sổ tay nghề; `STRINGS.errors.tu_choi_doi_mon`.
+`DATA` thực tế có thêm (chỉ thêm, không đổi): `ROLE_LABELS, SPOKEN, SYNONYMS, LINE_KINDS, REVIEWS, TIP_GROUPS, describeLine, readbackText, tipsForTrigger`; M2: `CHECKIN, QUESTS, QUEST_GROUPS, QUEST_CONFIG, MAIL_CONFIG, MAIL_WELCOME, MAIL_VERSIONS, MAIL_HOLIDAYS, MAIL_EVERYDAY, MAIL_LATE_REVIEW, MAIL_QUEST, CHAINS, NPCS, CHAIN_WHERE, SHOP, ITEMS, COSMETICS, TITLES, UNLOCKS, EVENTS, DAY_EVENTS, DAY_EVENT_CONFIG, STAGE_UP, POST_GOALS` (mục 15). `BALANCE` thêm `refIncomeTable`, `eventCustomerCap`; `STRINGS` thêm `meta`, `reasons`. M3 nội dung thêm `INCIDENTS, INCIDENT_CONFIG` (`data/incidents.js`, mục 17.1), `TIP_GROUP_REWARDS` (`data/tips.js`, mục 17.2); mỗi thẻ `TIPS[]` có thêm `hint` (gợi ý cách mở); `TITLES` thêm 4 danh hiệu nhóm Sổ tay nghề; `STRINGS.errors.tu_choi_doi_mon`. M4 bước 6 thêm `RARE_CONFIG, STALLS, STRANGERS` (`data/rare.js`, mục 21); `STRINGS.rare`, `STRINGS.sources.hiem`, `STRINGS.screens.market`, lý do `het_hang_hiem, ngoai_gio, chua_du_manh, thieu_mon_nen, chua_toi_ngay`.
 
 **Lõi không import trực tiếp `src/data`** (trừ khi cần hằng số thuần); mọi hàm lõi đọc dữ liệu từ `ctx.data`. Test lõi dùng dữ liệu mẫu nhỏ ở `tests/fixtures/data.mjs`; test tích hợp dùng `DATA` thật. `ctx = { emit(type, payload), data }`.
 
@@ -238,11 +252,14 @@ export const BALANCE = Object.freeze({
   gradeThresholds: [ [90, 'tuyet_hao', 5], [75, 'ngon', 4], [60, 'duoc', 3], [40, 'kem', 2], [0, 'hong', 1] ],
   gradeLabels: { tuyet_hao: 'Tuyệt hảo', ngon: 'Ngon', duoc: 'Được', kem: 'Kém', hong: 'Hỏng' },
   stepLabels: [ [90, 'Hoàn hảo'], [70, 'Tốt'], [50, 'Đạt'], [0, 'Hỏng'] ],
-  tipFiveStar: 5000, tipBonus: 10000,                    // bội 5.000đ, bỏ vào hũ tip
+  tipFiveStar: 5000, tipMinBill: 20000, strictFiveStarRep: 1,   // M4: tip 1 mức khi 5 sao VÀ hóa đơn khách thực trả ≥ 20.000đ (bỏ tipBonus)
   reputationByStars: { 5: 3, 4: 2, 3: 1, 2: 0, 1: 0 },
   masteryLevels: [0, 5, 15],                             // goodCooks cần cho cấp 1,2,3
   autoStepScore: 80, retryScoreCap: 85,
-  loanAmount: 240000, loanRepayRate: 0.25, loanInterest: 0.10
+  loanAmount: 240000, loanRepayRate: 0.25, loanInterest: 0.10,
+  refIncomeTable: [[1, 20000], [3, 35000], [5, 65000], [7, 85000], [9, 100000]],   // M2: thu nhập tham chiếu một ca
+  eventCustomerCap: 10,                                  // M2: trần khách khi sự kiện ngày tăng khách
+  eventDayCap: { lossIncomeMul: 1, gainIncomeMul: 1 }    // M4: trần tiền sự kiện mỗi ngày thật (× thu nhập tham chiếu), mục 19
 })
 ```
 Khóa thiếu trong `BALANCE` lấy từ `DEFAULT_BALANCE` (`src/core/state.js`, đọc bằng `cfg(ctx, key)`), gồm cả khóa bổ sung: `regularReturnRate 0.15, regionBacRate 0.3, maxLoad 0.9, firstArrival 3, tutorialGapMul 1.5, noteRateMid 0.2, noteRateLate 0.35, noteFromDay 3, splitFromDay 5, splitLineRate 0.15, surchargeFromDay 6, multiLineFromDay 3, lineCountWeights [70,25,5], changeAskRate 0.4, changeAskPatienceCost 0.05, roundingMax 5000, shortChangeDetectRate 0.9, overChangeReturnRate 0.5, loanOfferBelow 20000` (mời vay khi Tiền quán < chi phí cố định một ca).
@@ -257,6 +274,7 @@ export const INGREDIENTS = Object.freeze({
 })
 ```
 `icon` là khóa tra trong `src/ui/art.js` (`ICONS[icon]` là chuỗi SVG, `viewBox="0 0 64 64"`). Mỗi ô nguyên liệu **luôn hiện nhãn chữ** dưới hình; cặp bẫy phải khác nhau rõ về hình hoặc màu.
+M4 bước 6: 5 nguyên liệu hiếm có thêm `rare: true, star (1–2), origin (quê), portion (số đơn vị trong 1 phần kho, trứng gà ta 2), traps: [hàng thường dễ nhầm]`; `cost` là giá quy đổi (tính vào giá vốn tham khảo của món hiếm), khi nấu KHÔNG trừ Tiền quán (lấy từ kho `state.rare`). Hình có ngôi sao vàng ở góc, khác hẳn hàng dễ nhầm.
 
 ### recipes.js — lược đồ công thức (thuần dữ liệu)
 ```js
@@ -305,6 +323,7 @@ Quy tắc:
 - `method` (tùy chọn): trước khi chơi bước, người chơi chọn cách sơ chế; chọn sai → điểm bước −15.
 
 MVP có 5 món: `banh_mi_op_la`, `tra_tac` (có sẵn, M1); `banh_trang_tron`, `ca_phe_sua_da` (Shop, M2); `che_buoi` (sự kiện 20/11, M2). Dữ liệu của cả 5 món được viết ngay từ M1 (món Shop/sự kiện chưa bán được cho tới M2).
+M4 bước 6 thêm 4 công thức hiếm `source: 'hiem'` (`tra_tac_mat_ong`, `banh_mi_trung_ga_ta`, `banh_trang_tron_tay_ninh`, `ca_phe_muoi`): `baseRecipe` + `requires` (món nền phải có), `rare: {ingId: số phần kho mỗi phần món}`, `icon` của món nền (giao diện gắn huy hiệu ★), `eventId: null`; bảng giá/par ở mục 21 và `docs/can-bang.md` mục 14.5.
 
 ### minigame-types.js
 ```js
@@ -363,7 +382,7 @@ export function loadFactor(shift) → ρ
 export function gameTime(shift) → 'HH:MM' (06:00 → 10:00, ước lượng)
 export function emptyLedger() → ledger
 ```
-M2 (đọc `sh.mods`, ca M1 không có `mods` vẫn chạy như cũ): trọng số món × `mods.recipeWeight`, thêm ghi chú theo `mods.noteBoost`, kiên nhẫn × `mods.patienceMul` (customer.js); tip × `mods.tipMul` làm tròn bội 5.000đ, giá vốn × `mods.cogsMul` khi chốt bước chọn (kitchen.js). `orderableRecipes`: món `event` bán được khi đã nhận qua sự kiện (`state.eventRecipes[id]`, giữ vĩnh viễn, bán quanh năm) hoặc khi `ctx.data.isEventActive` báo đang mở; chưa sở hữu thì không ai gọi. `history[]` có thêm `lateReviews [{customerId, name, amount}]`.
+M2 (đọc `sh.mods`, ca M1 không có `mods` vẫn chạy như cũ): trọng số món × `mods.recipeWeight`, thêm ghi chú theo `mods.noteBoost`, kiên nhẫn × `mods.patienceMul` (customer.js); giá vốn × `mods.cogsMul` khi chốt bước chọn (kitchen.js). M4: bỏ `mods.tipMul`; `mods.lineCountWeights` (Ngày lãnh lương, null = `BALANCE.lineCountWeights`) cho `makeRequest`. `orderableRecipes`: món `event` bán được khi đã nhận qua sự kiện (`state.eventRecipes[id]`, giữ vĩnh viễn, bán quanh năm) hoặc khi `ctx.data.isEventActive` báo đang mở; chưa sở hữu thì không ai gọi. `history[]` có thêm `lateReviews [{customerId, name, amount}]`.
 
 Thực tế: `advance` **tự gọi `beginCounter`** khi quầy trống và có khách đầu hàng (idempotent), tự báo QR về (`qr.arrived`; có `loa_bao_tien` thì tự xác nhận). `endShift` gọi được trước khi hết ca: khách còn dở bị đóng, ai đã trả tiền được hoàn. `state.shift` có thêm `rngText` (luồng ngẫu nhiên riêng cho lời thoại/review), `counts{}`, `reputationGain`, `tipsShown`, `reviews[]`, `receipts[]`, `fixedCost`, `loanRepayRate`, `walletStart`; `ledger` có thêm `rounding`.
 
@@ -381,19 +400,28 @@ Cấu trúc `state.shift`:
   floatAmount: 200000,
   qrBalance: 0, tipJar: 0,
   ledger: { sales: 0, cash: 0, qr: 0, listValue: 0, undercharge: 0, overchange: 0,
-            cogs: 0, waste: 0, refunds: 0, tips: 0, fakeQrLoss: 0 },
+            cogs: 0, waste: 0, refunds: 0, tips: 0, fakeQrLoss: 0,
+            eventIn: 0, eventOut: 0 },          // M4: tiền từ sự kiện (vào ví lúc tất toán), phạt/chi sự kiện (trừ ví ngay)
   served: [id], lost: [id], missed: 0,
   scoreSheets: [ScoreSheet],                   // phiếu chấm từng khách
   counterStreak: 0,                            // chuỗi "Quầy chuẩn" (luôn 0 khi bật Hỗ trợ tính tiền)
   nextTicketNo: 1,
-  // M3 (mục 17.1)
-  incident: null | { id, afterClips, status: 'cho'|'xong', rng, cap, guaranteed, detail, choice, result, shownAt? },
+  // M3 (mục 17.1); M4: tối đa 2 tình huống mỗi ca — incident là tình huống thứ nhất, incidentQueue các tình huống sau
+  incident: null | { id, kind, order, afterClips, status: 'cho'|'xong', rng, cap, gainCap, guaranteed, detail, choice, result,
+                     shownAt?, atClips? /* số khách xong quầy lúc xử lý */ },
+  incidentQueue: [ /* cùng cấu trúc, theo thứ tự xuất hiện */ ],
+  // M4: ngày thật lúc mở ca (trần tiền sự kiện; '' khi không có giờ thật), ghi chú tiền sự kiện, lượt Giỏ chợ
+  dayKey: 'YYYY-MM-DD' | '', eventNotes: [ {id, name, text, money, capped?, spared?} ], rareRolls: 0, streakRoll?: true,
+  // M4 bước 6: món hiếm bán được trong ca (chốt lúc mở ca theo tồn kho), quà hàng hiếm cuối ca (khách lạ, Giỏ chợ)
+  rareMenu: [recipeId], rareNotes: [ {kind: 'khach_la'|'gio_cho', name, text, got: [{id, name, n}], fragment, spoons, stars?} ],
+  rareFinished?: true,
   debtIn: 0,                                   // tiền khách quen trả nợ vào ca này (tính vào lãi ca)
   debtNotes: [ {kind: 'tra'|'quen', name, amount, text} ],
   bonusNote?: {customers, rep},                // khách thêm nhờ ly trà "mở hàng" (hoặc danh tiếng thay thế khi đã đủ khách)
-  appVersion?: '0.3.0'                         // (giao diện ghi lúc mở ca) phiên bản game; main.js báo khi ca mở lại ở bản khác
+  appVersion?: '0.4.0'                         // (giao diện ghi lúc mở ca) phiên bản game; main.js báo khi ca mở lại ở bản khác
 }
 ```
+Ca dở mở ở bản 0.3 (save v2) thiếu các trường M4 ở trên: `save.migrateShiftM4` (mục 12) thêm `ledger.eventIn/eventOut = 0`, `incidentQueue/eventNotes/rareMenu/rareNotes = []`, `rareRolls/eventCostExtra/eventMissed = 0`, `dayKey = ''` và các khóa `mods` M4 với giá trị "không có hiệu ứng"; `eventCap` để trống (`events.shiftEventCap` coi là không trần, ca cũ không có sự kiện tiền M4). Test `tests/unit/m4-save.test.mjs` nạp một save THẬT của bản 0.3.0 đang dở ca (`tests/fixtures/save-v2.mjs`) rồi chơi tiếp tới hết.
 
 `Customer`:
 ```js
@@ -412,7 +440,9 @@ Cấu trúc `state.shift`:
   // bổ sung thực tế
   gender: 'nam'|'nu'|null, strict, arriveAt, arrivedAt, orderErrors: [lỗi compareLines], starCap: 5, apologyBonus: 0,
   complaint: null|{items, resolved}, reviewLate, lostReason, expectedSec, receipt, waitRatio, fakeQrCaught, returnedOver,
-  undercharge /* số báo thiếu */, overchanged /* đã thối dư */, remadeErrors /* lỗi bếp của món bị phàn nàn rồi làm lại */, refunded }
+  undercharge /* số báo thiếu */, overchanged /* đã thối dư */, remadeErrors /* lỗi bếp của món bị phàn nàn rồi làm lại */, refunded,
+  // M4 bước 6: khách lạ (ca đầu mỗi ngày thật): id trong STRANGERS, cách tự xưng riêng (makeSpeech/makeLine nhận self)
+  stranger?, self? }
 ```
 `customer.js` xuất thêm: `STATUSES, canTransition, setStatus, stageOf(customer) → 'order'|'thanh_toan'|'tinh_tien'|'lam_do'|null` (cho thanh 4 khâu), `isGone, lineKey, normalizeLines, orderableRecipes, makeRequest, patienceSecFor, expectedServiceSec, personaObj, pickPersona, speechFor, lineFor, createCustomer, createRegular, drainPatience, loseCustomer`. Tên khách không trùng nhau trong một ca.
 
@@ -444,7 +474,8 @@ export function beginCounter(state, ctx)                       // khi quầy tr�
 export function addLine(state, line) ; updateLine(state, index, line) ; removeLine(state, index)
 export function compareLines(request, draft) → { errors: [{type:'sai_mon'|'thieu_mon'|'thua_mon'|'sai_so_luong'|'sai_ghi_chu', index, …}] }
 export function readback(state, ctx) → { caught: [...], missed: [...], ok, readbackDone, line }   // khách bắt lỗi với xác suất readbackCatchRate (theo rng ca); mỗi lỗi bị bắt −8% kiên nhẫn; bắt buộc gọi trước confirmOrder; có lỗi bị bắt → readbackDone = false, sửa rồi đọc lại
-export function confirmOrder(state, ctx) → { ok, reason?: 'phieu_rong'|'chua_doc_lai'|'khong_hop_le' }   // yêu cầu readbackDone và phiếu khác rỗng → stage 'thanh_toan'
+export function confirmOrder(state, ctx) → { ok, reason?: 'phieu_rong'|'chua_doc_lai'|'khong_hop_le'|'het_hang_hiem' }   // yêu cầu readbackDone và phiếu khác rỗng → stage 'thanh_toan'
+   // M4 bước 6: món hiếm trên phiếu vượt tồn kho (trừ phần đã nằm trên phiếu bếp chưa ra món: rare.rareLinesFit) → 'het_hang_hiem'
 // Thanh toán
 export function priceOfLines(lines, recipes) → đồng            // tổng theo giá niêm yết (+ phụ thu ghi chú nếu có)
 export function reportTotal(state, amount, ctx) → { result: 'dung'|'du'|'thieu'|'khong_hop_le', trueTotal, reason?, penalized?, method?, fake?, given?, line }
@@ -515,6 +546,8 @@ export function serveTicket(state, ticketId, ctx) → ScoreSheet    // khi mọi
 // bổ sung
 export function resolveComplaint(state, customerId, { apologyIndex, action: 'remake'|'refund' }, ctx) → { ok, apologyCorrect, ticket | sheet }
    // xin lỗi đúng (DIALOGUE.apologies[i].correct) +1 sao; remake: phiếu làm lại đầu dây, sao tối đa 3; refund: hoàn tiền, chốt sao
+   // M4 bước 6: remake món hiếm khi kho không đủ → { ok: false, reason: 'het_hang_hiem' } (chỉ hoàn tiền được)
+export function complaintRemakeOk(state, customerId, ctx) → boolean   // M4: các dòng bị phàn nàn làm lại được (đủ hàng hiếm)
 export function getStep(state, stepId) → bước đã áp patch + qty (để mount mini-game)
 export function boardSteps(state, ctx) → [{id,type,label,ing,w,critical,par,params,method,after,done,available,result,canAuto,canRetry}]
 export function beginStep(state, stepId) → bước | null           // đặt cook.activeStepId (tải lại giữa chừng thì chơi lại bước đó)
@@ -522,7 +555,7 @@ export function linePar(recipe, line) ; linesPar(lines, recipes) → giây
 ```
 Một dòng phiếu có số lượng n = **một lượt nấu** (tham số nhân theo n, par × (1 + 0,4(n − 1))). Dòng khác ghi chú là lượt riêng.
 
-Giá vốn: khi `submitChon` thành công, trừ tổng `cost × qty` của **mọi nguyên liệu đã chọn** vào `ledger.cogs` (phần thừa, bẫy ghi thêm vào `ledger.waste`). M3: sau hệ số Phiếu Chợ Sớm, `cogs` và `waste` của mỗi lượt nấu được làm tròn tới bội 500đ gần nhất (`roundCost`; nguyên liệu lẻ 100–400đ, ghi chú "Cay"/"Không hành"/"Không đá") nên Tiền quán luôn là bội 500đ; `retryCost` cũng qua `roundCost`.
+Giá vốn: khi `submitChon` thành công, trừ tổng `cost × qty` của **mọi nguyên liệu đã chọn** vào `ledger.cogs` (phần thừa, bẫy ghi thêm vào `ledger.waste`). M4 bước 6: nguyên liệu hiếm không tính tiền (lấy từ kho); `finishDish` (ngoài nấu thử) trừ kho `rare.consumeRare` theo `recipe.rare × qty` và ghi `dish.rareUsed`; bỏ món/làm lại bước không trừ kho; `finalizeCustomer` + `RARE_CONFIG.repPerGood` danh tiếng mỗi phần món hiếm đạt Ngon trở lên; ScoreSheet có `stranger` khi khách lạ. M3: sau hệ số Phiếu Chợ Sớm, `cogs` và `waste` của mỗi lượt nấu được làm tròn tới bội 500đ gần nhất (`roundCost`; nguyên liệu lẻ 100–400đ, ghi chú "Cay"/"Không hành"/"Không đá") nên Tiền quán luôn là bội 500đ; `retryCost` cũng qua `roundCost`.
 
 ## 10. Chấm điểm — `src/core/minigame-scoring.js` và `src/core/scoring.js`
 
@@ -554,9 +587,12 @@ export function customerStars(customer, dishes, recipes, opts?) → { stars, bas
    // sao = kẹp(làm_tròn_xuống(base − Σ phạt quầy − phạt chờ), 1, 5); khách khó tính: có lỗi → −1 thêm; khách tutorial không bị phạt
    // M3: phạt nguồn 'tinh_huong' (vd tu_choi_doi_mon −1 sao) trừ sao nhưng KHÔNG tính là lỗi (không kích hoạt −1 của khách khó tính,
    //     không vào counterErrors/kitchenErrors; phiếu chấm ghi riêng testid score-sheet-incident)
-export function tipFor(stars, flawlessAny, persona, balance?) → đồng   // 5 sao: 5.000đ; có món Không tì vết hoặc khách khó tính: 10.000đ
-   // M2 (kitchen.finalizeCustomer): đang trong chuỗi "Quầy chuẩn" (sh.counterStreak ≥ 5) → 10.000đ; không áp khi bật Hỗ trợ tính tiền
-   //   (lúc đó clipTicket giữ counterStreak = 0). Trong mùa sự kiện: + EVENTS[id].festiveRep danh tiếng mỗi phần món lễ đạt Ngon trở lên.
+export function tipFor(stars, bill, balance?) → đồng   // M4: 5 sao VÀ bill ≥ tipMinBill (20.000đ) → tipFiveStar (5.000đ), còn lại 0
+   // bill = kitchen.billOf(customer, recipes): số tiền khách THỰC TRẢ (ảnh chuyển khoản giả 0; có phiếu thu: receipt.total − refunded;
+   //   chưa có phiếu thu: giá niêm yết theo yêu cầu thật, gồm phụ thu). Bỏ tip 10.000đ (Không tì vết, khách khó tính, chuỗi "Quầy chuẩn",
+   //   Ngày lãnh lương ×1,5). kitchen.finalizeCustomer: khách khó tính chấm 5 sao +strictFiveStarRep danh tiếng; ScoreSheet có thêm `bill`.
+   //   order.clipTicket: chuỗi "Quầy chuẩn" chạm 5 lần đầu trong ca (không bật Hỗ trợ tính tiền) → sh.rareRolls += 1 (lượt Giỏ chợ,
+   //   tối đa 1 lượt theo chuỗi mỗi ca, cờ sh.streakRoll). Trong mùa sự kiện: + EVENTS[id].festiveRep danh tiếng mỗi phần món lễ đạt Ngon trở lên.
 // bổ sung: requiredIngredients(recipe, notes) → {required, main, side, optional, removed, decoys} ; noteObjects ; gradeOf(q, thresholds) ; ING_ERROR_REVIEW
 export function averageRating(ratings) → số (đệm 4 sao khi < 5 đánh giá)
 export function customerMultiplier(avg) → 1,15 | 1,0 | 0,85 | 0,7
@@ -572,10 +608,22 @@ export const ERROR_TIP_TRIGGER ; export function tipForError(code, tips) → th�
    //   fakeQrLoss, fixedCost, profit, drawerExpected, drawerActual, drawerDiff, avgStars, reputationGain,
    //   counterErrors: {code: số lần}, kitchenErrors: {code: số lần}, bestDish, advice }
    // thực tế thêm: sales, listValue, rounding, qrBalance, tipJar, ratings[], lateReviews[], loanRepaid; advice = {code, count, tipId, text} | null
-   // M3: incidents [kết quả tình huống đã xử lý: {id, name, choice, label, safe, text, money, cost, refund, rep, bonus, debt, starLoss, loss, who, tipId}],
-   //     debtIn (khách quen trả nợ, cộng vào profit), debtNotes
+   // M3: incidents [kết quả tình huống đã xử lý: {id, name, kind, choice, label, safe, text, money, cost, refund, rep, bonus, debt, starLoss, loss, who, tipId}]
+   //     (M4: tối đa 2, theo thứ tự), debtIn (khách quen trả nợ, cộng vào profit), debtNotes
+   // M4: eventIn, eventOut, eventNotes [{id, name, text, money (+ vào / − ra), capped?, spared?}]; bước 6: rareNotes (quà hàng hiếm
+   //     cuối ca, không phải tiền); history[] thêm rare [{kind, name, got, fragment, spoons}];
+   //     profit = tiền mặt ròng + QR + tip + debtIn + eventIn − chi phí cố định − hoàn tiền − giá vốn − hao hụt − eventOut
    // bất biến (có test): ví sau ca − ví đầu ca = profit − loanRepaid
-export function settleShift(state, summary)   // wallet += (tiền mặt vượt quỹ lẻ) + QR + tip + tiền trả nợ (M3) − chi phí cố định − hoàn tiền; trả nợ nếu có
+export function settleShift(state, summary)   // wallet += (tiền mặt vượt quỹ lẻ) + QR + tip + tiền trả nợ (M3) + eventIn (M4) − chi phí cố định − hoàn tiền; trả nợ nếu có
+// M4: sổ tiền sự kiện (sự kiện ngày, tình huống trong ca). eventOut trừ ví NGAY (như giá vốn), eventIn vào ví lúc tất toán (như debtIn).
+//   Trần mỗi ngày thật: state.incidents.day = {key, loss, gain} (key = sh.dayKey = ngày thật lúc mở ca; không có giờ thật → 'ngay-<ngày game>'),
+//   tổng phạt/chi bắt buộc ≤ eventDayCap.lossIncomeMul × TNC, tổng thưởng ≤ eventDayCap.gainIncomeMul × TNC (BALANCE.eventDayCap, mặc định 1 và 1).
+export function eventMoneyIn(state, amount, note, ctx, { cap }?) → { amount, capped }    // bội 1.000đ; kẹp cap (vd gainCap) và trần ngày; phát 'event.money'
+export function eventMoneyOut(state, amount, note, ctx, { cap, fine = true }?) → { amount, spared }   // bội 500đ; fine: kẹp cap + trần phạt ngày,
+   // phần vượt "Dì Sáu đỡ giùm con lần này" (spared, ghi vào chữ của note); fine = false (tự chọn chi, vd mua hàng) chỉ kẹp cap; phát 'event.fined'
+export function eventDayBook(state, sh?) → state.incidents.day ; eventDayCaps(ctx, day) → { loss, gain } ; eventDayRoom(state, ctx, sh?) → { loss, gain }
+   // soát lỗi M4: sổ ngày chỉ mở mới khi khóa ngày của ca MỚI HƠN khóa sổ (khóa cũ hơn do lùi giờ máy → dùng tiếp sổ hiện tại);
+   // sh.dayKey = dayKeyVN(max(giờ máy lúc mở ca, clock.maxSeen)) (giờ tin cậy, giống khách lạ)
 export function canAfford(state, price) ; spend(state, price, reason) ; earn(state, amount, reason)
 export function offerLoan(state, balance?) → boolean ; takeLoan(state, balance?)   // khoản vay {amount, remaining}; M3: remaining = roundReward(gốc × (1 + lãi))
 export function buyUpgrade(state, upgradeId, ctx) → { ok, reason? }   // kiểm fromDay, tiền; không mua trong ca
@@ -594,10 +642,14 @@ export function encodeSave(state) → 'BKN1.' + base64url(UTF-8 JSON) + '.' + fn
 export function decodeSave(str) → object thô (CHƯA migrate) | null            // sai checksum → null
 export function migrate(raw, data?, report?) → state      // gộp với defaultState(), kẹp giá trị, bỏ id công thức/nâng cấp không còn trong data; giữ ca đang dở nếu đủ cấu trúc
    // version 1 → 2: migrateMeta(raw, s, data) thêm/kẹp các trường meta M2; save v1 được mail.seenVersion = '0.1.0' (nhận thư phiên bản mới)
+   // version 2 → 3 (M4, bản 0.4.0): migrateContentM3 (tình huống M3, Sổ tay nghề) rồi migrateContentM4 (incidents.lastKind,
+   //   lastLoss, day, warn; state.rare qua migrateRare; ca dở của bản 0.3 qua migrateShiftM4). Mọi bản cũ nâng thẳng lên
+   //   STATE_VERSION trong một lần nạp; save v3 hợp lệ: migrate(decodeSave(encodeSave(s))) giống hệt s (có test)
    // Vòng soát lỗi M3: ví lẻ của save cũ làm tròn LÊN bội 500đ (report.walletRounded; đang dở ca thì sh.walletStart dời theo),
    //   kỷ lục lãi ca lên bội 500đ, nợ Dì Sáu xuống bội 500đ, quà thư chưa nhận lên bội 1.000đ; bước chuỗi kẹp theo số bước
    //   trong dữ liệu (≥ số bước → done, bỏ claimable ngoài khoảng); ca dở không đủ cấu trúc (bản khác đổi cấu trúc ca, hỏng)
    //   → hủy ca, hoàn ledger.cogs + ledger.waste vào ví, ngày giữ nguyên (report.shiftDropped = {day, refund}), không bỏ im lặng
+   //   (soát lỗi M4: hoàn thêm ledger.eventOut — trừ tiền tự mua hàng hiếm đã vào kho — và mods.prepCost)
 export function saveTo(storage, state, { backup, keys, guard }?) → boolean ; loadFrom(storage, data?, { keys, report }?) → state|null   // storage có getItem/setItem; thử bản chính rồi bản dự phòng; tự migrate; report.from = khóa đã nạp
 export function writeSave(storage, state, { backup, keys, guard, lastCode }?) → { ok: true, code } | { ok: false, reason: 'tab_khac'|'loi_ghi' }
    // mỗi lần ghi state.rev += 1; guard: bản trong storage có rev > state.rev (tab khác đã ghi) → KHÔNG ghi ('tab_khac')
@@ -608,6 +660,7 @@ export function importCode(str, data?) → state|null                 // = readC
 // M3 bổ sung (mục 16.2)
 export function readCode(text, data?) → { ok: true, state, code, warn: null|'ban_moi_hon', lost: {recipes, upgrades}, report } | { ok: false, reason: 'rong'|'khong_phai_ma'|'sai_ma'|'hong' }
    // warn 'ban_moi_hon': raw.version > STATE_VERSION hoặc có món/nâng cấp bản này chưa có (codeLosses) → xem trước cảnh báo
+   // (M4: mã v3 đưa vào bản 0.3 sẽ báo "bản mới hơn" — đúng hành vi; mã v1/v2 đưa vào bản 0.4 không cảnh báo)
 export function codeLosses(raw, data?) → { recipes: [id], upgrades: [id] }
 export function extractCode(text) → mã | null                       // bỏ khoảng trắng/xuống dòng/chữ thừa; nhiều đoạn 'BKN1.' thì lấy đoạn dài nhất
 export function backupSummary(state) → { shopName, day, chang, wallet, reputation, goldSpoons, recipes /*số món*/, shiftsPlayed, inShift }
@@ -617,6 +670,13 @@ export function archiveSave(storage, state, ms, { keys }?) → { ok: true, key, 
 export function listArchives(storage, { keys }?) → [{ key, at, code }] (mới nhất trước)
 export function backupDue(state, nowMs, everyMs = BACKUP_REMIND_MS /*7 ngày*/) → boolean
 export function migrateSettings(raw) → settings                    // công tắc boolean, volume kẹp 0..1, incidentFrequency hợp lệ
+export function migrateContentM3(raw, s, data?) → s   // incidents {since, recent, log, debts, bonus, total} (lọc id tình huống theo dữ liệu), notebook
+export function migrateContentM4(raw, s, data?) → s   // M4: incidents.lastKind ('tot'|'chon'|'xau'|null), lastLoss (0..1, 2 chữ số),
+   //   day {key ≤ 20 ký tự, loss ≥ 0, gain ≥ 0}, warn {eventId có trong DAY_EVENTS: ngày game > 0}, lastEvent (như lastKind),
+   //   announced {ngày trong [day − 20, day + 1]: '' | id sự kiện ngày}; migrateRare (pendingStall giữ picked/mistakes nếu có);
+   //   migrateShiftM4(s.shift)
+export function migrateShiftM4(sh) → bản sao nông của ca   // chỉ thêm/sửa trường M4 thiếu hoặc hỏng, không đổi trường hợp lệ (mục 7)
+export function migrateRare(raw, s, data?) → s   // M4 bước 6: state.rare (id có trong dữ liệu, số phần 0..stockMax, mảnh 0..fragmentsNeed, sổ ngày chuẩn)
 // Vòng soát lỗi M3: bản lưu không đọc được (sai checksum, định dạng lạ, save chương trình khác) không bị ghi đè im lặng
 export function unreadableSaves(storage, data?, { keys }?) → [{ key, raw }]      // khóa save/dự phòng có chuỗi không nạp được (trùng thì 1)
 export function archiveUnreadable(storage, ms, data?, { keys }?) → { ok, archived: [khóa] } | { ok: false, reason: 'loi_ghi', archived }
@@ -714,6 +774,12 @@ Mini-game chỉ đo thao tác và gọi hàm chấm trong `core/minigame-scoring
   - Tình huống trong ca: `incident-modal` (phần tử `.incident` có `data-incident`), `incident-text`, `incident-choice-<choiceId>` (`data-safe`, `data-choice`), `incident-result` (`data-choice`), `incident-effects`, `incident-tip`, `incident-ok`; `debt-toast`; `score-sheet-incident`; `screen-service` có `data-t`. Tổng kết: `summary-incident` (`data-incident`, `data-choice`), `summary-debt`, `summary-notebook`.
   - Sổ tay nghề: `screen-notebook`, `notebook-progress` (`data-unlocked`, `data-total`), `notebook-featured`, `notebook-tab-<nhóm>` (`data-dot`), `notebook-group-<nhóm>` (`data-unlocked`, `data-total`, `data-claimed`), `notebook-claim-<nhóm>`, `notebook-claimed-<nhóm>`, `notebook-tip-<tipId>` (`data-unlocked`), `notebook-toast`.
   - Sổ công thức: `screen-recipe-book`, `recipe-book-tab-mon`, `recipe-book-tab-tu`, `book-recipe-<recipeId>` (`data-status` = owned|shop|event|teaser, `data-cooks`, `data-best`, `data-level`, `data-flawless`), `book-open-<recipeId>`, `book-cooks-<id>`, `book-best-<id>`, `book-level-<id>`, `book-flawless-<id>`; hộp thoại `recipe-detail` (`recipe-detail-ing-<ingredientId>`, `recipe-detail-step-<stepId>`, `recipe-detail-close`); `dialect-list`, `dialect-<synonymId>`.
+- M4 bước 1–5 (tip, sự kiện, mục 19–20; e2e `m4-tip-events`, mục 23): phiếu chấm `score-sheet-tip` (`data-tip`: 5000 "Tip: +5.000đ" | 0 "Tip 0 (hóa đơn dưới 20.000đ)" / "Tip 0 (khách chưa trả tiền thật)"; khách dưới 5 sao không có dòng tip); Chuẩn bị `day-event-card` (`data-event`, `data-kind` = tot|chon|xau), `day-event-warn`, `day-choice-toast`; ca bán `event-warn-toast`, `event-fine-toast`, `queue-order-tag`, `qr-speaker-off`, `incident-hint-<choiceId>`, nhãn kết quả tình huống `.incident-fx` (`data-fx` = money|gain|capped|cost|fine|spend|spared|refund|rep|rare|fragment|spoons|wait|bonus|debt|star|none); Tổng kết `summary-tip-rule`, `summary-event-money` (mỗi `li` có `data-event`, `data-money`).
+- M4 bước 6 (hàng hiếm, mục 21):
+  - Chuẩn bị: `stall-card` (`data-state` = open|pending|done|closed|locked|early, `data-stall`; `stall-title` ghi trạng thái: tên phiên đang mở / "Đã ghé …" / "Chưa có phiên đang mở" / "Tạm khóa" / "Chưa tới ngày mở"), `open-market` (vào gánh hàng / lựa tiếp), `rare-stock-card`, `rare-stock-<ingId>` (`data-n`), `rare-fragments-<recipeId>` (`data-n`, `data-status` = owned|ready|collecting|locked), `rare-taste-<recipeId>` (nấu thử khi đủ mảnh), `basket-luck` (`data-pity`, `data-sure`, `data-frag-sure`, `data-all` = lý do 100% nguyên liệu), `rare-left-<recipeId>` (thực đơn hôm nay: "★ còn n phần"). Túi đồ (Chợ Công Thức): `bag-basket` (tỉ lệ Giỏ chợ công khai). Bếp: thẻ công thức `card-left-<ingId>` (" · kho còn n" của nguyên liệu hiếm, luôn thấy kể cả khi ô kệ nằm dưới thanh Xong).
+  - Màn Gánh hàng quê (`market`): `screen-market`, `market-intro` (`data-stall`), `stall-start`, `stall-locked`, `market-stage` (chứa `minigame-stage` loại chon; ô kệ `shelf-<ingId>`, `chon-done`), `market-result` (`data-score`, `data-got`, `data-fragment`), `market-got-<ingId>`, `market-fragment`, `market-tip`, `market-done`, `market-back`.
+  - Ca bán: `stranger-badge` (dấu ★ trên mặt khách lạ ở hàng chờ), `score-sheet-stranger`; quầy `rare-left-<recipeId>` (menu "★ còn n", `menu-item-<id>` có `data-left`), bếp `shelf-left-<ingId>` ("còn n" trên ô kệ nguyên liệu hiếm); phàn nàn `complaint-remake-blocked` (nút `complaint-remake` bị khóa khi hết hàng hiếm).
+  - Tổng kết `summary-rare`; Sổ công thức `book-recipe-<id>` có `data-status` = hiem, `book-rare-<id>` (`data-n`, `data-ready`), `book-taste-<id>`; Nấu thử món hiếm `tasting-unlocked`, `tasting-not-yet`, `tasting-retry`; Túi đồ `bag-rare-<ingId>`.
 
 ## 15. Hệ thống meta M2 (lõi + dữ liệu)
 
@@ -790,7 +856,7 @@ export function mailList(state, nowInfo) → [Mail + { hasReward, expired, daysL
 export function claimMail(state, id, nowInfo, ctx) ; claimAllMail(state, nowInfo, ctx) → { ok, count, rewards, skipped } ; markMailRead(state, id)
 export function purgeExpired(state, nowInfo) ; queueLateReviews(state, list, gameDay, nowInfo) ; compareVersion(a, b) ; ensureMail(state)
 ```
-Mỗi id đẩy đúng 1 lần (`mail.pushed`, nhớ 1.000 id). Hạn 30 ngày (quà lễ 14, nhiệm vụ 7). Tối đa 100 thư: đầy thì bỏ thư cũ nhất đã nhận. Trần (ngoài quà đền bù/`compensation`): tối đa 2 quà lễ/mốc mỗi tháng, quà đời thường tối đa 2/tháng, tổng tiền quà lễ + mốc + đời thường + Tem dư sự kiện (`valueKinds` có `su_kien`) ≤ 3 lần thu nhập tham chiếu mỗi tháng; `mailValueRoom(state, nowInfo, ctx)` trả phần còn lại. `resolveReward` giữ `eventId` của phần thưởng Tem khi resolve lại (thư mang Tem). Quà lễ đẩy từ 04:00 ngày lễ trong `pushDays` ngày (20/10, 20/11, Tết Đinh Mùi 06/02/2027). Quà đời thường: từ ngày thật thứ 3, 10%/ngày (seed + dayKey), cần ≥ 5 đánh giá và sao TB ≥ 3,8, 0,3–0,6. Review muộn: `history[].lateReviews` → thư `review:<ngày game>:<customerId>` vào ngày thật hôm sau. Save mới không nhận thư phiên bản; save v1 nhận thư `phien_ban_0_2_0`.
+Mỗi id đẩy đúng 1 lần (`mail.pushed`, nhớ 1.000 id). Hạn 30 ngày (quà lễ 14, nhiệm vụ 7). Tối đa 100 thư: đầy thì bỏ thư cũ nhất đã nhận. Trần (ngoài quà đền bù/`compensation`): tối đa 2 quà lễ/mốc mỗi tháng, quà đời thường tối đa 2/tháng, tổng tiền quà lễ + mốc + đời thường + Tem dư sự kiện (`valueKinds` có `su_kien`) ≤ 3 lần thu nhập tham chiếu mỗi tháng; `mailValueRoom(state, nowInfo, ctx)` trả phần còn lại. `resolveReward` giữ `eventId` của phần thưởng Tem khi resolve lại (thư mang Tem). Quà lễ đẩy từ 04:00 ngày lễ trong `pushDays` ngày (20/10, 20/11, Tết Đinh Mùi 06/02/2027). Quà đời thường: từ ngày thật thứ 3, 10%/ngày (seed + dayKey), cần ≥ 5 đánh giá và sao TB ≥ 3,8, 0,3–0,6. Review muộn: `history[].lateReviews` → thư `review:<ngày game>:<customerId>` vào ngày thật hôm sau. Save mới không nhận thư phiên bản (chỉ ghi `seenVersion` = `MAIL_CONFIG.currentVersion`); save cũ nhận mọi thư có `version` > `seenVersion` và ≤ `currentVersion`: save v1 (`seenVersion` '0.1.0') nhận `phien_ban_0_2_0` và `phien_ban_0_4_0`; save của bản 0.2/0.3 (`seenVersion` '0.2.0', bản 0.3.0 không có thư riêng) nhận `phien_ban_0_4_0`. **M4 (0.4.0)**: `currentVersion` '0.4.0'; thư `phien_ban_0_4_0` giải thích luật tip mới ("hóa đơn từ 20.000đ mà khách chấm 5 sao thì khách bỏ hũ tip 5.000đ"), giới thiệu sự kiện ngày/tình huống mới, 3 phiên hàng hiếm theo giờ và khách lạ; quà làm quen `{ fragments: { tra_tac_mat_ong: 1 }, rare: { mat_ong_rung: 1 } }` (không tính trần hàng hiếm mỗi ngày thật, không có tiền nên không tính trần quà tháng).
 
 ### 15.6 Chuỗi nhiệm vụ — `chains.js` (dữ liệu `CHAINS`, `NPCS`, `CHAIN_WHERE`; chuỗi sự kiện ở `EVENTS[id].chain`)
 ```js
@@ -812,6 +878,9 @@ export function buyShopRecipe(state, recipeId, ctx) → { ok, price } | { ok: fa
 export function buyShopUpgrade(state, upgradeId, ctx)   // economy.buyUpgrade
 export function buyUmbrella(state, id, ctx) ; equipCosmetic(state, id, ctx, slot?)             // 30 Muỗng Vàng/màu, chỉ thẩm mỹ
 export function canTaste(state, recipeId, ctx) ; startTasting(state, recipeId, ctx) ; tastingSandbox(state, ctx) → { state, ctx } ; finishTasting(state, ctx) → { ok, result }
+// M4 bước 6: món hiếm (source 'hiem'): canTaste cần món nền (thieu_mon_nen) và đủ mảnh (chua_du_manh), thử lại không giới hạn
+//   (không ghi shop.tried); finishTasting → { ok, result, rare: true, unlocked } — đạt RARE_CONFIG.unlockGrade (Được) thì
+//   grantReward({recipe}) (boughtDay 0), bỏ mảnh đã dùng, phát 'rare.unlocked'. Nấu thử không trừ kho hàng hiếm.
 ```
 Nấu thử: đang có phiên dở của món khác thì `canTaste`/`startTasting` trả `dang_nau_thu` (ra món đó trước; mỗi món chỉ 1 lần miễn phí), `shopCatalog().recipes[].tastingOther`. `state.tasting.shift` là một ca giả 1 phiếu `thu1`; giao diện gọi thẳng các hàm bếp (`startCook(sandbox, 'thu1', 0, quietCtx)`, `submitChon`, `submitStep`, `finishDish`…) trên `tastingSandbox` — ví, thạo món, Mẹo nghề, nhiệm vụ, `state.shift` không đổi, không có sự kiện lên bus. Miễn phí 1 lần mỗi món chưa có (`shop.tried`).
 
@@ -831,15 +900,28 @@ export function leftoverMoney(ev, tem, ctx, day) → đồng ; eventPending(stat
 ```
 "Tri ân 20/11" (`tri_an_20_11`, 12/11/2026 04:00 → 22/11/2026 04:00, thẻ "Sắp diễn ra" từ 09/11, Tem "Phấn Trắng"): món Ngon trở lên +1 Tem (món lễ +2 thêm), trần 30/ngày; 3 nhiệm vụ sự kiện/ngày × 10 Tem; điểm danh sự kiện 7 ô × 15 Tem; chuỗi 5 bước (20+25+30+35+40 = 150 Tem), bước cuối tặng công thức `che_buoi` (cổng `gates [1,1,2,2,3]` ngày thật đã chơi → chơi 3 ngày bất kỳ là đủ; còn ít ngày thì gộp bước); Quầy đổi: trang trí 150/200/250 Tem, 50 Tem → 10 Muỗng Vàng (tối đa 5 lần), đổi được cả 3 ngày ân hạn; hết ân hạn Tem dư tự đổi với tỉ lệ thấp: 100 Tem = 0,2 thu nhập tham chiếu, tối đa 1 lần thu nhập tham chiếu mỗi sự kiện (`leftover { per: 100, incomeMul: 0.2, maxIncomeMul: 1 }`), gửi thư `tem_du:<eventId>` loại `su_kien` tính vào trần tiền quà tháng (còn ít chỗ thì đổi ít lại, hết chỗ thì thư chỉ báo). Trong mùa món lễ đã sở hữu được gọi ×2 (`mods.recipeWeight`), giá không đổi, mỗi phần món lễ đạt Ngon trở lên +1 danh tiếng (`festiveRep`, cộng trong `finalizeCustomer` theo `sh.mods.events`); sau mùa giữ món vĩnh viễn (`state.eventRecipes`).
 
-Sự kiện ngày (từ ngày game 3, 30%/ngày, `seedFrom(seed, day, 'su_kien_ngay')`; báo trước ở Tổng kết bằng `dayEventInfo(state, state.day, ctx)` sau `endShift`):
+Sự kiện ngày (từ ngày game 3; M4: 0,65 + bảo hiểm, thực khoảng 74%/ngày, bốc tuần tự `seedFrom(seed, day, 'su_kien_ngay')`; báo trước ở Tổng kết bằng `dayEventInfo(state, state.day, ctx)` sau `endShift`):
 ```js
 export function rollDayEvent(state, day, ctx) → id | null ; dayEventInfo(state, day, ctx) → { id, name, desc, icon, effects, choice: { id, label, desc, cost, free, chosen } | null } | null
 export function dayEventEffects(info, ctx) → effects   // đã chọn / tự áp lựa chọn (Căng bạt) → hiệu ứng của lựa chọn (thẻ, Dự báo, Tổng kết)
 export function setDayEventChoice(state, choiceId | null, ctx) ; setMarketCoupon(state, on)      // lựa chọn ở màn Chuẩn bị; tiền/phiếu trừ lúc mở ca
 export function prepareShiftMods(state, ctx, nowMs?) → mods ; applyCustomerMods(n, mods, ctx) → số khách
-// mods = { customerMul, extraCustomers, patienceMul, tipMul, recipeWeight, noteBoost, noteBoostRate, cogsMul, dayEvent: { id, choice } | null, events: [eventId], prepCost }
+// mods = { customerMul, extraCustomers, patienceMul, lineCountWeights (M4, thay tipMul), recipeWeight, noteBoost, noteBoostRate, cogsMul,
+//          dayEvent: { id, choice, kind } | null, events: [eventId], prepCost,
+//          M4 bước 4: fixedCostDelta, ingCostMul {ingId: hệ số}, noQrSpeaker, queueMax | null, queueFine {at, fine, warn, text} | null,
+//          bigOrder {recipeId, qty, persona, who, bonus, minStars, done, low, lost} | null, endCheck {type, ...} | null, rareRolls }
+// M4: dayEventSeries(state, toDay, ctx, { avoidBadOn }?) → days[] (days[d] = id | null) ; dayEventKind(def) → 'tot' | 'chon' | 'xau' ; dayEventInfo(...).kind
+// soát lỗi M4: announceDayEvent(state, day, ctx) → id | null: chốt sự kiện ngày `day` vào state.incidents.announced (meta.refreshMeta
+//   chốt hôm nay; startShift chốt hôm nay và ngày mai); ngày đã chốt không bốc lại (đổi mức "Tần suất sự kiện" chỉ áp cho ngày chưa
+//   chốt); lúc chốt, sự kiện gần nhất trên dòng thời gian chung (incidents.lastEvent) là loại xấu và chắc chắn không có gì xen giữa
+//   → ngày đó không bốc loại xấu (chỉ đổi loại, không đổi có/không có sự kiện). finishShiftEvents ghi chú khoản mods.prepCost
+//   ("Đã chi … lúc mở hàng", không tính vào lãi ca).
+// M4 bước 4: finishShiftEvents(state, ctx) → [ghi chú]  (endShift gọi TRƯỚC summarizeShift; chạy 1 lần mỗi ca, cờ sh.eventsFinished)
+//            servedPortions(sh, recipes, ctx), shiftAvgStars(sh), hygieneErrors(sh, codes), shiftEventCap(sh) → {loss, gain}
 ```
-Trời mưa: khách ×0,8 (làm tròn, sàn 3), kiên nhẫn ×1,2; "Căng bạt" 20.000đ còn ×0,95 (có Bạt che mưa thì miễn phí). Nắng nóng: Trà tắc, Cà phê sữa đá được gọi ×2, thêm ghi chú Ít đường/Ít ngọt, +1 khách (trần 8). Ngày lãnh lương: tip ×1,5 làm tròn bội 5.000đ. Chợ phiên: khách ×1,3 (trần `BALANCE.eventCustomerCap` = 10); `planArrivals` giãn lịch nên ρ ≤ 0,9 (có test). Phiếu Chợ Sớm: giá vốn ×0,8 trong 1 ca.
+M4 (tần suất "dày", `DAY_EVENT_CONFIG`): `chance` 0,65, `guaranteeAfter` 1 (1 ngày game không có sự kiện → ngày kế chắc chắn có; tỉ lệ thực khoảng 74%), `noRepeat` (không trùng loại hôm trước khi còn loại khác), `badFromDay` 5 (loại xấu từ ngày 5, không 2 ngày xấu liền), `cooldowns` [{ids: ['trat_tu_do_thi', 'kiem_tra_attp'], days: 7}] (nhóm cách nhau ≥ 7 ngày game). Mức "Tần suất sự kiện" Ít (`settings.incidentFrequency`, `state.eventFrequency`) chỉ bốc loại tốt. `rollDayEvent` bốc TUẦN TỰ từ `fromDay` tới ngày cần xem (`dayEventSeries`), mỗi ngày luồng riêng `seedFrom(seed, ngày, 'su_kien_ngay')`, tất định theo (seed, ngày, mức); ngày đã chốt (`state.incidents.announced`, soát lỗi M4) dùng đúng sự kiện đã chốt → "Ngày mai: …" ở Tổng kết luôn khớp, đổi mức tần suất sau khi đã báo không bốc lại. Mỗi sự kiện ngày có `kind` ('tot' | 'chon' | 'xau'): Trời mưa 'chon', Nắng nóng / Ngày lãnh lương / Chợ phiên 'tot'.
+Trời mưa: khách ×0,8 (làm tròn, sàn 3), kiên nhẫn ×1,2; "Căng bạt" 20.000đ còn ×0,95 (có Bạt che mưa thì miễn phí). Nắng nóng: Trà tắc, Cà phê sữa đá được gọi ×2, thêm ghi chú Ít đường/Ít ngọt, +1 khách (trần 8). Ngày lãnh lương (M4): khách gọi thêm món, `lineCountWeights` [60, 32, 8] (thường [70, 25, 5]); không còn tip ×1,5. Chợ phiên: khách ×1,3 (trần `BALANCE.eventCustomerCap` = 10), M4 +1 lượt Giỏ chợ (`rareRolls` → `sh.rareRolls`); `planArrivals` giãn lịch nên ρ ≤ 0,9 (có test). Phiếu Chợ Sớm: giá vốn ×0,8 trong 1 ca.
+M4 bước 4 — tám sự kiện ngày mới (mục 20): trọng số 100 (tốt 58 / chọn, xấu 42): Trời mưa 13, Nắng nóng 13, Ngày lãnh lương 10, Chợ phiên 10, Hội thi xe sạch 9, Văn phòng đặt 3 ly 9, Đại lý trà tài trợ 7, Tắc lên giá 6, Tiền điện nước 5, Cúp điện 6, Trật tự đô thị 6, Kiểm tra ATTP 6.
 
 ### 15.9 Lên chặng — `progression.js` (dữ liệu `STAGE_UP`, `POST_GOALS`)
 ```js
@@ -859,7 +941,7 @@ export function postGoals(state, ctx) → { flawless, mastery, recipes: [{ id, n
 - Nấu thử không đổi ví, thạo món, Việc hôm nay, ca. Đủ 5 hệ thống chạy: điểm danh 5 ô liên tiếp, việc và Rương ngày, thư chào mừng, đổi việc miễn phí, chuỗi C1 xong, chuỗi QR qua bước bắt ảnh giả. Khách bỏ đi chỉ là khách trả bằng ảnh giả bị từ chối. Chè bưởi nhận qua chuỗi sự kiện sau 3 ngày thật chơi trong mùa, khách gọi ngay trong mùa.
 - `META_SIM_LOG=1 npm test` in số liệu từng ngày thật.
 
-Lệch so với `docs/can-bang.md`: lãi bán hàng của người chơi hoàn hảo khoảng 240–750k mỗi ngày thật (3 ca), gấp khoảng 3 lần mô hình người chơi trung bình ở mục 9. Lý do: mọi khách 5 sao có món Không tì vết được tip 10.000đ (mô hình giả định trung bình 2.200đ/khách), và sao trung bình ≥ 4,5 thêm 1 khách mỗi ca. Chưa đổi tip, cần đo người chơi thật (can-bang mục 15, chỉ số 15 và 21). Ngưỡng danh tiếng lên Chặng 2 giữ 150 theo đặc tả (mục 15.9).
+Lệch so với `docs/can-bang.md`: lãi bán hàng của người chơi hoàn hảo khoảng 240–750k mỗi ngày thật (3 ca), gấp khoảng 3 lần mô hình người chơi trung bình ở mục 9. Lý do: mọi khách 5 sao có món Không tì vết được tip 10.000đ (mô hình giả định trung bình 2.200đ/khách), và sao trung bình ≥ 4,5 thêm 1 khách mỗi ca. Chưa đổi tip, cần đo người chơi thật (can-bang mục 15, chỉ số 15 và 21). Ngưỡng danh tiếng lên Chặng 2 giữ 150 theo đặc tả (mục 15.9). *M4 đã đổi tip (mục 19): 5.000đ duy nhất khi 5 sao và hóa đơn khách thực trả từ 20.000đ; lãi người chơi hoàn hảo giảm (ví dụ seed 42: 115–673k mỗi ngày thật), tỉ lệ thưởng cao nhất 32,0% (ngày thật 2, dưới trần 35%). M4 bước 8 (mục 22): mô phỏng thêm phiên hàng, nấu thử món hiếm, tình huống chọn an toàn và quy đổi hàng hiếm; chạy rộng 40 hạt giống × 4 mốc ngày bắt đầu thì trần 35% bị vượt ở 44/800 ngày thật (cao nhất 41,7%) nên thưởng tiền bước 4–6 của chuỗi "Ngày đầu ra phố" giảm (85k → 45k tiền cả chuỗi); sau khi giảm cao nhất 34,1%.*
 
 **E2E M2** (giao diện thật, Chromium 390×844 cảm ứng, `npm run e2e`):
 - `checkin-quests.e2e.mjs` dùng đồng hồ giả `openGame({ clock: { time } })`, seed 42. Lần đầu mở game → bảng điểm danh tự hiện → nhận ô 1. Tải lại cùng ngày → không hiện. 03:59 hôm sau chưa sang ngày; qua 04:00 khi đang ở màn Chuẩn bị (lượt kiểm tra 30 giây) → bảng hiện → nhận ô 2. Sang ngày thứ 3 rồi lùi đồng hồ máy 2 ngày → có `rewind-note`, nút nhận khóa, `checkin-note` cảnh báo; giờ đúng lại thì nhận được ô 3. Việc hôm nay có đúng 3 việc (Quầy, Bếp, Chất lượng). Chơi trọn ca ngày 1 → xong "3 món không có lỗi nguyên liệu" → bấm Nhận (+0,2 thu nhập tham chiếu, +5 danh tiếng).
@@ -872,7 +954,7 @@ Lệch so với `docs/can-bang.md`: lãi bán hàng của người chơi hoàn h
 
 - Lưu: `state.rev` + `writeSave({guard})`, tab cũ tự khóa (mục 12); `?devNow` lưu ở `DEV_KEYS` (mục 13).
 - Kinh tế sự kiện: Tem dư 100 Tem = 0,2 thu nhập tham chiếu, trần 1 thu nhập tham chiếu, tính vào trần quà tháng (mục 15.5, 15.8); món lễ +1 danh tiếng/phần Ngon trở lên trong mùa.
-- Hỗ trợ: Hỗ trợ thao tác → bước chuỗi Tuyệt hảo/5 sao đếm mức thay thế, không bốc việc không đếm được; Hỗ trợ tính tiền → chuỗi "Quầy chuẩn" luôn 0 (`clipTicket`), không tip 10.000đ theo chuỗi, không ghi kỷ lục.
+- Hỗ trợ: Hỗ trợ thao tác → bước chuỗi Tuyệt hảo/5 sao đếm mức thay thế, không bốc việc không đếm được; Hỗ trợ tính tiền → chuỗi "Quầy chuẩn" luôn 0 (`clipTicket`), không tip 10.000đ theo chuỗi (M4: không có lượt Giỏ chợ theo chuỗi), không ghi kỷ lục.
 - Ân hạn: chuỗi sự kiện nhận được ở màn sự kiện trong ân hạn, thẻ sự kiện có chấm đỏ; hết ân hạn Tem thưởng chưa nhận vào Tem dư, công thức qua Hộp thư (thư mới được báo).
 - Việc: "Nấu n phần món vừa mua" chốt món lúc bốc; "Không để khách nào bỏ về" không tính ảnh giả bị bắt; việc sự kiện quên nhận tự cộng Tem, ca vắt qua 04:00 đếm cho ngày mới.
 - Nấu thử: không mở phiên món khác khi đang dở (`dang_nau_thu`); không tính giờ thật sự, có gợi ý ngay.
@@ -903,7 +985,7 @@ Lệch so với `docs/can-bang.md`: lãi bán hàng của người chơi hoàn h
 Mở từ ô Cài đặt `open-settings` trong lưới biểu tượng của màn Chuẩn bị (mục 13.2; thay các công tắc cài đặt rời trước đây, cùng testid `setting-<khóa>`). Các mục:
 - Âm thanh và rung: Âm thanh, Âm lượng (0–100%, bước 10, khóa khi tắt tiếng), Rung.
 - Hỗ trợ: Hỗ trợ tính tiền (ghi rõ: chuỗi "Quầy chuẩn" và việc Quầy không được đếm, không ghi kỷ lục), Hỗ trợ thao tác (ghi rõ: không đạt "Không tì vết", tối đa hạng Ngon).
-- Chơi: Mẹo nghề, Giảm chuyển động, Tình huống trong ca Nhiều / Vừa / Ít (`settings.incidentFrequency`, mặc định Vừa; "Ít" chỉ gồm tình huống vui — lõi tình huống đọc giá trị này).
+- Chơi: Mẹo nghề, Giảm chuyển động, "Tần suất sự kiện" Nhiều / Vừa / Ít (M4 đổi tên từ "Tình huống trong ca"; `settings.incidentFrequency`, mặc định Vừa; áp cho cả sự kiện ngày và tình huống trong ca; "Ít" chỉ gồm sự kiện/tình huống loại tốt, không có khoản phạt).
 - Sao lưu: lần sao lưu gần nhất; "Chép mã sao lưu" (`navigator.clipboard`, không được thì hiện mã trong ô để chép tay; nút Chép lại dùng `execCommand('copy')`); "Tải file sao lưu" (Blob `.txt` gồm vài dòng hướng dẫn + mã, tên `bep-khoi-nghiep-<tên xe không dấu>-ngay-<n>-<YYYYMMDD>.txt`); "Nhập mã sao lưu" (dán mã hoặc chọn file → Xem trước bảng "Bản trong mã" / "Bản hiện tại": tên xe, ngày game, Tiền quán, chặng, số công thức, danh tiếng, Muỗng Vàng → "Dùng bản này" mới ghi đè); "Bản lưu đã cất" (Khôi phục = cùng luồng xem trước).
 - Cài game (theo `installMode`), trạng thái chơi offline (`app.pwa.offlineReady`).
 - Thông tin: phiên bản, "Giới thiệu" (game hư cấu, mọi con số là số liệu minh họa, không liên quan thương hiệu nào, dữ liệu lưu trên máy), "Chơi lại từ đầu" (hộp thoại 2 bước `reset-step1` → `reset-step2`; state mới `defaultState(seed ngẫu nhiên)` giữ cài đặt; bản cũ được cất).
@@ -922,10 +1004,12 @@ Viết `src/ui/screens/<tên>.js` theo mục 13, import rồi thêm vào bảng 
 ## 17. Nội dung M3: tình huống trong ca, Sổ tay nghề, Sổ công thức, làm tròn tiền
 
 ### 17.1 Tình huống trong ca — `core/incidents.js` + `data/incidents.js`
-- Luật (`INCIDENT_CONFIG`): từ ngày game 3, mỗi ca bốc có/không theo `settings.incidentFrequency` (Nhiều 50% / Vừa 35% / Ít 15%; mức Ít chỉ gồm tình huống vui `positive`); tối đa 1 tình huống mỗi ca; bảo hiểm: `state.incidents.since` đếm số ca (từ ngày 3) không có tình huống được xử lý, `since ≥ 3` → ca kế chắc chắn có; không lặp 5 loại gần nhất (`recent`), hết loại mới thì lấy loại lâu chưa gặp nhất. Trần thiệt hại = `min(floor500(10% doanh thu dự kiến của ca), floor500(0,5 × thu nhập tham chiếu))`; loại có lựa chọn lỗ quá trần (`maxLoss`) bị bỏ ở lúc bốc.
+- Luật (`INCIDENT_CONFIG`): từ ngày game 3, mỗi ca bốc có/không theo `settings.incidentFrequency`; bảo hiểm: `state.incidents.since` đếm số ca (từ ngày 3) không có tình huống được xử lý; không lặp 5 loại gần nhất (`recent`), hết loại mới thì lấy loại lâu chưa gặp nhất. Trần thiệt hại = `min(floor500(10% doanh thu dự kiến của ca), floor500(0,5 × thu nhập tham chiếu))`; loại có lựa chọn lỗ quá trần (`maxLoss`) bị bỏ ở lúc bốc.
+- M4 (tần suất "dày"): tối đa `maxPerShift` tình huống mỗi ca (Nhiều 2 / Vừa 2 / Ít 1); lần 1 `chance` Nhiều 75% / Vừa 55% / Ít 30%; lần 2 `secondChance` Nhiều 45% / Vừa 30% chỉ khi ca từ `secondMinCustomers` (6) khách, khác loại lần 1, không phải tình huống đầu ca, không 2 loại xấu trong ca; hai tình huống cách nhau ít nhất `minGap` (2) khách (lúc bốc: afterClips2 ≥ afterClips1 + 2; lúc chơi: lần 2 chỉ bật khi lần 1 đã xử lý và đã thêm ≥ 2 khách xong quầy). Bảo hiểm `guaranteeAfter` theo mức (Nhiều 1 / Vừa 2 / Ít 3 ca) → tỉ lệ thực ca có ≥ 1 tình huống khoảng 80% / 60% / 40%. Mỗi loại có `kind` ('tot' | 'chon' | 'xau'; `khach_mo_hang` tốt, `ghi_no` và `doi_y` chọn); mức Ít (`goodOnly`) chỉ loại tốt; loại xấu từ `badFromDay` (5); luật nhịp: tình huống trước loại xấu (`lastKind`) hoặc lỗ ≥ `calmAfterLoss` (50%) trần (`lastLoss`) → chỉ loại tốt hoặc loại chọn không có phạt (`maxFine` 0); ngày có sự kiện ngày loại xấu → không bốc loại xấu. Soát lỗi M4: "không 2 sự kiện xấu liền nhau" xét trên dòng thời gian CHUNG của sự kiện ngày và tình huống — `lastEvent` (sự kiện ngày của ca ghi lúc mở ca, mỗi tình huống ghi lúc xử lý) là loại xấu → không bốc loại xấu; sự kiện ngày của ngày mai (chốt lúc mở ca) là loại xấu → cả ca không bốc loại xấu; lúc chốt sự kiện ngày xem `lastEvent` (events.announceDayEvent). Mô phỏng 60 hạt giống × 60 ca (mức Vừa, Nhiều): 0 cặp xấu liền nhau (trước khi sửa: 48 cặp tình huống xấu rồi sự kiện ngày xấu). Trần tiền thưởng `gainCap` = `min(floor1000(15% doanh thu dự kiến), floor1000(0,75 × thu nhập tham chiếu))`; loại có `maxGain` vượt trần bị bỏ.
 - Ngẫu nhiên riêng: `seedFrom(state.seed, day, 'tinh_huong')`, trạng thái luồng lưu ở `sh.incident.rng` và dùng tiếp khi chốt chi tiết/kết quả → tải lại giữa ca không đổi tình huống; luồng khách/bếp không bị xáo trộn.
 - `sh.incident = { id, afterClips, status: 'cho'|'xong', rng, cap, guaranteed, detail, choice, result, shownAt? }`; `afterClips` = 0 với tình huống đầu ca (`when: 'mo_hang'`), còn lại bốc trong 1..N−1 (N khách của ca).
-- API: `planIncident(state, sh, ctx)` (trong `startShift`), `nextShiftFull(state, sh, ctx)`, `takeIncidentBonusInfo(state, day)` → `{customers, rep}`, `incidentDue(state, ctx)` (có tình huống chờ, không tạm dừng/nấu thử, `sh.counter` trống, `miniGameBusy(sh)` sai, đủ `afterClips` phiếu đã kẹp, điều kiện riêng của loại), `openIncident(state, ctx)` → view, `incidentView(state, ctx)` → `{ id, name, positive, when, text, note, who, status, choices: [{id, label, safe, available, cost, reason}], safeId, cap, detail }`, `resolveIncident(state, choiceId, ctx)` → `{ ok, id, choice, safe, text, effects: {money, cost, refund, rep, bonus, debt, starLoss, loss}, tipId }` | `{ ok: false, reason: 'khong_co'|'het_han'|'khong_duoc' }` (phát `incident.resolved` `{id, choice, day, safe, money, cost, rep, loss}`), `finishShiftIncidents(state, ctx)` (trong `endShift`), `takeIncidentBonus(state, day)` / `incidentBonusFor(state, day)`, `collectDebts(state, sh, ctx)` / `pendingDebts(state)`, `incidentLossCap`, `expectedRevenue`, `itemCost` (giá vốn làm tròn 500đ, có hệ số giá vốn của ngày).
+- M4 bước 5: 8 tình huống chạy theo dữ liệu (`generic: true`, loại 'chung' trong `KINDS`), xem mục 20.
+- API: `planIncidents(state, sh, ctx)` → [kế hoạch] (M4, trong `startShift`: `sh.incident = [0]`, `sh.incidentQueue = phần còn lại`), `planIncident(state, sh, ctx)` (kế hoạch thứ nhất | null), `shiftIncidents(sh)`, `activeIncident(sh)` (tình huống đầu tiên còn 'cho'), `incidentKind(def)`, `incidentCandidates(state, sh, ctx)`, `incidentGainCap`, `incidentGuaranteeAfter`, `nextShiftFull(state, sh, ctx)`, `takeIncidentBonusInfo(state, day)` → `{customers, rep}`, `incidentDue(state, ctx)` (có tình huống chờ, không tạm dừng/nấu thử, `sh.counter` trống, `miniGameBusy(sh)` sai, đủ `afterClips` phiếu đã kẹp, điều kiện riêng của loại), `openIncident(state, ctx)` → view, `incidentView(state, ctx)` → `{ id, name, positive, when, text, note, who, status, choices: [{id, label, safe, available, cost, reason}], safeId, cap, detail }`, `resolveIncident(state, choiceId, ctx)` → `{ ok, id, choice, safe, text, effects: {money, cost, refund, rep, bonus, debt, starLoss, loss}, tipId }` | `{ ok: false, reason: 'khong_co'|'het_han'|'khong_duoc' }` (phát `incident.resolved` `{id, choice, day, safe, money, cost, rep, loss}`), `finishShiftIncidents(state, ctx)` (trong `endShift`), `takeIncidentBonus(state, day)` / `incidentBonusFor(state, day)`, `collectDebts(state, sh, ctx)` / `pendingDebts(state)`, `incidentLossCap`, `expectedRevenue`, `itemCost` (giá vốn làm tròn 500đ, có hệ số giá vốn của ngày).
 - Ba tình huống MVP:
   - `khach_mo_hang` (vui, đầu ca): khách mở hàng 1 ly trà tắc bằng tờ 500.000đ. `thoi_het` (cần két đủ thối; đầu ca két 200.000đ nên thường bị khóa kèm lý do → dạy thẻ "Đủ tiền lẻ đầu ca"), `moi_qr` (cần QR đã mở), `tang` (an toàn: −giá vốn, ca sau +1 khách, tối đa 8; vòng soát lỗi M3: ca sau đã đủ 8 khách — `nextShiftFull` theo `customerCount` của ngày sau — thì chữ cái giá dùng `costFull` và cho ngay `bonusRep` = +2 danh tiếng thay khách thêm; nếu tới ca đó mới đủ khách, vd Chợ phiên, `startShift` đổi khách thêm thành `bonus.rep` danh tiếng; màn Chuẩn bị chỉ ghi "thêm 1 khách" khi số khách dự báo thật sự tăng — `forecastDetail`). Thẻ Mẹo nghề `no_small_change` mở ở mọi lựa chọn.
   - `ghi_no`: khách quen (ưu tiên người không có trong ca) xin ghi nợ 20.000đ cho 2 ly trà tắc. `cho_no` (−giá vốn, +2 danh tiếng; 70% trả trong 3 ca: ngày trả bốc sẵn khi ghi sổ, tiền vào `sh.debtIn` ở đầu ca trả, tính vào lãi ca và `settleShift`; quá hạn thì ghi "chưa trả"), `tu_choi` (an toàn, không tốn gì), `tang` (−giá vốn, +5 danh tiếng). Nợ lưu ở `state.incidents.debts[]` `{id, regularId, name, amount, fromDay, dueDay, repayDay|null, status: 'cho'|'da_tra'|'quen', paidDay?}`.
@@ -939,7 +1023,7 @@ Viết `src/ui/screens/<tên>.js` theo mục 13, import rồi thêm vào bảng 
 - Màn: tiến độ chung, thẻ nổi bật, tab theo nhóm (chấm đỏ khi nhóm chờ nhận), thẻ chưa mở hiện mờ kèm gợi ý, nút nhận thưởng khi đủ nhóm.
 
 ### 17.3 Sổ công thức — `core/recipe-book.js`, màn `recipe-book`
-- `recipeBook(state, ctx)` → `{ owned, total, entries }`: mọi món Chặng hiện tại (đã có, bán ở Chợ Công Thức, món sự kiện) + món bóng mờ Chặng 2 (`teaser`); mỗi món có biểu tượng, giá bán, giá vốn (`bookCost`), lãi, số lần nấu, điểm cao nhất, cấp thạo món + mốc kế (`masteryInfo`), huy hiệu "Không tì vết", nhãn nguồn (`sourceLabel`: "Có sẵn", "Chợ Công Thức", nhãn mùa sự kiện như "Tri ân 20/11 · 2026").
+- `recipeBook(state, ctx)` → `{ owned, total, entries }`: mọi món Chặng hiện tại (đã có, bán ở Chợ Công Thức, món sự kiện; M4: công thức hiếm, trạng thái `hiem`, nhãn "Công thức hiếm", `SOURCE_ORDER.hiem = 3`, ghi chú "Mảnh 2/3 · Cần Bánh tráng trộn", `entry.rare = {n, need, ready, baseOwned, missing, ings}`) + món bóng mờ Chặng 2 (`teaser`); mỗi món có biểu tượng, giá bán, giá vốn (`bookCost`), lãi, số lần nấu, điểm cao nhất, cấp thạo món + mốc kế (`masteryInfo`), huy hiệu "Không tì vết", nhãn nguồn (`sourceLabel`: "Có sẵn", "Chợ Công Thức", nhãn mùa sự kiện như "Tri ân 20/11 · 2026").
 - `recipeDetail(state, recipeId, ctx)`: nguyên liệu cần (không liệt kê nguyên liệu bẫy trên kệ), các bước (tên loại mini-game khi khác tên bước, bước bắt buộc/quan trọng), ghi chú món (lời dặn, phụ thu); không lộ cách thái đúng. Mở được chi tiết mọi món trừ món bóng mờ Chặng 2 (`teaser`).
 - `dialectBook(ctx)` → `[{ id, nam, bac, meaning }]`: tab "Sổ từ vùng miền", cặp từ Nam – Bắc lấy từ `SYNONYMS`.
 
@@ -998,3 +1082,176 @@ Kết quả lần chạy ngày 30/09/2026 (12,5 phút, thoát mã 0): 4 ca chơi
 - **Mẹo nghề**: công tắc chỉ tắt thẻ nổi, Sổ tay nghề vẫn đầy (mục 4).
 - **Giao diện**: Tính tiền ngày 1 khách đưa vừa đủ → lời Dì Sáu "khỏi thối", khay ghi "Không cần thối tiền", khay dư thì cảnh báo đỏ "Đang thối dư"; nhãn phiếu chấm `err-tag--quay`/`err-tag--bep` (không trùng class bố cục `.counter`/`.kitchen`, chữ trắng); thẻ công thức "×2 (chạm 1 lần)" + huy hiệu ×n trên ô đã chọn và trong rổ; lời Dì Sáu ngày 1 trên Thớt đặt ngay dưới tên thớt; dòng phiếu vừa ghi tự cuộn lên trên thanh nút; kệ 12 ô gọn ở màn thấp (360×740 thấy đủ 3 hàng); lớp vỏ mini-game phin/nồi/tô (mục 6); nhãn nhát thái theo ngưỡng ("Chuẩn!", "Hơi lệch", "Lệch", "Lệch xa", không còn "px", có test quét chuỗi); Tiền quán từ 1 triệu ghi gọn "1,16tr" ở màn Chuẩn bị và viên tiền đầu màn meta; chữ trong ca tối thiểu 13px, ô tờ trong khay ≥ 44px, chữ xanh dùng `--green-ink` (#2a6e3a, ≥ 5:1); thông báo nổi trong ca không che thanh 4 khâu, gộp tiến độ Việc hôm nay, không báo tiến độ việc lúc hướng dẫn ngày 1; dây phiếu: ghi chú 1 dòng cắt "…" trong khung riêng (không lòi dấu); Tổng kết "Sao ca này" và "Sao trung bình (30 lượt gần nhất)", dưới 5 lượt ghi "tính tạm"; câu Giới thiệu viết lại.
 - **Kiểm chứng**: `tests/unit/review-m3-fixes.test.mjs` (10 test), `banned-words` thêm quét "px"; e2e `save-safety.e2e.mjs` (5 kịch bản), `review-m3-ux.e2e.mjs` (2 kịch bản: ngày 1 ở 360×740 — Tính tiền vừa đủ, dòng phiếu, kệ ×2, lời Dì Sáu trên Thớt, nhãn phiếu chấm chữ trắng, thông báo nổi không che thanh 4 khâu; chép mã thất bại không ghi mốc), `pwa-backup.e2e.mjs` thêm 1 kịch bản và cấp quyền bộ nhớ tạm cho Chromium thử nghiệm (như trang HTTPS); `hanh-trinh.mjs` soát bố cục cả các khâu trong ca bán. Các e2e so `page.$(…)` với `null` đổi sang so boolean: khi hỏng, `assert` in cả ElementHandle làm tiến trình thử ngốn bộ nhớ tới bị giết (một kịch bản từng mất tên trong báo cáo). Kết quả 30/09/2026: 271 unit test, 33 kịch bản e2e xanh, e2e khoảng 18 phút; `node tests/e2e/hanh-trinh.mjs` 12,75 phút, thoát mã 0, 0 lỗi console/trang, 0 thao tác kẹt, không còn lỗi bố cục ở 12 màn và 9 khâu trong ca bán (soát vùng chạm theo kích thước bố cục, không tính hiệu ứng thu nhỏ đang chạy; bỏ qua chữ cỡ 0 cố ý ẩn; dòng mở thẻ công thức trên Thớt nâng lên 44px).
+
+## 19. M4 bước 1–3: tip mới, sổ tiền sự kiện, tần suất sự kiện "dày"
+
+Thiết kế: `docs/tham-khao/m4-thiet-ke.md` mục A, B.1, D; tần suất theo quyết định của người dùng ("dày", thay bảng D). Ở bước này save vẫn `STATE_VERSION = 2` (bước 7 nâng lên 3, mục 22) (chỉ thêm trường, `migrateContentM3` điền mặc định; ca dở từ bản cũ chơi tiếp được: mọi chỗ đọc `ledger.eventIn/eventOut`, `sh.incidentQueue`, `sh.eventNotes`, `sh.rareRolls`, `sh.dayKey` đều có mặc định).
+- **Tip (A)**: `tipFor(stars, bill, balance)`, `kitchen.billOf(customer, recipes)`, `BALANCE.tipMinBill 20000`, `strictFiveStarRep 1`, bỏ `tipBonus` và `mods.tipMul`. Phiếu chấm: `score-sheet-tip` "Tip: +5.000đ" hoặc "Tip 0 (hóa đơn dưới 20.000đ)" / "Tip 0 (khách chưa trả tiền thật)" khi khách 5 sao mà không có tip. Chuỗi "Quầy chuẩn" 5 khách → `sh.rareRolls` (lượt Giỏ chợ, dùng ở bước hàng hiếm). Ngày lãnh lương → `lineCountWeights`.
+- **Sổ tiền sự kiện (B.1)**: `ledger.eventIn/eventOut`, `economy.eventMoneyIn/eventMoneyOut` (trần mỗi sự kiện qua `cap`, trần mỗi ngày thật qua `state.incidents.day`), `incidentGainCap`; Tổng kết thêm dòng "Tiền từ sự kiện", "Phạt, chi sự kiện" và danh sách khoản tiền sự kiện (`summary-event-money`); `compactHistory` có `eventIn`, `eventOut`. Bus: `event.money {id, amount, capped}`, `event.fined {id, amount, spared, fine}`.
+- **Loại sự kiện**: `kind` 'tot' | 'chon' | 'xau' cho mọi sự kiện ngày và tình huống; luật nhịp ở mục 17.1 (M4) và 15.8.
+- **Tần suất (D)**: sự kiện ngày 0,65 + bảo hiểm 1 ngày (thực khoảng 74%); tình huống tối đa 2 mỗi ca, thực khoảng 80% / 60% / 40% ca có ≥ 1 (Nhiều / Vừa / Ít). Cài đặt đổi tên "Tần suất sự kiện".
+- **Kiểm chứng**: `tests/unit/m4-tip.test.mjs` (bảng tip sao × hóa đơn, `billOf` với ảnh giả / hoàn tiền / báo thiếu / phụ thu, phục vụ thật, khách khó tính, lượt Giỏ chợ theo chuỗi và Hỗ trợ tính tiền, Ngày lãnh lương), `tests/unit/m4-frequency.test.mjs` (tỉ lệ thực sự kiện ngày 0,70–0,78 trên ≥ 2.000 ngày, 3 mức; bốc tuần tự khớp "Ngày mai"; loại xấu, cách quãng 7 ngày, mức Ít; tỉ lệ tình huống 3 mức trên ≥ 2.000 ca; tối đa 2, cách ≥ 2 khách, không 2 xấu; luật nhịp, gainCap; chơi thật; sổ tiền sự kiện, trần ngày, bất biến ví). E2E đổi seed theo `node tools/tim-seed.mjs` (kiểm seed đang dùng, tìm seed mới bằng lõi thật): `incident-notebook` (1) seed 54 (ghi nợ, không có tình huống thứ hai), (3) seed 17 (khách đổi ý); `m2-ui` seed 3 và `incident-notebook` (2) seed 3 vẫn đúng. Kết quả 30/09/2026: 286 unit test, 33 kịch bản e2e xanh (e2e khoảng 19 phút).
+
+## 20. M4 bước 4–5: tám sự kiện ngày mới, tám tình huống chạy theo dữ liệu
+
+Thiết kế: `docs/tham-khao/m4-thiet-ke.md` mục B.2, B.3, F.1 bước 4–5; tần suất theo quyết định của người dùng ("dày", mục 19). Ở bước này save vẫn `STATE_VERSION = 2` (bước 7 nâng lên 3, mục 22) (chỉ thêm `incidents.warn`, `rare` tối thiểu; ca dở từ bản cũ thiếu khóa `mods` mới, `sh.eventCap`, `sh.eventCostExtra` vẫn chơi và tổng kết được).
+
+**Sự kiện ngày (`data/day-events.js`, lõi `events.js`, `shift.js`, `order.js`, `kitchen.js`)**
+
+| id | Loại, từ ngày, w | Hiệu ứng mặc định | Lựa chọn (màn Chuẩn bị) |
+|---|---|---|---|
+| `hoi_thi_xe_sach` | tốt, 4, 9 | `endCheck stars`: sao TB ca ≥ 4,5 → Giải Nhất +20.000đ +5 danh tiếng; ≥ 4 → Khuyến khích +10.000đ +2 | — |
+| `don_van_phong` | tốt, 4, 9 | — | `nhan_don` 0đ: `bigOrder` thêm 1 khách lấy 3 ly Trà tắc giữa ca; đạt ≥ 4 sao +5.000đ |
+| `tai_tro_dai_ly` | tốt, 6, 7 | — | `nhan_tai_tro` 0đ: `endCheck portions` Trà tắc (kể cả món dùng Trà tắc làm nền): ≥ 3 ly +15.000đ, ít hơn +5.000đ |
+| `tat_gia` | xấu, 5, 6 | `ingCostMul {tac: 2}` (Trà tắc +1.200đ mỗi ly; tổng phần tăng ≤ lossCap, `sh.eventCostExtra`) | — (Dì Sáu gợi ý Phiếu Chợ Sớm, giảm cả phần tăng) |
+| `tien_dien_nuoc` | xấu, 5, 5 | `fixedCostDelta 5000` (`sh.fixedCost` 25.000đ) | — |
+| `cup_dien` | chọn, 5, 6 | khách ×0,85; món có đá (Trà tắc, Cà phê sữa đá, Chè bưởi) ×0,5; `noQrSpeaker` | `mua_da_cay` 10.000đ (`prepCost`): chỉ còn `noQrSpeaker` |
+| `trat_tu_do_thi` | xấu, 5, 6 | `queueFine {at: 3, fine: 20000}`: nhắc trước ở 2 người (`event.warn`), chạm 3 người phạt 1 lần (trần min(20.000đ, lossCap) + trần ngày), mở thẻ "Giữ lối đi" | `thu_gon` 0đ (an toàn): `queueMax 2`, người đến sau đi ngang (`sh.eventMissed`) |
+| `kiem_tra_attp` | chọn, 6, 6 | `endCheck hygiene` (lỗi `chua_so_che`, `bo_qua`, `hong`, `bay`): sạch +3 danh tiếng; có lỗi lần đầu nhắc nhở (`state.incidents.warn`), tái phạm trong 14 ngày game phạt 20.000đ (trần) | `chuan_bi` 10.000đ (`prepCost`): chắc chắn đạt, +5 danh tiếng |
+
+- Khóa hiệu ứng mới đi qua `prepareShiftMods` (bản sao thuần vào `sh.mods`) và `startShift`: `sh.fixedCost += fixedCostDelta`, `sh.rareRolls = mods.rareRolls` (+ lượt theo chuỗi Quầy chuẩn), khách `bigOrder` chèn giữa lịch (không phải khách đầu, đánh số lại k1…kN, `c.bigOrder = true`, trong trần `eventCustomerCap`), `sh.eventCap = {loss: incidentLossCap, gain: incidentGainCap}` chốt lúc mở ca. `advance`: `queueMax` (min với `BALANCE.queueMax`), `queueFine` (`checkQueueFine`), Loa báo tiền chỉ tự xác nhận khi `order.qrSpeakerOn(state)` (có loa và không `noQrSpeaker`; `confirmQr` cũng chỉ chặn ảnh giả khi loa chạy). `kitchen.submitChon`: `ingCostMul` (không áp khi nấu thử).
+- `finishShiftEvents(state, ctx)` (trong `endShift`, trước `summarizeShift`): giải/tài trợ/tiền đúng hẹn qua `eventMoneyIn` (trần `sh.eventCap.gain` + trần ngày thật), phạt ATTP qua `eventMoneyOut` (trần `sh.eventCap.loss` + trần ngày), danh tiếng vào `sh.reputationGain`, ghi chú `eventNote` cho khoản đã nằm trong sổ (chi phí cố định, giá vốn tăng, khách đi ngang) với `fx` (chữ hiệu ứng ngắn). Lượt Giỏ chợ và quà Khách lạ: bước hàng hiếm.
+- Tất cả tiền chọn ở màn Chuẩn bị (Căng bạt, Mua đá cây, Chuẩn bị đón đoàn) đi qua `mods.prepCost`, không tính vào lãi ca. Mức Ít không bốc loại chọn/xấu (không có sự kiện phạt).
+- Giao diện: thẻ sự kiện ở màn Chuẩn bị ghi loại ("Có lợi" / "Có lựa chọn" / "Cần phòng trước", `data-kind`), các dòng hiệu ứng (`prep.dayEffectLines`: chi phí cố định, giá nguyên liệu, Loa tắt, luật hàng chờ, đơn đặt trước, chấm cuối ca, lượt Giỏ chợ khi có `RARE_CONFIG`), dòng cảnh báo đã bị nhắc nhở (`day-event-warn`), lựa chọn 0đ ghi "miễn phí"; lời Dì Sáu theo từng sự kiện (`DIALOGUE.diSau.dayEvent`); ca bán: `event-warn-toast`, `event-fine-toast` (phạt trong ca, ghi rõ nguyên nhân; phạt lúc kết ca để Tổng kết ghi), thẻ "Đơn đặt trước" ở hàng chờ (`queue-order-tag`), quầy QR báo "Loa báo tiền đang tắt" (`qr-speaker-off`); Tổng kết: mỗi khoản một dòng `tên: tiền, hiệu ứng · lời giải thích` (`summary-event-money`, `data-event`, `data-money`), thẻ "Ngày mai" cảnh báo nhắc nhở. Dự báo khách (`prep.forecastDetail`) cộng khách đặt trước. Icon SVG 64×64: `hoi_thi_xe_sach`, `don_van_phong`, `tai_tro_dai_ly`, `tat_gia`, `tien_dien_nuoc`, `cup_dien`, `trat_tu_do_thi`, `kiem_tra_attp` (`art.js`).
+
+**Tình huống trong ca (`data/incidents.js`, loại 'chung' trong `core/incidents.js`)**
+
+- Dữ liệu: `generic: true`, `fromDay`, `needs` {qr, lua (thực đơn có bước Canh lửa không phải phin), soldPortions (đủ n phần đã bán mới bật), ownsRare, stockRoom}, `recipeId`/`qty` (món bán hoặc mời), `who` (chuỗi hoặc {name, gender, persona} → hình minh họa khớp người), `art` ({bill} | {persona, gender}); lựa chọn: `needs` ('qr' | {room: n}), `cost`, `costNoRare`, `hint` {upgrade, text} (lựa chọn "xanh" nhờ hiện vật), `outcomes` [{p, sale 'cash'|'qr', money (số | {perSold, max}), fine, spend, cogs 'mon'|số, rep, rare, fragment, waitMul, result, resultNoRare}].
+- Lõi: `genericMax(ctx, sh, d)` → {maxLoss, maxGain, maxFine} (thiệt hại = tiền mất + tiền chi + giá vốn − tiền bán − tiền thưởng, lớn nhất trên mọi kết quả), `choiceExpectedMoney(ctx, sh, d, choiceId, sold?)`; `detail` bốc người, món, số bốc kết quả `roll` (1 lần, lưu trong tình huống → tải lại không đổi, mọi lựa chọn dùng chung, vd tờ tiền thật/giả không phụ thuộc cách chọn), nguyên liệu hiếm (nếu cần). `apply`: tiền bán (tiền mặt vào két đúng số / QR) + giá vốn, tiền thưởng `eventMoneyIn` (trần `inc.gainCap` + ngày), tiền mất `eventMoneyOut` fine (trần `inc.cap` + ngày, vượt → Dì Sáu đỡ giùm), tiền chi `eventMoneyOut` không phải phạt (chỉ trần `inc.cap`), danh tiếng, hàng hiếm/mảnh, `sh.waitBudgetMul` (`order.waitBudgetFor` cho phiếu sau). Ghi chú tiền của tình huống mang `source: 'incident'` (Tổng kết không lặp lại; bus không báo nổi).
+- `incidentCandidates` thêm `fromDay` của từng tình huống; `resolveIncident` → `effects` thêm `gain, fine, spend, spared, capped, rare [{id, name, n}], fragment {recipeId, name, n} | null` (và `waitMul`), `loss` = giá vốn + tiền mất + tiền chi − tiền bán − tiền thưởng; `incident.resolved` thêm `gain, fine, spend`; `incidentView` thêm `art`, `generic`, lựa chọn thêm `hint`, `green`.
+- Hàng hiếm tối thiểu (tạm ở bước 5; **bước 6 đã chuyển sang `core/rare.js`**, `incidents.js` xuất lại các hàm này, xem mục 21): `ensureRare(state)` → `state.rare = {stock, fragments}`, `rareIngredientIds(ctx)` (INGREDIENTS `rare: true`), `rareRoom`, `ownsRareRecipe` (RECIPES `source: 'hiem'`), `grantRareStock` (phát `rare.gained`), `grantRareFragment`. Chưa có dữ liệu hàng hiếm → `khach_que_gui_qua`, `nguoi_ban_dao` không được bốc; `khach_quen_vi` lựa chọn báo loa dùng `costNoRare`/`resultNoRare`.
+
+| id | Loại, từ ngày, w | Lựa chọn (an toàn *) | Kỳ vọng tiền |
+|---|---|---|---|
+| `tien_nghi_gia` | xấu, 5, 0,7 | *Soi kỹ; Mời QR (cần QR); Nhận luôn (50% mất 10.000đ + 3.000đ) | +3.500 / +7.000 / −3.000 |
+| `shipper_chuyen_khoan` | chọn, 5, 1,2 (cần QR) | *Chờ tiền về (xanh khi có Loa); Giao luôn | +10.500 / +9.000 |
+| `gas_het` | xấu, 5, 0,7 (cần bếp gas) | Mua bình −12.000đ (chi mua); *Mượn bếp −3.000đ, +1, chờ món ×0,9 | −12.000 / −3.000 |
+| `khach_quen_vi` | tốt, 3, 1 | *Cất giữ (70% +10.000đ, +2); Báo loa (+1, 60% +1 phần hàng hiếm) | +7.000 / 0 |
+| `ve_chai` | tốt, 3, 1 (đã bán ≥ 3 phần) | *Bán (1.000đ/phần, tối đa 8.000đ); Cho (+3) | ≤ +8.000 / 0 |
+| `doan_khach_hoi_duong` | tốt, 4, 1 | *Chỉ đường (+2); Mời mua 2 ly (+20.000đ −6.000đ) | 0 / +14.000 |
+| `khach_que_gui_qua` | tốt, 3, 1 (kho còn chỗ) | Mời trà (−3.000đ, +2, +1 hiếm); *Nhận (+1 hiếm) | −3.000 / 0 |
+| `nguoi_ban_dao` | chọn, 4, 1,2 (có công thức hiếm, kho còn chỗ) | Mua 2 (−8.000đ); Mua 1 (−4.000đ); *Hẹn bữa khác | −8.000 / −4.000 / 0 |
+
+Ba tình huống M3 gắn nhãn: `khach_mo_hang` tốt (w 1), `ghi_no` chọn (w 1,2), `doi_y` chọn (w 1,2). Tỉ lệ loại ở mức Vừa theo trọng số: tốt 44,6%, chọn 42,9%, xấu 12,5%; mức Ít 5 loại tốt. Thẻ Mẹo nghề 20 → 24 (Quầy 14 / Bếp 5 / Kho 2 / Phục vụ 3): `soi_tien` (trigger `tien_gia`), `cho_tien_ve` (`cho_tien_ve`), `kiem_hang` (`kiem_hang`, mở ở phiên hàng hiếm), `giu_loi_di` (`lan_chiem`, Trật tự đô thị). Giao diện: `effectChips` thêm "tiền thưởng", "mất tiền", "chi mua", "Dì Sáu đỡ giùm", hàng hiếm, mảnh, "Bếp chậm hơn" (`data-fx`); hình minh họa theo `view.art`; lời nhắc xanh `incident-hint-<id>`; Tổng kết `incidentLines` ghi đủ các khoản.
+
+**Kiểm chứng**: `tests/unit/m4-events.test.mjs` (dữ liệu, tần suất với dữ liệu thật, từng khóa hiệu ứng, chấm cuối ca, trần gainCap / trần ngày, mức Ít, lưu/tải ca dở), `tests/unit/m4-incidents.test.mjs` (1 lựa chọn an toàn, xác suất = 1, trần B.3, kỳ vọng từng lựa chọn ±500đ, từng tình huống, hàng hiếm với dữ liệu giả, tải lại không đổi kết quả, trần ngày, nhịp và tỉ lệ 3 mức với dữ liệu thật, chơi thật chọn ngẫu nhiên). E2E đổi seed (`node tools/tim-seed.mjs`): `incident-notebook` (1) seed 29, (2) seed 8, (3) seed 55; `m2-ui` seed 3 vẫn đúng.
+
+
+
+## 21. M4 bước 6: nguyên liệu và công thức hiếm
+
+Thiết kế: `docs/tham-khao/m4-thiet-ke.md` mục C, F.1 bước 6; 3 khung giờ phiên hàng theo quyết định của người dùng. Ở bước này save vẫn `STATE_VERSION = 2` (bước 7 nâng lên 3, mục 22) (thêm `state.rare` qua `defaultMeta()` + `save.migrateRare`; ca dở từ bản cũ thiếu `sh.rareMenu`, `sh.rareNotes` vẫn chơi và tổng kết được, chỉ là không có món hiếm). Nguyên liệu hiếm không phải tiền: không đụng bất biến ví.
+
+**Dữ liệu**
+- `data/rare.js`: `RARE_CONFIG` { fromDay 3, stockMax 6, overflowGold 2 (Muỗng Vàng mỗi phần dư), dailyCap 6 phần, dailyFragCap 3 mảnh (mỗi ngày thật, mọi nguồn trừ hàng tự bỏ tiền mua và phần thưởng cố định của thư/chuỗi), fragmentsNeed 3, unlockGrade 'duoc', fragmentPityAfter 3, basket { ingredient 0.4, pityAfter 2 }, stall { base 1, bonusAt 90, fragmentAt 75, fragmentRate 0.5, shelfSize 9, par 6 }, stranger.gifts [5★ 2 phần, 4★ 1 phần, 3★ 1 mảnh], orderWeight 1.5, repPerGood 1 }; `STALLS` (Chợ sớm 05:00–09:00 Cô Ba: trứng gà ta, muối tôm · Xe ba gác trưa 11:00–13:30 Chú Tư: mật ong rừng, trứng gà ta · Gánh đặc sản tối 17:30–21:00 Anh Tám: cà phê hạt, khô mực; mỗi phiên `persona/gender` cho hình, `fillers`); `STRANGERS` 5 khách lạ `{id, name, gender, persona, region, self, ing, thanks}` (Cụ bà quê Cà Mau · mật ong, Anh ngư dân Phan Thiết · khô mực, Chị buôn cà phê Ban Mê, Chú Năm Tây Ninh · muối tôm, Cô Bảy nuôi gà thả vườn · trứng gà ta). Tệp nằm trong danh sách tệp chữ hiển thị của `banned-words.test.mjs`.
+- Nguyên liệu hiếm (`ingredients.js`): `mat_ong_rung` ★2 3.300đ, `trung_ga_ta` ★1 3.500đ/quả (2 quả mỗi phần), `muoi_tom_tay_ninh` ★1 1.500đ, `kho_muc` ★2 4.100đ, `ca_phe_bmt` ★2 3.700đ; `traps` = hàng thường dễ nhầm (bẫy ở phiên hàng). 5 icon SVG 64×64 có ngôi sao vàng (`art.js`, `rareStar`).
+- Công thức hiếm (`recipes.js`): `tra_tac_mat_ong` (15.000đ, vốn 6.000đ, par 19: bỏ Nêm đường, thêm "Rót mật ong" rot/`to`), `banh_mi_trung_ga_ta` (25.000đ, 11.000đ, par 26: thêm "Nướng giòn bánh mì" lua/chảo), `banh_trang_tron_tay_ninh` (25.000đ, 12.000đ, par 34: khô mực thay khô bò, "Xé khô mực" cha, Nêm thêm muối tôm), `ca_phe_muoi` (20.000đ, 6.000đ, par 26: cà phê hạt, muối, "Đánh sữa muối" cha, "Rưới lớp sữa muối" rot/`to`). Lãi/giây nấu 474 / 538 / 382 / 538đ ≤ trần 550đ. `SPOKEN.dishes` có tên gọi thường ngày ("trà tắc mật ong", "bánh mì trứng gà ta", "bánh tráng trộn khô mực", "cà phê muối"); `makeSpeech` nhận thêm `self` (cách tự xưng của khách lạ, vd "bà").
+
+**Lõi `core/rare.js`** (thuần; giờ thật qua `nowInfo`/`sh.dayKey`; ngẫu nhiên tất định)
+```js
+export function rareConfig(ctx) ; rareActive(ctx) ; rareIngredientIds(ctx) ; rareRecipeIds(ctx) ; isRareIngredient(ctx, id) ; isRareRecipe(recipe)
+export function recipeRareNeed(recipe) → {ingId: n} ; rareBaseIds(recipe) ; rareValue(ctx, id) → giá quy đổi 1 phần
+export function ensureRare(state) ; rareToday(state, key) (sang ngày thật mới mở sổ mới; ngày cũ hơn → giữ sổ đang có)
+export function rareStock(state, id) ; rareRoom(state, id, ctx) ; rareDayRoom(state, ctx, key) → { portions, frags }
+export function grantRare(state, id, n, ctx, { bought, dayCap = true, dayKey, source }?) → { id, name, got, spoons, over }   // phát 'rare.gained' {id, n, spoons, source, bought}
+export function grantFragment(state, n, ctx, { dayKey, recipeId, source, dayCap = true }?) → { recipeId, name, n, spoons, list } | null   // phát 'rare.fragment'
+export function grantRareStock(...) → got ; grantRareFragment(...) → { recipeId, n } | null   // bản gọn (incidents.js xuất lại)
+export function fragmentCandidates(state, ctx) → [recipeId]  // chưa có, đủ món nền, chưa đủ mảnh; món gom dở trước
+export function rareUnlockInfo(state, recipeId, ctx) → { owned, baseOwned, bases, n, need, ready } ; gradeUnlocks(grade, ctx) ; ownsRareRecipe(state, ctx)
+export function rareNeedOrder(state, ids, ctx)   // kho đầy xuống cuối; dùng cho món hiếm đã có > món đang gom mảnh > còn lại; ít hàng trước
+export function rarePortions(state, recipe, used?) ; rareMenuFor(state, ctx) ; rareCommitted(state, ctx, { skipDraftIndex, withDraft }?)
+export function rareLeft(state, recipeId, ctx, opts?) → số phần còn ghi phiếu được (món thường Infinity) ; rareLinesFit(state, lines, ctx, { withDraft }?)
+export function consumeRare(state, recipeId, qty, ctx) → { ingId: n }   // phát 'rare.used' ; rareReputation(dishes, ctx) ; baseLineOf(line, R)
+export function capRareRequests(state, list, ctx) → [khách bị đổi]   // vòng tất định: dòng vượt tồn kho đổi về món nền
+export function basketOdds(state, ctx, dayKey?) → { ingredient, fragment, pity, pityAfter, sure, fragSure, allIng, allReason: null|'het_muc_ngay'|'can_mon_nen'|'du_manh' } ; rollBasket(state, ctx, holder, { dayKey }?)
+export function stallList(ctx) ; stallStatus(state, nowInfo, ctx) → { active, dayKey, minutes, locked, tooEarly, inShift, pending, current, next, tomorrow, stalls }
+export function stallGame(state, stall, dayKey, ctx) → { recipe (dựng tạm cho bước Chọn), step, goods, traps, shelf }   // kệ xáo theo (save, ngày thật, phiên)
+export function startStall(state, id, nowInfo, ctx) → { ok, resumed, stall, game, draft: {picked, mistakes} } | { ok: false, reason: 'dang_ban'|'lui_gio'|'chua_toi_ngay'|'ngoai_gio'|'da_nhan'|'khong_co' }
+export function saveStallDraft(state, { picked, mistakes }) → { ok, picked, mistakes } ; stallDraft(state, shelf?) → { picked, mistakes }   // soát lỗi M4: lưu rổ lựa dở mỗi lần chạm (mistakes chỉ tăng)
+export function finishStall(state, { score, picked, mistakes }, nowInfo, ctx) → { ok, stallId, name, score, got, fragment, spoons, tipId, wrong } | { ok: false, reason }   // phát 'rare.stall'
+   // soát lỗi M4: lần nhầm = max(lần nhầm đã lưu, gửi lên); điểm ≤ 100 − 15 × lần nhầm; đã từng nhầm → wrong, thẻ kiem_hang
+export function cancelStall(state) ; pickStranger(state, sh, list, ctx, dayKey) → { index, def } | null ; strangerGift(stars, ctx)
+export function finishShiftRare(state, ctx) → [ghi chú]   // endShift, sau finishShiftEvents, trước summarizeShift; 1 lần mỗi ca (sh.rareFinished)
+export function rareOverview(state, nowInfo, ctx) → { active, fromDay, stock, fragments, total, today, basket, stockMax, overflowGold }
+// clock.js thêm vnMinutes(ms) (phút trong ngày giờ Việt Nam), hhmmToMinutes('HH:MM')
+```
+- Phiên hàng: `from ≤ giờ < to` (giờ Việt Nam, theo `nowInfo.trusted`); khóa khi `nowInfo.rewind`; chỉ ngoài ca; từ ngày game 3; mỗi phiên 1 lượt mỗi ngày thật (`today.stalls`); lượt lựa dở giữ ở `pendingStall` (lựa tiếp được trong ngày, kể cả khi khung giờ vừa tan; sang ngày thật khác thì hết hạn); soát lỗi M4: rổ đang chọn và số lần chọn nhầm lưu vào `pendingStall` mỗi lần chạm (plugin Chọn gọi `ctx.onChange`, màn `market` gọi `saveStallDraft`, chọn nhầm thì lưu ngay), "Lựa tiếp" khôi phục đúng rổ (`initial`) nên tải lại trang / rời chợ không xóa được lần nhầm. Kết quả: luôn `base` phần món kho cần nhất; từ 90 điểm thêm 1 phần món còn lại; từ 75 điểm 50% ra 1 mảnh (luồng `seedFrom(hạt giống, ngày thật, phiên, 'manh')`, bảo hiểm mảnh). Chọn nhầm (có lần chạm nhầm) → thẻ Mẹo nghề `kiem_hang`.
+- Giỏ chợ: `sh.rareRolls` (chuỗi Quầy chuẩn 5 khách, Chợ phiên +1) rút ở `finishShiftRare` bằng `seedFrom(hạt giống, ngày game, 'gio_cho')`: 40% nguyên liệu (món kho cần nhất, hòa thì bốc), 60% mảnh; `pity.ing` ≥ 2 → chắc chắn nguyên liệu; soát lỗi M4: `pity.frag` ≥ `fragmentPityAfter` (3 lần liền ở nguồn có tỉ lệ không ra mảnh) → chắc chắn ra mảnh (cùng tới hạn thì nguyên liệu trước); tỉ lệ thực ra nguyên liệu ≈ 49%; hết món nhận mảnh hoặc hết mức mảnh hôm nay → 100% nguyên liệu (`allReason` để thẻ Kho hàng hiếm ghi đúng lý do). Tỉ lệ và hai mức bảo hiểm ghi công khai ở thẻ Kho hàng hiếm và Túi đồ (`bag-basket`).
+- Khách lạ: `startShift` → `applyStranger` (shift.js): ngày thật tin cậy = max(giờ máy lúc mở ca, `clock.maxSeen`), giờ máy lùi thì không có; `pickStranger` đổi một khách thường (không phải khách đầu, khách hướng dẫn, khách quen, đơn đặt trước, khách bị ép ảnh giả; vị trí bốc bằng `seedFrom(hạt giống, ngày game, 'khach_la')`) thành khách lạ (tên, giới, kiểu khách, giọng, `self`, kiên nhẫn theo kiểu khách, câu gọi món mới; giữ nguyên đơn). `today.strangerDay` chặn ghé lần 2 trong ngày thật (kể cả tải lại). Quà theo sao ở `finishShiftRare`.
+- Trần: kho 6 phần mỗi loại; mỗi ngày thật 6 phần + 3 mảnh (sổ `rare.today`, khóa = `sh.dayKey` cho quà trong ca, `nowInfo.dayKey` cho phiên hàng); phần dư đổi 2 Muỗng Vàng mỗi phần/mảnh. Hàng tự bỏ tiền mua (chị bán dạo, `bought`) và phần thưởng cố định (`grantReward`, `dayCap: false`) không tính trần ngày.
+
+**Cắm vào lõi**
+- `customer.orderableRecipes`: món hiếm đã có — trong ca: thuộc `sh.rareMenu` (chốt lúc mở ca, thực đơn quầy không đổi giữa ca); ngoài ca (màn Chuẩn bị, sinh đơn trong `startShift`): kho đủ 1 phần. `recipeWeight` × `orderWeight` (1,5). `speechFor`/`lineFor` truyền `self` của khách lạ.
+- `shift.startShift`: `sh.rareMenu = rareMenuFor`, `capRareRequests` sau khi sinh mọi đơn (làm mới đơn, `expectedSec`, câu gọi món của khách bị đổi), khách lạ, rồi mới `planArrivals`. `endShift` gọi `finishShiftRare`; `compactHistory` thêm `rare`. `economy.summarizeShift` thêm `rareNotes`.
+- `order.confirmOrder` → `'het_hang_hiem'`; `kitchen.submitChon` (nguyên liệu hiếm 0đ), `finishDish` (trừ kho, trừ khi nấu thử), `finalizeCustomer` (+1 danh tiếng mỗi phần món hiếm đạt Ngon, `sheet.stranger`), `complaintRemakeOk` + `resolveComplaint` khóa làm lại khi hết hàng.
+- `incidents.js`: xuất lại hàm hàng hiếm; tình huống 'chung' trao hàng qua `grantRare` (quà tính trần ngày, hàng mua `bought`), phần dư đổi Muỗng Vàng (`effects.spoons`, `result.spoons`); "Khách đổi ý" không đổi sang món hiếm. Soát lỗi M4: tình huống chỉ có quà hàng hiếm (`needs.stockRoom`, "Khách quê gửi quà") không bốc/không bật khi đã đủ mức hàng hiếm hôm nay; quà trong lựa chọn (báo loa của "Khách quên ví") hết mức thì dùng chữ `costNoRare`/`resultNoRare`; quà không vào kho được thì câu kết quả không nói "cất vào kho" mà dùng `rare.overflowText` ("Kho hoặc mức hôm nay đã đủ…").
+- `rewards.js`: khóa `rare {ingId: n}`, `fragments {recipeId: n}` (trả thêm `rareGot`); công thức `hiem` nhận với `boughtDay 0` (không ×2 hai ca đầu, không vào việc "Nấu món vừa mua"). `shop.js` nấu thử món hiếm (mục 15.7). `recipe-book.js` (mục 17.3). `progression.js`: món hiếm không tính vào "3 công thức".
+
+**Giao diện**
+- Màn mới `market` (`ui/screens/market.js`, đăng ký ở `SCREENS` của `main.js`, `PRECACHE`): giới thiệu phiên (người bán, hàng hiếm ★, quê, tồn kho, hàng dễ nhầm, luật), "Bắt đầu lựa hàng" → `MINIGAMES.chon` với kệ 9 ô dựng ở lõi (ctx `missingText`), kết quả (điểm, phần nhận, mảnh, Muỗng Vàng, lời Dì Sáu, thẻ Mẹo nghề khi chọn nhầm). Back giữa chừng hỏi lại, lượt dở được giữ.
+- Chuẩn bị (từ ngày 3 hoặc khi đã có hàng/mảnh; không hiện ở lần mở đầu tiên): thẻ gánh hàng quê (đang mở / đang lựa dở / đã ghé / phiên kế tiếp / hẹn mai / khóa khi lùi giờ, 3 khung giờ), thẻ Kho hàng hiếm (5 ô tồn kho, mức hôm nay, công thức hiếm "Mảnh n/3 · Cần …" + nút Nấu thử khi đủ mảnh, thanh may mắn Giỏ chợ + tỉ lệ công khai + cách có lượt), thực đơn hôm nay "★ còn n phần". Kiểm tra mỗi 30 giây, phiên mở/đóng thì vẽ lại.
+- Quầy: món hiếm ★ + "còn n" (`rareLeft`, hết thì mờ và báo), số lượng tối đa theo tồn kho, lý do `het_hang_hiem`. Bếp: ô kệ nguyên liệu hiếm "còn n" (`ctx.stockLeft` của plugin chon). Hàng chờ: dấu ★ và nhãn "Khách lạ"; phiếu chấm dòng khách lạ; phàn nàn khóa "Làm lại" khi hết hàng hiếm. Tổng kết: thẻ "Hàng hiếm cuối ca". Sổ công thức: nhóm "Công thức hiếm". Nấu thử món hiếm: ghi rõ không tốn hàng hiếm, kết quả mở món hoặc "Nấu thử lại". Túi đồ ở Chợ Công Thức liệt kê hàng hiếm. `meta-ui.rewardParts` hiện phần thưởng `rare`, `fragments`.
+
+**Kiểm chứng**: `tests/unit/m4-rare.test.mjs` (17 test: dữ liệu và cấu hình; lãi/giây ≤ 550đ, nguyên liệu hiếm không trừ Tiền quán; biên giờ 04:59/05:00/08:59/09:00/11:00/13:29/13:30/17:30/20:59/21:00; khóa lùi giờ, trong ca, ngoài khung, 1 lượt mỗi khung, lượt dở; sản lượng theo điểm và 50% mảnh trên 400 hạt giống + bảo hiểm; kho đầy/trần ngày → Muỗng Vàng; Giỏ chợ 40% trên 5.000 lượt, tỉ lệ thực 51%, không bao giờ 3 lượt liền không ra nguyên liệu, 100% khi hết món nhận mảnh; khách lạ 1 lần mỗi ngày thật, tải lại, trước ngày 3 / không giờ thật / lùi giờ; quà theo sao; mở món bằng nấu thử; đơn ≤ tồn kho trên 40 hạt giống; "còn n" và `het_hang_hiem`; tiêu hao lúc Ra món, bỏ món/làm lại bước; khóa làm lại; "Khách đổi ý"; tình huống và trần ngày; lưu/tải, dữ liệu hỏng, save cũ). Sửa có chủ ý: `data.test` (9 món, nguồn `hiem`, nguyên liệu hiếm, bảng C.3), `notebook-recipe-book` (9 món, trạng thái `hiem`), `incidents.test` và `m4-incidents` (dữ liệu thật đã có hàng hiếm: nhánh "chưa có dữ liệu" dùng bản dữ liệu bỏ hàng hiếm), `banned-words` (thêm `data/rare.js`). E2E `incident-notebook` đổi seed (1) 29 → 93, (3) 55 → 29 (`node tools/tim-seed.mjs`); (2) seed 8 và `m2-ui` seed 3 vẫn đúng.
+
+## 22. M4 bước 7–8: save v3, bản 0.4.0, mô phỏng cân bằng
+
+Thiết kế: `docs/tham-khao/m4-thiet-ke.md` mục F.1 bước 7–8, F.4, F.6.
+
+**Save v3** (`core/state.js`, `core/save.js`)
+- `STATE_VERSION = 3`. `migrate` chạy `migrateMeta` → `migrateContentM3` (tình huống M3, Sổ tay nghề) → `migrateContentM4` (mục 12): `incidents.lastKind/lastLoss/day/warn`, `state.rare` (`migrateRare`), ca đang dở (`migrateShiftM4`). Save v1, v2 nâng thẳng lên v3 trong một lần nạp; save v3 hợp lệ nạp lại giống hệt (`migrate(decodeSave(encodeSave(s)))` = `s`, kể cả ca dở có 2 tình huống, kho hàng hiếm, sổ tiền sự kiện).
+- Ca dở của bản 0.3 (v2) chơi tiếp được bằng mã M4: `migrateShiftM4` chỉ thêm trường thiếu (`ledger.eventIn/eventOut`, `incidentQueue`, `eventNotes`, `rareMenu`, `rareNotes`, `rareRolls`, `eventCostExtra`, `eventMissed`, `dayKey`, các khóa `mods` M4) và sửa trường M4 hỏng về mặc định; không đổi trường hợp lệ, không sửa object đầu vào. Tình huống đã lên lịch trong ca cũ vẫn xảy ra và xử lý được; lịch sử ca cũ (`history[]` không có `eventIn/eventOut/rare`) giữ nguyên, nơi đọc có mặc định.
+- Mã sao lưu: mã v1/v2 đưa vào bản 0.4 không cảnh báo; mã v3 đưa vào bản 0.3 báo "bản mới hơn" (`readCode` → `warn: 'ban_moi_hon'`), đúng hành vi. E2E `save-safety` dựng mã "bản mới hơn" bằng version 4.
+
+**Bản 0.4.0**: `package.json`, `sw.js` (`VERSION`, cache `bkn-0.4.0`), `APP_VERSION` (`ui/app.js`) cùng là 0.4.0 (`pwa.test.mjs` đối chiếu); `PRECACHE` có đủ tệp mới của M4 (`src/core/rare.js`, `src/data/rare.js`, `src/ui/screens/market.js`; test đối chiếu cây thư mục thật). Thư phiên bản `phien_ban_0_4_0` (mục 15.5; `data/mail.js` nằm trong danh sách tệp chữ hiển thị của `banned-words.test.mjs`). Ca mở ở 0.3.0 rồi mở lại ở 0.4.0 → `version-toast` "Game vừa lên phiên bản 0.4.0".
+
+**Cân bằng (bước 8)**
+- Chuỗi "Ngày đầu ra phố" (`data/chains.js`): tiền thưởng bước 4 / 5 / 6 từ 15.000 / 30.000 / 30.000đ xuống 10.000 / 15.000 / 10.000đ (bước 6 vẫn +5 Muỗng Vàng). Lý do và số đo: `docs/can-bang.md` mục 10 và 16.
+- Bus `rare.gained` thêm `bought` (hàng tự bỏ tiền mua ở Chị bán dạo, không phải thưởng) để mô phỏng tách được thưởng hiện vật.
+- `tests/unit/integration-meta.test.mjs`: người chơi tốt ghé phiên hàng đang mở trước mỗi ca (ca 08:00 / 12:00 / 17:30 trúng Chợ sớm / Xe ba gác trưa / Gánh đặc sản tối; lựa đúng hàng, điểm 100 theo `scoreChon`), đủ 3 mảnh thì nấu thử mở món hiếm (không tốn Tiền quán, không trừ kho), gặp tình huống trong ca thì chọn cách an toàn. Kiểm thêm: ngày thật 1 chỉ kịp Gánh đặc sản tối, từ ngày thật 2 đủ 3 phiên; món hiếm đầu tiên mở trong ngày thật 1–2, ≥ 2 món sau 5 ngày; khách có gọi món hiếm; chọn an toàn thì không bị phạt; kho ≤ 6 mỗi loại, nhận ≤ 6 phần + 3 mảnh mỗi ngày thật. **Tỉ lệ thưởng quy đổi tính cả hàng hiếm**: giá quy đổi (`rareValue`) của mỗi phần hàng hiếm đã dùng khi Ra món trong ngày (bus `rare.used`), cùng cách tính với Phiếu Chợ Sớm (phần giá vốn tiết kiệm lúc dùng); phần nhận vào kho chỉ ghi để theo dõi. Test mới "cân bằng M4: tỉ lệ thưởng ≤ 35% ở các hạt giống khó" (8 lượt từng vượt trần trước khi giảm thưởng chuỗi).
+- `tests/unit/integration-shift.test.mjs`: `META_SIM_LOG=1` in chênh lãi người chơi hoàn hảo / ẩu (chỉ số 21).
+
+**Kiểm chứng**: `tests/unit/m4-save.test.mjs` (6 test): save thật của bản 0.3.0 đang dở ca (`tests/fixtures/save-v2.mjs`, dựng bằng mã nguồn 0.3.0: ngày 8, ví 869.500đ, còn 1 phiếu trên dây, tình huống Ghi nợ chưa xảy ra, sổ nợ 1 khoản) → v3 giữ nguyên tiến trình, thêm mặc định M4, không làm tròn ví, không hủy ca; chơi tiếp tới hết (tình huống Ghi nợ vẫn bật, bất biến ví, ví bội 500đ) rồi chơi thêm 1 ca v3; nhận thư 0.4.0 (1 mảnh Trà tắc mật ong rừng + 1 phần Mật ong rừng, không tính trần ngày), save mới không nhận; save v1 → v3 nhận thư 0.2.0 và 0.4.0; dữ liệu M4 hỏng (loại, tỉ lệ lỗ, sổ ngày, nhắc nhở, kho, mảnh, bảo hiểm, sổ hôm nay, phiên dở, trường M4 của ca) được làm sạch và ca vẫn chơi hết; save v3 đủ trường M4 lưu/tải không đổi. Sửa có chủ ý: `core-economy` (version 3), `meta-save-progression` (v1 → STATE_VERSION 3, có thư 0.4.0), `meta-mail` (thư 0.2.0 + 0.4.0, seenVersion 0.4.0), `review-m3-fixes` ("bản mới hơn" = STATE_VERSION + 1), `meta-chains` (thưởng bước 4 là 10.000đ), `banned-words` (thêm `data/mail.js`). Kết quả 30/09/2026: 344 unit test, 33 kịch bản e2e xanh (e2e khoảng 19 phút).
+
+## 23. Ráp nối M4 và kiểm chứng toàn bộ
+
+**E2E mới** (dựng save bằng lõi thật ở `tests/helpers/m4-saves.mjs`, dùng chung với `tools/tim-seed.mjs` — không còn bản sao hàm dựng):
+- `tests/e2e/m4-rare.e2e.mjs` (seed 3, `node tools/tim-seed.mjs mon-hiem`): save ngày 4 có đủ 3 mảnh Trà tắc mật ong rừng + 1 phần mật ong (quà thư 0.4.0), `?devNow=2026-09-30T12:00` → thẻ phiên hàng `stall-card` `data-state="open"` "Xe ba gác trưa · Chú Tư" (3 khung giờ, phiên đang mở tô xanh) → Lựa hàng (kệ 9 ô có hàng dễ nhầm, lựa đúng 2 món hàng hiếm → 100 điểm, +1 phần mỗi món) → kho tăng đúng số phần nhận, không trừ Tiền quán → **tải lại trang**: thẻ "Hôm nay đã ghé", không còn nút vào phiên, kho và `rare.today.stalls` không đổi → nấu thử mở món (không trừ kho, mảnh đã dùng) → thực đơn "★ còn n phần" → Sổ công thức (món hiếm đã mở ghi "Công thức hiếm", món chưa mở "Mảnh n/3") → mở ca: `sh.rareMenu`, khách đầu gọi 2 ly món ★, quầy `menu-item` `data-left` và "★ còn n", kẹp phiếu chưa trừ kho, kệ bếp `shelf-left-mat_ong_rung` "còn n", Ra món trừ đúng 2 phần.
+- `tests/e2e/m4-tip-events.e2e.mjs`:
+  1. (seed 1, `tim-seed tip`) ca ngày 5 dựng sẵn bằng lõi (`tipShiftSave`: phục vụ quầy và nấu xong 2 phiếu, chưa giao) mở thẳng màn ca bán → giao: 5 sao hóa đơn 20.000đ "Tip: +5.000đ", 5 sao hóa đơn 10.000đ "Tip 0 (hóa đơn dưới 20.000đ)" (`score-sheet-tip`, `data-tip`); bán hết ca qua giao diện: mọi phiếu chấm tip ∈ {0, 5.000đ}, có tip ⇔ 5 sao và hóa đơn ≥ 20.000đ; Tổng kết: dòng "Tiền tip" = tổng tip các phiếu = lịch sử, dòng Hội thi (sự kiện ngày loại tốt) có giải thì `data-money` = `eventIn`, sổ lãi lỗ cộng lại đúng bằng lãi và khớp `history`.
+  2. (seed 92, `tim-seed attp`) save chơi tới ngày 18 = lần thứ hai của "Đoàn kiểm tra vệ sinh" (lần một ngày 6 đã bị nhắc nhở, `state.incidents.warn`): thẻ Chuẩn bị "Có lựa chọn" + dòng `day-event-warn`; không chuẩn bị, cố ý lấy nhầm 1 nguyên liệu (`cookAndServe({ wrongPick })`) → cuối ca bị phạt, `warn` được xóa, Tổng kết có dòng `summary-event-money` `data-event="kiem_tra_attp"` (`data-money` = −`eventOut`) và dòng "Phạt, chi sự kiện"; tình huống M4 mới (Khách bỏ quên ví, rồi Bình gas hết) hiện giữa hai khách, đúng 1 cách an toàn, chọn cách an toàn (không có nhãn "mất tiền"), `history.incidents` đúng thứ tự lên lịch; sổ lãi lỗ khớp lịch sử.
+- `tests/e2e/helpers.mjs`: `cookAndServe` trả thêm `{tip, tipText}` của phiếu chấm (`readSheetTip`), tùy chọn `onChon(line, recipe, i)` (soát kệ Chọn trước khi lấy) và `wrongPick` (dòng đầu lấy thêm 1 hàng bẫy).
+
+**Sửa khi ráp nối**
+- Tiền sự kiện bị kẹp ghi đúng nguyên nhân (`economy.eventMoneyIn/eventMoneyOut`): kẹp theo trần của một sự kiện trong ca (theo doanh thu dự kiến) → "Tiền thưởng mỗi sự kiện ca này tối đa {n} (theo doanh thu ca), phần dư Dì Sáu ghi công bằng lời khen." / "Mỗi lần phạt ca này tối đa {n} (theo doanh thu ca), Dì Sáu đỡ giùm con {phần dư}."; chỉ khi chạm trần ngày thật mới ghi "Hôm nay tiền thưởng từ sự kiện đã đủ mức…" / "Dì Sáu đỡ giùm con lần này." (trước đây giải Hội thi 20.000đ bị kẹp còn 18.000đ theo trần của ca lại ghi "Hôm nay … đã đủ mức" dù là khoản thưởng đầu tiên trong ngày). Chữ ghi đè được bằng `INCIDENT_CONFIG.sparedCapText/gainCapText` như hai câu cũ.
+- Thẻ sự kiện ngày ở màn Chuẩn bị ghi mức phạt là mức tối đa ("bị phạt tối đa 20.000đ"), khớp luật "phạt có trần".
+- `ui/format.signedVND`: số âm dùng dấu trừ dài "−" như các dòng trừ của sổ lãi lỗ (trước là "-18.000đ" cạnh "−18.000đ").
+- Giỏ chợ / quà khách lạ khi kho đầy hoặc đã đủ 6 phần hôm nay (`rare.finishShiftRare`): ghi chú nói rõ "Kho hoặc mức hôm nay đã đủ, quà đổi thành n Muỗng Vàng" (trước đây vẫn ghi "Giỏ chợ có nguyên liệu hiếm." dù kho không thêm phần nào; chơi thử ghé đủ phiên hàng + khách lạ là chạm mức 6 phần ngay ca thứ hai trong ngày).
+- Test hồi quy: `tests/unit/review-m4-fixes.test.mjs` (5 test).
+
+**Kết quả 30/09/2026**: `npm test` 349/349; `npm run e2e` 36/36 kịch bản (33 cũ + 1 `m4-rare` + 2 `m4-tip-events`), khoảng 28 phút; seed e2e cũ vẫn đúng (`node tools/tim-seed.mjs`: `mua-ngay-4` 3, `ghi-no` 93, `mo-hang` 8, `doi-y` 29), không nới kiểm tra nào. Hành trình dài `node tests/e2e/hanh-trinh.mjs` (chạy tay, mục 18.1) chạy lại với M4: 12 phút, thoát mã 0, 0 lỗi console/trang, 0 thao tác kẹt, không lỗi bố cục; 4 ca thật qua giao diện (ca ngày 3 ở mức Nhiều gặp 2 tình huống mới: Cô Hai ve chai → Bán, Khách bỏ quên ví → Cất giữ), đủ điều kiện lên Chặng 2 ở ngày game 9.
+
+**Chơi thử qua giao diện** (`scratchpad`, không nằm trong repo): Playwright 390×844, save ngày 5 dựng bằng lõi, mức tần suất Vừa, các ca liên tiếp lúc 08:10 / 12:05 / 18:00 (trúng 3 phiên hàng) và sang ngày thật mới; ghé phiên hàng đang mở, nấu thử khi đủ mảnh, chọn lựa chọn của sự kiện ngày, xử lý tình huống bằng cách an toàn; bộ quan sát trong trang ghi mọi thông báo nổi / hộp thoại / phiếu chấm, có đè lên sân khấu mini-game không, có hai hộp thoại cùng mở không. Kết quả ghi ở mục 23.1.
+- Ghi chú công cụ thử: đồng hồ giả của Playwright (`page.clock`) sau nhiều lần `page.goto` + `runFor` trong CÙNG một trang có thể làm `performance.now()` lùi lại, vòng rAF của game (xin lúc mở trang) chờ tới "tương lai" nên ca đứng ở 06:00 (không có lỗi console). Trình duyệt thật `performance.now()` luôn tăng, nên đây không phải lỗi game; kịch bản chơi thử nhiều ca mở ngữ cảnh mới mỗi ca và nạp save của ca trước. E2E trong `npm run e2e` không gặp (mỗi kịch bản điều hướng ít lần).
+
+### 23.1 Kết quả chơi thử (30/09/2026)
+9 ca qua giao diện (seed 7: 5 ca ngày game 5–9; seed 11: 4 ca ngày 5–8), mỗi ca một ngữ cảnh trình duyệt mới nạp save ca trước, mức Vừa:
+- Sự kiện ngày: 6/9 ngày có (Ngày lãnh lương, Đại lý trà tài trợ + nhận tài trợ → +15.000đ, Hội thi → Giải Nhất +20.000đ, Trời mưa + căng bạt, Nắng nóng, Tắc lên giá → giá vốn +5.000đ ghi ở Tổng kết); không 2 ngày trống liền, không trùng hôm trước.
+- Tình huống trong ca: 7/9 ca có ít nhất 1, 3/9 ca có 2 (Người giao hàng, Ghi nợ, Khách quê gửi quà + Khách đổi ý, Đoàn khách hỏi đường, Khách đổi ý + Khách bỏ quên ví, Đoàn khách hỏi đường + Ghi nợ, Khách mở hàng); hai tình huống trong một ca luôn cách nhau ≥ 2 khách; mọi tình huống lên lịch đều hiện đúng lúc quầy trống.
+- Hàng hiếm: ghé đủ 3 phiên hàng mỗi ngày (100 điểm, 1–2 phần, 3 lần ra mảnh), khách lạ ở ca đầu mỗi ngày thật (quà 2 phần), Giỏ chợ mỗi ca (bảo hiểm, mảnh); đủ 3 mảnh ở ca thứ 3 → nấu thử mở Trà tắc mật ong rừng, từ ca sau thực đơn có món ★.
+- Không có thông báo nổi / hộp thoại nào đè lên sân khấu mini-game (lấy mẫu mỗi 250 ms), không có 2 hộp thoại cùng mở, 0 lỗi console/trang. Mỗi ca 16–32 thông báo nổi (kẹp phiếu, thối đúng, tiến độ Việc hôm nay/chuỗi — có từ M2–M3), luôn nằm trên dải khách, không che thanh 4 khâu.
+- Sửa sau chơi thử: ghi chú Giỏ chợ đổi Muỗng Vàng khi đủ mức (mục 23).
+
+### 23.2 Vòng soát lỗi M4 lần 2 (tóm tắt thay đổi)
+- **Luật nhịp chung** (M4R-01, UX-04): "không 2 sự kiện xấu liền nhau" xét trên dòng thời gian chung của sự kiện ngày và tình huống: `state.incidents.lastEvent` (sự kiện ngày ghi lúc mở ca, tình huống ghi lúc xử lý); `incidentCandidates` bỏ loại xấu khi sự kiện ngay trước là loại xấu hoặc sự kiện ngày của ngày mai (chốt lúc mở ca) là loại xấu; `announceDayEvent` không bốc loại xấu khi sự kiện ngay trước chắc chắn là loại xấu (chỉ đổi loại, không đổi có/không có sự kiện).
+- **Chốt sự kiện ngày đã báo** (M4R-05): `state.incidents.announced`; màn Chuẩn bị chốt hôm nay, mở ca chốt hôm nay và ngày mai; đổi mức "Tần suất sự kiện" chỉ áp cho ngày chưa chốt (Cài đặt ghi rõ).
+- **Lựa hàng lưu rổ dở** (M4R-02): plugin Chọn gọi `ctx.onChange`, màn `market` lưu `pendingStall.picked/mistakes` (`rare.saveStallDraft`, chọn nhầm thì lưu ngay), "Lựa tiếp" khôi phục rổ; `finishStall` lấy lần nhầm lớn nhất và kẹp điểm ≤ 100 − 15 × lần nhầm.
+- **Sổ trần tiền sự kiện ngày thật** (M4R-03): `sh.dayKey` theo giờ tin cậy; `eventDayBook` chỉ mở sổ mới khi khóa mới hơn.
+- **Quà hàng hiếm khi đủ mức hôm nay** (M4R-04, UX-01): "Khách quê gửi quà" không bốc/không bật; lựa chọn báo loa dùng chữ không hứa hàng; câu kết quả dùng `rare.overflowText`; chip ở hộp tình huống và dòng Tổng kết ghi "kho hoặc mức hàng hiếm hôm nay đã đủ"; chân thẻ "Hàng hiếm cuối ca" chỉ nói "cất vào kho" khi thật sự có hàng vào kho.
+- **Giỏ chợ** (M4R-06, UX-06): bảo hiểm mảnh (`fragSure`), cùng tới hạn thì nguyên liệu trước; `basketOdds.allReason` → thẻ Kho hàng hiếm ghi đúng lý do 100% nguyên liệu; Túi đồ ghi tỉ lệ công khai (`bag-basket`).
+- **Hủy ca dở** (M4R-07): hoàn thêm `ledger.eventOut` (trừ tiền tự mua hàng hiếm đã vào kho) và `mods.prepCost`; thông báo lúc mở game ghi "giá vốn, phạt và chi sự kiện".
+- **Chữ hiển thị**: tiền thưởng sự kiện ngày ghi "tối đa" + dòng giải thích trần theo doanh thu ca (M4R-08, UX-05); Tổng kết ghi "Đã chi … lúc mở hàng" (UX-11); Sổ công thức ghi phần giá vốn là hàng hiếm quy đổi (UX-12, `recipeBook().entries[].rareCost`, testid `book-hiem-cost-<id>`); thư 0.4.0 sửa câu (UX-13); Cài đặt ghi "sự kiện có phạt luôn có cách an toàn, vài sự kiện chỉ là chi phí nhỏ được báo trước" (UX-10).
+- **Tên gọi, hình minh họa** (UX-07, UX-08, UX-09): màn/thẻ "Gánh hàng quê" (khác sự kiện ngày "Chợ phiên"), tiêu đề thẻ ghi trạng thái (`stall-title`); người bán Gánh tối "Anh Tám"; tình huống tiền nghi giả dùng "khách đi đường / vãng lai" (không gọi "khách lạ"); "Cô bán dạo" có cách tự xưng `{self}` (who là `{name, gender, self}`); "Cô Út bán xôi" khớp hình cô chú; "Anh giao hàng đội nón vàng"; "Chị hướng dẫn viên của một đoàn khách du lịch"; bước "Đánh sữa muối" / "Rưới lớp sữa muối" có hình riêng `sua_muoi` (bước khai báo `icon`, `_util.ingIcon(ing, ctx, icon)`); trứng gà ta quê Long An.
+- **Bố cục bếp** (UX-02, UX-03): lưới chai Nêm `repeat(auto-fit, minmax(96px, 1fr))` (3 chai một hàng ở 360px), vùng trống của lưới không nhận chạm, vùng chơi Nêm nhiều chai thấp hơn (`min-height` 140px) để nút Xong không bị đẩy xuống dưới thanh Quầy/Bếp ở 360×740; `.mg-area` căn giữa an toàn (`safe center`), thanh chân mini-game nằm trên nội dung tràn; kệ 12 ô gọn lại cả ở 390×844 (`max-height: 900px`); thẻ công thức ghi " · kho còn n" cho nguyên liệu hiếm (`card-left-<ingId>`).
+- **Kiểm chứng**: `tests/unit/review-m4-round2.test.mjs` (14 test, gồm mô phỏng 8 hạt giống × 45 ca × 2 mức đếm cặp xấu liền nhau trên dòng thời gian chung = 0); sửa có chủ ý: `incidents.test` (mặc định `incidents` thêm `lastEvent`, `announced`), `m4-rare.test` (Giỏ chợ có bảo hiểm mảnh: tỉ lệ thực nguyên liệu ≈ 49%, không bao giờ 4 lượt liền không ra mảnh; "Khách quê gửi quà" không bật khi đủ mức hôm nay), `m4-save.test` (câu thư 0.4.0), `data.test` (icon của bước). E2E: `m4-rare` thêm "lựa hàng dở → tải lại → Lựa tiếp" và "bước Nêm 3 chai ở 360×740"; `incident-notebook` (3) seed 29 → 64 (`node tools/tim-seed.mjs doi-y`: luật nhịp chung đổi tập tình huống bốc được); `tests/helpers/m4-saves.mjs` `playedSave` nhận `freq` (mức tần suất đặt từ đầu — sự kiện ngày mai đã chốt lúc mở ca trước nên không đổi mức sau khi chơi), `tipShiftSave` dùng `freq: 'it'`; `tim-seed tip` kiểm thêm sự kiện ngày là Hội thi.
+- **Kết quả**: `npm test` 363/363 (349 cũ + 14 mới); `npm run e2e` 38/38 kịch bản (36 cũ + 2 mới), khoảng 28 phút; `node tools/tim-seed.mjs`: mọi seed đang dùng hợp lệ (`doi-y` đổi sang 64). Mô phỏng lại của người soát lỗi: 0 cặp sự kiện xấu liền nhau (mức Vừa, Nhiều), Giỏ chợ 0 lượt ra nguyên liệu khi bảo hiểm mảnh tới hạn, lựa hàng tải lại → 85 điểm + thẻ "Kiểm hàng", trần tiền sự kiện không mở lại khi lùi giờ.

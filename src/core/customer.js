@@ -3,6 +3,7 @@ import { nextFloat, chance, pick, weightedPick, makeRand } from './rng.js'
 import { cfg, emit } from './state.js'
 import { linePar } from './kitchen.js'
 import { averageRating } from './scoring.js'
+import { isRareRecipe, rarePortions, rareConfig } from './rare.js'
 
 // Trần số khách một ca thường (Chợ phiên có trần riêng BALANCE.eventCustomerCap).
 export const MAX_CUSTOMERS = 8
@@ -79,13 +80,21 @@ export function normalizeLines(lines) {
 
 // Món khách có thể gọi: có trong state.recipes và source 'default'/'shop'; món 'event' khi đã nhận qua sự kiện
 // (state.eventRecipes: giữ vĩnh viễn, bán quanh năm) hoặc khi sự kiện đang mở. Chưa sở hữu thì không ai gọi.
+// M4: món hiếm (source 'hiem') khi đã có và — đang có ca: nằm trong sh.rareMenu (chốt lúc mở ca, không kiểm tra liên tục
+// trong ca để thực đơn ở quầy không đổi giữa chừng); chưa có ca (màn Chuẩn bị, lúc sinh đơn trong startShift): kho đủ ít
+// nhất 1 phần.
 export function orderableRecipes(state, ctx) {
   const R = (ctx.data && ctx.data.RECIPES) || {}
   const isEv = ctx.data && typeof ctx.data.isEventActive === 'function' ? ctx.data.isEventActive : null
+  const sh = state.shift
   return Object.keys(state.recipes || {}).filter(id => {
     const r = R[id]
     if (!r) return false
     if (r.source === 'default' || r.source === 'shop') return true
+    if (isRareRecipe(r)) {
+      if (sh && !sh.tasting) return Array.isArray(sh.rareMenu) && sh.rareMenu.includes(id)
+      return rarePortions(state, r) >= 1
+    }
     if (r.source === 'event' && state.eventRecipes && state.eventRecipes[id]) return true
     if (r.source === 'event' && isEv) {
       try { return !!isEv(r.eventId ?? r.id, state) } catch { return false }
@@ -94,13 +103,16 @@ export function orderableRecipes(state, ctx) {
   })
 }
 
-function recipeWeight(state, id, day, mods) {
+function recipeWeight(state, id, day, mods, ctx) {
   const p = state.recipes[id]
   let w = 1
   // món mới mua được gọi ×2 trong 2 ca đầu
   if (p && p.boughtDay > 0 && day - p.boughtDay >= 0 && day - p.boughtDay < 2) w = 2
   // M2: sự kiện ngày (Nắng nóng) và sự kiện có thời hạn (món lễ) — sh.mods.recipeWeight
   if (mods && mods.recipeWeight && mods.recipeWeight[id]) w *= mods.recipeWeight[id]
+  // M4: món hiếm được gọi nhiều hơn (RARE_CONFIG.orderWeight ×1,5); số phần vẫn không vượt tồn kho (shift.js)
+  const R = ctx && ctx.data && ctx.data.RECIPES
+  if (R && isRareRecipe(R[id])) w *= Number(rareConfig(ctx).orderWeight) || 1
   return w
 }
 
@@ -139,7 +151,7 @@ export function makeRequest(state, sh, ctx, opts = {}) {
   const R = ctx.data.RECIPES
   const menu = opts.menu || orderableRecipes(state, ctx)
   if (!menu.length) return []
-  const weighted = menu.map(id => ({ id, w: recipeWeight(state, id, day, sh.mods) }))
+  const weighted = menu.map(id => ({ id, w: recipeWeight(state, id, day, sh.mods, ctx) }))
   const pickRecipe = (exclude = []) => {
     const pool = weighted.filter(x => !exclude.includes(x.id))
     return (weightedPick(sh, pool.length ? pool : weighted) || weighted[0]).id
@@ -161,7 +173,9 @@ export function makeRequest(state, sh, ctx, opts = {}) {
       }
     }
   }
-  const w = cfg(ctx, 'lineCountWeights')
+  // M4: Ngày lãnh lương (sh.mods.lineCountWeights) khách hay gọi thêm món; còn lại theo BALANCE
+  const mw = sh.mods && sh.mods.lineCountWeights
+  const w = Array.isArray(mw) && mw.length >= 3 ? mw : cfg(ctx, 'lineCountWeights')
   // mỗi dòng một món khác nhau (đơn cùng món nhiều dòng chỉ có ở nhánh tách dòng)
   const count = Math.min(menu.length, weightedPick(sh, [{ n: 1, w: w[0] }, { n: 2, w: w[1] }, { n: 3, w: w[2] }]).n)
   const lines = []
@@ -238,7 +252,9 @@ export function speechFor(customer, sh, ctx) {
       const s = fn({
         request: customer.request, persona: personaObj(ctx, customer.persona), region: customer.region, recipes: R,
         rand: makeRand(sh, 'rngText'), gender: customer.gender, name: customer.name,
-        regularId: customer.regularId, firstVisit: !!customer.tutorial
+        regularId: customer.regularId, firstVisit: !!customer.tutorial,
+        // M4: khách lạ có cách tự xưng riêng
+        ...(customer.self ? { self: customer.self } : {})
       })
       if (s) return String(s)
     } catch { /* dùng câu dự phòng */ }
@@ -256,7 +272,7 @@ export function lineFor(kind, customer, sh, ctx, vars = {}) {
   const fn = ctx.data && ctx.data.makeLine
   if (typeof fn !== 'function') return ''
   try {
-    const v = { gender: customer.gender, name: customer.name, ...vars }
+    const v = { gender: customer.gender, name: customer.name, ...(customer.self ? { self: customer.self } : {}), ...vars }
     return String(fn(kind, { persona: personaObj(ctx, customer.persona), region: customer.region, rand: makeRand(sh, 'rngText'), vars: v }) || '')
   } catch { return '' }
 }

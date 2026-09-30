@@ -1,4 +1,5 @@
-// 20 thẻ Mẹo nghề của MVP. Mỗi thẻ mở lần đầu khi gặp `trigger` (mã sự kiện hoặc mã lỗi).
+// 24 thẻ Mẹo nghề (20 thẻ của MVP, M4 thêm 4 thẻ: Soi tiền, Chờ tiền về, Kiểm hàng, Giữ lối đi). Mỗi thẻ mở lần đầu
+// khi gặp `trigger` (mã sự kiện hoặc mã lỗi). Nhóm: Quầy 14 / Bếp 5 / Kho 2 / Phục vụ, Quản lý 3.
 // `hint`: gợi ý cách mở thẻ, hiện ở Sổ tay nghề khi thẻ còn khóa.
 // Con số trong mẹo là số liệu minh họa, cần người làm nghề duyệt lại trước khi dùng đào tạo.
 
@@ -61,6 +62,13 @@ export const TIPS = deepFreeze([
   { id: 'bao_truoc_thoi_gian_cho', group: 'quay', title: 'Báo trước thời gian chờ', trigger: 'cho_lau',
     text: 'Bếp quá tải thì báo trước thời gian chờ cho khách mới. Khách chờ có hẹn dễ chịu hơn khách chờ mù mờ.',
     hint: 'Để khách chờ món quá lâu.' },
+  // M4: tình huống trong ca "Tờ tiền nghi giả" và "Người giao hàng nói khách chuyển khoản rồi"
+  { id: 'soi_tien', group: 'quay', title: 'Soi tiền trước khi thối', trigger: 'tien_gia',
+    text: 'Tờ tiền lớn thì soi trước khi thối: vuốt thấy chữ nổi, đưa ra chỗ sáng thấy hình ẩn. Nghi ngờ thì mời khách chuyển khoản.',
+    hint: 'Gặp khách đưa tờ tiền nghi là tiền giả (từ ngày 5).' },
+  { id: 'cho_tien_ve', group: 'quay', title: 'Thấy tiền về mới giao món', trigger: 'cho_tien_ve',
+    text: 'Lời nói "chuyển khoản rồi" chưa phải là tiền. Thấy tiền về đúng số trong tài khoản mới giao món.',
+    hint: 'Gặp người giao hàng nói khách đã chuyển khoản (từ ngày 5).' },
   // Bếp
   { id: 'rua_roi_moi_thai', group: 'bep', title: 'Rửa rồi mới thái', trigger: 'chua_rua',
     text: 'Rửa rau dưới vòi nước chảy rồi mới thái.',
@@ -81,13 +89,21 @@ export const TIPS = deepFreeze([
   { id: 'dinh_luong_chuan', group: 'kho', title: 'Định lượng chuẩn', trigger: 'thieu_nguyen_lieu',
     text: 'Định lượng chuẩn giúp món đồng đều và giữ được giá vốn.',
     hint: 'Lấy thiếu, thừa hoặc nhầm nguyên liệu, hoặc mua món đầu tiên ở Chợ Công Thức.' },
+  // M4: phiên hàng hiếm, mini-game Lựa hàng (chọn nhầm hàng thường)
+  { id: 'kiem_hang', group: 'kho', title: 'Kiểm hàng trước khi nhận', trigger: 'kiem_hang',
+    text: 'Nhận hàng thì kiểm tận mắt từng món, đúng loại, đúng nguồn rồi mới ký nhận.',
+    hint: 'Chọn nhầm hàng thường khi lựa hàng hiếm ở gánh hàng quê.' },
   // Phục vụ, Quản lý
   { id: 'xu_ly_phan_nan', group: 'phuc_vu', title: 'Xử lý phàn nàn', trigger: 'complaint',
     text: 'Khách phàn nàn: lắng nghe, xin lỗi, giải quyết, cảm ơn.',
     hint: 'Gặp khách phàn nàn về món.' },
   { id: 'ty_le_gia_von', group: 'phuc_vu', title: 'Tỉ lệ giá vốn', trigger: 'shift_end',
     text: 'Quán nhỏ thường có giá vốn khoảng 35–45% giá bán; nhà hàng thường giữ khoảng 28–35% (số liệu minh họa).',
-    hint: 'Bán xong một ca và đọc Tổng kết.' }
+    hint: 'Bán xong một ca và đọc Tổng kết.' },
+  // M4: sự kiện ngày "Trật tự đô thị nhắc giữ vỉa hè"
+  { id: 'giu_loi_di', group: 'phuc_vu', title: 'Giữ lối đi cho người đi bộ', trigger: 'lan_chiem',
+    text: 'Xe đẩy bán trên vỉa hè phải chừa lối đi cho người đi bộ. Hàng chờ dài thì mời khách đứng gọn một bên.',
+    hint: 'Gặp ngày Trật tự đô thị nhắc giữ vỉa hè (từ ngày 5).' }
 ])
 
 /** Các thẻ mở bởi một mã sự kiện/lỗi. */
