@@ -11,6 +11,10 @@ import { createTicketRail } from '../components/ticket-rail.js'
 import { createRing, moodFor } from '../components/patience.js'
 import { mountCounter } from './counter.js'
 import { formatVND, starString } from '../format.js'
+import { questDef, questText } from '../../core/quests.js'
+import { chainDefs } from '../../core/chains.js'
+import { icon } from '../art.js'
+import { npcFace } from '../components/meta-ui.js'
 
 const ORDER_CODES = ['sai_mon', 'thieu_mon', 'thua_mon', 'sai_so_luong', 'sai_ghi_chu']
 // Phiếu chấm tách 2 hàng theo khâu (đặc tả mục 3.11): Báo tổng (khâu Thanh toán) và Thối tiền (khâu Tính tiền).
@@ -208,6 +212,56 @@ export default {
       else if (reason === 'het_kien_nhan') app.toast(`${c.name} chờ lâu quá nên bỏ về.`, { kind: 'bad' })
     }))
     offs.push(app.bus.on('qr.arrived', () => app.sound('coin')))
+
+    // ---------- M2: thông báo tiến độ (không chặn thao tác) ----------
+    const M = S.meta
+    const lastQuestToast = {}
+    offs.push(app.bus.on('quest.progress', (c = {}) => {
+      const def = questDef(app.ctx, c.id)
+      if (!def) return
+      const text = questText(def, c.target)
+      if (c.justDone) {
+        app.toast(`Xong: ${text}. Nhận thưởng ở màn Chuẩn bị.`, { kind: 'good', title: M.quests, testid: 'quest-toast' })
+        lastQuestToast[c.id] = performance.now()
+        return
+      }
+      if (!c.progress) {
+        if (def.breakOn) app.toast(`${M.quests}: chuỗi "${text}" bị đứt, đếm lại từ đầu.`, { kind: 'bad', testid: 'quest-toast' })
+        return
+      }
+      const t = performance.now()
+      if (lastQuestToast[c.id] && t - lastQuestToast[c.id] < 4000) return
+      lastQuestToast[c.id] = t
+      const num = def.money ? `${formatVND(c.progress)}/${formatVND(c.target)}` : `${c.progress}/${c.target}`
+      app.toast(M.questProgress.replace('{cur}/{target}', num).replace('{text}', text), { kind: 'info', testid: 'quest-toast', duration: 1800 })
+    }))
+    offs.push(app.bus.on('chain.step', ({ chainId, stepIndex, done } = {}) => {
+      const def = chainDefs(app.ctx)[chainId]
+      if (!def) return
+      const who = (app.data.NPCS && app.data.NPCS[def.npc] && app.data.NPCS[def.npc].name) || def.name
+      app.toast(done ? `Xong chuỗi "${def.name}"! Nhận thưởng ở màn Chuẩn bị.` : `Xong bước ${stepIndex + 1}/${def.steps.length}. Nhận thưởng ở màn Chuẩn bị.`,
+        { kind: 'good', title: `${who} dặn`, icon: npcFace(def.npc), testid: 'chain-toast', duration: 2600 })
+    }))
+    offs.push(app.bus.on('tem.gained', ({ eventId, n, today, cap } = {}) => {
+      const ev = app.data.EVENTS && app.data.EVENTS[eventId]
+      if (!ev || !n) return
+      const full = cap && today >= cap
+      app.toast(`+${n} ${ev.currencyName}` + (full ? ` · ${M.eventDailyCap.replace('{n}', String(cap)).replace('{currency}', ev.currencyName)}` : ` (hôm nay ${today}/${cap})`),
+        { kind: 'good', icon: icon('phan_trang'), testid: 'tem-toast', duration: 1600 })
+    }))
+    // Đầu ca: nhắc sự kiện ngày / Phiếu Chợ Sớm đang áp dụng
+    {
+      const sh = app.state.shift
+      const mods = sh && sh.mods
+      if (mods && sh.t < 2) {
+        const de = mods.dayEvent && app.data.DAY_EVENTS && app.data.DAY_EVENTS[mods.dayEvent.id]
+        if (de) {
+          const ch = mods.dayEvent.choice && de.choice ? ` Đã ${de.choice.label.toLocaleLowerCase('vi-VN')}.` : ''
+          app.toast(de.desc + ch, { title: de.name, kind: 'info', icon: icon(de.icon || de.id), testid: 'day-event-toast', duration: 3200 })
+        }
+        if (mods.cogsMul && mods.cogsMul < 1) app.toast(M.couponActive, { kind: 'good', icon: icon('phieu_cho_som'), duration: 2600 })
+      }
+    }
     offs.push(app.bus.on('ui.tab', ({ tab } = {}) => { if (tab && tab !== active) showTab(tab) }))
 
     // ---------- Phàn nàn ----------

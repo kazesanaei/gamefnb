@@ -7,6 +7,8 @@ import { beginCounter, confirmQr } from './order.js'
 import { abandonDish } from './kitchen.js'
 import { averageRating } from './scoring.js'
 import { summarizeShift, settleShift } from './economy.js'
+import { prepareShiftMods, applyCustomerMods } from './events.js'
+import { chainForcesFakeQr } from './chains.js'
 
 export function emptyLedger() {
   return { sales: 0, cash: 0, qr: 0, listValue: 0, undercharge: 0, overchange: 0, rounding: 0,
@@ -67,9 +69,13 @@ export function loadFactor(shift) {
 }
 
 // Tạo ca mới cho state.day (ca đang dở thì trả lại ca đó).
+// M2: áp sự kiện ngày / sự kiện có thời hạn / Phiếu Chợ Sớm (sh.mods, xem events.prepareShiftMods);
+// ctx.now() (tùy chọn) cho biết sự kiện có thời hạn nào đang mở. Chuỗi "Làm quen QR" có thể ép 1 khách QR giả.
 export function startShift(state, ctx) {
   if (state.shift) return state.shift
   const day = state.day
+  const nowMs = ctx && typeof ctx.now === 'function' ? Number(ctx.now()) : null
+  const mods = prepareShiftMods(state, ctx, Number.isFinite(nowMs) ? nowMs : null)
   const float = makeFloat()
   const sh = {
     day, rng: seedFrom(state.seed, day), rngText: seedFrom(state.seed, day, 'text'),
@@ -82,9 +88,10 @@ export function startShift(state, ctx) {
     scoreSheets: [], counterStreak: 0, nextTicketNo: 1,
     counts: {}, reputationGain: 0, tipsShown: 0, reviews: [], receipts: [],
     fixedCost: cfg(ctx, 'fixedCostPerShift'), loanRepayRate: cfg(ctx, 'loanRepayRate'),
-    walletStart: state.wallet
+    walletStart: state.wallet,
+    mods
   }
-  const N = customerCount(state, ctx, day)
+  const N = applyCustomerMods(customerCount(state, ctx, day), mods, ctx)
   const RG = (ctx.data && ctx.data.REGULARS) || {}
   const regIds = Object.keys(RG)
   // khách quen quay lại (từ ngày 2)
@@ -106,6 +113,11 @@ export function startShift(state, ctx) {
     }
     list.push(c)
     sh.customers[id] = c
+  }
+  // chuỗi "Làm quen QR" ở bước phát hiện ảnh giả: ép 1 khách (không phải khách đầu) trả bằng ảnh giả
+  if (chainForcesFakeQr(state, ctx)) {
+    const target = list.find((c, i) => i >= Math.min(1, list.length - 1) && !c.tutorial)
+    if (target) target.forcePay = 'qr_fake'
   }
   sh.plan = planArrivals(sh, list, ctx)
   state.shift = sh
@@ -197,7 +209,9 @@ function compactHistory(s) {
     cashSales: s.cashSales, qrSales: s.qrSales, tips: s.tips, cogs: s.cogs, waste: s.waste,
     refunds: s.refunds, undercharge: s.undercharge, overchange: s.overchange, fakeQrLoss: s.fakeQrLoss,
     fixedCost: s.fixedCost, drawerDiff: s.drawerDiff, avgStars: s.avgStars, reputationGain: s.reputationGain,
-    counterErrors: s.counterErrors, kitchenErrors: s.kitchenErrors, loanRepaid: s.loanRepaid
+    counterErrors: s.counterErrors, kitchenErrors: s.kitchenErrors, loanRepaid: s.loanRepaid,
+    // M2: review đến muộn (thối thiếu không bị phát hiện) → Hộp thư ngày thật hôm sau
+    lateReviews: (s.lateReviews || []).map(r => ({ customerId: r.customerId, name: r.name, amount: r.amount || 0 }))
   }
 }
 

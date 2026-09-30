@@ -60,7 +60,8 @@ export function normalizeLines(lines) {
   return out
 }
 
-// Món khách có thể gọi: có trong state.recipes và source 'default'/'shop' (hoặc 'event' khi đang mở).
+// Món khách có thể gọi: có trong state.recipes và source 'default'/'shop'; món 'event' khi đã nhận qua sự kiện
+// (state.eventRecipes: giữ vĩnh viễn, bán quanh năm) hoặc khi sự kiện đang mở. Chưa sở hữu thì không ai gọi.
 export function orderableRecipes(state, ctx) {
   const R = (ctx.data && ctx.data.RECIPES) || {}
   const isEv = ctx.data && typeof ctx.data.isEventActive === 'function' ? ctx.data.isEventActive : null
@@ -68,6 +69,7 @@ export function orderableRecipes(state, ctx) {
     const r = R[id]
     if (!r) return false
     if (r.source === 'default' || r.source === 'shop') return true
+    if (r.source === 'event' && state.eventRecipes && state.eventRecipes[id]) return true
     if (r.source === 'event' && isEv) {
       try { return !!isEv(r.eventId ?? r.id, state) } catch { return false }
     }
@@ -75,11 +77,27 @@ export function orderableRecipes(state, ctx) {
   })
 }
 
-function recipeWeight(state, id, day) {
+function recipeWeight(state, id, day, mods) {
   const p = state.recipes[id]
+  let w = 1
   // món mới mua được gọi ×2 trong 2 ca đầu
-  if (p && p.boughtDay > 0 && day - p.boughtDay >= 0 && day - p.boughtDay < 2) return 2
-  return 1
+  if (p && p.boughtDay > 0 && day - p.boughtDay >= 0 && day - p.boughtDay < 2) w = 2
+  // M2: sự kiện ngày (Nắng nóng) và sự kiện có thời hạn (món lễ) — sh.mods.recipeWeight
+  if (mods && mods.recipeWeight && mods.recipeWeight[id]) w *= mods.recipeWeight[id]
+  return w
+}
+
+// M2: thêm 1 ghi chú "hợp thời tiết" (sh.mods.noteBoost) cho dòng chưa có ghi chú, nếu món có ghi chú đó.
+function boostNotes(sh, lines, R, day, ctx) {
+  const m = sh.mods
+  if (!m || !m.noteBoost || !(m.noteBoostRate > 0) || day < cfg(ctx, 'noteFromDay')) return lines
+  for (const l of lines) {
+    const ids = m.noteBoost[l.recipeId]
+    if (!ids || l.notes.length) continue
+    const avail = ids.filter(id => ((R[l.recipeId] && R[l.recipeId].notes) || []).some(n => n.id === id))
+    if (avail.length && chance(sh, m.noteBoostRate)) l.notes = [pick(sh, avail)]
+  }
+  return lines
 }
 
 // Chọn ghi chú cho một dòng: mỗi nhóm (note.group, mặc định là id) tối đa 1.
@@ -104,7 +122,7 @@ export function makeRequest(state, sh, ctx, opts = {}) {
   const R = ctx.data.RECIPES
   const menu = opts.menu || orderableRecipes(state, ctx)
   if (!menu.length) return []
-  const weighted = menu.map(id => ({ id, w: recipeWeight(state, id, day) }))
+  const weighted = menu.map(id => ({ id, w: recipeWeight(state, id, day, sh.mods) }))
   const pickRecipe = (exclude = []) => {
     const pool = weighted.filter(x => !exclude.includes(x.id))
     return (weightedPick(sh, pool.length ? pool : weighted) || weighted[0]).id
@@ -140,7 +158,7 @@ export function makeRequest(state, sh, ctx, opts = {}) {
     if ((R[id].notes || []).length && chance(sh, noteRate)) notes = pickNotes(sh, R[id], day, ctx, chance(sh, 0.2) ? 2 : 1)
     lines.push({ recipeId: id, qty, notes })
   }
-  return normalizeLines(lines)
+  return normalizeLines(boostNotes(sh, lines, R, day, ctx))
 }
 
 // Kiên nhẫn xếp hàng (giây): 45 × persona, từ ngày 4 giảm 1 giây/ngày (sàn 32), ghế nhựa ×1,2.
@@ -247,6 +265,8 @@ export function createCustomer(state, sh, ctx, { id, arriveAt = 0, regularId = n
     starCap: 5, apologyBonus: 0, complaint: null, reviewLate: null, lostReason: null,
     expectedSec: 0
   }
+  // M2: sự kiện ngày (Trời mưa: kiên nhẫn ×1,2)
+  if (sh.mods && sh.mods.patienceMul && sh.mods.patienceMul !== 1) c.patienceSec = Math.round(c.patienceSec * sh.mods.patienceMul * 10) / 10
   c.expectedSec = expectedServiceSec(c.request, ctx)
   c.speech = speechFor(c, sh, ctx)
   return c

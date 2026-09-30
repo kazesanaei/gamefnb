@@ -1,6 +1,7 @@
 // Đối tượng app dùng chung cho mọi màn: state, dữ liệu, bus, ctx, lưu, điều hướng, thông báo, hộp thoại.
 import { DATA } from '../data/index.js'
 import { createBus } from '../core/bus.js'
+import { makeNowInfo } from '../core/clock.js'
 import { saveTo } from '../core/save.js'
 import { h } from './dom.js'
 import { createRouter } from './router.js'
@@ -13,8 +14,8 @@ export const SAVE_DEBOUNCE_MS = 300
 
 /**
  * createApp({ root, storage, now }) → app
- * app = { state, data, bus, ctx: { emit, data }, save(), saveNow(opts), go(name, params), toast(text, opts),
- *         modal(opts) → Promise, vibrate(ms), sound(name), now(), router, screens }
+ * app = { state, data, bus, ctx: { emit, data, now }, save(), saveNow(opts), go(name, params), toast(text, opts),
+ *         modal(opts) → Promise, vibrate(ms), sound(name), now(), nowInfo(), session, router, screens }
  */
 export function createApp({ root, storage = null, now = () => Date.now(), screens = {} } = {}) {
   const bus = createBus()
@@ -22,7 +23,8 @@ export function createApp({ root, storage = null, now = () => Date.now(), screen
   const safeEmit = (type, payload) => {
     try { bus.emit(type, payload) } catch (err) { console.error(err) }
   }
-  const ctx = { emit: safeEmit, data: DATA }
+  // ctx.now: giờ (ms) cho lõi M2 (sự kiện có thời hạn khi mở ca, Tem, nhiệm vụ theo ngày thật)
+  const ctx = { emit: safeEmit, data: DATA, now: () => now() }
 
   // Khung: vùng màn + lớp nổi (thông báo, hộp thoại).
   const screenRoot = h('main', { class: 'screen', id: 'screen' })
@@ -45,6 +47,13 @@ export function createApp({ root, storage = null, now = () => Date.now(), screen
     router: null,
     storage,
     now,
+    // Trạng thái riêng của lần mở trang này (không lưu): đã hiện bảng điểm danh ngày nào, đã báo thư mới…
+    session: { checkinShownDay: '', mailToastIds: [], pendingMail: [], rewindNoted: false },
+
+    // Thời điểm tin cậy cho các hệ thống theo ngày thật (cập nhật state.clock.maxSeen).
+    nowInfo() {
+      return makeNowInfo(app.state, app.now())
+    },
 
     // Lưu có debounce 300 ms.
     save() {

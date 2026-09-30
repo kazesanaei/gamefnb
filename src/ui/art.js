@@ -401,11 +401,75 @@ const TOOLS = {
     `<path d="M32 6 L39 23 L57 24 L43 36 L48 54 L32 44 L16 54 L21 36 L7 24 L25 23Z" fill="#f5c542"/>`)
 }
 
+// ---------- M2: icon cho hiện vật, sự kiện ngày, Hộp thư, Rương, điểm danh, món Chặng 2 (bóng mờ) ----------
+const META = {
+  phieu_cho_som: svg(
+    `<path d="M6 18 H58 V28 C54 28 52 30 52 32 C52 34 54 36 58 36 V46 H6 V36 C10 36 12 34 12 32 C12 30 10 28 6 28Z" fill="#f5c542"/>` +
+    `<path d="M20 20 V44" stroke="#c98d1d" stroke-width="2" stroke-dasharray="3 3"/>` +
+    txt(38, 37, '−20%', 13, '#8e3320', 900)),
+  bat_che_mua: svg(
+    `<path d="M6 30 L16 14 H48 L58 30Z" fill="#3f78c8"/>` +
+    `<path d="M16 14 L22 30 M32 14 V30 M48 14 L42 30" stroke="#2a5a9e" stroke-width="2"/>` +
+    `<path d="M10 30 V52 M54 30 V52" stroke-width="3"/>` +
+    `<path d="M20 40 l-2 5 M32 38 l-2 5 M44 40 l-2 5" stroke="#8ccff0" stroke-width="2.5"/>`),
+  troi_mua: svg(
+    `<path d="M16 38 C8 38 6 28 14 26 C14 16 26 12 32 20 C36 12 50 14 50 24 C58 24 58 38 50 38Z" fill="#c9d3de"/>` +
+    `<path d="M20 44 l-3 8 M32 44 l-3 8 M44 44 l-3 8" stroke="#3f78c8" stroke-width="3"/>`),
+  nang_nong: svg(
+    `<circle cx="32" cy="32" r="13" fill="#f5b400"/>` +
+    `<path d="M32 6 V14 M32 50 V58 M6 32 H14 M50 32 H58 M13 13 L19 19 M45 45 L51 51 M13 51 L19 45 M45 19 L51 13" stroke="#e0701c" stroke-width="3.5"/>`),
+  lanh_luong: svg(
+    `<rect x="8" y="18" width="48" height="32" rx="4" fill="#b3dca6"/>` +
+    `<circle cx="32" cy="34" r="9" fill="#e9f5e3"/>` + txt(32, 38.5, 'đ', 13, '#39732f', 900) +
+    `<circle cx="48" cy="48" r="8" fill="#f5c542"/>`),
+  cho_phien: svg(
+    `<path d="M6 22 L12 10 H52 L58 22Z" fill="#d6362b"/>` +
+    `<path d="M16 10 L14 22 M24 10 L23 22 M32 10 V22 M40 10 L41 22 M48 10 L50 22" stroke="#ffffff" stroke-width="2.5"/>` +
+    `<rect x="10" y="22" width="44" height="30" fill="#f7e3bd"/>` +
+    `<circle cx="22" cy="40" r="6" fill="#f5a623"/><circle cx="34" cy="42" r="5" fill="#7cc242"/><circle cx="44" cy="39" r="5" fill="#d6362b"/>`),
+  thu: svg(
+    `<rect x="8" y="16" width="48" height="34" rx="4" fill="#fff8e6"/>` +
+    `<path d="M9 18 L32 36 L55 18" fill="none"/>` +
+    `<circle cx="48" cy="18" r="7" fill="#d6362b"/>`),
+  ruong: svg(
+    `<path d="M10 28 C10 16 20 12 32 12 C44 12 54 16 54 28Z" fill="#c8813b"/>` +
+    `<rect x="10" y="28" width="44" height="26" rx="3" fill="#b0692a"/>` +
+    `<path d="M10 28 H54 M22 13 V54 M42 13 V54" stroke-width="2.5"/>` +
+    `<rect x="27" y="24" width="10" height="12" rx="2" fill="#f5c542"/>`),
+  lich: svg(
+    `<rect x="8" y="12" width="48" height="44" rx="5" fill="#ffffff"/>` +
+    `<rect x="8" y="12" width="48" height="12" rx="5" fill="#d6362b"/>` +
+    `<path d="M20 8 V16 M44 8 V16" stroke-width="3.5"/>` +
+    `<path d="M22 40 L29 47 L43 32" stroke="#3f9a52" stroke-width="4" fill="none"/>`),
+  phan_trang: svg(
+    `<rect x="12" y="24" width="40" height="14" rx="3" fill="#f7f3ea" transform="rotate(-20 32 31)"/>` +
+    `<rect x="12" y="24" width="10" height="14" rx="3" fill="#e5dcc8" transform="rotate(-20 32 31)"/>` +
+    `<path d="M14 50 q8 -6 18 0 t18 0" stroke="#9ad0e8" stroke-width="3" fill="none"/>`),
+  danh_hieu: svg(
+    `<path d="M22 6 L32 26 L42 6Z" fill="#3f78c8"/>` +
+    `<circle cx="32" cy="38" r="16" fill="#f5c542"/>` +
+    `<path d="M32 28 L35 35 L42 35.5 L36.5 40 L38.5 47 L32 43 L25.5 47 L27.5 40 L22 35.5 L29 35Z" fill="#fff4c2" stroke-width="1.5"/>`),
+  mon_goi_cuon: svg(
+    `<ellipse cx="32" cy="50" rx="26" ry="7" fill="#f4f4f0"/>` +
+    `<rect x="10" y="22" width="30" height="16" rx="8" fill="#f3efe4" transform="rotate(-18 25 30)"/>` +
+    `<rect x="24" y="28" width="30" height="16" rx="8" fill="#f3efe4" transform="rotate(-18 39 36)"/>` +
+    `<path d="M18 30 l4 -2 M32 37 l5 -2" stroke="#f08a7a" stroke-width="3"/>`),
+  mon_bun_thit_nuong: svg(
+    `<path d="M6 30 H58 C58 46 46 56 32 56 C18 56 6 46 6 30Z" fill="#f4f4f0"/>` +
+    `<path d="M12 30 q5 -6 10 0 t10 0 t10 0 t10 0" stroke="#e8e1cf" stroke-width="3" fill="none"/>` +
+    `<rect x="18" y="18" width="12" height="9" rx="3" fill="#a8402a"/><rect x="33" y="16" width="12" height="9" rx="3" fill="#b84a2e"/>`),
+  mon_che_ba_mau: svg(
+    `<path d="M16 8 H48 L44 58 H20Z" fill="#eef6fb"/>` +
+    `<path d="M18.5 40 H45.5 L44 58 H20Z" fill="#dca55a"/>` +
+    `<path d="M17.5 28 H46.5 L45.5 40 H18.5Z" fill="#e0584a"/>` +
+    `<path d="M17 18 H47 L46.5 28 H17.5Z" fill="#7cc242"/>`)
+}
+
 // Hình dự phòng khi thiếu icon.
 const FALLBACK_ICON = svg(
   `<circle cx="32" cy="32" r="24" fill="#eeeae2"/>` + txt(32, 42, '?', 28, INK))
 
-export const ICONS = deepFreeze({ ...ING, ...MON, ...TOOLS, fallback: FALLBACK_ICON })
+export const ICONS = deepFreeze({ ...ING, ...MON, ...TOOLS, ...META, fallback: FALLBACK_ICON })
 
 /** SVG của icon theo id (nhận cả id món không kèm tiền tố mon_); không có thì trả hình dự phòng. */
 export function icon(id) {
@@ -557,6 +621,16 @@ export const ANH_KHOA = deepFreeze({
   })
 })
 
+// Cô Hạnh (cô giáo cũ, sự kiện Tri ân 20/11): tóc búi đen, áo dài xanh nhạt, kính tròn.
+export const CO_HANH = deepFreeze({
+  vui: faceSvg({
+    skin: '#f3c9a3', shirt: '#9fc9e8', mood: 'vui',
+    hairBack: `<circle cx="32" cy="10" r="7" fill="#2b2220"/>`,
+    hair: `<path d="M12 33 C10 18 21 11 32 11 C44 11 54 18 52 33 C49 25 42 20 32 20 C22 20 15 25 12 33Z" fill="#2b2220"/>`,
+    accessory: `<circle cx="25" cy="35" r="5" fill="none" stroke-width="1.8"/><circle cx="39" cy="35" r="5" fill="none" stroke-width="1.8"/><path d="M30 35 H34" stroke-width="1.8"/>`
+  })
+})
+
 // ---------- Tiền và QR (cách điệu, không giống thật) ----------
 
 const BILL_COLORS = {
@@ -629,31 +703,56 @@ export function fakeQrSvg(variant = 0) {
 
 // ---------- Xe đẩy đầu hẻm ----------
 
-function umbrella(color) {
+// Dù xe: 8 múi xen kẽ màu chính / màu phụ; pattern 'soc' (sọc kẹo) xen 3 màu.
+function umbrella(color, alt = '#ffffff', pattern = null) {
   const cx = 120
   const top = 12
   const left = 18
   const right = 222
   const base = 62
   const segs = 8
+  const cycle = pattern === 'soc' ? [color, alt, '#e0584a', alt] : [color, alt]
   let wedges = ''
   for (let k = 0; k < segs; k++) {
     const a = left + ((right - left) * k) / segs
     const b = left + ((right - left) * (k + 1)) / segs
-    const fill = k % 2 === 0 ? color : '#ffffff'
+    const fill = cycle[k % cycle.length]
     wedges += `<path d="M${cx} ${top} L${r1(a)} ${base} Q${r1((a + b) / 2)} ${base + 8} ${r1(b)} ${base}Z" fill="${fill}"/>`
   }
   return wedges + `<circle cx="${cx}" cy="${top}" r="4" fill="${INK}"/>`
 }
 
-/** Xe đẩy đầu hẻm có dù che; `name` hiện trên biển xe. */
-export function cartSvg({ name = '', umbrellaColor = '#d6362b' } = {}) {
+// Đồ trang trí biển xe: viền "Khai Trương" (khung vàng) hoặc bảng đèn (dãy bóng đèn).
+function signDecor(kind) {
+  if (kind === 'vien') return `<rect x="58" y="100" width="124" height="36" rx="7" fill="none" stroke="#f2b632" stroke-width="4"/>` +
+    `<circle cx="60" cy="102" r="3" fill="#d6362b" stroke="none"/><circle cx="180" cy="102" r="3" fill="#d6362b" stroke="none"/>`
+  if (kind === 'den') {
+    let dots = ''
+    for (let i = 0; i < 8; i++) dots += `<circle cx="${68 + i * 15}" cy="101" r="3" fill="${i % 2 ? '#ffe28a' : '#fff6d0'}" stroke-width="1.2"/>`
+    return dots
+  }
+  return ''
+}
+
+// Chậu hoa đặt cạnh xe (đồ trang trí).
+function potDecor() {
+  return `<path d="M6 128 H32 L29 146 H9Z" fill="#c8813b"/>` +
+    `<path d="M19 128 V112" stroke="#3f8f2f" stroke-width="2.5"/>` +
+    `<circle cx="19" cy="108" r="6" fill="#f5c542"/><circle cx="11" cy="116" r="5" fill="#ffffff"/><circle cx="27" cy="116" r="5" fill="#ffffff"/>`
+}
+
+/**
+ * Xe đẩy đầu hẻm có dù che; `name` hiện trên biển xe.
+ * Tùy chọn M2 (Góc Muỗng Vàng, quà sự kiện): umbrellaColor, umbrellaAlt (màu múi phụ), pattern ('soc'),
+ * sign ('vien' | 'den'), decor ('chau_hoa').
+ */
+export function cartSvg({ name = '', umbrellaColor = '#d6362b', umbrellaAlt = '#ffffff', pattern = null, sign = null, decor = null } = {}) {
   const raw = String(name || 'Bếp Khởi Nghiệp').trim() || 'Bếp Khởi Nghiệp'
   const label = raw.length > 20 ? raw.slice(0, 19) + '…' : raw
   const size = label.length > 14 ? 11 : 13
   return svg(
     `<rect x="117" y="56" width="6" height="40" fill="#8a8f99"/>` +
-    umbrella(umbrellaColor) +
+    umbrella(umbrellaColor, umbrellaAlt, pattern) +
     `<rect x="46" y="62" width="72" height="26" rx="3" fill="#dff3fb"/>` +
     `<path d="M54 80 C54 74 64 73 72 73 C80 73 84 75 84 80 C84 84 78 85 69 85 C60 85 54 84 54 80Z" fill="#e7a24a" stroke-width="2"/>` +
     `<path d="M80 78 C80 72 90 71 98 71 C106 71 110 73 110 78 C110 82 104 83 95 83 C86 83 80 82 80 78Z" fill="#e7a24a" stroke-width="2"/>` +
@@ -664,10 +763,12 @@ export function cartSvg({ name = '', umbrellaColor = '#d6362b' } = {}) {
     `<rect x="34" y="88" width="172" height="10" rx="3" fill="#ece6da"/>` +
     `<rect x="40" y="98" width="160" height="42" rx="6" fill="#2f7fc1"/>` +
     `<rect x="62" y="104" width="116" height="28" rx="5" fill="#fff8e6"/>` +
+    signDecor(sign) +
     txt(120, 123, label, size, '#b8342a') +
     `<path d="M200 104 L230 90" stroke-width="5"/>` +
     `<circle cx="72" cy="146" r="14" fill="#3a3a3a"/><circle cx="72" cy="146" r="5" fill="#c9ccd1"/>` +
-    `<circle cx="168" cy="146" r="14" fill="#3a3a3a"/><circle cx="168" cy="146" r="5" fill="#c9ccd1"/>`,
+    `<circle cx="168" cy="146" r="14" fill="#3a3a3a"/><circle cx="168" cy="146" r="5" fill="#c9ccd1"/>` +
+    (decor === 'chau_hoa' ? potDecor() : ''),
     '0 0 240 164')
 }
 

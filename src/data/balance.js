@@ -28,5 +28,12 @@ export const BALANCE = Object.freeze({
   reputationByStars: Object.freeze({ 5: 3, 4: 2, 3: 1, 2: 0, 1: 0 }),
   masteryLevels: Object.freeze([0, 5, 15]),              // goodCooks cần cho cấp 1,2,3
   autoStepScore: 80, retryScoreCap: 85,
-  loanAmount: 240000, loanRepayRate: 0.25, loanInterest: 0.10
+  loanAmount: 240000, loanRepayRate: 0.25, loanInterest: 0.10,
+  // M2: thu nhập tham chiếu một ca theo ngày game [từ ngày, đồng] — cơ sở tính thưởng nhiệm vụ, điểm danh, quà
+  // (docs/can-bang.md mục 9–10; từ nội bộ, không hiện cho người chơi)
+  refIncomeTable: Object.freeze([
+    Object.freeze([1, 20000]), Object.freeze([3, 35000]), Object.freeze([5, 65000]),
+    Object.freeze([7, 85000]), Object.freeze([9, 100000])
+  ]),
+  eventCustomerCap: 10                                   // trần khách khi sự kiện ngày tăng khách (Chợ phiên)
 })

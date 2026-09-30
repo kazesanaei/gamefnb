@@ -1,6 +1,7 @@
 // Màn mở đầu: lần đầu đặt tên xe, lần sau vào quán.
 import { h, svgBox } from '../dom.js'
 import { DI_SAU, cartSvg } from '../art.js'
+import { cartOptions } from '../components/meta-ui.js'
 
 export const DEFAULT_SHOP_NAME = 'Xe bánh mì đầu hẻm'
 
@@ -10,7 +11,8 @@ export default {
     const state = app.state
     const first = !state.shopName
     const cart = h('div', { class: 'title-cart' })
-    const paintCart = name => { cart.innerHTML = cartSvg({ name: name || DEFAULT_SHOP_NAME }) }
+    // hình xe theo màu dù / đồ trang trí đang dùng (Góc Muỗng Vàng)
+    const paintCart = name => { cart.innerHTML = cartSvg({ ...cartOptions(app.state, app.data), name: name || DEFAULT_SHOP_NAME }) }
 
     const enter = () => {
       app.sound('click')

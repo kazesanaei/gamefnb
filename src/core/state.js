@@ -1,6 +1,6 @@
 // State gốc của save và vài tiện ích dùng chung cho lõi (đọc cân bằng, phát sự kiện, mở Mẹo nghề).
 
-export const STATE_VERSION = 1
+export const STATE_VERSION = 2
 export const DEFAULT_RECIPE_IDS = Object.freeze(['banh_mi_op_la', 'tra_tac'])
 
 // Giá trị mặc định khi ctx.data.BALANCE thiếu khóa (khớp mục 6 docs/kien-truc.md).
@@ -30,8 +30,19 @@ export const DEFAULT_BALANCE = Object.freeze({
   surchargeFromDay: 6, multiLineFromDay: 3, lineCountWeights: [70, 25, 5],
   changeAskRate: 0.4, changeAskPatienceCost: 0.05, roundingMax: 5000,
   shortChangeDetectRate: 0.9, overChangeReturnRate: 0.5,
-  loanOfferBelow: 20000   // mời vay khi Tiền quán < chi phí cố định 1 ca (thiết kế mục Dì Sáu cho mượn)
+  loanOfferBelow: 20000,  // mời vay khi Tiền quán < chi phí cố định 1 ca (thiết kế mục Dì Sáu cho mượn)
+  // M2: thu nhập tham chiếu một ca theo ngày game [từ ngày, đồng] (cơ sở tính thưởng; docs/can-bang.md mục 9)
+  refIncomeTable: [[1, 20000], [3, 35000], [5, 65000], [7, 85000], [9, 100000]],
+  eventCustomerCap: 10
 })
+
+// Thu nhập tham chiếu một ca của ngày game `day` (đồng).
+export function refIncomeFor(ctx, day) {
+  const table = cfg(ctx, 'refIncomeTable') || DEFAULT_BALANCE.refIncomeTable
+  let v = table.length ? table[0][1] : 0
+  for (const [from, amount] of table) if (day >= from) v = amount
+  return v
+}
 
 // Đọc một khóa cân bằng: ctx.data.BALANCE[key] nếu có, không thì mặc định.
 export function cfg(ctx, key) {
@@ -52,7 +63,38 @@ export function defaultStats() {
   return {
     customersServed: 0, customersLost: 0, dishesCooked: 0, perfectSteps: 0,
     changeCorrect: 0, changeWrong: 0, readbacks: 0, qrConfirmed: 0, fakeQrCaught: 0,
-    flawlessDishes: 0, totalRevenue: 0, shiftsPlayed: 0
+    flawlessDishes: 0, totalRevenue: 0, shiftsPlayed: 0,
+    // M2: đếm trực tiếp qua bus (src/core/stats.js), không qua endShift
+    fiveStarCustomers: 0, goodDishes: 0, excellentDishes: 0, perfectThai: 0, perfectLua: 0,
+    changeOptimal: 0, readbackClean: 0, fakeQrDetected: 0, recipesBought: 0, upgradesBought: 0,
+    questsClaimed: 0, checkins: 0, mailClaimed: 0, tastings: 0, temEarned: 0
+  }
+}
+
+// Các trường meta M2 của save (điểm danh, nhiệm vụ, hộp thư, chuỗi, shop, sự kiện, lên chặng).
+// mailVersion '' = save mới (không nhận thư phiên bản); save cũ nâng cấp từ version 1 đặt '0.1.0'.
+export function defaultMeta() {
+  return {
+    items: { phieu_cho_som: 0, bat_che_mua: 0 },
+    cosmetics: { owned: [], equipped: { du: null, bien: null, trang_tri: null } },
+    titles: [],
+    unlocks: [],
+    prep: { day: 0, coupon: false, dayEventChoice: null },
+    checkin: { round: 1, next: 0, lastDay: '', total: 0 },
+    daily: { dayKey: '', gameDay: 0, quests: [], prevIds: [], rerolls: 0, chestClaimed: false },
+    mail: { list: [], pushed: [], monthly: {}, seenVersion: '', pendingReviews: [] },
+    chains: {},
+    shop: { tried: [] },
+    eventRecipes: {},        // món sự kiện đã nhận: recipeId → {eventId, label, day} (giữ vĩnh viễn, bán quanh năm)
+    tasting: null,
+    events: {},
+    realDays: { first: '', last: '', count: 0 },
+    progression: {
+      stageUpReady: false, stageUpSeen: false,
+      records: { bestProfit: null, mostFiveStars: 0, longestStreak: 0 },
+      cur: { fiveStars: 0 }
+    },
+    track: { rbCustomer: null, rbFirst: false }
   }
 }
 
@@ -89,7 +131,8 @@ export function defaultState(seed = 0, data = null) {
     settings: defaultSettings(),
     history: [],
     shift: null,
-    clock: { maxSeen: 0 }
+    clock: { maxSeen: 0 },
+    ...defaultMeta()
   }
 }
 

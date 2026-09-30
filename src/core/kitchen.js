@@ -169,6 +169,9 @@ export function submitChon(state, picked, mistakes, ctx) {
     if (req.required.includes(id)) cogs += amount
     else waste += amount
   }
+  // M2: Phiếu Chợ Sớm (sh.mods.cogsMul) giảm giá vốn trong ca
+  const cogsMul = sh.mods && sh.mods.cogsMul > 0 ? sh.mods.cogsMul : 1
+  if (cogsMul !== 1) { cogs = Math.round(cogs * cogsMul); waste = Math.round(waste * cogsMul) }
   spend(state, cogs, 'cogs')
   spend(state, waste, 'waste')
   cook.cost = { cogs, waste }
@@ -416,6 +419,8 @@ function finalizeCustomer(state, customer, ctx) {
   const B = { tipFiveStar: cfg(ctx, 'tipFiveStar'), tipBonus: cfg(ctx, 'tipBonus') }
   let tip = tipFor(res.stars, flawlessAny, persona, B)
   if (tip > 0 && (sh.counterStreak || 0) >= 5) tip = Math.max(tip, B.tipBonus)
+  // M2: Ngày lãnh lương (sh.mods.tipMul), tip vẫn là bội 5.000đ
+  if (tip > 0 && sh.mods && sh.mods.tipMul > 0 && sh.mods.tipMul !== 1) tip = Math.max(5000, Math.round((tip * sh.mods.tipMul) / 5000) * 5000)
   const repTable = cfg(ctx, 'reputationByStars') || {}
   let rep = Number(repTable[res.stars]) || 0
   if (flawlessAny) rep += 1

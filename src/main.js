@@ -2,13 +2,20 @@
 import { DATA } from './data/index.js'
 import { loadFrom } from './core/save.js'
 import { defaultState } from './core/state.js'
-import { trustedNow } from './core/clock.js'
+import { parseDevNow, makeNowInfo } from './core/clock.js'
+import { attachMeta, refreshMeta } from './core/meta.js'
 import { createApp } from './ui/app.js'
 import { createLoop } from './ui/loop.js'
 import title from './ui/screens/title.js'
 import prep from './ui/screens/prep.js'
 import service from './ui/screens/service.js'
 import summary from './ui/screens/summary.js'
+import shop from './ui/screens/shop.js'
+import tasting from './ui/screens/tasting.js'
+import quests from './ui/screens/quests.js'
+import mailbox from './ui/screens/mailbox.js'
+import event from './ui/screens/event.js'
+import stageUp from './ui/screens/stage-up.js'
 
 function getStorage() {
   try {
@@ -37,7 +44,11 @@ function boot() {
   const bootMsg = document.getElementById('boot')
   if (bootMsg) bootMsg.remove()
   const storage = getStorage()
-  const app = createApp({ root, storage, now: () => Date.now(), screens: { title, prep, service, summary } })
+  // ?devNow=YYYY-MM-DDTHH:mm (giờ Việt Nam, chỉ trên localhost/127.0.0.1): xem trước sự kiện; đồng hồ vẫn chạy tiếp từ mốc đó.
+  const devNow = parseDevNow(location.search, location.hostname)
+  const bootAt = Date.now()
+  const now = devNow !== null ? () => devNow + (Date.now() - bootAt) : () => Date.now()
+  const app = createApp({ root, storage, now, screens: { title, prep, service, summary, shop, tasting, quests, mailbox, event, 'stage-up': stageUp } })
 
   const params = new URLSearchParams(location.search)
   const isLocal = ['localhost', '127.0.0.1'].includes(location.hostname)
@@ -51,7 +62,13 @@ function boot() {
   // ?test=1 (chỉ trên máy cục bộ): bật Hỗ trợ thao tác cho kiểm thử tự động.
   if (params.get('test') === '1' && isLocal) state.settings.assistMotion = true
   app.state = state
-  try { trustedNow(state, app.now()) } catch { /* bỏ qua */ }
+  // M2: hệ thống meta nghe bus (nhiệm vụ, chuỗi, Tem, stats) và cập nhật theo ngày thật khi mở game
+  attachMeta(app.bus, () => app.state, app.ctx)
+  try {
+    const res = refreshMeta(state, makeNowInfo(state, app.now()), app.ctx)
+    // thư mới lúc mở game (vd thư chào mừng lần đầu): màn Chuẩn bị báo nhẹ, không chặn
+    app.session.pendingMail = res.newMail.slice()
+  } catch (err) { console.error(err) }
   app.applySettings()
   app.saveNow()
 

@@ -1,36 +1,99 @@
-// Màn Chuẩn bị ca: thông tin ngày, thực đơn, dự báo khách, Mẹo nghề, nâng cấp, mượn Dì Sáu, "Mở hàng".
+// Màn Chuẩn bị ca: thông tin ngày, Muỗng Vàng, lối vào Chợ Công Thức / Việc hôm nay / Điểm danh / Hộp thư (chấm đỏ),
+// sự kiện ngày và lựa chọn, Phiếu Chợ Sớm, thẻ sự kiện có thời hạn, chuỗi "Dì Sáu dặn", "Giấc mơ tiếp theo",
+// thực đơn, dự báo khách, Mẹo nghề, mượn Dì Sáu, cài đặt, nút "Mở hàng" luôn nhìn thấy.
+// Vào màn: cập nhật meta theo ngày thật; lần đầu trong ngày thật → bảng điểm danh (trừ ca hướng dẫn đầu tiên).
 import { h, svgBox } from '../dom.js'
 import { DI_SAU, icon } from '../art.js'
 import { startShift, customerCount } from '../../core/shift.js'
 import { averageRating } from '../../core/scoring.js'
 import { orderableRecipes } from '../../core/customer.js'
-import { takeLoan, buyUpgrade, offerLoan } from '../../core/economy.js'
+import { takeLoan, offerLoan } from '../../core/economy.js'
 import { masteryLevel } from '../../core/mastery.js'
+import { refreshMeta } from '../../core/meta.js'
+import { checkinStatus } from '../../core/checkin.js'
+import { questList } from '../../core/quests.js'
+import { mailBadge } from '../../core/mail.js'
+import { chainStatus } from '../../core/chains.js'
+import { shopCatalog } from '../../core/shop.js'
+import { eventsOverview, dayEventInfo, setDayEventChoice, setMarketCoupon, applyCustomerMods } from '../../core/events.js'
+import { checkStageUp } from '../../core/progression.js'
 import { formatVND, formatStars } from '../format.js'
+import { spoonPill, reasonText, progressBar, redDot, rewindNote, durationText } from '../components/meta-ui.js'
+import { chainCard } from '../components/chain-card.js'
+import { openCheckin } from '../components/checkin-popup.js'
+import { phaseText } from './event.js'
 
 function pickRandom(arr) {
   return arr.length ? arr[Math.floor(Math.random() * arr.length)] : null
 }
 
+// Ca hướng dẫn đầu tiên của save mới: không bật bảng điểm danh chen vào (hiện sau ca đầu).
+export function isFirstTutorial(state) {
+  return state.day === 1 && !(state.history && state.history.length)
+}
+
+// Hiệu ứng của sự kiện ngày thành các dòng ngắn cho người chơi.
+export function dayEffectLines(effects, data, state = null) {
+  const e = effects || {}
+  const R = data.RECIPES || {}
+  const out = []
+  const pct = v => Math.round(Math.abs(v - 1) * 100) + '%'
+  if (e.customerMul && e.customerMul < 1) out.push(`Khách ít hơn khoảng ${pct(e.customerMul)}`)
+  if (e.customerMul && e.customerMul > 1) out.push(`Khách đông hơn khoảng ${pct(e.customerMul)}, ca dài hơn`)
+  if (e.extraCustomers) out.push(`Thêm ${e.extraCustomers} khách`)
+  if (e.patienceMul && e.patienceMul > 1) out.push(`Khách chịu chờ lâu hơn ${pct(e.patienceMul)}`)
+  if (e.tipMul && e.tipMul > 1) out.push(`Tiền tip nhiều hơn khoảng ${pct(e.tipMul)}`)
+  // chỉ kể món đang bán (có state thì lọc món đã sở hữu)
+  const hot = Object.keys(e.recipeWeight || {}).filter(id => R[id] && (!state || (state.recipes && state.recipes[id]))).map(id => R[id].name)
+  if (hot.length) out.push(`${hot.join(', ')} được gọi nhiều gấp đôi`)
+  return out
+}
+
+// Số khách dự báo sau sự kiện ngày (không trừ tiền, không dùng phiếu).
+export function forecastCustomers(state, ctx, info) {
+  const n = customerCount(state, ctx, state.day)
+  if (!info) return n
+  const eff = info.choice && info.choice.chosen ? ((ctx.data.DAY_EVENTS[info.id].choice || {}).effects || info.effects) : info.effects
+  return applyCustomerMods(n, { customerMul: eff.customerMul ?? 1, extraCustomers: eff.extraCustomers || 0 }, ctx)
+}
+
 export default {
   mount(root, app) {
     const S = app.data.STRINGS
+    const M = S.meta
     const D = app.data.DIALOGUE
     const el = h('section', { class: 'prep-screen', testid: 'screen-prep' })
     root.appendChild(el)
+    let destroyed = false
+    let lastDayKey = ''
+    const talk = app.state.day === 1 ? D.diSau.tutorial.order : pickRandom(D.diSau.shiftStart)
+
+    function refresh() {
+      const nowInfo = app.nowInfo()
+      let res = null
+      try { res = refreshMeta(app.state, nowInfo, app.ctx) } catch (err) { console.error(err) }
+      lastDayKey = nowInfo.dayKey
+      app.save()
+      return { nowInfo, res }
+    }
 
     function render() {
+      if (destroyed) return
       const state = app.state
+      const nowInfo = app.nowInfo()
       el.textContent = ''
       const avg = averageRating(state.ratings)
       const menu = orderableRecipes(state, app.ctx)
-      const forecast = customerCount(state, app.ctx, state.day)
       const levels = app.data.BALANCE.masteryLevels
+      const dayEv = dayEventInfo(state, state.day, app.ctx)
+      const forecast = forecastCustomers(state, app.ctx, dayEv)
 
       // Đầu màn
       el.appendChild(h('header', { class: 'prep-head' },
-        h('div', null,
+        h('div', { class: 'prep-toprow' },
           h('div', { class: 'prep-shop' }, state.shopName),
+          spoonPill(state.goldSpoons || 0, 'prep-spoons')),
+        h('div', null,
           h('h1', { class: 'prep-day', testid: 'prep-day' }, `Ngày ${state.day}`),
           h('div', { class: 'prep-sub' }, S.screens.prep + ' · ' + S.chang[state.chang || 1])),
         h('div', { class: 'prep-stats' },
@@ -38,10 +101,31 @@ export default {
           stat(S.labels.reputation, String(state.reputation)),
           stat(S.labels.rating, '★ ' + formatStars(avg)))))
 
+      const rw = rewindNote(app, nowInfo)
+      if (rw) el.appendChild(rw)
+
+      // Lối vào 4 hệ thống
+      el.appendChild(navGrid(state, nowInfo))
+
+      // Sự kiện có thời hạn
+      for (const ev of eventsOverview(state, nowInfo, app.ctx)) el.appendChild(eventCard(ev))
+
+      // Sự kiện ngày + Phiếu Chợ Sớm
+      if (dayEv) el.appendChild(dayEventCard(dayEv))
+      const coupons = (state.items && state.items.phieu_cho_som) || 0
+      if (coupons > 0) el.appendChild(couponCard(coupons))
+
+      // Chuỗi nhiệm vụ (không gồm chuỗi sự kiện: nằm trong thẻ sự kiện)
+      const chains = chainStatus(state, nowInfo, app.ctx).filter(c => !c.eventId && (!c.done || c.claimable.length))
+      chains.sort((a, b) => (b.main ? 1 : 0) - (a.main ? 1 : 0))
+      chains.forEach((c, i) => el.appendChild(chainCard(app, c, { testid: i === 0 ? 'chain-card' : 'chain-card-' + c.id, compact: true, onChange: render })))
+
+      // Lên chặng / Giấc mơ tiếp theo
+      el.appendChild(stageCard(state))
+
       // Lời Dì Sáu
-      const line = state.day === 1 ? D.diSau.tutorial.order : pickRandom(D.diSau.shiftStart)
       el.appendChild(h('div', { class: 'npc-talk' }, svgBox(DI_SAU.vui, 'npc-face'),
-        h('div', { class: 'bubble npc-bubble' }, h('b', null, 'Dì Sáu'), h('p', null, line))))
+        h('div', { class: 'bubble npc-bubble' }, h('b', null, 'Dì Sáu'), h('p', null, talk))))
 
       // Nợ và mượn Dì Sáu
       if (state.loan) {
@@ -70,11 +154,13 @@ export default {
           const r = app.data.RECIPES[id]
           const p = state.recipes[id]
           const lv = masteryLevel(p, levels)
+          const evLabel = state.eventRecipes && state.eventRecipes[id] ? state.eventRecipes[id].label : ''
           return h('div', { class: 'prep-dish', testid: 'prep-dish-' + id },
             svgBox(icon(r.icon || id), 'dish-icon'),
             h('div', { class: 'prep-dish-name' }, r.name),
             h('div', { class: 'prep-dish-price' }, formatVND(r.price)),
-            h('div', { class: 'prep-dish-lv' }, `${S.labels.mastery}: ${S.masteryLevels[lv] || lv}`))
+            h('div', { class: 'prep-dish-lv' }, `${S.labels.mastery}: ${S.masteryLevels[lv] || lv}`),
+            evLabel ? h('div', { class: 'prep-dish-tag' }, evLabel) : null)
         }))))
 
       // Dự báo
@@ -91,33 +177,6 @@ export default {
           h('h2', { class: 'card-title' }, 'Mẹo nghề: ' + tip.title),
           h('p', null, tip.text)))
       }
-
-      // Nâng cấp
-      const ups = Object.values(app.data.UPGRADES || {}).filter(u => (u.fromDay || 1) <= state.day || state.upgrades[u.id])
-      if (ups.length) {
-        el.appendChild(h('section', { class: 'card' },
-          h('h2', { class: 'card-title' }, S.screens.upgrades),
-          h('div', { class: 'upgrade-list' }, ups.map(u => {
-            const owned = !!state.upgrades[u.id]
-            return h('div', { class: 'upgrade', testid: 'upgrade-' + u.id },
-              svgBox(icon(u.icon || u.id), 'dish-icon small'),
-              h('div', { class: 'upgrade-info' }, h('b', null, u.name), h('p', null, u.desc)),
-              h('button', {
-                class: ['btn', owned ? 'btn-ghost' : 'btn-secondary', 'btn-small'], type: 'button',
-                disabled: owned || state.wallet < u.price, testid: 'buy-' + u.id,
-                onclick: () => {
-                  const r = buyUpgrade(app.state, u.id, app.ctx)
-                  if (r.ok) { app.sound('coin'); app.toast('Đã mua ' + u.name, { kind: 'good' }); app.saveNow(); render() }
-                  else app.toast(S.messages.notEnoughMoney, { kind: 'bad' })
-                }
-              }, owned ? S.buttons.owned : formatVND(u.price)))
-          }))))
-      }
-
-      // Tính năng sắp có (M2)
-      el.appendChild(h('section', { class: 'soon-grid' },
-        ['Chợ Công Thức', 'Nhiệm vụ', 'Điểm danh', 'Hộp thư'].map(name =>
-          h('div', { class: 'soon-item', 'aria-disabled': 'true' }, h('span', null, name), h('small', null, 'Sắp có')))))
 
       // Cài đặt nhanh
       el.appendChild(settingsCard(app))
@@ -138,8 +197,179 @@ export default {
       return h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, label), h('b', { class: 'stat-value', testid }, value))
     }
 
+    // ---------- Lối vào ----------
+    function navGrid(state, nowInfo) {
+      const ck = checkinStatus(state, nowInfo, app.ctx)
+      const ql = questList(state, app.ctx)
+      const qDone = ql.quests.filter(q => q.done).length
+      const qClaim = ql.quests.filter(q => q.canClaim).length + (ql.chest.available && !nowInfo.rewind ? 1 : 0)
+      const mails = mailBadge(state, nowInfo)
+      const cat = shopCatalog(state, app.ctx)
+      const buyable = cat.recipes.filter(r => r.canBuy).length
+      const tile = (testid, iconId, label, sub, dot, onclick) => h('button', { class: 'nav-tile', type: 'button', testid, onclick, dataset: { dot: dot ? String(dot) : '0' } },
+        svgBox(icon(iconId), 'nav-icon'),
+        h('span', { class: 'nav-label' }, label),
+        h('small', { class: 'nav-sub' }, sub),
+        dot ? redDot(dot, testid + '-dot') : null)
+      return h('nav', { class: 'nav-grid', 'aria-label': 'Lối vào' },
+        tile('open-shop', 'ro', M.shop, buyable ? `${buyable} món mua được` : 'Món mới, màu dù', buyable ? 1 : 0, () => go('shop')),
+        tile('open-quests', 'lich', M.quests, `${qDone}/${ql.quests.length} việc xong`, qClaim, () => go('quests')),
+        tile('open-checkin', 'ruong', M.checkin, ck.canClaim ? 'Có quà' : ck.reason === 'lui_gio' ? 'Tạm khóa' : 'Mai ghé tiếp', ck.canClaim ? 1 : 0,
+          () => openCheckin(app, { onClaim: () => setTimeout(render, 0) }).then(() => render())),
+        tile('open-mail', 'thu', M.mailbox, mails ? `${mails} thư mới` : 'Không có thư mới', mails, () => go('mailbox')))
+    }
+
+    function go(name, params) {
+      app.sound('click')
+      app.go(name, params)
+    }
+
+    // ---------- Thẻ sự kiện có thời hạn ----------
+    function eventCard(ev) {
+      const owned = ev.recipes.filter(r => r.owned).length
+      return h('section', { class: ['event-card', 'phase-' + ev.phase], testid: 'event-card', dataset: { eventId: ev.id, phase: ev.phase } },
+        h('div', { class: 'event-card-head' },
+          svgBox(icon('phan_trang'), 'event-card-icon'),
+          h('div', null,
+            h('span', { class: 'event-phase' }, ev.phase === 'sap_dien_ra' ? M.eventSoon : ev.phase === 'dang_dien_ra' ? M.eventActive : 'Ân hạn'),
+            h('b', { class: 'event-name' }, ev.name))),
+        h('p', { class: 'small' }, ev.phase === 'sap_dien_ra' ? `Mở sau ${durationText(ev.msToStart)}` : ev.phase === 'dang_dien_ra' ? `Còn ${durationText(ev.msToEnd)}` : phaseText(app, ev, app.nowInfo())),
+        ev.phase !== 'sap_dien_ra' ? h('p', { class: 'small' }, `${ev.tem} ${ev.currencyName}` + (owned ? ' · Đã nhận món lễ' : ' · Món lễ đang chờ bạn')) : h('p', { class: 'small' }, ev.desc),
+        h('button', { class: 'btn btn-secondary btn-small', type: 'button', testid: 'open-event', onclick: () => go('event', { eventId: ev.id }) }, 'Xem sự kiện'))
+    }
+
+    // ---------- Sự kiện ngày ----------
+    function dayEventCard(info) {
+      const lines = dayEffectLines(info.effects, app.data, app.state)
+      const c = info.choice
+      let choiceEl = null
+      if (c) {
+        choiceEl = h('div', { class: ['day-choice', c.chosen ? 'is-on' : ''] },
+          h('div', { class: 'day-choice-text' },
+            h('b', null, c.label + (c.free ? ' (miễn phí nhờ Bạt che mưa)' : ` · ${formatVND(c.cost)}`)),
+            h('small', null, c.desc)),
+          h('button', {
+            class: ['btn', 'btn-small', c.chosen ? 'btn-ghost' : 'btn-secondary'], type: 'button', testid: 'day-event-choice-' + c.id,
+            disabled: c.free, 'aria-pressed': String(!!c.chosen),
+            onclick: () => {
+              const r = setDayEventChoice(app.state, c.chosen ? null : c.id, app.ctx)
+              if (!r.ok) { app.toast(reasonText(app, r.reason), { kind: 'bad' }); return }
+              app.sound('click')
+              if (!c.chosen) app.toast(`Sẽ ${c.label.toLocaleLowerCase('vi-VN')} lúc mở hàng${c.cost ? ` (${formatVND(c.cost)})` : ''}.`, { kind: 'info' })
+              app.saveNow()
+              render()
+            }
+          }, c.free ? 'Tự căng' : c.chosen ? 'Bỏ chọn' : 'Chọn'))
+      }
+      return h('section', { class: 'card day-event-card', testid: 'day-event-card', dataset: { event: info.id } },
+        h('div', { class: 'day-ev-head' }, svgBox(icon(info.icon || info.id), 'day-ev-icon'),
+          h('div', null, h('small', { class: 'muted' }, M.dayEvent), h('b', { class: 'day-ev-name' }, info.name))),
+        h('p', { class: 'small' }, info.desc),
+        lines.length ? h('ul', { class: 'day-ev-effects' }, lines.map(t => h('li', null, t))) : null,
+        choiceEl)
+    }
+
+    function couponCard(n) {
+      const on = !!(app.state.prep && app.state.prep.day === app.state.day && app.state.prep.coupon)
+      return h('section', { class: ['card', 'coupon-card', on ? 'is-on' : ''], testid: 'coupon-card' },
+        svgBox(icon('phieu_cho_som'), 'day-ev-icon'),
+        h('div', { class: 'coupon-text' },
+          h('b', null, 'Phiếu Chợ Sớm'),
+          h('small', null, (on ? M.couponActive : 'Giá vốn giảm 20% trong 1 ca') + ` · còn ${n} phiếu`)),
+        h('button', {
+          class: ['btn', 'btn-small', on ? 'btn-ghost' : 'btn-secondary'], type: 'button', testid: 'use-coupon', 'aria-pressed': String(on),
+          onclick: () => {
+            const r = setMarketCoupon(app.state, !on)
+            if (!r.ok) { app.toast(reasonText(app, r.reason), { kind: 'bad' }); return }
+            app.sound('click')
+            app.saveNow()
+            render()
+          }
+        }, on ? 'Bỏ dùng' : 'Dùng'))
+    }
+
+    // ---------- Lên chặng / Giấc mơ tiếp theo ----------
+    // Thẻ bấm được (role=button) dẫn tới màn "Quán cóc vỉa hè – sắp khai trương".
+    function cardLink(testid) {
+      return {
+        testid, role: 'button', tabindex: '0', onclick: () => go('stage-up'),
+        onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go('stage-up') } }
+      }
+    }
+    function stageCard(state) {
+      const st = checkStageUp(state, app.ctx)
+      const unlocked = (state.unlocks || []).includes('the_quan_coc')
+      if (st.eligible || unlocked) {
+        return h('article', { class: ['stage-card', st.eligible ? 'is-ready' : ''], ...cardLink('stage-up-card') },
+          h('small', null, st.eligible ? 'Đủ điều kiện lên chặng!' : M.nextDream),
+          h('b', null, st.screenTitle || M.stageUpTitle),
+          h('span', { class: 'small' }, st.eligible ? M.stageUpKeepPlaying : `Đã đạt ${st.conditions.filter(c => c.done).length}/${st.conditions.length} điều kiện`),
+          h('span', { class: 'stage-card-go' }, 'Xem ›'))
+      }
+      const todo = st.conditions.filter(c => !c.done)
+      const done = st.conditions.length - todo.length
+      return h('article', { class: 'dream-card', ...cardLink('dream-card') },
+        h('div', { class: 'dream-head' },
+          h('div', null, h('small', null, M.nextDream), h('b', null, st.name || S.chang[2])),
+          h('span', { class: 'dream-count' }, `${done}/${st.conditions.length}`)),
+        h('ul', { class: 'dream-list' }, todo.slice(0, 3).map(c => h('li', null,
+          h('span', { class: 'dream-label' }, c.label),
+          c.kind === 'chain' ? null : progressBar(c.progress, null, { label: c.label }),
+          c.hint ? h('small', { class: 'dream-hint' }, c.hint) : null))),
+        h('span', { class: 'dream-more small' }, 'Xem đủ điều kiện ›'))
+    }
+
+    // ---------- Hộp thoại khi vào màn ----------
+    async function greet(res) {
+      const state = app.state
+      const nowInfo = app.nowInfo()
+      // thư mới (không chặn thao tác)
+      const got = ((res && res.newMail) || []).concat(app.session.pendingMail || [])
+      app.session.pendingMail = []
+      const fresh = [...new Set(got)].filter(id => !app.session.mailToastIds.includes(id))
+      if (fresh.length) {
+        app.session.mailToastIds.push(...fresh)
+        const welcome = fresh.includes('chao_mung')
+        app.toast(welcome ? 'Dì Sáu gửi thư chào mừng kèm quà, mở Hộp thư nhận nha!' : `Có ${fresh.length} thư mới trong Hộp thư`, { kind: 'info', testid: 'mail-toast' })
+      }
+      if (nowInfo.rewind && !app.session.rewindNoted) {
+        app.session.rewindNoted = true
+        app.toast(M.rewindLocked, { kind: 'info', duration: 3500 })
+      }
+      // bảng điểm danh: lần đầu trong ngày thật (bỏ qua ca hướng dẫn đầu tiên)
+      if (!isFirstTutorial(state) && app.session.checkinShownDay !== nowInfo.dayKey) {
+        const ck = checkinStatus(state, nowInfo, app.ctx)
+        if (ck.canClaim) {
+          app.session.checkinShownDay = nowInfo.dayKey
+          await openCheckin(app, { auto: true })
+          if (destroyed) return
+          render()
+        }
+      }
+      // lần đầu đủ điều kiện lên chặng
+      const p = state.progression
+      if (p && p.stageUpReady && !p.stageUpSeen && !destroyed) {
+        const v = await app.modal({
+          title: M.stageUpTitle, icon: DI_SAU.tu_hao, testid: 'stage-up-modal',
+          text: 'Xe mình đã đủ điều kiện dọn ra vỉa hè rồi con ơi!',
+          actions: [{ label: 'Để sau', value: false, kind: 'ghost', testid: 'stage-up-later' }, { label: 'Xem ngay', value: true, testid: 'stage-up-open' }]
+        })
+        if (destroyed) return
+        if (v) go('stage-up')
+        else { p.stageUpSeen = true; app.saveNow() }
+      }
+    }
+
+    const { res } = refresh()
     render()
-    return { unmount() {} }
+    greet(res)
+    // qua mốc 04:00 khi đang ở màn này: đổi việc, điểm danh mới
+    const timer = setInterval(() => {
+      if (destroyed) return
+      const k = app.nowInfo().dayKey
+      if (k !== lastDayKey) { const r = refresh(); render(); greet(r.res) }
+    }, 30000)
+    return { unmount() { destroyed = true; clearInterval(timer) } }
   }
 }
 

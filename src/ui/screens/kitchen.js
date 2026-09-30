@@ -1,5 +1,7 @@
 // Màn Bếp (panel con của màn ca bán): dây phiếu → chọn nguyên liệu → Thớt sơ chế → Ra món → Giao cho khách.
-// Giao diện với khung app: mountKitchen(root, app) → { unmount(), update(dt), onShow(), onHide(), selectTicket(id) }.
+// Giao diện với khung app: mountKitchen(root, app, opts?) → { unmount(), update(dt), onShow(), onHide(), selectTicket(id) }.
+// opts.tasting = { onDone(dish) }: chế độ NẤU THỬ ở Chợ Công Thức (app là app "hộp cát" có state/ctx riêng):
+// không đếm giờ (giới hạn bước nới rộng, ẩn thanh thời gian), không nút về dây phiếu / bỏ món, Ra món xong gọi onDone.
 import { h, svgBox, clear } from '../dom.js'
 import { upper, formatVND } from '../format.js'
 import { icon, DI_SAU } from '../art.js'
@@ -103,12 +105,16 @@ function ensureStyles() {
   document.head.appendChild(link)
 }
 
-export function mountKitchen(root, app) {
+// Nấu thử: nới giới hạn thời gian của bước (2,5 × par → 10 × par) để người chơi làm thong thả.
+export const TASTING_PAR_MUL = 4
+
+export function mountKitchen(root, app, opts = {}) {
   ensureStyles()
+  const tasting = opts && opts.tasting ? opts.tasting : null
   const main = h('div', { class: 'k-main' })
   const layer = h('div', { class: 'k-layer', hidden: true })
   const flashHost = h('div', { class: 'k-flash-host', 'aria-live': 'polite' })
-  const el = h('section', { class: 'kitchen', 'data-testid': 'kitchen', 'aria-label': 'Bếp' }, main, flashHost, layer)
+  const el = h('section', { class: ['kitchen', tasting ? 'is-tasting' : ''], 'data-testid': 'kitchen', 'aria-label': tasting ? 'Nấu thử' : 'Bếp' }, main, flashHost, layer)
   root.appendChild(el)
 
   const ui = {
@@ -148,7 +154,9 @@ export function mountKitchen(root, app) {
   const reduced = () => !!(S() && S().settings && S().settings.reducedMotion) ||
     (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches)
   const cookKey = c => (c ? `${c.ticketId}:${c.lineIndex}` : '')
+  const playable = step => (tasting && step ? { ...step, par: (Number(step.par) || 1) * TASTING_PAR_MUL } : step)
   const tutorialLine = key => {
+    if (tasting) return null
     const sh = SH()
     const t = D().DIALOGUE && D().DIALOGUE.diSau && D().DIALOGUE.diSau.tutorial
     return sh && sh.day === 1 && t && t[key] ? t[key] : null
@@ -238,6 +246,12 @@ export function mountKitchen(root, app) {
   // ----- Dây phiếu -----
   function renderRail() {
     const sh = SH()
+    if (tasting) {
+      // nấu thử: không có dây phiếu; Ra món xong màn Nấu thử tự hiện kết quả
+      if (ui.lastDish) main.appendChild(lastDishBanner())
+      else main.appendChild(h('div', { class: 'k-empty' }, 'Đang dọn thớt…'))
+      return
+    }
     const max = (D().BALANCE && D().BALANCE.ticketRailMax) || 3
     const head = h('div', { class: 'k-rail-head' }, h('h2', null, 'Dây phiếu'), h('span', { class: 'k-rail-count' }, `${sh.tickets.length}/${max}`))
     main.appendChild(head)
@@ -339,7 +353,7 @@ export function mountKitchen(root, app) {
     // ngày 1: lời Dì Sáu nằm ngay trong rổ (đỡ tốn chỗ trên màn dọc)
     const tut = tutorialLine('chon')
     const draft = ui.chonDraft && ui.chonDraft.key === cookKey(cook) ? ui.chonDraft : null
-    const handle = playStep(stage, step, {
+    const handle = playStep(stage, playable(step), {
       ...pluginCtx(step, cook, recipe), shelf, basketHint: tut ? 'Dì Sáu: ' + tut : null,
       initial: draft ? { picked: draft.picked, mistakes: draft.mistakes } : null
     })
@@ -376,10 +390,11 @@ export function mountKitchen(root, app) {
     const t = sh.tickets.find(x => x.id === cook.ticketId)
     const recipe = recipeOf(cook.recipeId)
     return h('div', { class: 'k-board-head' },
-      h('button', { class: 'btn btn-ghost k-back', type: 'button', 'data-testid': 'kitchen-back', 'aria-label': 'Về dây phiếu', onclick: () => { ui.showRail = true; render() } }, '‹ Phiếu'),
+      tasting ? h('span', { class: 'k-tag k-tag-tasting' }, 'Nấu thử')
+        : h('button', { class: 'btn btn-ghost k-back', type: 'button', 'data-testid': 'kitchen-back', 'aria-label': 'Về dây phiếu', onclick: () => { ui.showRail = true; render() } }, '‹ Phiếu'),
       recipe ? svgBox(icon(recipe.icon || recipe.id), 'k-card-icon') : null,
-      h('span', { class: 'k-board-title' }, `${t ? t.no + ' · ' : ''}${recipe ? recipe.name : ''}`, cook.qty > 1 ? h('span', { class: 'k-qty' }, ` ×${cook.qty}`) : null),
-      t ? h('span', { class: 'k-wait-dot', dataset: { ticketId: t.id, wait: 'green' }, 'data-wait-dot': t.id }) : null)
+      h('span', { class: 'k-board-title' }, `${t && !tasting ? t.no + ' · ' : ''}${recipe ? recipe.name : ''}`, cook.qty > 1 ? h('span', { class: 'k-qty' }, ` ×${cook.qty}`) : null),
+      t && !tasting ? h('span', { class: 'k-wait-dot', dataset: { ticketId: t.id, wait: 'green' }, 'data-wait-dot': t.id }) : null)
   }
 
   function renderBoard() {
@@ -418,7 +433,7 @@ export function mountKitchen(root, app) {
     const retryInfo = cook.retriesLeft > 0 ? `Còn ${cook.retriesLeft} lượt làm lại` : 'Hết lượt làm lại'
     main.appendChild(h('div', { class: 'k-toolbar' },
       h('span', { class: 'k-retry-info' }, retryInfo),
-      h('button', { class: 'btn btn-danger', type: 'button', 'data-testid': 'abandon-dish', onclick: onAbandon }, 'Bỏ món'),
+      tasting ? null : h('button', { class: 'btn btn-danger', type: 'button', 'data-testid': 'abandon-dish', onclick: onAbandon }, 'Bỏ món'),
       h('button', { class: 'btn btn-primary', type: 'button', 'data-testid': 'finish-dish', onclick: onFinish }, 'Ra món')))
   }
 
@@ -600,7 +615,7 @@ export function mountKitchen(root, app) {
     const go = () => {
       if (destroyed || !ui.play || ui.play.token !== token) return
       hintEl && hintEl.remove()
-      const handle = playStep(stage, step, pluginCtx(step, cook, recipe))
+      const handle = playStep(stage, playable(step), pluginCtx(step, cook, recipe))
       ui.play.handle = handle
       handle.result.then(res => {
         if (!res || destroyed || !ui.play || ui.play.token !== token) return
@@ -707,6 +722,9 @@ export function mountKitchen(root, app) {
     ui.openTicket = null
     render()
     showReveal()
+    if (tasting && typeof tasting.onDone === 'function') {
+      setTimeout(() => { if (!destroyed) tasting.onDone(dish) }, REVEAL_MS + 150)
+    }
   }
 
   function showReveal() {

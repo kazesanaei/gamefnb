@@ -1,10 +1,14 @@
 // Màn Tổng kết ca: sổ lãi lỗ, két, lỗi quầy/bếp, sao, danh tiếng, thạo món, review, Mẹo của Dì Sáu.
 import { h, svgBox } from '../dom.js'
 import { DI_SAU, icon } from '../art.js'
-import { customerCount } from '../../core/shift.js'
 import { averageRating } from '../../core/scoring.js'
 import { masteryLevel } from '../../core/mastery.js'
 import { formatVND, formatStars, starString, signedVND } from '../format.js'
+import { questList, questDef } from '../../core/quests.js'
+import { chainStatus } from '../../core/chains.js'
+import { dayEventInfo, eventsOverview } from '../../core/events.js'
+import { progressBar } from '../components/meta-ui.js'
+import { dayEffectLines, forecastCustomers } from './prep.js'
 
 export default {
   mount(root, app, params = {}) {
@@ -138,9 +142,24 @@ export default {
           h('p', null, h('b', null, tip.title + ': '), tip.text))))
     }
 
-    // Ngày mai
+    // M2: tiến độ Việc hôm nay, chuỗi nhiệm vụ, Tem sự kiện
+    metaProgress(app, el)
+
+    // Ngày mai: sự kiện ngày báo trước (tính theo ngày game kế tiếp)
+    const tomorrow = dayEventInfo(state, state.day, app.ctx)
+    if (tomorrow) {
+      const lines = dayEffectLines(tomorrow.effects, app.data, state)
+      el.appendChild(h('section', { class: 'card day-event-card is-tomorrow', testid: 'summary-day-event', dataset: { event: tomorrow.id } },
+        h('div', { class: 'day-ev-head' }, svgBox(icon(tomorrow.icon || tomorrow.id), 'day-ev-icon'),
+          h('div', null, h('small', { class: 'muted' }, 'Báo trước'), h('b', { class: 'day-ev-name' }, S.meta.tomorrowEvent.replace('{name}', tomorrow.name)))),
+        h('p', { class: 'small' }, tomorrow.desc),
+        lines.length ? h('ul', { class: 'day-ev-effects' }, lines.map(t => h('li', null, t))) : null,
+        tomorrow.choice ? h('p', { class: 'small day-ev-tip' }, tomorrow.choice.free
+          ? `Bạt che mưa sẽ tự căng, không tốn tiền.`
+          : `Có thể chọn "${tomorrow.choice.label}" (${formatVND(tomorrow.choice.cost)}) ở màn Chuẩn bị.`) : null))
+    }
     el.appendChild(h('p', { class: 'center muted' },
-      `Ngày mai (ngày ${state.day}): khoảng ${customerCount(state, app.ctx, state.day)} khách · Sao trung bình ★ ${formatStars(averageRating(state.ratings))}`))
+      `Ngày mai (ngày ${state.day}): khoảng ${forecastCustomers(state, app.ctx, tomorrow)} khách · Sao trung bình ★ ${formatStars(averageRating(state.ratings))}`))
     el.appendChild(nextBtn())
 
     function nextBtn() {
@@ -159,4 +178,42 @@ function tr(label, value) {
 
 function pick(arr) {
   return arr && arr.length ? arr[Math.floor(Math.random() * arr.length)] : ''
+}
+
+// Tiến độ meta sau ca: Việc hôm nay (nhận ở màn Chuẩn bị), bước chuỗi đang làm, Tem sự kiện hôm nay.
+function metaProgress(app, el) {
+  const state = app.state
+  const M = app.data.STRINGS.meta
+  let nowInfo = null
+  try { nowInfo = app.nowInfo() } catch { nowInfo = null }
+  const ql = questList(state, app.ctx)
+  const rows = []
+  if (ql.quests.length) {
+    const claim = ql.quests.filter(q => q.canClaim).length
+    rows.push(h('div', { class: 'sum-meta-block', testid: 'summary-quests' },
+      h('h3', null, M.quests + (claim ? ` · ${claim} việc chờ nhận thưởng` : '')),
+      h('ul', { class: 'sum-quests' }, ql.quests.map(q => {
+        const def = questDef(app.ctx, q.id) || {}
+        const num = def.money ? `${formatVND(q.progress)}/${formatVND(q.target)}` : `${q.progress}/${q.target}`
+        return h('li', { class: q.done ? 'is-done' : '' },
+          h('span', { class: 'sq-text' }, (q.done ? '✓ ' : '') + q.text),
+          h('span', { class: 'sq-num' }, num),
+          progressBar(q.progress, q.target))
+      })),
+      claim || ql.chest.available ? h('p', { class: 'small muted' }, 'Nhận thưởng ở màn Chuẩn bị, mục Việc hôm nay.') : null))
+  }
+  if (nowInfo) {
+    const chains = chainStatus(state, nowInfo, app.ctx).filter(c => !c.done || c.claimable.length)
+    for (const c of chains) {
+      rows.push(h('div', { class: 'sum-meta-block', testid: c.eventId ? 'summary-event-chain' : 'summary-chain' },
+        h('h3', null, `${c.npcName ? c.npcName + ' dặn' : c.name}: ${c.claimable.length ? `xong ${c.claimable.length} bước, nhận thưởng ở màn Chuẩn bị` : `bước ${c.step + 1}/${c.total}`}`),
+        c.done ? null : h('p', { class: 'small' }, c.text + (c.isCheck || c.gateLocked ? '' : ` (${c.progress}/${c.target})`))))
+    }
+    for (const ev of eventsOverview(state, nowInfo, app.ctx).filter(e => e.phase === 'dang_dien_ra')) {
+      rows.push(h('div', { class: 'sum-meta-block', testid: 'summary-event' },
+        h('h3', null, `${ev.name}: ${ev.tem} ${ev.currencyName}`),
+        h('p', { class: 'small' }, `Hôm nay từ món ăn ${ev.temToday}/${ev.dailyCap} ${ev.currencyName}.`)))
+    }
+  }
+  if (rows.length) el.appendChild(h('section', { class: 'card sum-meta' }, h('h2', { class: 'card-title' }, 'Việc và chuỗi nhiệm vụ'), rows))
 }

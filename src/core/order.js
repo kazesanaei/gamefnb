@@ -235,7 +235,11 @@ export function reportTotal(state, amount, ctx) {
   const persona = personaObj(ctx, customer.persona)
   const day = sh.day
   let method = 'cash', fake = false
-  if (!customer.tutorial && day >= cfg(ctx, 'qrFromDay') && chance(sh, persona.qrRate ?? cfg(ctx, 'qrRate'))) {
+  if (customer.forcePay === 'qr_fake' && !customer.tutorial) {
+    // M2: chuỗi "Làm quen QR" ép 1 khách trả bằng ảnh chuyển khoản giả
+    method = 'qr'
+    fake = true
+  } else if (!customer.tutorial && day >= cfg(ctx, 'qrFromDay') && chance(sh, persona.qrRate ?? cfg(ctx, 'qrRate'))) {
     method = 'qr'
     if (day >= cfg(ctx, 'fakeQrFromDay') && chance(sh, cfg(ctx, 'fakeQrRate'))) fake = true
   }
@@ -461,7 +465,7 @@ export function confirmQr(state, ctx) {
   if (c.fakeQr) {
     if (state.upgrades && state.upgrades.loa_bao_tien) {
       emit(ctx, 'qr.confirmed', { fake: true, blocked: true })
-      rejectQr(state, ctx)
+      rejectQr(state, ctx, { blocked: true })
       return { ok: false, fake: true, blocked: true }
     }
     sh.ledger.fakeQrLoss += c.amountDue
@@ -481,7 +485,8 @@ export function confirmQr(state, ctx) {
 }
 
 // Từ chối ảnh chuyển khoản: ảnh giả → khách xấu hổ bỏ đi (fakeQrCaught); QR thật → khách bực bỏ đi.
-export function rejectQr(state, ctx) {
+// Phát 'qr.rejected' {customerId, fake, blocked} (blocked: Loa báo tiền tự chặn).
+export function rejectQr(state, ctx, opts = {}) {
   const sh = state.shift
   const c = counterOf(state, 'tinh_tien')
   if (!c || c.payMethod !== 'qr' || c.paid) return { ok: false, fake: false }
@@ -492,6 +497,7 @@ export function rejectQr(state, ctx) {
     bump(sh, 'fakeQrCaught')
     unlockTip(state, 'fake_qr', ctx)
   }
+  emit(ctx, 'qr.rejected', { customerId: customer.id, fake, blocked: !!opts.blocked })
   loseCustomer(state, customer, fake ? 'qr_gia' : 'tu_choi_qr', ctx)
   return { ok: true, fake }
 }
