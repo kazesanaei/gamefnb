@@ -1,0 +1,1632 @@
+[
+ {
+  "games": [
+   {
+    "ten": "Cooking Mama: Cook Off (dòng Cooking Mama)",
+    "the_loai": "Mô phỏng nấu ăn dạng chuỗi mini-game",
+    "nen_tang_nam": "Wii (Cook Off); dòng gốc trên Nintendo DS",
+    "co_che_cot_loi": "Có 55 công thức với hơn 300 nguyên liệu. Mỗi công thức có từ 2 đến hơn chục bước, mỗi bước là một mini-game (thái, cán, khuấy, chiên). Điểm từng mini-game tính theo mức hoàn thành và thời gian còn lại. Làm xong món thì nhận huy chương theo điểm trung bình các mini-game. Theo wiki Cooking Mama: vàng khi làm trọn không lỗi, bạc khi chỉ sơ suất nhỏ, đồng khi mắc nhiều lỗi. Làm trọn một mini-game không lỗi có thể được cộng một ít điểm kỹ năng. Công thức mới mở khi làm xong công thức trước, dù làm tốt hay chưa. Điểm tổng cao nhất được lưu làm kỷ lục. Ở chế độ đấu với đầu bếp CPU các nước, thắng thì nhận dụng cụ nấu (thường mạ vàng), thua vẫn nhận quà an ủi để trang trí bếp.",
+    "su_kien_ngau_nhien": "Gần như không có sự kiện ngẫu nhiên. Cái “phạt” duy nhất là làm hỏng bước hoặc hết giờ thì bước đó bị tính thất bại, kéo điểm món xuống.",
+    "nguyen_lieu_hiem_cong_thuc": "Không có nguyên liệu hiếm. Cái “hiếm” là công thức bị khóa theo tiến trình, mở khi làm xong công thức trước (không đòi điểm cao).",
+    "giu_chan_liveops": "Kỷ lục cá nhân từng món, huy chương, quà khi đấu (thua vẫn có quà).",
+    "diem_hay_ap_dung": [
+     "Thớt của BKN vốn giống Cooking Mama: nên thêm huy chương đồng/bạc/vàng cho từng món và bảng kỷ lục riêng cho từng mini-game Thớt để người chơi tự luyện.",
+     "Công thức hiếm mở khi đạt huy chương vàng ở món tiền đề, ví dụ vàng Trà tắc thì mở Trà tắc mật ong rừng. Lưu ý: Cooking Mama mở công thức bất kể điểm; đòi huy chương vàng là biến thể thiết kế riêng của BKN, khó hơn bản gốc.",
+     "Thử thách công thức hiếm: thua vẫn nhận quà an ủi nhỏ để người chơi không nản."
+    ],
+    "nguon": [
+     "https://en.wikipedia.org/wiki/Cooking_Mama:_Cook_Off",
+     "https://cookingmama.fandom.com/wiki/Medal (chỉ đọc đoạn trích kết quả tìm kiếm)",
+     "https://cookingmama.fandom.com/wiki/Cooking_Mama:_Cook_Off (chỉ đọc đoạn trích kết quả tìm kiếm)"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Cook, Serve, Delicious! (bản 1)",
+    "the_loai": "Quản lý nhà hàng, gõ phím theo chuỗi bước (time-management hardcore)",
+    "nen_tang_nam": "PC (ra ngày 5/10/2012 theo Wikipedia)",
+    "co_che_cot_loi": "Mỗi đơn là một chuỗi phím ứng với các bước nấu; thiếu bước, sai nguyên liệu hoặc nấu hỏng thì đơn bị chấm thấp. Giờ cao điểm trưa và tối có nhiều khách hơn. Việc vặt (rửa chén, đổ rác, dội toilet) chen giữa các đơn. Giữa các ngày thì chỉnh thực đơn, mua công thức, mua thiết bị. Bán quá nhiều món không lành mạnh cùng lúc làm khách bỏ đi; bán một món ngày này qua ngày khác thì món bị “cũ”. Chỉ số Buzz phản ánh độ hài lòng của khách với quán, chịu ảnh hưởng của sự kiện trước đó, thực đơn và thời tiết (theo đoạn trích wiki).",
+    "su_kien_ngau_nhien": "Theo thảo luận Steam, cướp là sự kiện “hoàn toàn ngẫu nhiên”, “cực hiếm so với các sự kiện khác”; nhà phát triển nói đây là loại sự kiện gặp sau cùng hoặc áp chót. Một người chơi kể bị cướp mất 400 đơn vị tiền. Theo đoạn trích wiki, cướp là một loại việc vặt hiếm nhất (thứ tự từ thường đến hiếm: toilet > rửa chén > đổ rác > chuột > cướp): người chơi phác họa kẻ cướp theo lời tả của nhân chứng, bấm phím để đổi tóc, mắt, tai, mũi, môi, râu; có mục luyện tập việc vặt. Thanh tra an toàn thỉnh thoảng ghé: lúc đó việc vặt mờ đi nhanh hơn, bỏ sót từ 2 việc vặt trở lên thì trượt thanh tra (theo đoạn trích wiki).",
+    "nguyen_lieu_hiem_cong_thuc": "Không có nguyên liệu hiếm; công thức mua bằng tiền.",
+    "giu_chan_liveops": "Buzz/danh tiếng, nâng hạng quán, mở dần loại sự kiện (cướp đến sau cùng).",
+    "diem_hay_ap_dung": [
+     "Sự kiện phạt tiền phải có đường gỡ bằng kỹ năng: “Giật két” mất một phần tiền két, rồi mini-game nhận dạng kẻ giật theo lời tả để lấy lại 50–100% (vẫn chịu trần thiệt hại 10% doanh thu hiện có).",
+     "“Phường kiểm tra vệ sinh” ghé ngẫu nhiên trong ca: còn việc vặt chưa làm (lau thớt, đổ rác) thì phạt, làm kịp thì được danh tiếng. Việc này dạy nhân viên giữ quầy sạch.",
+     "Món bán lặp nhiều ngày liền thì bớt hút khách, khuyến khích đổi thực đơn và dùng công thức hiếm.",
+     "Sự kiện tiêu cực nặng nên mở muộn (từ ngày game 7 trở đi), hiếm nhất, và có chỗ luyện tập trước."
+    ],
+    "nguon": [
+     "https://en.wikipedia.org/wiki/Cook,_Serve,_Delicious!",
+     "https://steamcommunity.com/app/247020/discussions/0/810938082206738443",
+     "https://csd.fandom.com/wiki/Chores (chỉ đọc đoạn trích kết quả tìm kiếm)",
+     "https://csd.fandom.com/wiki/Buzz (chỉ đọc đoạn trích kết quả tìm kiếm)",
+     "https://tvtropes.org/pmwiki/pmwiki.php/VideoGame/CookServeDelicious (chỉ đọc đoạn trích kết quả tìm kiếm)"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Cook, Serve, Delicious! 2!! và 3?!",
+    "the_loai": "Quản lý nhà hàng / xe bán đồ ăn, time-management",
+    "nen_tang_nam": "Bản 2: PC/Mac ngày 13/9/2017, sau lên console. Bản 3: early access tháng 1/2020, bản đầy đủ ngày 14/10/2020 trên Windows, Switch, PS4, Xbox One",
+    "co_che_cot_loi": "Bản 2: trạm giữ đồ (Holding Station) để làm sẵn món trước khi khách tới; số món tăng từ 30 lên hơn 180; chế độ Chef for Hire làm ở hơn 30 nhà hàng. Đơn Perfect có kèm món phụ và đồ uống thì thành đơn Delicious, được thêm tip và điểm YUM. Khách không tự gọi món phụ; món phụ có sẵn ở trạm giữ đồ thì khách lấy kèm. Ngày không có đơn Average/Bad nào là Ngày hoàn hảo, cho huy chương vàng. Mục tiêu phụ dài hạn: combo tới 100, 32 ngày hoàn hảo, 20.000 khách, 6.000 đơn Perfect… Bản 3: xe bán đồ ăn chạy qua nhiều điểm dừng mỗi ngày; thực đơn 2–8 món, mỗi món có điểm độ khó 0–5; bỏ việc vặt bắt buộc; có chế độ Chill (ít đơn, chậm hơn, thưởng thấp hơn) và chiến dịch Zen. Món làm sẵn ở trạm giữ đồ mất độ tươi dần trong ngày; đèn giữ nóng (nâng cấp xe) kéo dài độ tươi, hết tươi thì phải bỏ.",
+    "su_kien_ngau_nhien": "Ít sự kiện ngẫu nhiên. Thưởng/phạt đến từ độ khó thực đơn người chơi tự chọn và chất lượng từng đơn.",
+    "nguyen_lieu_hiem_cong_thuc": "Không có nguyên liệu hiếm; công thức và thiết bị mua bằng tiền cuối ngày.",
+    "giu_chan_liveops": "Mục tiêu phụ tích lũy, huy chương ngày, nhiều nhà hàng thuê bếp.",
+    "diem_hay_ap_dung": [
+     "Nấc chất lượng cao nhất đòi đơn đủ bộ (món chính + món phụ + nước). Ghép với tip mới “hóa đơn từ 20.000đ”, người chơi có lý do bán kèm, đúng kỹ năng upsell của nhân viên thật.",
+     "Huy chương ca vàng/bạc theo số khách dưới 4 sao (ngưỡng bạc là đề xuất thiết kế; nguồn chỉ xác nhận vàng = ngày không có đơn kém).",
+     "Người chơi tự chọn độ khó thực đơn: thực đơn khó thì thưởng cao hơn.",
+     "Mục tiêu phụ dài hạn (số ca hoàn hảo, số khách 5 sao) thưởng Muỗng Vàng."
+    ],
+    "nguon": [
+     "https://en.wikipedia.org/wiki/Cook,_Serve,_Delicious!_2",
+     "https://steamcommunity.com/app/386620/discussions/0/1484358860949871877/",
+     "https://steamcommunity.com/app/386620/discussions/0/2765630416810309962/ (chỉ đọc đoạn trích kết quả tìm kiếm)",
+     "https://steamcommunity.com/sharedfiles/filedetails/?id=2077167966 (chỉ đọc đoạn trích kết quả tìm kiếm)",
+     "https://en.wikipedia.org/wiki/Cook,_Serve,_Delicious!_3",
+     "https://www.pcgamer.com/cook-serve-delicious-3-review/ (chỉ đọc đoạn trích kết quả tìm kiếm)"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Overcooked! và Overcooked! 2",
+    "the_loai": "Nấu ăn hợp tác hỗn loạn (co-op time-management)",
+    "nen_tang_nam": "Bản 1 năm 2016; bản 2 ngày 7/8/2018 (Switch, PS4, Windows, Xbox One)",
+    "co_che_cot_loi": "1–4 người lấy, thái, nấu, bày, giao, rửa đĩa. Đơn đúng thì được xu, giao nhanh có thưởng; xếp 3 sao theo tổng xu. Theo đoạn trích wiki: tip nhân tối đa ×4, tăng khi giao đơn đúng thứ tự khách gọi. Bản 2 thêm ném nguyên liệu và chế độ Arcade sinh màn ngẫu nhiên theo chủ đề.",
+    "su_kien_ngau_nhien": "Biến cố gắn với màn chơi: bếp nằm trên hai xe tải chạy khác tốc độ (không phải lúc nào cũng qua lại được), người đi bộ băng qua bếp, tảng băng trơn dễ rơi, bếp di chuyển. Bản 2 thêm cổng dịch chuyển, băng chuyền, và màn đổi bếp giữa chừng (bắt đầu làm salad trên khinh khí cầu, kết thúc rơi xuống bếp sushi).",
+    "nguyen_lieu_hiem_cong_thuc": "Không có nguyên liệu hiếm.",
+    "giu_chan_liveops": "Sao để mở màn, màn bí mật, chơi chung.",
+    "diem_hay_ap_dung": [
+     "Tip cố định 5.000đ vẫn có thể có “chuỗi”, nhưng thưởng chuỗi (5 khách liền đúng quy trình) nên bằng danh tiếng hoặc vé, không cộng thêm tiền, để giữ đúng yêu cầu giảm tip.",
+     "Sự kiện ngày làm đổi mặt bằng hoặc thiết bị: “Cúp điện” (máy xay nghỉ, phải đổi thực đơn), “Đào đường” (khách phải đi vòng, kiên nhẫn giảm).",
+     "Phạt bằng mất chuỗi hoặc mất thời gian thay vì trừ tiền trực tiếp khi người chơi sai thao tác."
+    ],
+    "nguon": [
+     "https://en.wikipedia.org/wiki/Overcooked",
+     "https://en.wikipedia.org/wiki/Overcooked_2",
+     "https://overcooked.fandom.com/wiki/Combos (chỉ đọc đoạn trích kết quả tìm kiếm)"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "PlateUp!",
+    "the_loai": "Roguelite quản lý và dựng nhà hàng",
+    "nen_tang_nam": "Windows ngày 4/8/2022; console (Switch, PS4/PS5, Xbox) ngày 15/2/2024",
+    "co_che_cot_loi": "Mỗi lượt chơi thường dài tối đa 15 ngày. Ban ngày phục vụ theo thanh thời gian; khách chờ quá lâu thì thua. Cuối mỗi ngày cửa hàng đưa 5 bản vẽ thiết bị (4 bản cơ bản + 1 bản ngẫu nhiên); nghiên cứu bản vẽ cho một trong hai kết quả nâng cấp, ngẫu nhiên. Cứ 3 ngày chọn 1 trong 2 thẻ; thẻ làm lượt chơi khó hơn và đổi hẳn lượt đó: thêm món, đổi cơ chế người chơi, đổi hành vi khách. Theo đoạn trích wiki: thẻ đầu chọn ở đầu ngày 4, mỗi thẻ đáng 0–200 XP, XP cộng dồn trao cuối lượt và thẻ là nguồn XP duy nhất. Bàn đặt chỗ cho thêm thu nhập nhưng có thể gây dồn khách. Ngày trang trí rơi vào đầu ngày 6, rồi cứ 5 ngày một lần (ngày 11, 16…); ngày 6 chọn thẻ chủ đề. Giữa các lượt có nhà kho giữ tiến trình mở khóa.",
+    "su_kien_ngau_nhien": "Theo đoạn trích wiki (chưa mở được trang): thẻ “Trick” phần lớn rất tiêu cực (khách làm cháy bàn, kiên nhẫn hàng chờ không hồi) và có thể thay chỗ thẻ Khách. Người chơi vẫn được chọn giữa hai thẻ.",
+    "nguyen_lieu_hiem_cong_thuc": "Món mới đến qua thẻ Món; không có nguyên liệu hiếm theo nghĩa rơi đồ.",
+    "giu_chan_liveops": "Mở khóa vĩnh viễn giữa các lượt, franchise, mỗi lượt một khác.",
+    "diem_hay_ap_dung": [
+     "“Thẻ ngày”: cứ 3 ngày game chọn 1 trong 2 thẻ, ví dụ thẻ Khách (+1 khách/ca, thưởng Muỗng Vàng) hoặc thẻ Món (mở một công thức hiếm nhưng thêm một bước sơ chế). Người chơi tự chọn mức rủi ro.",
+     "Cửa hàng buổi tối bốc ngẫu nhiên 3 mặt hàng (dụng cụ, nguyên liệu hiếm) thay cho cửa hàng cố định, có nút đổi lượt tốn phí.",
+     "Thất bại vẫn để lại tiến bộ (XP/sổ tay), để phạt không làm người chơi mất hết."
+    ],
+    "nguon": [
+     "https://en.wikipedia.org/wiki/PlateUp!",
+     "https://comicbuzz.com/plateup-review/",
+     "https://www.chaptercheats.com/cheat/pc/513512/plateup/hint/174921",
+     "https://wiki.plateupgame.com/Decorations (chỉ đọc đoạn trích kết quả tìm kiếm)",
+     "https://wiki.plateupgame.com/Cards (chỉ đọc đoạn trích kết quả tìm kiếm, trang không tải được nội dung)"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Diner Dash",
+    "the_loai": "Time-management phục vụ bàn",
+    "nen_tang_nam": "PC (khoảng 2004–2005; Wikipedia ghi bản PC năm 2005), sau lên DS, di động và nhiều nền tảng khác",
+    "co_che_cot_loi": "Xếp khách vào bàn, nhận đơn, bưng món từ bếp, tính tiền, dọn bàn. Khách có dãy tim thể hiện tâm trạng; chờ càng lâu càng mất tim, hết tim thì khách bỏ về. Làm cùng một loại hành động liên tiếp được thưởng chuỗi; đổi hành động thì mất chuỗi. Mỗi loại khách có mức kiên nhẫn và thói quen tip khác nhau. Mỗi màn có chỉ tiêu điểm và chỉ tiêu chuyên gia. Theo đoạn trích hướng dẫn: xếp khách vào ghế cùng màu áo được 100 điểm, nhân theo số lần ghép đúng trong màn, nên ghép càng nhiều càng có giá.",
+    "su_kien_ngau_nhien": "Không có sự kiện ngẫu nhiên lớn; biến số chính là loại khách và nhịp khách vào.",
+    "nguyen_lieu_hiem_cong_thuc": "Không có.",
+    "giu_chan_liveops": "Chỉ tiêu chuyên gia, thưởng ghép màu cộng dồn, cốt truyện qua nhiều nhà hàng.",
+    "diem_hay_ap_dung": [
+     "Mỗi ca có hai nấc chỉ tiêu (Đạt / Chuyên gia), nấc Chuyên gia thưởng vé hoặc nguyên liệu hiếm.",
+     "Thưởng chuỗi nhỏ khi tính tiền hoặc thối tiền đúng liên tiếp, gắn với khâu Tính tiền của BKN.",
+     "Tip 5.000đ cho hóa đơn từ 20.000đ tự tạo khác biệt giữa các nhóm khách (học sinh gọi ít, dân văn phòng gọi nhiều), giống cách Diner Dash cho mỗi loại khách một thói quen tip."
+    ],
+    "nguon": [
+     "https://en.wikipedia.org/wiki/Diner_Dash",
+     "https://www.cheathappens.com/show_board2.asp?headID=30707&titleID=10725 (chỉ đọc đoạn trích kết quả tìm kiếm)",
+     "https://glumobile.helpshift.com/hc/en/12-diner-dash/faq/308-how-do-i-complete-a-color-match-goal/ (chỉ đọc đoạn trích kết quả tìm kiếm)"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Delicious (dòng Emily, GameHouse)",
+    "the_loai": "Time-management nhà hàng có cốt truyện",
+    "nen_tang_nam": "PC, di động",
+    "co_che_cot_loi": "Mỗi màn là một ca. Khách có tim từ 5 (rất vui) xuống 1 (giận); khách vui để lại tip, khách giận có thể bỏ về. Bản The First Course có ba thưởng chính: Phục vụ nhanh, Đủ đơn một lượt, Dọn sạch bàn trước khi tính tiền. Mỗi nhà hàng (8 nhà hàng) có một mini-game riêng: cà phê, pizza, sữa lắc, samosa, sủi cảo, bánh may mắn, taco, sushi. Mỗi màn có thử thách phụ tùy chọn, làm được thì thêm điểm và kim cương; tối đa 5 kim cương mỗi màn thường. Xếp 1–3 sao theo điểm và lợi nhuận. Có nâng cấp bếp, nội thất, trang trí.",
+    "su_kien_ngau_nhien": "Ngẫu nhiên thấp. Điểm hay là đồ ẩn: ở The First Course, chú chuột Carl trốn trong cả 80 màn (và màn Endless), kêu chít khẽ trước khi biến mất. Ở bản Hopes and Fears có 65 con chuột ẩn, xuất hiện kèm tiếng kêu.",
+    "nguyen_lieu_hiem_cong_thuc": "Không có nguyên liệu hiếm; kim cương dùng mua quà và trang trí.",
+    "giu_chan_liveops": "Sưu tầm đồ ẩn, 3 sao, cúp thành tích, cốt truyện, chế độ Endless.",
+    "diem_hay_ap_dung": [
+     "“Đồ rơi trong ca”: giữa hai khách, thỉnh thoảng một nguyên liệu hiếm (bó lá dứa, hũ mật ong rừng) hiện ở góc quầy vài giây kèm âm báo; chạm kịp thì nhặt được. Đáp ứng yêu cầu (3) mà không cắt ngang thao tác.",
+     "Thử thách phụ mỗi ca (ví dụ “thối tiền đúng 5 khách liền”) thưởng vật phẩm thay vì tiền.",
+     "Thưởng “Đủ đơn một lượt” khi bưng đủ món cho khách trong một lần."
+    ],
+    "nguon": [
+     "https://www.gamehouse.com/blog/2025/01/delicious-emily-the-first-course-gh/",
+     "https://www.gamehouse.com/blog/2015/11/delicious-emilys-hopes-and-fears-walkthrough/"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Dòng Papa's (Flipline Studios: Pizzeria, Freezeria, Cheeseria…)",
+    "the_loai": "Time-management nhiều trạm, làm món theo từng bước",
+    "nen_tang_nam": "Web Flash (Papa's Pizzeria năm 2007; tiền thân Papa Louie năm 2006), sau có bản HD/To Go! trên di động và bản Deluxe trên Steam",
+    "co_che_cot_loi": "Thường có bốn trạm: nhận đơn, hai trạm nấu/chế biến, trạm bày và giao. Đơn làm tốt cho tip và điểm lên hạng. Đơn chính xác cho khách sao; đủ sao thì khách lên Đồng/Bạc/Vàng, tăng tip, tăng điểm và gọi món nhanh hơn.",
+    "su_kien_ngau_nhien": "Nhịp sự kiện cố định chứ không thuần ngẫu nhiên. Món đặc biệt (Specials) có từ Papa's Cheeseria: theo đoạn trích wiki, cứ 3 ngày có một khách mang phong bì vàng; khách này chấm khắt khe như closer, đạt từ 80% điểm các trạm thì được công thức đặc biệt. Nhà phát triển xác nhận trên Steam: khách chỉ mang phong bì cho món mà người chơi làm được ngay lúc đó (đã mở đủ nguyên liệu). Mỗi ngày có một khách “closer” cuối ca; Freezeria Deluxe có 7 closer, mỗi người một ngày trong tuần, và closer chấm khắt khe hơn. Nhà phê bình Jojo mỗi lần gọi món mới; phục vụ tốt thì được Ruy băng xanh, tăng tip trong 3 ngày.",
+    "nguyen_lieu_hiem_cong_thuc": "Lịch lễ: Freezeria Deluxe có 12 lễ trong năm, mỗi lễ thêm nguyên liệu và đồ trang trí riêng; closer đổi món theo lễ. Theo đoạn trích wiki: món đặc biệt có hiệu ứng thưởng khi phục vụ (thêm sao, thêm vé, tip cao hơn hoặc điểm cao hơn); phục vụ món đặc biệt cho 5 khách thì thường nhận quần áo thưởng.",
+    "giu_chan_liveops": "Mini-game Foodini sau giờ làm: vé kiếm được khi phục vụ khách tốt, mỗi vé một lượt chơi, mini-game đổi mỗi ngày, mỗi game có hơn chục đồ nội thất/áp phích hiếm. Theo đoạn trích wiki: tiệm cho tối đa 3 vé mỗi ngày (chưa tính món đặc biệt và xe đẩy); từ Donuteria có giải hiếm đồng/bạc/vàng khi thắng đủ 14/28/42 lần. Bản Deluxe có xe đẩy (Food Truck): không cộng điểm hạng nhưng cho thêm tip và vé.",
+    "diem_hay_ap_dung": [
+     "“Phong bì công thức hiếm”: đều đặn mỗi 3 ngày game có khách mang phong bì; chỉ tặng công thức mà BKN đang có đủ nguyên liệu hiếm để làm; món đạt Ngon trở lên thì mở; làm đạt 5 lần thì Thạo, thưởng Muỗng Vàng.",
+     "Vé cuối ca kiếm bằng chất lượng (khách 5 sao), tối đa 3 vé/ca, đổi lượt mini-game Thớt đặc biệt để nhận nguyên liệu hiếm. Có bảo hiểm theo số lần thắng giống mốc 14/28/42.",
+     "Nhà phê bình/KOL ghé mỗi 7 ngày game, đổi món mỗi lần; đạt thì treo biển khen 3 ngày (+1 khách/ca).",
+     "Lịch lễ Việt Nam, mỗi lễ có nguyên liệu mùa riêng; mở rộng từ mô hình Tri ân 20/11.",
+     "Khách quen có cấp Đồng/Bạc/Vàng; lên cấp thì khách tip cao hơn hoặc tặng quà."
+    ],
+    "nguon": [
+     "https://en.wikipedia.org/wiki/Papa_Louie",
+     "https://www.flipline.com/blog/archives/591",
+     "https://steamcommunity.com/app/3259470/discussions/0/4634862878162250270/",
+     "https://fliplinestudios.fandom.com/wiki/Specials (chỉ đọc đoạn trích kết quả tìm kiếm)",
+     "https://fliplinestudios.fandom.com/wiki/Closer (chỉ đọc đoạn trích kết quả tìm kiếm)",
+     "https://fliplinestudios.fandom.com/wiki/Mini-Games (chỉ đọc đoạn trích kết quả tìm kiếm)",
+     "https://store.steampowered.com/app/2291760/Papas_Freezeria_Deluxe/ (chỉ đọc đoạn trích kết quả tìm kiếm)"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Good Pizza, Great Pizza",
+    "the_loai": "Mô phỏng tiệm pizza, làm món thủ công, có cốt truyện",
+    "nen_tang_nam": "iOS 2014, Android 2015, Switch 2020, Windows/macOS 2023",
+    "co_che_cot_loi": "Làm pizza thủ công: nhào bột, rưới sốt, rắc topping, nướng, cắt, đóng hộp, giao ở quầy. Hơn 100 khách có tính cách riêng. Có khách gọi món rõ ràng, có khách nói kiểu đố mẹo; mỗi đơn được hỏi lại một lần. Người chơi phải cân tốc độ với độ chính xác; khách vui thì để lại tip. Làm sai phải hoàn tiền. Có khách không đủ tiền trả, người chơi phải tự quyết. Có hai khách vô gia cư quay lại nhiều lần xin đồ ăn; giúp họ thì sau này họ quay lại giúp tiệm. Một số topping phải trồng và tưới hằng ngày. Kho lớn dần thì topping không còn nhãn, phải nhớ bằng mắt. Tiệm đối thủ ở bên kia đường; bản tin nhại PNN (Pizza News Network) kể chuyện.",
+    "su_kien_ngau_nhien": "Sự kiện có thời hạn khoảng 2 tuần, nối nhau. Ví dụ Oven and Orcs (27/8–9/9) có khách nhập vai mới và cơ chế xúc xắc bánh xe pizza quyết định kết quả nhiệm vụ. Còn có Bonfyre Fest kiếm điểm Hype và sự kiện săn đồ ở công viên Doughland. Theo đoạn trích wiki (chưa mở được trang): có lễ hội topping vào ngày cố định trong chương, hôm đó khách gọi nhiều loại pizza liên quan.",
+    "nguyen_lieu_hiem_cong_thuc": "Topping phải trồng mỗi ngày; sự kiện có thời hạn có phần thưởng giới hạn.",
+    "giu_chan_liveops": "Cốt truyện khách quen, sự kiện 2 tuần liên tục, đồ trang trí và thành tích giới hạn.",
+    "diem_hay_ap_dung": [
+     "Khách “đố mẹo” khi gọi món (ví dụ “cho cô ly gì chua chua ngọt ngọt màu cam”): luyện nhân viên mới nghe hiểu order, được hỏi lại một lần mỗi đơn.",
+     "Sự kiện “Khách thiếu tiền”: cho ghi nợ, giảm giá hay từ chối. Cho nợ thì vài ngày sau khách quay lại trả kèm tip hoặc quà (giống khách vô gia cư được giúp thì quay lại giúp tiệm); chọn gì cũng có cái giá rõ ràng.",
+     "Làm sai món phải hoàn tiền hoặc làm lại, một kiểu phạt tự nhiên và dễ hiểu.",
+     "Nguồn nguyên liệu hiếm đều đặn: chậu húng, hũ tắc ngâm đường lớn dần theo ngày game, thu 1 lần/ngày.",
+     "Ngày lễ hội món theo lịch cố định trong Chặng (ví dụ “Ngày trà tắc” ở ngày 6): khách gọi món đó nhiều hơn. Đây là đề xuất thiết kế; chi tiết lễ hội topping của Good Pizza chưa kiểm được."
+    ],
+    "nguon": [
+     "https://en.wikipedia.org/wiki/Good_Pizza,_Great_Pizza",
+     "https://bigbossbattle.com/good-pizza-great-pizza-launched-oven-and-orcs-event/ (chỉ đọc đoạn trích kết quả tìm kiếm)",
+     "https://steamcommunity.com/app/770810/allnews/ (chỉ đọc đoạn trích kết quả tìm kiếm)",
+     "https://good-pizza-great-pizza.fandom.com/wiki/Events (chỉ đọc đoạn trích kết quả tìm kiếm)"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Cooking Fever (Nordcurrent)",
+    "the_loai": "Time-management nhiều nhà hàng trên di động",
+    "nen_tang_nam": "Di động (iOS/Android), sau có PC",
+    "co_che_cot_loi": "Mỗi nhà hàng có 40 màn, mỗi màn có điểm tối thiểu để qua. Theo hướng dẫn noodlearcade: 2 sao khi vượt mức tối thiểu khoảng 100–250 điểm, 3 sao khi vượt khoảng 250–350 điểm. Khách bắt đầu sốt ruột và giận trong khoảng 20 giây. Mỗi món nội thất nâng cấp cộng 2 giây chờ và tăng tip. Món chiêu khách đặc biệt mua bằng gems (thường 3 gems cho một mẻ 8–9 phần). Máy nấu tự động chỉ dùng được 72 giờ. Thu nhập hằng ngày nhận được 24 giờ sau lần bấm nhận trước.",
+    "su_kien_ngau_nhien": "Casino mở từ cấp kinh nghiệm 7. Theo hướng dẫn noodlearcade: trúng được 15 gems hai lần mỗi ngày, cách nhau đúng 12 giờ; lượt sáng tốn khoảng 5.000–25.000 xu, lượt tối khoảng 25.000–80.000 xu. Theo đoạn trích wiki (chưa mở được trang): quay bằng vé, cược thấp/cao hoặc xem quảng cáo; hệ số thưởng tăng qua các nấc.",
+    "nguyen_lieu_hiem_cong_thuc": "Nâng cấp nguyên liệu làm tăng giá bán món.",
+    "giu_chan_liveops": "Điểm danh: từ ngày 7 trở đi mỗi ngày chơi liên tiếp được 2 gems. Lên cấp được 2 gems, tăng dần tới tối đa 7 gems mỗi cấp.",
+    "diem_hay_ap_dung": [
+     "Nguyên liệu hiếm như một “nâng cấp tạm” cho món thường: thêm mật ong rừng thì Trà tắc bán thêm 5.000đ, đến khi hết nguyên liệu hiếm.",
+     "Không nên đưa casino hay vòng quay cược vào game đào tạo nhân viên; nếu cần yếu tố may, dùng mini-game kỹ năng, có trần số lần mỗi ngày.",
+     "Thu nhập thụ động nhận mỗi 24 giờ có thể thành “tiền hàng ký gửi” nhỏ, có trần."
+    ],
+    "nguon": [
+     "https://noodlearcade.com/cooking-fever-ultimate-strategy-guide",
+     "https://noodlearcade.com/cooking-fever-how-get-more-gems",
+     "https://cookingfever.fandom.com/wiki/Casino (chỉ đọc đoạn trích kết quả tìm kiếm, trang trả 402)"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Cooking Madness – Kitchen Frenzy (ZenLife)",
+    "the_loai": "Time-management theo màn trên di động",
+    "nen_tang_nam": "Di động (ra mắt ngày 13/12/2017 trên iOS)",
+    "co_che_cot_loi": "Hai kiểu màn: Customer Frenzy (phục vụ đủ số khách) và Time Attack (đua với thời gian). Phục vụ liên tiếp nhiều khách thì được combo, thưởng từ 10 xu cho combo 3 và tăng dần. Ở màn chỉ tiêu xu, khách còn kiên nhẫn để lại tip, tối đa 20% tổng thu. Booster trước màn (x2 lợi nhuận) và sau khi thua (thêm khách, thêm giờ). Cupcake làm vui khách đang sốt ruột nhất. Chơi tốn năng lượng; có chìa khóa mở màn. Hơn 80 nhà hàng chủ đề và hơn 3.000 màn.",
+    "su_kien_ngau_nhien": "Mỗi ngày có vài nhiệm vụ ngẫu nhiên, xong mỗi nhiệm vụ được 1 kim cương; xong 3 nhiệm vụ bất kỳ được một phần thưởng ngẫu nhiên. Có nhà hàng giới hạn theo lễ (từ Halloween, Ngày của Mẹ đến Thánh Patrick, Tết Đoan Ngọ). Theo mô tả App Store: có pass sự kiện và hoạt động có thời hạn để mở khách đặc biệt.",
+    "nguyen_lieu_hiem_cong_thuc": "Không có nguyên liệu hiếm rõ ràng; món lên cấp qua nâng cấp.",
+    "giu_chan_liveops": "Điểm danh làm mới lúc 0:00 UTC, liên tục 7 ngày được quà lớn hơn; sự kiện theo lễ và pass sự kiện.",
+    "diem_hay_ap_dung": [
+     "Nhiệm vụ ngày ngẫu nhiên thưởng đều một đơn vị tiền cứng; BKN đã có nhiệm vụ ngày, có thể thêm 1 nhiệm vụ “nhặt nguyên liệu hiếm”.",
+     "Có cách cứu vãn sau khi thua hoặc bị phạt (thêm giờ, thêm khách) để phạt không cụt hứng.",
+     "Vật phẩm dỗ khách sốt ruột: tặng ly trà đá, có thể làm từ nguyên liệu hiếm.",
+     "Tip có trần theo % hóa đơn: 5.000đ trên hóa đơn từ 20.000đ tức tối đa 25%, gần mức tối đa 20% của Cooking Madness."
+    ],
+    "nguon": [
+     "https://zenjoy.helpshift.com/hc/en/3-cooking-madness-kitchen-frenzy/section/19-gameplay/",
+     "https://apps.apple.com/ph/app/cooking-madness-kitchen-frenzy/id1323901884",
+     "https://appadvice.com/app/cooking-madness-kitchen-frenzy/1323901884 (chỉ đọc đoạn trích kết quả tìm kiếm)"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Cooking Diary (MYTONA)",
+    "the_loai": "Time-management theo màn, có hội nhóm và liveops",
+    "nen_tang_nam": "Di động, PC",
+    "co_che_cot_loi": "Màn chơi nấu và phục vụ, có mục tiêu màn. Trang hướng dẫn chính thức chia các mảng: Tiến trình và bạn bè, Hội (Guild, League of Guilds, Guild Quests), Sự kiện (Daily Quest, Culinary Tournament, Food Truck), Khách đặc biệt, Mục tiêu màn, cách kiếm Ruby, Tùy biến và danh tiếng nhà hàng (Restaurant Prestige).",
+    "su_kien_ngau_nhien": "Theo Trung tâm trợ giúp của MYTONA: Food Truck là sự kiện có thời hạn, mở sau màn 11 của Cake Shop; người chơi tiến dọc tuyến đường của xe để nhận trang phục độc quyền, booster và ruby; khách trả bằng loại tiền riêng của sự kiện, hết sự kiện thì tiền này mất. Culinary Tournament là giải đấu giữa người chơi, leo hạng bằng cách làm nhiệm vụ, top đầu nhận thưởng cuối sự kiện. Daily Quest là sự kiện lặp lại; theo đoạn trích, xong hết nhiệm vụ trong ngày thì có quà, xong đủ cả tuần thì có quà đặc biệt.",
+    "nguyen_lieu_hiem_cong_thuc": "Không thấy nguồn nói rõ về nguyên liệu hiếm.",
+    "giu_chan_liveops": "Sự kiện tuyến đường, giải đấu, hội nhóm, danh tiếng nhà hàng, quà hoàn thành nhiệm vụ ngày và tuần.",
+    "diem_hay_ap_dung": [
+     "“Hành trình xe đẩy” trong sự kiện có thời hạn: mỗi ca đạt yêu cầu thì tiến 1 ô trên tuyến phố, ô đặc biệt có nguyên liệu hiếm; hợp với cốt truyện 7 chặng của BKN.",
+     "Xong đủ nhiệm vụ ngày thì có thêm quà (BKN đã có, nên cho quà này là nguyên liệu hiếm), xong đủ 7 ngày thì có quà lớn."
+    ],
+    "nguon": [
+     "https://cookingdiary.game/game-guide",
+     "https://mytona.helpshift.com/hc/en/5-cooking-diary/faq/339-what-s-the-food-truck/",
+     "https://mytona.helpshift.com/hc/en/5-cooking-diary/faq/424-what-is-the-culinary-tournament/ (chỉ đọc đoạn trích kết quả tìm kiếm)",
+     "https://mytona.helpshift.com/hc/en/5-cooking-diary/faq/414-what-s-the-chef-s-to-do-list/ (chỉ đọc đoạn trích kết quả tìm kiếm)"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Chef Life: A Restaurant Simulator",
+    "the_loai": "Mô phỏng đầu bếp và quản lý nhà hàng chi tiết",
+    "nen_tang_nam": "PC, PlayStation, Xbox, Switch (2023, theo ngày đăng review)",
+    "co_che_cot_loi": "Vòng ngày: đầu ngày đặt nguyên liệu, sơ chế trước nếu muốn, chọn thực đơn, rồi nấu trong giờ phục vụ. Người chơi chọn nguyên liệu địa phương chất lượng cao hoặc hàng nhập giá rẻ. Nấu bằng thao tác cần analog và canh giờ (khuấy vòng tròn, lật bít tết trước khi cháy mặt). Công thức mới mở bằng Điểm kiến thức; nấu một món đủ nhiều lần thì nâng lên bản cao cấp hơn. Cuối ngày có bản tổng kết từng đơn và mức hài lòng của khách; review nhắc giao trễ là khó khăn thường gặp. Về sau có phó bếp phụ giúp. Có tùy chọn hạ độ khó cho người muốn chơi thư thả.",
+    "su_kien_ngau_nhien": "Khách đặc biệt ghé không báo trước (đồng nghiệp đầu bếp, người làm ở tòa thị chính) với yêu cầu đẩy cốt truyện.",
+    "nguyen_lieu_hiem_cong_thuc": "Chất lượng nguồn hàng (địa phương cao cấp hay nhập khẩu rẻ) thay cho khái niệm hiếm; công thức nâng cấp qua luyện tập.",
+    "giu_chan_liveops": "Nâng cấp món, mở công thức, mở rộng nhà hàng; các review chê vòng lặp lặp lại và cứng nhắc.",
+    "diem_hay_ap_dung": [
+     "Ở chợ đầu ngày có lựa chọn hàng thường hoặc hàng tuyển (đắt hơn, món đạt Ngon dễ hơn). Nguyên liệu hiếm nằm trong nhóm hàng tuyển.",
+     "Khách đặc biệt ghé ngẫu nhiên với yêu cầu tùy chọn: làm được thì thưởng tiền hoặc nguyên liệu hiếm, bỏ qua thì không bị phạt.",
+     "Lời chê “lặp lại, đơn điệu” là lý do chính đáng để BKN tăng tần suất sự kiện."
+    ],
+    "nguon": [
+     "https://www.gamingnexus.com/Article/11794/Chef-Life-A-Restaurant-Simulator/",
+     "https://www.pushsquare.com/reviews/ps5/chef-life-a-restaurant-simulator"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Cooking Simulator",
+    "the_loai": "Mô phỏng nấu ăn vật lý",
+    "nen_tang_nam": "Windows năm 2019, bản console ra dần đến 2021",
+    "co_che_cot_loi": "Nấu bằng tương tác vật lý với nguyên liệu và dụng cụ. Chế độ Career: phục vụ để tăng danh tiếng và kinh nghiệm, mục tiêu là Sao danh tiếng thứ 5. Mỗi lần lấy nguyên liệu khỏi kệ là bị trừ phí ngay. Hơn 80 công thức, hơn 140 nguyên liệu. Có Sandbox không giới hạn thời gian, Cooking School hướng dẫn cơ chế, bản mở rộng Pizza và Cakes & Cookies; DLC Shelter có chia khẩu phần, đổi bữa ăn lấy ân huệ, săn quái lấy thịt.",
+    "su_kien_ngau_nhien": "Không thấy nguồn nói về sự kiện ngẫu nhiên.",
+    "nguyen_lieu_hiem_cong_thuc": "Không có nguyên liệu hiếm rõ ràng; chi phí gắn với từng lần lấy nguyên liệu.",
+    "giu_chan_liveops": "Sao danh tiếng, chế độ phụ, DLC.",
+    "diem_hay_ap_dung": [
+     "Nguyên liệu hiếm trừ vào kho ngay lúc lấy, nên lấy nhầm là mất; dạy tính cẩn thận (BKN đã có hao hụt).",
+     "Chế độ luyện tập tự do, không tính tiền, cho nhân viên mới tập thao tác công thức hiếm trước khi bán thật."
+    ],
+    "nguon": [
+     "https://en.wikipedia.org/wiki/Cooking_Simulator"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Cafeteria Nipponica (Kairosoft)",
+    "the_loai": "Tycoon quản lý quán ăn pixel",
+    "nen_tang_nam": "Di động (Kairosoft), sau có bản Switch/PC",
+    "co_che_cot_loi": "Mở tối đa 3 quán cùng lúc. Món phát triển từ món nền kết hợp nguyên liệu; chỉ nấu được khi chỉ số Nghiên cứu của đầu bếp ≥ tổng số sao của món và nguyên liệu. Kết hợp hợp vị thì ra món mới. Khách chia đều thành 6 nhóm. Khách chấm cao thì có thể đề xuất chiến dịch khuyến mãi, thường tăng lãi trong một ngày và kéo thêm một khách quen mới; khách đạt 100 điểm thì giới thiệu khách mới. Khách mời phải đạt ít nhất 80 điểm (theo Vị và Sức hút) mới qua. Mở quán mới khi có ít nhất 5.000 tiền, 4 nhân viên và 3 món. Nhân viên rảnh thì tích năng lượng, giúp tìm được đồ tốt hơn khi đi săn nguyên liệu.",
+    "su_kien_ngau_nhien": "Săn nguyên liệu 4 lần/năm (tháng 1, 4, 7, 10), trả phí và cử nhân viên đi. Có 15 địa điểm trên 4 vùng; phí từ 200 yên (rừng gần) đến 80.000 yên (đảo Kairo). Theo đoạn trích hướng dẫn: có thể nhặt được tiền; đầy thanh tìm kiếm thì được rương báu (món, công thức, tiền, bàn ghế); mỗi báu vật chỉ tìm được một lần và mỗi chuyến săn chỉ được 1 báu vật.",
+    "nguyen_lieu_hiem_cong_thuc": "Mỗi nguyên liệu có độ khó từ ★1 đến ★10. Nguyên liệu ★10 gồm nấm truffle 36.000 yên, gan ngỗng 15.000 yên, vàng lá 15.000 yên, trứng cá muối 10.500 yên. Nguyên liệu có từ các chuyến săn hoặc mua ở cửa hàng Pumpkin.",
+    "giu_chan_liveops": "Mở vùng mới, khách mời, chiến dịch, kỹ năng nhân viên.",
+    "diem_hay_ap_dung": [
+     "“Chuyến đi chợ sớm” có lịch cố định (ví dụ mỗi 3 ngày game) cộng thêm một lượt ngẫu nhiên: chọn điểm (chợ hẻm miễn phí, chợ đầu mối tốn phí, vườn quê tốn phí cao); điểm xa thì tỉ lệ rớt đồ hiếm cao hơn.",
+     "Nguyên liệu có sao độ hiếm dễ đọc (★1–★3); món hiếm chỉ nấu được khi độ thạo món nền đủ cấp.",
+     "Bảo hiểm kiểu “đầy thanh tìm kiếm”: mỗi lượt không trúng đồ hiếm thì thanh tăng, đầy thanh thì chắc chắn có rương; mỗi rương chỉ nhận một lần để không lặp.",
+     "Khách mời hiếm đòi chất lượng từ 80 điểm: đạt thì thưởng tiền, trượt thì chỉ mất cơ hội."
+    ],
+    "nguon": [
+     "https://kairosoft.wiki.gg/wiki/Cafeteria_Nipponica",
+     "https://kairosoft.wiki.gg/wiki/Transcript:Manual_(Cafeteria_Nipponica)",
+     "https://kairosoft.wiki.gg/wiki/Ingredients_(Cafeteria_Nipponica)",
+     "http://kairoguide.blogspot.com/2013/07/cafeteria-nipponica-treasure-chest.html (chỉ đọc đoạn trích kết quả tìm kiếm)"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "The Ramen Sensei (Kairosoft)",
+    "the_loai": "Tycoon quán mì, phát triển công thức",
+    "nen_tang_nam": "Di động (Kairosoft)",
+    "co_che_cot_loi": "Sợi mì làm từ bột và nước tro (kansui). Nước dùng lúc đầu chỉ có 4 nguyên liệu, mở thêm qua điểm thưởng hạng ở các hạng 8, 16, 27, 40, tối đa 8 nguyên liệu. Nguyên liệu tương hợp tạo combo, tăng vị và hệ số. Bột và nước tro lên cấp khi mì làm từ chúng bán được. Nhân viên giỏi phục vụ tìm ra sở thích khách nhanh hơn. Cho khách ăn đúng kiểu mì họ thích nhiều lần thì có thể được khách tặng quà. Chi phí nguyên liệu trừ vào đầu tháng.",
+    "su_kien_ngau_nhien": "Thi đấu vào tháng 6 và tháng 12 mỗi năm, ba hạng mục theo nhân viên, khách hoặc quán. Quán đối thủ, tùy sức mạnh món của họ, có thể làm giảm chỉ số món hoặc độ nổi tiếng của quán mình.",
+    "nguyen_lieu_hiem_cong_thuc": "Theo đoạn trích wiki của bản The Ramen Sensei 2: một số topping không mua được ở cửa hàng Pumpkin nên được coi là hiếm.",
+    "giu_chan_liveops": "Thi đấu định kỳ, xếp hạng, nguyên liệu lên cấp theo doanh số.",
+    "diem_hay_ap_dung": [
+     "Khách quen tặng nguyên liệu hiếm sau khi được phục vụ đúng món ruột nhiều lần: nguồn hiếm gắn với kỹ năng nhớ khách.",
+     "Sự kiện phạt có thời hạn “Đối thủ mở xe đối diện”: khách giảm trong 3 ngày; gỡ bằng chất lượng hoặc khuyến mãi.",
+     "Nguyên liệu/món lên cấp khi bán được (BKN đã có độ thạo), món hiếm cũng nên có cấp thạo.",
+     "Thi đấu theo lịch cố định (ví dụ “Hội thi nấu trong hẻm” mỗi 14 ngày game) thưởng nguyên liệu hiếm."
+    ],
+    "nguon": [
+     "https://kairosoft.wiki.gg/wiki/Transcript:Manual_(The_Ramen_Sensei)",
+     "https://kairosoft.wiki.gg/wiki/Ramen_(The_Ramen_Sensei)",
+     "https://kairosoft.fandom.com/wiki/Toppings_(The_Ramen_Sensei_2) (chỉ đọc đoạn trích kết quả tìm kiếm)"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Bonbon Cakery (Kairosoft)",
+    "the_loai": "Tycoon tiệm bánh, phát hiện công thức bằng kết hợp",
+    "nen_tang_nam": "Di động (Kairosoft)",
+    "co_che_cot_loi": "Nguyên liệu trang trí chủ yếu mở qua quà của nhân viên (quà thứ 1 đến thứ 4 của từng người) và phần thưởng thắng thi đấu; vài nguyên liệu cơ bản (kem, lá bạc hà, anh đào) có sẵn từ đầu. Mỗi nguyên liệu ảnh hưởng ba chỉ số: Lượng, Vị, Hương. Có khoảng 20 combo đặt tên và 73 “Pyramid Combo”; Pyramid Combo kích hoạt khi xếp đúng nguyên liệu theo đúng thứ tự trên đúng loại bánh nền. Ví dụ: từ 2 nguyên liệu nhóm quả mọng/trái cây trở lên ra Fruit Combo, tăng mọi chỉ số; dùng nguyên liệu mát (dưới 10°C) trên bánh nền mát thì ra Cool Combo, tăng vị.",
+    "su_kien_ngau_nhien": "Thi đấu định kỳ, thắng thì mở nguyên liệu mới theo cấp thi. Theo đoạn trích wiki: món có trái cây dễ được ưa vào mùa xuân, sô-cô-la vào mùa đông.",
+    "nguyen_lieu_hiem_cong_thuc": "Bánh nền gắn nhãn “Rare!” (ví dụ Choco Torte, Baumkuchen): sau khi làm ra được thì cửa hàng Pumpkin chỉ bán 1 bộ. Vàng lá là quà thứ 4 của nhân viên Wairobot ZZ.",
+    "giu_chan_liveops": "Sưu tầm combo, quà nhân viên, thi đấu.",
+    "diem_hay_ap_dung": [
+     "Công thức “biến tấu” tìm ra bằng thử kết hợp (ví dụ Trà tắc + nguyên liệu hiếm nhóm “mát lạnh” ra combo); tìm được thì ghi vào Sổ công thức.",
+     "Nguyên liệu hiếm giới hạn số lần mua sau lần đầu có được, để không tích trữ phá cân bằng.",
+     "Quà theo mức gắn bó (nhân viên, khách quen) là nguồn hiếm có kiểm soát, không phụ thuộc may rủi."
+    ],
+    "nguon": [
+     "https://kairosoft.wiki.gg/wiki/Ingredients_(Bonbon_Cakery)",
+     "https://kairosoft.wiki.gg/wiki/Combos_(Bonbon_Cakery)",
+     "https://kairosoft.fandom.com/wiki/Tips_(Bonbon_Cakery) (chỉ đọc đoạn trích kết quả tìm kiếm)"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "My Café: Recipes & Stories (Melsoft)",
+    "the_loai": "Quản lý quán cà phê, pha chế theo công thức, có cốt truyện và hội",
+    "nen_tang_nam": "Di động",
+    "co_che_cot_loi": "Công thức là đồ uống/tráng miệng nền cộng nguyên liệu thêm (ví dụ trà + sữa ra trà kiểu Anh, espresso + sữa ra espresso macchiato). Công thức mới phải làm một lần mới được mở và bán; tìm công thức nhờ gợi ý của Koffsky và các khách khác, hoặc trả kim cương; trả lời đúng câu đố của Koffsky được 3 kim cương (một lần mỗi công thức). Công thức mở dần theo cấp; có nhóm công thức đặc biệt dùng nguyên liệu lạ (nghệ tây, riềng, cánh hồng, trân châu). Khách có câu chuyện kể qua nhiều hồi.",
+    "su_kien_ngau_nhien": "Theo đoạn trích hướng dẫn: lễ hội diễn ra mỗi tuần, từ thứ Sáu (khoảng 11:00 UTC) đến Chủ nhật, cho thành viên thị trấn; vào thị trấn khi lễ hội đang diễn ra thì phải chờ tuần sau. Trang trợ giúp chính thức xác nhận: mỗi lễ hội có luật riêng, có nhiệm vụ miễn phí và trả phí, cúp, Season Pass, ghép nhóm theo số cúp ở các lễ hội trước; mỗi người có 5 nhiệm vụ miễn phí mỗi lễ hội (theo đoạn trích). Mua điện thoại thì nhận được 3 đơn gọi điện mỗi 12 giờ, thưởng xu và gia vị; vào thị trấn thì có tối đa 3 đơn thị trấn mỗi ngày, thưởng ruby và gia vị.",
+    "nguyen_lieu_hiem_cong_thuc": "Nguyên liệu và công thức đặc biệt mở theo cấp; gợi ý công thức đến từ khách.",
+    "giu_chan_liveops": "Cốt truyện khách, lễ hội cuối tuần theo nhịp cố định, đơn gọi điện và đơn thị trấn có trần theo thời gian.",
+    "diem_hay_ap_dung": [
+     "Công thức hiếm phải “làm thử đạt một lần” mới được đưa lên thực đơn; gợi ý đến từ lời khách (“Hồi xưa ở quê chú có ly trà tắc thả mật ong rừng…”).",
+     "“Đơn gọi điện đặt trước” 1–3 lần/ngày, thưởng nguyên liệu hiếm; dạy thao tác đơn đặt trước trên phần mềm bán hàng.",
+     "Lễ hội có nhịp cố định mỗi tuần để người chơi biết mà chờ."
+    ],
+    "nguon": [
+     "https://melsoft-games.helpshift.com/hc/en/3-my-cafe-recipes-stories---world-restaurant-game/section/138-festivals/",
+     "https://www.mejoress.com/recipes-my-cafe-recipes-stories-full/",
+     "https://my-cafe.fandom.com/wiki/Recipes (chỉ đọc đoạn trích kết quả tìm kiếm)",
+     "https://my-cafe.fandom.com/wiki/Orders (chỉ đọc đoạn trích kết quả tìm kiếm)",
+     "http://mycafeguidebook.blogspot.com/p/towns-festivals.html (chỉ đọc đoạn trích kết quả tìm kiếm)"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Restaurant Story (Storm8)",
+    "the_loai": "Nhà hàng xã hội kiểu hẹn giờ (social/freemium)",
+    "nen_tang_nam": "Di động (iOS, Android)",
+    "co_che_cot_loi": "Nấu trên bếp theo thời gian thật; thời gian nấu một món bằng đúng thời gian được phép để phục vụ nó, quá thì món hỏng. Món hỏng thì bỏ đi hoặc dùng gems khôi phục. Khách vui trả thêm 1 xu ngoài tiền món; thanh độ nổi tiếng ảnh hưởng tần suất khách ghé. Mỗi người hàng xóm tip được tối đa 6 lần mỗi ngày (120 xu và 6 XP); thành viên cộng đồng tối đa 3 lần (60 xu, 3 XP). Mỗi 24 giờ nhận tối đa 20 quà công thức miễn phí. Có hai tiền tệ: xu và gems.",
+    "su_kien_ngau_nhien": "Theo đoạn trích hướng dẫn trên diễn đàn Storm8: sau khi hoàn thành các chuyến du thuyền để nhận công thức gems, khách đặc biệt sẽ ghé quán và làm rơi nguyên liệu để nấu các công thức này.",
+    "nguyen_lieu_hiem_cong_thuc": "Nguyên liệu của công thức đặc biệt do khách đặc biệt làm rơi; công thức gems nấu ở lò riêng.",
+    "giu_chan_liveops": "Hẹn giờ nấu kéo người chơi quay lại, tương tác hàng xóm có trần mỗi ngày, sự kiện giới hạn.",
+    "diem_hay_ap_dung": [
+     "“Khách lạ làm rơi đồ”: khách đặc biệt thỉnh thoảng để lại nguyên liệu hiếm trên quầy sau khi được phục vụ tốt.",
+     "Nguyên liệu hiếm có hạn dùng (2 ngày game), quá hạn thì mất: phạt nhẹ, dễ hiểu, và chống tích trữ.",
+     "Tip hoặc quà xã hội có trần mỗi ngày."
+    ],
+    "nguon": [
+     "https://www.gamezebo.com/walkthroughs/restaurant-story-walkthrough/",
+     "https://forums.storm8.com/showthread.php/59838-Restaurant-Story-Game-Guide (chỉ đọc đoạn trích kết quả tìm kiếm)"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Chef RPG",
+    "the_loai": "Nhập vai đời sống + quản lý nhà hàng (cozy sim)",
+    "nen_tang_nam": "PC, Early Access từ ngày 12/9/2024",
+    "co_che_cot_loi": "Hái lượm, săn, câu cá, khai khoáng, chế tạo, nghiên cứu, trồng trọt, ủ rượu. Hơn 240 công thức; cây kỹ năng 40 kỹ năng và cây nghiên cứu 36 kỹ năng; hơn 20 nhân vật chính để kết thân; 2 nhà hàng. Mở quán theo ca và chọn thực đơn. Tự động nấu thì chất lượng món ngẫu nhiên và có thể làm giảm hài lòng. Mở ca rồi thì không vào chế độ xây, không rời quán được. Khách hài lòng dựa trên món đa dạng, thời gian chờ và trang trí theo phong cách.",
+    "su_kien_ngau_nhien": "Không thấy sự kiện ngẫu nhiên rõ ràng; lộ trình Early Access hẹn thêm lễ hội. Biến số chính là mùa.",
+    "nguyen_lieu_hiem_cong_thuc": "Theo mùa: mùa đông gần như không hái lượm được (chỉ có lúa miến, thỉnh thoảng lá trà), phải trữ trước, trồng trong nhà kính hoặc đặt hàng. Công thức phần lớn ngẫu nhiên; hàng ở tiệm luân phiên thất thường; ngoài ra lấy từ nhiệm vụ bảng tin, sách thư viện (cần kỹ năng Bookworm), hoặc tự học khi nấu.",
+    "giu_chan_liveops": "Mùa, quan hệ nhân vật, cây kỹ năng.",
+    "diem_hay_ap_dung": [
+     "Nguyên liệu hiếm gắn với sự kiện ngày: “Trời mưa” có thể rớt nấm mối, “Nắng nóng” có thể rớt dưa hấu sớm. Sự kiện thời tiết vừa đổi số khách vừa mở cơ hội nhặt đồ.",
+     "Bảng tin trong hẻm với nhiệm vụ nhỏ (ví dụ giao 3 ly cho tiệm tạp hóa), thưởng công thức hoặc nguyên liệu hiếm.",
+     "Cửa hàng công thức đổi hàng ngẫu nhiên mỗi ngày (có thể mở rộng Chợ Công Thức hiện có)."
+    ],
+    "nguon": [
+     "https://store.steampowered.com/app/1796790/Chef_RPG/",
+     "https://www.thegamer.com/chef-rpg-beginner-tips-tricks-guide/"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Venba",
+    "the_loai": "Truyện tương tác có câu đố nấu ăn",
+    "nen_tang_nam": "PC, console (2023)",
+    "co_che_cot_loi": "Nhân vật chính Venba (một người mẹ) nấu theo cuốn sổ công thức cũ của mẹ cô; trang sổ bị rách, chữ bị nhòe nên che mất thứ tự cho nguyên liệu hoặc cách dùng dụng cụ. Người chơi suy luận bước còn thiếu, nấu ăn thành câu đố về thứ tự, vị trí và kỹ thuật chứ không phải mini-game phản xạ. Về sau trang sổ càng nát hơn. Có lựa chọn hội thoại. Review khen ý tưởng biến công thức Nam Ấn thành câu đố; một số review cho rằng phần nấu ăn không phải lúc nào cũng ăn khớp với mạch truyện.",
+    "su_kien_ngau_nhien": "Không có.",
+    "nguyen_lieu_hiem_cong_thuc": "Công thức “thất truyền” cần phục dựng chính là phần thưởng.",
+    "giu_chan_liveops": "Cốt truyện theo chương.",
+    "diem_hay_ap_dung": [
+     "“Sổ tay công thức của Dì Sáu bị nhòe”: mảnh trang rơi từ sự kiện ngẫu nhiên; ghép đủ mảnh rồi điền đúng thứ tự bước thì mở công thức hiếm. Dạy tư duy quy trình chuẩn cho nhân viên mới.",
+     "Thử sai không bị trừ tiền, chỉ tốn thời gian."
+    ],
+    "nguon": [
+     "https://en.wikipedia.org/wiki/Venba_(video_game)",
+     "https://www.digitaltrends.com/gaming/venba-review-nintendo-switch/ (chỉ đọc đoạn trích kết quả tìm kiếm)",
+     "https://www.slantmagazine.com/games/venba-review/ (chỉ đọc đoạn trích kết quả tìm kiếm)"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Battle Chef Brigade",
+    "the_loai": "Hành động săn nguyên liệu + giải đố ghép ngọc khi nấu",
+    "nen_tang_nam": "Windows, Switch, PS4 (ngày 20/11/2017)",
+    "co_che_cot_loi": "Mỗi trận có hai pha: đi hái cây và săn quái vật quanh bếp (quái bị hạ rơi bộ phận làm nguyên liệu), rồi nấu. Nguyên liệu bỏ vào nồi thành “ngọc vị” nhiều màu; xoay ngọc kiểu Puyo Puyo, ngọc cùng màu thẳng hàng thì gộp lại và lên cấp. Tối đa 3 giám khảo chấm theo chất lượng món và việc đáp ứng yêu cầu; mỗi trận có giới hạn thời gian và một nguyên liệu chủ đề phải dùng; mỗi giám khảo thích một hướng vị riêng.",
+    "su_kien_ngau_nhien": "Không có sự kiện ngẫu nhiên kiểu kinh tế; biến số là quái và nguyên liệu ở từng khu. Theo đoạn trích: hầu hết các ngày có tối đa 3 nhiệm vụ phụ (giải đố, săn quái, nấu nhanh).",
+    "nguyen_lieu_hiem_cong_thuc": "Mỗi khu có hệ sinh thái riêng; nguyên liệu phải tự săn.",
+    "giu_chan_liveops": "Cốt truyện giải đấu; theo đoạn trích có Daily Challenge với bảng xếp hạng điểm cao.",
+    "diem_hay_ap_dung": [
+     "Tách “đi kiếm nguyên liệu” (ghé chợ, vườn) khỏi “bán hàng”, để nhặt đồ hiếm thành một hoạt động có lựa chọn riêng chứ không chỉ là may rủi.",
+     "“Hội thi nấu hẻm” với nguyên liệu chủ đề bắt buộc, giám khảo có khẩu vị riêng; đạt thì thưởng tiền và danh tiếng."
+    ],
+    "nguon": [
+     "https://en.wikipedia.org/wiki/Battle_Chef_Brigade",
+     "https://tvtropes.org/pmwiki/pmwiki.php/VideoGame/BattleChefBrigade (chỉ đọc đoạn trích kết quả tìm kiếm)",
+     "https://store.steampowered.com/app/452570/Battle_Chef_Brigade_Deluxe/ (chỉ đọc đoạn trích kết quả tìm kiếm)"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Idle Restaurant Tycoon và thể loại idle nhà hàng (Idle Chef, Tiny Chef…)",
+    "the_loai": "Idle/incremental tycoon",
+    "nen_tang_nam": "Di động",
+    "co_che_cot_loi": "Theo mô tả App Store của Idle Restaurant Tycoon: không cần chạm liên tục; nâng cấp đầu bếp, nhân viên, cơ sở để tăng lợi nhuận, rồi mở thêm nhà hàng. Vẫn kiếm tiền khi tắt game (theo đoạn trích Uptodown: có giới hạn thời gian offline). Có đầu bếp sao, thử thách và sự kiện tuần, tăng lợi nhuận ×2 tạm thời, pass mùa có quản lý độc quyền. Bài của Machinations: thưởng quá ít thì người chơi không có động lực quay lại, thưởng quá nhiều thì tài nguyên mất giá và niềm vui nhận thưởng giảm.",
+    "su_kien_ngau_nhien": "Sự kiện tuần, tăng tốc tạm thời; ít sự kiện ngẫu nhiên có lựa chọn.",
+    "nguyen_lieu_hiem_cong_thuc": "Thường không có; tiến trình chủ yếu bằng hệ số.",
+    "giu_chan_liveops": "Thu nhập offline có trần, thưởng khi quay lại, sự kiện tuần, pass mùa.",
+    "diem_hay_ap_dung": [
+     "Không để idle thay cho thao tác, vì mục tiêu của BKN là đào tạo. Chỉ dùng cho nguồn phụ: “hũ tắc ngâm” hoặc “chậu húng” lớn dần theo giờ thật, có trần, thu 1 lần/ngày.",
+     "Thưởng quay lại có trần (BKN đã có Hộp thư với trần quà tháng 3 TNC), dùng thêm cho nguyên liệu hiếm.",
+     "Nhớ nguyên tắc cân phần thưởng: tăng tần suất sự kiện thì phải giảm độ lớn mỗi lần thưởng tiền, nếu không sẽ lạm phát."
+    ],
+    "nguon": [
+     "https://apps.apple.com/us/app/idle-restaurant-tycoon-empire/id1530534938",
+     "https://machinations.io/articles/idle-games-and-how-to-design-them",
+     "https://idle-restaurant-tycoon.en.uptodown.com/android (chỉ đọc đoạn trích kết quả tìm kiếm)"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   }
+  ],
+  "nguyen_tac_thiet_ke": [
+   "Ngẫu nhiên trong một nhịp cố định: sự kiện lớn đến theo lịch đoán được, còn nội dung bên trong mới bốc ngẫu nhiên. Ví dụ đã kiểm: Papa's có phong bì vàng mỗi 3 ngày, mỗi ngày một closer (Freezeria Deluxe: 7 closer cho 7 ngày trong tuần), Jojo đổi món mỗi lần ghé; PlateUp cứ 3 ngày chọn thẻ và cứ 5 ngày có ngày trang trí; Kairosoft săn nguyên liệu vào tháng 1/4/7/10 và thi đấu vào tháng 6/12; My Café có lễ hội mỗi cuối tuần; Good Pizza chạy sự kiện khoảng 2 tuần nối nhau. Người chơi có cái để chờ mà vẫn thấy bất ngờ. BKN hiện chỉ có lớp ngẫu nhiên thuần (30%/ngày, 35%/ca), nên cần thêm lớp nhịp cố định.",
+   "Chia tần suất thành ba tầng thay vì chỉ tăng một con số: (a) chuyện nhỏ gần như ca nào cũng có (đồ rơi, khách lạ, nhặt nguyên liệu); (b) sự kiện vừa khoảng 1 ngày trong 2; (c) sự kiện lớn hoặc hiếm theo tuần hoặc theo lịch. Cook, Serve, Delicious! để vụ cướp là loại hiếm nhất và gặp sau cùng hoặc áp chót. Các con số 50–60% trong đề xuất bên dưới là đề xuất thiết kế, không lấy từ nguồn.",
+   "Có bảo hiểm xui (pity) cho đồ hiếm: sau N lượt trượt thì chắc chắn có (hard pity) hoặc tỉ lệ tăng dần (soft pity). Ví dụ đã đọc: Papa's cho giải hiếm theo mốc 14/28/42 lần thắng; Kairosoft đầy thanh tìm kiếm thì được rương báu, mỗi rương chỉ nhận một lần. BKN đã có guaranteeAfter 3 và noRepeat 5 cho tình huống trong ca; nên áp dụng y hệt cho rớt nguyên liệu hiếm, và cho hiện bộ đếm để người chơi thấy minh bạch.",
+   "Phạt tiền phải công bằng: (1) có dấu hiệu hoặc báo trước; (2) luôn có đường gỡ bằng kỹ năng, như CSD1 cho mini-game phác họa kẻ cướp, Cooking Madness cho thêm giờ hoặc thêm khách sau khi thua, Restaurant Story cho khôi phục món hỏng; (3) có trần thiệt hại (BKN đang dùng min của 10% doanh thu ca và 0,5 thu nhập tham chiếu); (4) luôn có lựa chọn an toàn; (5) phạt gắn với lỗi quy trình có thật (không kiểm biến động số dư, không soi tiền, giao đồ trước khi thu tiền), để mỗi lần bị phạt là một bài học nghề.",
+   "Thưởng nên gắn với kỹ năng hơn là may rủi: vé Foodini kiếm từ việc phục vụ tốt và có trần mỗi ngày; tip ×4 của Overcooked phụ thuộc giao đúng thứ tự; chuỗi của Diner Dash; tip của Good Pizza dựa trên tốc độ và độ chính xác. Casino của Cooking Fever có trần (15 gems, hai lần mỗi ngày) nhưng vẫn là cờ bạc, không hợp một công cụ đào tạo nhân viên.",
+   "Nguyên liệu hiếm cần đủ năm thứ: nguồn rõ ràng; ký hiệu độ hiếm dễ đọc (Kairosoft dùng ★1–★10); cái giá hoặc sự đánh đổi (phí săn của Kairosoft từ 200 đến 80.000 yên tùy địa điểm); chỗ tiêu ngay (Papa's chỉ đưa công thức mà người chơi làm được ngay lúc đó); và giới hạn tích trữ (Bonbon Cakery chỉ bán 1 bộ bánh nền hiếm; Restaurant Story cho món hỏng theo thời gian; tiền sự kiện Food Truck của Cooking Diary mất khi hết sự kiện).",
+   "Công thức hiếm nên đi theo nhịp khám phá rồi thành thạo: làm một lần mới được bán (My Café); đạt ngưỡng chất lượng mới mở (Papa's, theo đoạn trích là từ 80%); phục vụ đủ 5 lần thì có thưởng (Papa's); combo tìm bằng thử nghiệm (Bonbon Cakery); đủ tay nghề mới nấu được (Cafeteria Nipponica: Nghiên cứu ≥ tổng sao). Món hiếm phải theo quy tắc “món ngang giá trị” trong can-bang.md: lãi mỗi giây nấu không vượt món Tiền quán tốt nhất quá 10%.",
+   "Sự kiện hay là sự kiện buộc người chơi đổi quyết định, không chỉ nhân số khách: lễ ở Papa's thêm nguyên liệu riêng và closer đổi món theo lễ; thẻ PlateUp đổi món và hành vi khách; món bán lặp thì bị “cũ” và thời tiết đổi Buzz (CSD1); mùa đông ở Chef RPG gần như hết đồ hái. Trong 4 sự kiện ngày hiện có của BKN, 2 sự kiện chỉ nhân số (Chợ phiên, Ngày lãnh lương).",
+   "Cho người chơi tự chọn mức rủi ro: PlateUp cho chọn 1 trong 2 thẻ; Good Pizza để người chơi tự quyết với khách không đủ tiền; Chef Life cho chọn hàng địa phương tốt hay hàng nhập rẻ. BKN đã có mẫu này ở lựa chọn Căng bạt, nên nhân rộng ra.",
+   "Tăng tần suất thì phải giảm độ lớn mỗi lần và có trần theo ngày, nếu không sẽ lạm phát. Tip hàng xóm của Restaurant Story tối đa 6 lần/ngày mỗi người; casino Cooking Fever 2 lần/ngày; đơn gọi điện My Café 3 đơn mỗi 12 giờ; bài Machinations cảnh báo thưởng quá nhiều thì phần thưởng mất giá. Với BKN: tổng thưởng tiền từ sự kiện trong một ca nên có trần (ví dụ bằng trần thiệt hại) và phải chạy lại mô phỏng META_SIM_LOG.",
+   "Bảo vệ người mới: sự kiện tiêu cực mở muộn (CSD1 để cướp đến sau cùng); có chế độ nhẹ nhàng (Chill/Zen của CSD3, tùy chọn hạ độ khó của Chef Life); BKN có mức “Ít” chỉ gồm tình huống tích cực. Tăng tần suất thì cũng nên tăng trong mức “Ít”, nhưng chỉ với sự kiện có lợi.",
+   "Chuyện bất ngờ nhỏ không được cắt ngang thao tác chính: chú chuột Carl của Delicious chỉ kêu chít khẽ rồi biến mất, không làm gãy nhịp phục vụ. BKN nên giữ quy tắc hiện tại là tình huống chỉ bật giữa hai khách, không chen vào mini-game.",
+   "Giảm tip thì cần bù cảm giác được thưởng qua kênh khác ngoài tiền (danh tiếng, vé, nguyên liệu hiếm), và phải kiểm lại chỉ số 21 trong can-bang.md (chênh lãi giữa người 4,7 sao và 3,8 sao ≥ 25%). Tip 5.000đ cố định làm người chơi giỏi mất thế so với hiện nay (đang được 10.000đ khi Không tì vết hoặc chuỗi Quầy chuẩn)."
+  ],
+  "de_xuat_cho_bkn": [
+   {
+    "ten": "Luật tip mới: 5.000đ, chỉ khi hóa đơn từ 20.000đ",
+    "mo_ta": "Tip cố định 5.000đ khi tổng hóa đơn của khách từ 20.000đ trở lên (và, nếu người dùng đồng ý, vẫn giữ điều kiện khách chấm 5 sao; cần hỏi lại vì yêu cầu gốc không nhắc tới sao). Bỏ nấc 10.000đ (Không tì vết, khách khó tính, chuỗi Quầy chuẩn ≥ 5); các trường hợp này chuyển sang +danh tiếng hoặc vé. Ngày lãnh lương hiện là tip ×1,5 làm tròn bội 5.000đ, tức 5.000đ thành 10.000đ, trái luật mới; nên đổi thành “hạ ngưỡng hóa đơn xuống 15.000đ” hoặc “khách 4 sao cũng tip”. Chỗ cần sửa: DEFAULT_BALANCE/balance.js (tipFiveStar, tipBonus, thêm tipMinBill: 20000), scoring.js (hàm tip), kitchen.js finalizeCustomer (tip chuỗi), day-events.js (lanh_luong.effects.tipMul), docs/can-bang.md mục 7. Ngưỡng 20.000đ khuyến khích bán kèm món thứ hai hoặc ly nước, đúng kỹ năng upsell thật. Sau khi đổi phải chạy lại mô phỏng và kiểm chỉ số 21.",
+    "lay_cam_hung_tu": "Cook, Serve, Delicious! 2 (đơn Perfect kèm món phụ và đồ uống mới thành đơn Delicious, thêm tip); Overcooked và Good Pizza, Great Pizza (tip gắn chất lượng); Cooking Madness (tip có trần 20% tổng thu); Diner Dash (mỗi loại khách một thói quen tip)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "Tăng tần suất sự kiện theo ba tầng, có bảo hiểm",
+    "mo_ta": "Đề xuất (số thiết kế, cần mô phỏng lại): Sự kiện ngày: chance 0,3 → 0,55, fromDay 3 → 2, thêm guaranteeAfter 1 (không quá 1 ngày trống liền). Tình huống trong ca: nhieu 0,5 → 0,75, vua 0,35 → 0,55, it 0,15 → 0,3 (mức Ít chỉ gồm tích cực); guaranteeAfter 3 → 2. Từ ngày 7 cho phép tối đa 2 tình huống/ca (1 về tiền, 1 về nguyên liệu), vẫn chỉ bật giữa hai khách. Thêm lớp nhịp cố định: mỗi 3 ngày game có Phong bì công thức, mỗi 7 ngày có Nhà phê bình. Các thứ nhỏ như đồ rơi hay ghé chợ thì ngày nào cũng có. Khi tần suất tăng, giảm độ lớn thưởng/phạt mỗi lần và giữ trần thiệt hại hiện tại.",
+    "lay_cam_hung_tu": "Papa's (phong bì mỗi 3 ngày, closer mỗi ngày, Jojo ghé định kỳ); PlateUp! (thẻ mỗi 3 ngày, ngày trang trí mỗi 5 ngày); My Café (lễ hội mỗi cuối tuần); Good Pizza, Great Pizza (sự kiện khoảng 2 tuần nối nhau); Kairosoft (săn nguyên liệu theo quý); Chef Life (review chê vòng lặp lặp lại)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "Gói sự kiện thưởng/phạt tiền gắn với nghiệp vụ thu ngân",
+    "mo_ta": "Thêm khoảng 8 tình huống, loại nào cũng có lựa chọn an toàn và nằm trong trần thiệt hại. PHẠT (có đường gỡ): (1) “Ảnh chụp chuyển khoản giả”: khách đưa ảnh chụp màn hình; kiểm biến động số dư thì không mất, giao đồ luôn thì mất tiền món. Đây là kỹ năng thu ngân rất thực tế ở Việt Nam. (2) “Tờ tiền rách hoặc giả” ở khâu Thanh toán: soi thì nhận ra, bỏ qua thì mất mệnh giá (có trần). (3) “Giật két” (từ ngày 7, hiếm): mất một phần tiền két; mini-game nhận dạng người giật theo lời tả để lấy lại 50–100%. (4) “Phường kiểm tra vệ sinh/lấn chiếm”: còn việc vặt chưa làm hoặc bày hàng ra lòng đường thì phạt 20.000đ; quầy gọn thì +danh tiếng. (5) “Khách bỏ về không trả”: nếu thu tiền trước theo đúng quy trình thì không mất. THƯỞNG: (6) “Khách quên điện thoại hoặc ví”: trả lại thì hôm sau chủ quay lại cảm ơn 10.000–20.000đ + danh tiếng. (7) “Văn phòng đặt 5 ly giao trước 10 giờ”: làm kịp thì thưởng, trễ thì giảm giá. (8) “Ngày vía Thần Tài / khách lì xì mở hàng”: thưởng nhỏ. Dữ liệu thêm vào src/data/incidents.js theo khung sẵn có (choices, safe, lossCap).",
+    "lay_cam_hung_tu": "Cook, Serve, Delicious! bản 1 (cướp kèm việc vặt phác họa kẻ cướp, thanh tra an toàn trượt khi bỏ sót việc vặt); Good Pizza, Great Pizza (khách không đủ tiền, sai món phải hoàn tiền, khách được giúp thì quay lại giúp tiệm); Restaurant Story (khôi phục món hỏng); Cooking Madness (booster cứu vãn sau khi thua)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "“Ghé chợ sớm”: sự kiện hằng ngày để nhặt nguyên liệu hiếm",
+    "mo_ta": "Ở màn Chuẩn bị, mỗi ngày game có 1 lượt ghé chợ miễn phí; lượt thứ 2 tốn 10.000đ. Bốc 3 sạp ngẫu nhiên, người chơi chọn 1 (chợ hẻm, chợ đầu mối, vườn quê; điểm xa phí cao hơn, rớt hiếm nhiều hơn). Tỉ lệ đề xuất: thường 65%, hiếm (★2) 30%, rất hiếm (★3) 5%. Bảo hiểm: 3 lượt liền không có ★2 thì lượt thứ 4 chắc chắn có; hiện thanh “độ quen chợ” để người chơi thấy. Nguyên liệu hiếm hết hạn sau 2 ngày game để không tích trữ. Nguồn phụ: ngày Trời mưa có thể rớt nấm mối, Nắng nóng có thể rớt dưa hấu, Chợ phiên thì sạp đặc sản chắc chắn xuất hiện. Kho nguyên liệu hiếm hiện trong Sổ tay.",
+    "lay_cam_hung_tu": "Cafeteria Nipponica (săn nguyên liệu có phí, chọn địa điểm, sao độ hiếm, nhân viên dư năng lượng tìm đồ tốt hơn, rương báu khi đầy thanh); Chef Life (hàng địa phương tốt hay hàng nhập rẻ); Chef RPG (hái lượm theo mùa); Battle Chef Brigade (pha đi kiếm nguyên liệu riêng); Restaurant Story (món hỏng theo thời gian)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "Đồ rơi trong ca và khách đặc biệt làm rơi nguyên liệu",
+    "mo_ta": "Giữa hai khách (quầy trống), thỉnh thoảng một nguyên liệu hiếm hiện ở góc quầy khoảng 5 giây kèm âm báo; chạm kịp thì nhặt được. Đề xuất khoảng 20–25% mỗi ca, có bảo hiểm. Thêm “khách lạ”: phục vụ họ đạt 5 sao thì họ để lại nguyên liệu hiếm trên quầy. Không chen vào mini-game và không dừng đồng hồ khách, để không làm rối thao tác.",
+    "lay_cam_hung_tu": "Delicious – The First Course (chuột Carl trốn trong cả 80 màn, kêu chít khẽ trước khi biến mất); Restaurant Story (khách đặc biệt ghé quán làm rơi nguyên liệu cho công thức gems)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "Công thức hiếm đợt đầu qua “Phong bì công thức”",
+    "mo_ta": "Đợt đầu có 2–3 món dùng nguyên liệu hiếm, ví dụ Trà tắc mật ong rừng, Cà phê muối, Bánh tráng trộn khô bò (tên và giá cần cân theo quy tắc “món ngang giá trị” ≤ +10% lãi/giây nấu). Cứ 3 ngày game có khách mang phong bì, và chỉ tặng công thức mà người chơi đang có đủ nguyên liệu hiếm trong kho. Khách phong bì chấm khắt khe hơn; món đạt Ngon trở lên thì mở công thức. Mỗi ca chỉ bán được số phần bằng số nguyên liệu hiếm đang có. Làm đạt 5 lần thì “Thạo”, thưởng Muỗng Vàng. Món hiếm hiện trên Chợ Công Thức với nhãn ★.",
+    "lay_cam_hung_tu": "Papa's (phong bì vàng mỗi 3 ngày, khách phong bì chấm khắt khe như closer, ngưỡng 80%, phục vụ 5 lần thì có thưởng, chỉ mang phong bì cho món làm được ngay); My Café (công thức phải làm một lần mới bán được); Cooking Mama (mở công thức theo tiến trình)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "Vé kỹ năng cuối ca đổi mini-game Thớt đặc biệt",
+    "mo_ta": "Mỗi khách 5 sao cho 1 vé, tối đa 3 vé/ca. Cuối ca dùng 1 vé cho 1 lượt mini-game Thớt đặc biệt (tái dùng 6 mini-game sẵn có, xoay theo thứ trong tuần). Thắng thì được nguyên liệu hiếm hoặc đồ trang trí xe; thắng đủ mốc (ví dụ 10/20/30 lần) thì nhận vật phẩm hiếm chắc chắn. Không dùng vòng quay may rủi hay cược tiền.",
+    "lay_cam_hung_tu": "Papa's (mini-game Foodini: vé kiếm từ việc phục vụ tốt, mỗi vé một lượt, game đổi mỗi ngày, tối đa 3 vé/ngày từ tiệm, giải hiếm theo mốc 14/28/42); Cooking Fever (casino là phản mẫu cần tránh)",
+    "uu_tien": "GĐ2"
+   },
+   {
+    "ten": "Nhà phê bình / KOL ẩm thực ghé mỗi 7 ngày game",
+    "mo_ta": "Khách đặc biệt đến theo lịch tuần, mỗi lần gọi một món hoặc combo khác, chấm khắt khe. Đạt thì treo “Biển khen” trên xe 3 ngày (+1 khách/ca hoặc hạ ngưỡng tip); trượt thì chỉ mất cơ hội, không bị trừ tiền. Có thể kèm yêu cầu tùy chọn thưởng thêm, bỏ qua thì không sao.",
+    "lay_cam_hung_tu": "Papa's (Jojo mỗi lần gọi món mới, phục vụ tốt thì Ruy băng xanh tăng tip 3 ngày; Freezeria Deluxe cho Jojo làm closer ngày Chủ nhật); Chef Life (khách đặc biệt ghé không báo trước với yêu cầu riêng); Cafeteria Nipponica (khách mời cần từ 80 điểm)",
+    "uu_tien": "GĐ2"
+   },
+   {
+    "ten": "Thẻ ngày: chọn 1 trong 2 mỗi 3 ngày",
+    "mo_ta": "Cứ 3 ngày game, người chơi chọn một trong hai thẻ. Thẻ Khách: đông hơn hoặc khó tính hơn, thưởng Muỗng Vàng. Thẻ Món: mở thêm công thức hiếm nhưng có thêm bước sơ chế. Thẻ giữ hiệu lực đến hết Chặng. Người chơi tự chọn rủi ro, mỗi lượt chơi một khác.",
+    "lay_cam_hung_tu": "PlateUp! (cứ 3 ngày chọn 1 trong 2 thẻ làm lượt chơi khó hơn và đổi món/hành vi khách; thẻ cho XP cuối lượt)",
+    "uu_tien": "GĐ2"
+   },
+   {
+    "ten": "Thử thách phụ mỗi ca",
+    "mo_ta": "Mỗi ca có 1 thử thách tùy chọn, ví dụ “thối tiền đúng 5 khách liền”, “không để khách nào dưới 3 tim”, “bán 2 món hiếm”. Xong thì được vé hoặc nguyên liệu hiếm; không làm thì không bị phạt. Kèm huy chương ca vàng/bạc theo số khách dưới 4 sao.",
+    "lay_cam_hung_tu": "Delicious (thử thách phụ tùy chọn cho điểm và kim cương); Cook, Serve, Delicious! 2 (mục tiêu phụ, huy chương vàng cho ngày hoàn hảo); Cooking Madness (nhiệm vụ ngày ngẫu nhiên, xong 3 nhiệm vụ có quà)",
+    "uu_tien": "GĐ2"
+   },
+   {
+    "ten": "Lịch lễ Việt Nam có nguyên liệu mùa",
+    "mo_ta": "Mở rộng mô hình Tri ân 20/11 thành lịch: Trung thu, Tết, 8/3, 1/6, Vu Lan… Mỗi lễ có 1 nguyên liệu mùa (hạt sen, lá dứa, bưởi…), 1 công thức hiếm và khách đổi món theo lễ. Nguyên liệu mùa chỉ rớt từ Ghé chợ sớm trong mùa lễ.",
+    "lay_cam_hung_tu": "Papa's Freezeria Deluxe (12 lễ trong năm, mỗi lễ có nguyên liệu riêng, closer đổi món theo lễ); Good Pizza, Great Pizza (sự kiện có thời hạn khoảng 2 tuần); Cooking Madness (nhà hàng giới hạn theo lễ)",
+    "uu_tien": "GĐ2"
+   },
+   {
+    "ten": "Khách quen có cấp và món ruột, tặng nguyên liệu hiếm",
+    "mo_ta": "Khách quen có cấp Đồng/Bạc/Vàng; mỗi lần được phục vụ đúng món ruột “như mọi khi” thì thêm 1 sao, đủ 5 sao lên cấp và tặng nguyên liệu hiếm hoặc mảnh công thức; phục vụ tệ thì tụt cấp (phần tụt cấp là đề xuất thiết kế, chưa kiểm được trong Papa's). Đây là nguồn đồ hiếm dựa vào kỹ năng nhớ khách chứ không nhờ may.",
+    "lay_cam_hung_tu": "The Ramen Sensei (khách tặng quà khi được ăn đúng kiểu mì họ thích nhiều lần); Papa's (khách lên Đồng/Bạc/Vàng nhờ đơn chính xác, tăng tip); Bonbon Cakery (quà theo mức gắn bó của nhân viên)",
+    "uu_tien": "GĐ2"
+   },
+   {
+    "ten": "Sự kiện nhiều ngày “Xe đối thủ mở đối diện”",
+    "mo_ta": "Sự kiện phạt có thời hạn 3 ngày game: khách giảm khoảng 15%. Người chơi gỡ bằng cách giữ trung bình từ 4,5 sao, hoặc bỏ tiền chạy khuyến mãi. Thắng thì đối thủ dọn đi và mình được thưởng danh tiếng. Sự kiện kể qua Tổng kết ca để tạo mạch truyện.",
+    "lay_cam_hung_tu": "Good Pizza, Great Pizza (tiệm đối thủ bên kia đường); The Ramen Sensei (quán đối thủ làm giảm chỉ số món hoặc độ nổi tiếng)",
+    "uu_tien": "GĐ2"
+   },
+   {
+    "ten": "Sổ công thức của Dì Sáu bị nhòe",
+    "mo_ta": "Mảnh trang công thức rơi từ sự kiện ngẫu nhiên và phần thưởng thử thách. Ghép đủ mảnh rồi điền đúng thứ tự các bước còn nhòe (chọn nguyên liệu, thứ tự sơ chế) thì mở công thức hiếm. Thử sai không mất tiền. Rất hợp mục tiêu đào tạo quy trình chuẩn (SOP) cho nhân viên mới.",
+    "lay_cam_hung_tu": "Venba (phục dựng công thức từ sổ bị rách, nhòe; câu đố về thứ tự và kỹ thuật); My Café (gợi ý công thức từ khách)",
+    "uu_tien": "GĐ3"
+   },
+   {
+    "ten": "Combo biến tấu: thử kết hợp nguyên liệu hiếm để tìm món",
+    "mo_ta": "Ở bếp có chế độ “thử món”: món nền + 1–2 nguyên liệu hiếm. Kết hợp hợp vị thì ra biến tấu mới, được ghi vào sổ, bán giá cao hơn. Món cần độ thạo món nền đủ cấp mới thử được.",
+    "lay_cam_hung_tu": "Bonbon Cakery (combo tìm bằng thử nghiệm, Pyramid Combo đòi đúng thứ tự); The Ramen Sensei (combo nước dùng tăng hệ số); Cafeteria Nipponica (nấu món cần Nghiên cứu ≥ tổng sao)",
+    "uu_tien": "GĐ3"
+   },
+   {
+    "ten": "Nguồn nuôi trồng theo giờ thật có trần",
+    "mo_ta": "Chậu húng hoặc hũ tắc ngâm trên xe lớn dần theo giờ thật, có trần, mỗi ngày thật thu 1 lần ra 1–2 nguyên liệu hiếm ★2. Đây là nguồn đều đặn, bổ sung cho sự kiện ngẫu nhiên, và không thay cho thao tác bán hàng.",
+    "lay_cam_hung_tu": "Good Pizza, Great Pizza (topping phải trồng và tưới hằng ngày); thể loại idle (thu nhập offline có trần, thưởng khi quay lại); Cooking Fever (thu nhập hằng ngày nhận mỗi 24 giờ)",
+    "uu_tien": "GĐ3"
+   },
+   {
+    "ten": "Chất lượng nguồn hàng và hạn dùng",
+    "mo_ta": "Chợ đầu ngày có hàng thường và hàng tuyển (đắt hơn, dễ đạt Ngon hơn). Nguyên liệu hiếm và món làm sẵn có hạn phục vụ; quá hạn thì hỏng, bị tính hao hụt. Dạy nhân viên quản lý tồn kho, khớp với nghiệp vụ kho trên phần mềm bán hàng.",
+    "lay_cam_hung_tu": "Chef Life (hàng địa phương chất lượng cao hay hàng nhập rẻ); Restaurant Story (món hỏng nếu quá thời gian); Cook, Serve, Delicious! 3 (món ở trạm giữ đồ mất tươi dần, đèn giữ nóng kéo dài độ tươi); Cooking Simulator (lấy nguyên liệu là bị trừ phí)",
+    "uu_tien": "GĐ3"
+   }
+  ]
+ },
+ {
+  "games": [
+   {
+    "ten": "Dave the Diver",
+    "the_loai": "Phiêu lưu lặn biển kết hợp quản lý quán sushi (thu thập → chế biến → bán, chu kỳ ngày/đêm)",
+    "nen_tang_nam": "PC 06/2023, Switch 10/2023, PS4/PS5 04/2024 (sau đó có thêm bản Xbox, Switch 2 và di động)",
+    "co_che_cot_loi": "Ban ngày lặn Blue Hole (ban đầu 2 lượt mỗi ngày, về sau mở thêm lặn đêm) để bắt cá bằng súng lao. Oxy có hạn. Theo Wikipedia: nếu hết oxy trước khi lên mặt nước thì lượt lặn kết thúc sớm và chỉ mang về được 1 món đã nhặt. Ban tối dùng cá đã bắt làm sushi và món khác, phục vụ khách, thu vàng; vàng dùng nâng cấp đồ lặn. Đạo diễn Jaeho Hwang (Game Developer) nói: tách hai pha ngày và đêm \"thật sự tạo khác biệt\", vì người chơi không tập trung được cùng lúc cả bắt cá lẫn quản lý quán.",
+    "su_kien_ngau_nhien": "Khách VIP có yêu cầu riêng. Nguyên văn đạo diễn: VIP \"không phá việc người chơi đang làm (bắt cá, phục vụ ban đêm) nhưng khiến họ đi tìm những nguyên liệu nhất định; làm thành công thì mở cơ chế mới, ví dụ rót bia sau khi phục vụ sushi\". Về Blue Hole, đạo diễn nói muốn mô phỏng việc lặn thật \"luôn khác nhau theo thời tiết, dòng chảy, vị trí cá\" để nơi này lúc nào cũng mới. Người chơi trên Steam quan sát: kiến trúc bản đồ là bản vẽ tay dùng lại (một người ước \"khoảng một chục\" mẫu, người khác mới thấy 3–4 mẫu), chỉ đồ trên các vị trí cố định là ngẫu nhiên; nhiệm vụ cốt truyện khóa bản đồ vào một số mẫu. Hình phạt mềm: hết oxy vẫn giữ được 1 món.",
+    "nguyen_lieu_hiem_cong_thuc": "Cá hiếm gắn với độ sâu và khung giờ (lặn đêm có bảng cá riêng). Chưa kiểm chứng lại: boss rơi nguyên liệu đặc biệt mở công thức; rong hiếm trồng 4 ngày; lặn đêm chỉ xuống tới tầng giữa — đã bỏ các con số này vì không tìm được nguồn.",
+    "giu_chan_liveops": "Ứng dụng Cooksta có 5 hạng Đồng, Bạc, Vàng, Bạch kim, Kim cương; lên hạng nhờ số người theo dõi, số công thức mới nghiên cứu và điểm Best Taste của món (ví dụ Vàng cần 100 người theo dõi, 5 công thức mới, 1 món Best Taste trên 125); mỗi hạng mở thêm công thức. Nhân vật phụ giao nhiệm vụ, nhiều mini-game mở dần.",
+    "diem_hay_ap_dung": [
+     "Tách \"đi lấy hàng\" (mini-game thu thập 60–90 giây trước ca) với \"ca bán\" giống ngày/đêm: màn Chuẩn bị thêm \"Đi chợ sớm\" để nhặt nguyên liệu, có cơ hội ra nguyên liệu hiếm.",
+     "Hình phạt mềm kiểu \"hết oxy vẫn giữ 1 món\": hết giờ đi chợ thì vẫn giữ lại ít nhất 1 nguyên liệu tốt nhất đã nhặt, không mất trắng.",
+     "Khách VIP cần một nguyên liệu hiếm cụ thể; làm thành công thì mở một cơ chế nhỏ (như Dave the Diver mở rót bia sau sushi). Người chơi có mục tiêu ngắn hạn mà vòng lặp 4 khâu không bị phá.",
+     "Làm bố cục khu chợ bằng tay (6–10 mẫu) rồi xoay vòng, chỉ ngẫu nhiên đồ trên các ô cố định. Rẻ hơn sinh bản đồ ngẫu nhiên và hợp với game web nhỏ.",
+     "Thang hạng kiểu Cooksta: lên hạng cần cả người theo dõi (danh tiếng) lẫn số công thức mới và chất lượng món, mỗi hạng mở món mới."
+    ],
+    "nguon": [
+     "https://www.gamedeveloper.com/design/dave-the-diver",
+     "https://en.wikipedia.org/wiki/Dave_the_Diver",
+     "https://steamcommunity.com/app/1868140/discussions/0/3805027864675751206/",
+     "https://twinfinite.net/guides/all-cooksta-ranks-rewards-dave-the-diver/"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Stardew Valley",
+    "the_loai": "Nông trại, đời sống, hái lượm, câu cá, nấu ăn",
+    "nen_tang_nam": "PC 2016, sau đó có bản console và di động",
+    "co_che_cot_loi": "Mỗi ngày game người chơi trồng trọt, hái lượm, câu cá, đào mỏ, nấu ăn và kết bạn. Mỗi mùa 28 ngày. Wiki liệt kê 81 món nấu. Công thức lấy qua TV Queen of Sauce, thư của dân làng khi đủ tim, mua ở quán Stardrop, lên cấp kỹ năng, sự kiện nhân vật, thương nhân đảo, cửa hàng người lùn. Món duy nhất biết sẵn khi bắt đầu là Trứng chiên.",
+    "su_kien_ngau_nhien": "Mỗi đêm chọn ngẫu nhiên 1 sự kiện nông trại. Tiên mùa màng 1% (không có vào mùa đông, ngày cuối mùa, ngày mưa). Phù thủy 1%. Thiên thạch 1% (10 quặng iridium, 8 đá, 2 geode Omni, 25% ra Prismatic Shard). Cú đá 0,5%. Viên nang lạ 0,8% từ năm 2, chỉ 1 lần mỗi save. Bão gió mạnh 10% mỗi đêm sau khi có nhà kính. Sự kiện xấu: thú hoang tấn công (50% được chọn, rồi 50% xảy ra), bắt mất con vật để ở ngoài qua đêm. Vận may ngày là số ngẫu nhiên từ −0,1 tới +0,1 (201 giá trị); TV \"Thầy bói\" báo bằng 7 mức hình ảnh, từ ngôi sao (may nhất) tới đầu lâu (xui nhất). Vận may ảnh hưởng rương khi câu cá, geode, thang trong mỏ, cây ra gấp đôi, thùng rác, sòng bạc… Lễ hội có ngày cố định; ví dụ SquidFest mốc cao nhất là 8 con (ngày 12) và 10 con (ngày 13).",
+    "nguyen_lieu_hiem_cong_thuc": "Xe hàng rong (Traveling Cart) ghé Thứ Sáu và Chủ Nhật, 6:00–20:00 (thêm dịp Chợ đêm và Lễ hội sa mạc). Hàng gồm 10 món ngẫu nhiên, mỗi món 1 hoặc 5 cái, giá thường đội lên, phần lớn trong khoảng 100–1.000g. Hàng đặc biệt: Rare Seed 100% (Xuân/Hạ), hạt cà phê 25% và bù nhìn Rarecrow 40% (Thu/Đông), mũ Fez đỏ 10%, bộ ấm trà 5% (từ năm 25). Hái lượm có trần cứng 6 món mỗi bản đồ mỗi tuần, đặt lại Chủ Nhật; đồ chưa nhặt bị xóa qua đêm trước sáng Chủ Nhật và trước ngày đầu mùa. Cá trê: ở sông khi mưa (Xuân, Thu), 6:00–24:00, độ khó 75, giá 200g; ở Rừng bí mật và Đầm phù thủy có thêm mùa Hạ khi mưa, mùa đông chỉ khi dùng bùa gọi mưa. Queen of Sauce: từ ngày 7 mùa Xuân, mỗi Chủ Nhật chiếu 1 công thức mới trong 2 năm đầu; thứ Tư chiếu lại (ưu tiên món có người chơi chưa biết); tổng 32 công thức, lặp lại theo chu kỳ 2 năm.",
+    "giu_chan_liveops": "Bảng Special Orders có việc mới mỗi thứ Hai, mỗi tuần nhận được 1 việc mới (có thể chạy song song nhiều việc), hạn 7–28 ngày, thưởng 500–5.000g hoặc công thức, đồ độc nhất, mở khu mới; xong còn được Vé thưởng. Có lễ hội theo mùa và tim bạn bè.",
+    "diem_hay_ap_dung": [
+     "\"Gánh hàng rong\" ghé xe vào 2 ngày cố định trong tuần game: bán 3–4 nguyên liệu hiếm có số lượng hạn chế, thường đắt hơn chợ nhưng đôi khi rẻ; kèm 1 ô hàng đặc biệt có tỉ lệ theo mùa.",
+     "Dự báo vận may ở màn Chuẩn bị (lịch treo tường hoặc radio, vài mức biểu tượng). Vận may chỉ đổi nhẹ tỉ lệ rơi nguyên liệu hiếm và khả năng gặp sự kiện tốt, không đụng tới điểm bếp và quầy.",
+     "Gắn nguyên liệu hiếm với sự kiện ngày sẵn có. Ví dụ Trời mưa làm tăng cơ hội có nguyên liệu mùa mưa, nên một ngày \"xấu\" lại thành cơ hội.",
+     "Công thức mới theo lịch cố định: mỗi tuần game 1 món qua \"radio của Dì Sáu\", có chiếu lại giữa tuần cho người lỡ, ưu tiên món người chơi chưa có.",
+     "Thêm vài \"chuyện kỳ lạ\" tích cực thật hiếm (khoảng 0,5–1%/ngày, có loại chỉ xảy ra 1 lần mỗi save) để người chơi có chuyện kể, ví dụ một đoàn khách du lịch ghé bất ngờ.",
+     "Trần hái lượm theo tuần và xóa đồ chưa nhặt để chống cày."
+    ],
+    "nguon": [
+     "https://stardewvalleywiki.com/Traveling_Cart",
+     "https://stardewvalleywiki.com/Random_Events",
+     "https://stardewvalleywiki.com/Cooking",
+     "https://stardewvalleywiki.com/Foraging",
+     "https://stardewvalleywiki.com/Luck",
+     "https://stardewvalleywiki.com/SquidFest",
+     "https://stardewvalleywiki.com/Catfish",
+     "https://stardewvalleywiki.com/Special_Orders",
+     "https://stardewvalleywiki.com/The_Queen_of_Sauce"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Moonlighter",
+    "the_loai": "Hành động nhập vai hầm ngục kết hợp mở cửa hàng",
+    "nen_tang_nam": "PC, PS4, Xbox One 05/2018; Switch 11/2018; sau đó iOS, Android",
+    "co_che_cot_loi": "Ban đêm vào 4 hầm ngục chính (Golem, Rừng, Sa mạc, Công nghệ; thêm 1 hầm bí mật về sau), đánh quái và mở rương để lấy đồ. Ban ngày bày đồ ra cửa hàng và tự đặt giá. Khách phản ứng theo 4 mức biểu cảm: rất vui (giá quá rẻ), vui, cằn nhằn (hơi đắt), thất vọng (thường không mua). Tiền dùng để mở thêm dịch vụ trong thị trấn (thợ rèn, người pha thuốc) và thuê người bán thay ban ngày.",
+    "su_kien_ngau_nhien": "Độ phổ biến của món thay đổi: hôm món đang được chuộng thì bán đắt hơn mà khách vẫn hài lòng. Đặt giá quá cao thì khách không hài lòng và không mua.",
+    "nguyen_lieu_hiem_cong_thuc": "Đồ hiếm lấy từ hầm ngục và rương. Giá đúng của mỗi món phải dò bằng phản ứng khách.",
+    "giu_chan_liveops": "Nâng cấp thị trấn và trang bị, hầm ngục sâu dần.",
+    "diem_hay_ap_dung": [
+     "Với món hoặc nguyên liệu hiếm, cho người chơi tự đặt giá rồi xem 4 biểu cảm của khách. Đây là bài học định giá thực tế cho nhân viên F&B.",
+     "Có mục \"Món được chuộng hôm nay\" (giá chấp nhận cao hơn), kết hợp với sự kiện ngày.",
+     "Bài phân tích chỉ ra điểm yếu: định giá trong game \"không cần suy nghĩ nhiều\". Nếu làm thì nên gắn với bối cảnh (thời tiết, loại khách) để có chiều sâu."
+    ],
+    "nguon": [
+     "https://en.wikipedia.org/wiki/Moonlighter_(video_game)",
+     "https://www.playfulbrandstrategy.com/en/writings/pricing-in-moonlighter"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Recettear: An Item Shop's Tale",
+    "the_loai": "Mô phỏng tiệm đồ kết hợp hầm ngục (shopkeeper sim)",
+    "nen_tang_nam": "PC – 12/2007 (Nhật), 09/2010 (bản tiếng Anh)",
+    "co_che_cot_loi": "Mở tiệm đồ để trả nợ 820.000 pix trong một tháng, trả theo nhiều đợt với số tiền tăng dần. Mặc cả thành công thì tích điểm lên cấp thương nhân. Khách vừa mua vừa mang đồ tới bán, người chơi phải mặc cả để mua rẻ. Thuê nhà thám hiểm vào hầm ngục để nhặt đồ, sức mang có hạn; nhà thám hiểm gục thì phải bỏ phần lớn đồ.",
+    "su_kien_ngau_nhien": "Wikipedia ghi nhận dao động ngẫu nhiên của thị trường (tin tức, món thịnh hành) giữ cho việc buôn bán không nhàm. Theo wiki (qua trích đoạn tìm kiếm, trang gốc chặn truy cập): bảng tin chạy chữ đầu ngày, bắt đầu từ ngày 10; hai dòng đầu mỗi dòng báo một trong bốn loại: bùng nổ, tăng giá, giảm giá hoặc trở lại bình thường. \"Bùng nổ\" không đổi giá mà chỉ kéo nhiều khách tìm món đó. Chưa kiểm chứng được: mức giảm \"còn khoảng một nửa\"; việc tăng giá có cộng dồn hay không (trên Steam chỉ có một người chơi đoán là không). Phạt lớn: không trả đủ nợ đúng hạn thì mất tiệm, nhưng chơi lại vẫn giữ cấp thương nhân và đồ (không giữ tiền).",
+    "nguyen_lieu_hiem_cong_thuc": "Đồ hiếm từ hầm ngục. Giá thay đổi theo bảng tin.",
+    "giu_chan_liveops": "Áp lực trả nợ theo đợt tạo mục tiêu ngắn hạn. Thua vẫn giữ tiến độ (kiểu New Game+).",
+    "diem_hay_ap_dung": [
+     "\"Bảng tin chợ sáng\" ở màn Chuẩn bị: 2 dòng tin (tăng giá, giảm giá hoặc \"món đang hot, khách đông\") và 1 dòng chuyện vui. Dạy thói quen đọc biến động giá vốn và nhu cầu.",
+     "Tách hai loại tin như Recettear: tin \"bùng nổ\" chỉ tăng số khách gọi món, tin \"tăng/giảm giá\" mới đổi tiền. Quy định rõ và hiện rõ là hiệu ứng tăng giá không cộng dồn (cộng đồng Recettear từng thắc mắc vì game không nói rõ).",
+     "Khoản vay sẵn có (loanAmount) nên có mốc trả theo đợt kèm lời nhắc. Trễ hạn thì phạt nhẹ, không làm mất tiến độ."
+    ],
+    "nguon": [
+     "https://en.wikipedia.org/wiki/Recettear:_An_Item_Shop%27s_Tale",
+     "https://recettear.fandom.com/wiki/Announcements",
+     "https://steamcommunity.com/app/70400/discussions/0/4543572243355376944/"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Potion Craft: Alchemist Simulator",
+    "the_loai": "Mô phỏng pha chế và bán thuốc (crafting shopkeeper)",
+    "nen_tang_nam": "PC truy cập sớm 09/2021, bản đầy đủ PC/Xbox 12/2022, Switch/PlayStation 12/2023",
+    "co_che_cot_loi": "Nghiền nguyên liệu trong cối, bỏ vào nồi. Mỗi thao tác vạch một đường trên bản đồ giả kim, thuốc có hiệu ứng khi đường đi khớp vị trí nhất định. Khách tới kể nhu cầu (ví dụ đau đầu cần thuốc hồi phục). Đưa sai thuốc hoặc từ chối khách thì mất danh tiếng. Có mini-game mặc cả. Tiền dùng mua nguyên liệu và ghi thêm công thức. Game có 10 chương, mỗi chương có mốc khó dần.",
+    "su_kien_ngau_nhien": "Thương nhân ghé tiệm, mỗi người một chuyên môn: Herbalist (thảo dược), Miner (đá quý), Mushroomer (nấm); có thương nhân lang thang bán lẫn thảo dược, nấm, đá quý và giấy. Đã bỏ khẳng định \"người buôn lậu ghé cuối ngày\" vì không tìm được nguồn.",
+    "nguyen_lieu_hiem_cong_thuc": "Vườn cho thu một lượng nguyên liệu giới hạn mỗi ngày một lần. Có loại thảo dược (Druid's Rosemary) mọc \"ít hơn hẳn các loại khác\" nên nên mua khi thấy. Nguyên liệu có hướng đi dài hoặc chéo giúp đi tắt trên bản đồ, mở đường tới thuốc mới.",
+    "giu_chan_liveops": "Chương truyện theo mốc, danh tiếng, khám phá bản đồ.",
+    "diem_hay_ap_dung": [
+     "Người bán dạo có chuyên môn, ví dụ \"cô bán rau thơm\" hay \"chú bán trứng gà ta\". Mỗi người một bảng nguyên liệu hiếm riêng nên người chơi mong người mình cần.",
+     "\"Chậu rau sau xe\": thu 1 lần mỗi ngày thật, thỉnh thoảng mọc 1 loại rau hiếm. Chống cày vì mỗi ngày chỉ thu được một lần.",
+     "Nguyên liệu hiếm có giá trị vì mở \"đường tắt\" (món mới, cách làm nhanh hơn), không chỉ vì bán đắt."
+    ],
+    "nguon": [
+     "https://en.wikipedia.org/wiki/Potion_Craft",
+     "https://www.thegamer.com/potion-craft-rare-ingredients-must-buy/",
+     "https://potion-craft.fandom.com/wiki/Category:Merchants"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Travellers Rest",
+    "the_loai": "Quản lý quán trọ, quán rượu kết hợp nông trại và chế biến",
+    "nen_tang_nam": "PC – truy cập sớm từ 2020",
+    "co_che_cot_loi": "Nấu ăn, ủ bia, chưng cất. Nguyên liệu lấy từ trồng trọt, hái lượm, câu cá, mua của thương nhân. Danh tiếng đóng vai trò cấp độ, tối đa 55, và mở tính năng theo mốc: cấp 4 Đơn hàng, cấp 5 lò chưng cất, cấp 6 nhân viên, cấp 7 xây dựng và phòng cho thuê, cấp 8 Xu hướng, cấp 9 khách VIP, cấp 10 xưởng phô mai. Món, đồ uống mới trong lần gọi đầu của khách cho thêm 4 danh tiếng mỗi khách. Mỗi mùa 28 ngày.",
+    "su_kien_ngau_nhien": "Xu hướng đổi mỗi thứ Hai với 18 món thịnh hành (đồ uống, đồ ăn, nguyên liệu), xem trước được 2 tuần. Món thịnh hành bán đắt hơn tối đa 20%; món có nguyên liệu thịnh hành được tăng theo tỉ lệ giá trị nguyên liệu. Khách VIP (từ danh tiếng cấp 9) được báo trước 1 ngày và đánh dấu đỏ trên lịch; khi VIP ở trong quán thì mọi danh tiếng nhận được nhân đôi, VIP có thể làm danh tiếng tăng hoặc giảm. Mất danh tiếng khi quán bẩn, quá nóng hoặc lạnh, thiếu sáng, ngồi gần khách quậy. Mỗi ngày có 3 đơn hàng, thưởng XP; đơn đồ uống còn được trả thêm giá một thùng.",
+    "nguyen_lieu_hiem_cong_thuc": "Theo mùa: mùa đông khan cỏ, đồ hái lượm và cây trồng, nhưng phần lớn cây trồng mùa đông có giá gấp đôi các mùa khác. Công thức mở dần theo cấp danh tiếng.",
+    "giu_chan_liveops": "Lịch xu hướng xem trước 2 tuần giúp lên kế hoạch trồng và ủ. VIP là mốc đáng chờ.",
+    "diem_hay_ap_dung": [
+     "Bảng \"Món được chuộng tuần này\", xem trước 1 tuần: bán món đó được thêm tiền (giữ trong trần +10–20%) và danh tiếng.",
+     "Khách VIP (ví dụ phóng viên ẩm thực, chủ chuỗi quán) báo trước 1 ngày ở Tổng kết, danh tiếng ×2 trong ca. Làm tốt được thưởng lớn, làm hỏng mất danh tiếng có giới hạn.",
+     "Phạt có nguyên nhân người chơi hiểu được và phòng được, như bẩn hay khách quậy. Hợp với luật \"luôn có lựa chọn an toàn\" sẵn có.",
+     "Thưởng danh tiếng cho việc phục vụ món mới lần đầu, khuyến khích bán đa dạng thực đơn.",
+     "Mùa khan hiếm thì nguyên liệu hiếm có giá trị cao hơn."
+    ],
+    "nguon": [
+     "https://travellersrest.wiki.gg/wiki/Trends",
+     "https://travellersrest.wiki.gg/wiki/Very_Important_Guest",
+     "https://travellersrest.wiki.gg/wiki/Reputation",
+     "https://travellersrest.wiki.gg/wiki/Seasons",
+     "https://travellersrest.wiki.gg/wiki/Orders"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Coral Island",
+    "the_loai": "Nông trại, đời sống trên đảo",
+    "nen_tang_nam": "PC 2023 (truy cập sớm 2022), sau đó có bản console",
+    "co_che_cot_loi": "Nấu ăn cần dụng cụ bếp (chảo, nồi, lò nướng, dao, máy xay…), mua ở cửa hàng Socket Electronics. Nhiều công thức nhận khi đạt mức tim với nhân vật. Nguyên liệu lấy từ trồng trọt, chăn nuôi, hái lượm, câu cá; có loại phải qua máy chế biến. Danh sách dụng cụ chi tiết và con số \"hơn 100 công thức\" chưa kiểm lại được (trang wiki chặn truy cập).",
+    "su_kien_ngau_nhien": "Mỗi thứ Ba, Socket Electronics lên kênh TV Coral Shopping báo giảm giá 10% cho 1 dụng cụ bếp chọn ngẫu nhiên, áp dụng tới hết tuần.",
+    "nguyen_lieu_hiem_cong_thuc": "Có nguyên liệu phải chế biến qua máy hoặc khó tìm. Công thức gắn với tình bạn.",
+    "giu_chan_liveops": "Tình bạn, mùa, lễ hội (chưa kiểm chứng chi tiết).",
+    "diem_hay_ap_dung": [
+     "Dùng dụng cụ bếp làm chìa khóa mở món, ví dụ mua \"Nồi hầm\" thì mở món hầm. Có thể gắn vào hệ thống nâng cấp sẵn có.",
+     "\"Giảm giá tuần\" ngẫu nhiên (khoảng 10%) cho một nâng cấp, báo qua radio hoặc bảng tin vào một ngày cố định trong tuần. Đây là sự kiện tích cực rẻ mà hiệu quả."
+    ],
+    "nguon": [
+     "https://coralisland.wiki/wiki/Cooking",
+     "https://coralisland.wiki/wiki/Socket_Electronics",
+     "https://coralisland.fandom.com/wiki/Cooking"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Ooblets",
+    "the_loai": "Nông trại kết hợp sưu tập sinh vật, đời sống",
+    "nen_tang_nam": "PC, Switch – 2022 (truy cập sớm 2020)",
+    "co_che_cot_loi": "Trồng trọt và sưu tập sinh vật. Thay vì chiến đấu, game dùng đấu nhảy bằng thẻ bài để thắng hạt giống sinh vật mới. Công thức mở bằng Wishies ở Giếng Ước (Wishy Well). Mảnh công thức nhặt được khi lục tìm giấy vụn trong nhà quanh thị trấn hoặc câu bằng cần câu biển (Sea Dangler); ghép 4 mảnh thì ra 1 công thức ngẫu nhiên trong một danh sách. Công thức đặc biệt mở khi đánh boss hoặc đạt mốc địa điểm (ví dụ nâng Wildlands lên cấp 9, đánh bại phù thủy ở Nullwhere).",
+    "su_kien_ngau_nhien": "Mỗi ngày game có 3 việc Daily Wishies, thưởng tăng dần 5, 10, 20 wishies (tổng 35). Quét sinh vật: loại thường 50 Gummies, không phổ biến 100, bản \"lấp lánh\" (gleamy) 300; mỗi độ hiếm của mỗi loài chỉ quét được 1 lần.",
+    "nguyen_lieu_hiem_cong_thuc": "Công thức hiếm có từ ghép mảnh ngẫu nhiên và từ mốc tiến độ. Có biến thể \"lấp lánh\" hiếm cho giá trị cao hơn.",
+    "giu_chan_liveops": "3 việc mỗi ngày thưởng tăng dần, câu lạc bộ, tình bạn.",
+    "diem_hay_ap_dung": [
+     "\"Mảnh công thức\": ghép 4 mảnh thì ra món hiếm, rút gọn từ ý tưởng Sổ tay 12 trang GĐ2 của BKN. Mảnh rơi từ sự kiện ngẫu nhiên trong ngày.",
+     "Biến thể lấp lánh của nguyên liệu thường, ví dụ \"trứng hai lòng đỏ\" hay \"tắc chín cây\", ra với tỉ lệ nhỏ khi nhặt. Dùng làm bản cao cấp của món cho thêm danh tiếng; lần đầu sưu tập mỗi bậc được thưởng một lần (như quét Ooblets).",
+     "Thưởng việc ngày tăng dần (việc 1 < việc 2 < việc 3) để kéo người chơi làm hết."
+    ],
+    "nguon": [
+     "https://en.wikipedia.org/wiki/Ooblets",
+     "https://www.thegamer.com/ooblets-unlock-recipe-guide/",
+     "https://ooblets.fandom.com/wiki/Daily_Wishies",
+     "https://www.pockettactics.com/ooblets/gleamy"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Spiritfarer",
+    "the_loai": "Quản lý thuyền, nấu ăn, đời sống (cozy)",
+    "nen_tang_nam": "PC, console – 08/2020 (sau đổi tên Farewell Edition)",
+    "co_che_cot_loi": "Chăm các linh hồn trên thuyền bằng món ăn và việc họ nhờ, xây thêm tiện ích trên thuyền bằng vật liệu thu được trên đường đi. Mỗi nhân vật mở ra mini-game gắn với câu chuyện riêng của họ.",
+    "su_kien_ngau_nhien": "Sự kiện trên biển hiện thành biểu tượng trên bản đồ: bão sét (hứng sét vào chai), bão sứa, mưa sao băng… Ở sự kiện sứa: sứa vàng nhỏ 10 Glim, sứa vàng lớn 25 Glim, sứa xanh lá 2 Bright Jelly. Giai đoạn I kéo dài không quá khoảng 90 giây; giai đoạn cao hơn ngắn hơn nhưng thu nhiều Glim và Bright Jelly hơn. Người chơi hoàn toàn an toàn trong sự kiện, không bị phạt; có tùy chọn \"Đi an toàn\" để bỏ qua mọi sự kiện trên đường.",
+    "nguyen_lieu_hiem_cong_thuc": "Vật liệu hiếm (Bright Jelly, sét trong chai…) chủ yếu lấy qua sự kiện mini-game, dùng để nâng cấp thuyền và xây tiện ích.",
+    "giu_chan_liveops": "Câu chuyện từng linh hồn. Sự kiện lặp lại theo chu kỳ trên bản đồ.",
+    "diem_hay_ap_dung": [
+     "Sự kiện thu thập là một mini-game 60–90 giây không có phạt, chỉ có \"nhặt nhiều hay ít\". Hợp với người mới và tái dùng được 6 mini-game Thớt sẵn có (chạm, kéo, canh vạch).",
+     "Mỗi sự kiện gắn với một nhân vật hẻm, ví dụ \"Chú Tư ghe trái cây\" hay \"Cô Ba chợ sớm\". Nhân vật mở sự kiện nên có cảm xúc.",
+     "Sự kiện có cấp: lần sau khó hơn và ngắn hơn nhưng nhiều nguyên liệu hiếm hơn.",
+     "Cho phép bỏ qua sự kiện (như \"Đi an toàn\") để người chỉ muốn luyện 4 khâu không bị làm phiền."
+    ],
+    "nguon": [
+     "https://en.wikipedia.org/wiki/Spiritfarer",
+     "https://guidestrats.com/spiritfarer-jellyfish-event/",
+     "https://spiritfarer.fandom.com/wiki/Events"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Sun Haven",
+    "the_loai": "Nông trại, nhập vai kỳ ảo",
+    "nen_tang_nam": "PC 2023 (truy cập sớm 2021)",
+    "co_che_cot_loi": "Có 15 trạm nấu. Trạm cơ bản nấu 45 phút (lò nướng, nồi, vỉ nướng cá, bàn sushi…), trạm nâng cao 1 giờ (ấm trà, máy soda…). Công thức mở thêm qua 3 cuốn sách nấu ăn trong cây kỹ năng (Cơ bản, Nâng cao, Phiêu lưu), mỗi cuốn tới 15 công thức. Món nấu hồi máu và mana nhiều hơn đồ sống. Nấu còn ra phụ phẩm \"đồ thừa\", không ăn được nhưng tặng được hoặc bán nửa giá.",
+    "su_kien_ngau_nhien": "Không thấy nguồn nói rõ về sự kiện ngẫu nhiên liên quan tới nấu ăn.",
+    "nguyen_lieu_hiem_cong_thuc": "Chưa kiểm chứng lại: nguyên liệu độc quyền của các vùng khác (vùng bóng tối, vùng tiên) mở những công thức tốt nhất; nâng cấp bếp để mở món phức tạp hơn.",
+    "giu_chan_liveops": "Cây kỹ năng và vùng mới.",
+    "diem_hay_ap_dung": [
+     "Nguyên liệu hiếm gắn với chặng hoặc địa điểm (xe đẩy, quán cóc, nhà hàng). Lên chặng thì mở nguồn hiếm mới.",
+     "Trạm nấu nâng cao mở nhóm món mới (ví dụ ấm trà mở đồ uống), gắn vào 5 nâng cấp hiện có.",
+     "Phụ phẩm \"đồ thừa\" bán nửa giá: gợi ý cho BKN cách xử lý đồ làm dư thay vì bỏ đi mất trắng."
+    ],
+    "nguon": [
+     "https://sunhaven.wiki.gg/wiki/Cooking"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Fae Farm",
+    "the_loai": "Nông trại, đời sống kỳ ảo",
+    "nen_tang_nam": "Switch, PC – 2023",
+    "co_che_cot_loi": "Khám phá nguyên liệu mới là mở thêm công thức: câu cá, hái lượm, bắt côn trùng, trồng trọt qua các mùa. Có nhiều trạm nấu dùng phối hợp. Một số hạt giống mở theo cấp nông nghiệp: khoai tây cấp 10, bắp cấp 15, ớt cấp 20 (mua ở tiệm hạt giống của Holly), nên món cần khoai tây bị khóa tới đó.",
+    "su_kien_ngau_nhien": "Không thấy nguồn nói rõ.",
+    "nguyen_lieu_hiem_cong_thuc": "Một số công thức cần nguyên liệu từ cõi tiên (khu mở sau) — chưa kiểm chứng lại.",
+    "giu_chan_liveops": "Mùa và cốt truyện chính.",
+    "diem_hay_ap_dung": [
+     "Lần đầu nhặt được nguyên liệu hiếm thì tự hiện gợi ý \"Món bí mật dùng nguyên liệu này\" trong sổ công thức. Tạo cảm giác khám phá mà không phải mua."
+    ],
+    "nguon": [
+     "https://techraptor.net/gaming/guides/fae-farm-cooking-guide",
+     "https://www.gameskinny.com/tips/fae-farm-cooking-and-recipes-guide/",
+     "https://videochums.com/article/fae-farm-seasonal-crops-guide"
+    ],
+    "do_tin_cay": "hieu_biet_chung"
+   },
+   {
+    "ten": "Hay Day",
+    "the_loai": "Nông trại chuỗi sản xuất trên di động (F2P)",
+    "nen_tang_nam": "iOS 2012, Android 2013",
+    "co_che_cot_loi": "Chuỗi sản xuất hợp lý: gà cho trứng chứ không cho tiền, bán trứng lấy tiền, hoặc ghép trứng với nguyên liệu khác thành bánh quế, bánh quy có giá cao hơn, nên hạn chế được hướng dẫn bắt buộc. Bán qua xe tải, tàu, khách thị trấn, sạp ven đường (người chơi mua bán với nhau), báo trong game. Sản xuất có hẹn giờ và thông báo đẩy (\"Sữa đã sẵn sàng\") gọi người chơi quay lại. Nâng kho cần bu lông, ván, băng keo; nâng silo cần đinh, vít, tấm gỗ; mở rộng đất cần giấy phép và vật phẩm khác — tất cả rơi ngẫu nhiên.",
+    "su_kien_ngau_nhien": "Hộp bí ẩn xuất hiện trên nông trại, có 3 loại (thường, lớn, khổng lồ; mở bằng 3, 10, 20 kim cương), chứa kim cương, tiền, vật liệu. Mỗi ngày mở miễn phí được 1 hộp ở nông trại mình và 1 hộp ở nông trại bạn, thỉnh thoảng gặp hộp đã mở khóa sẵn. Có sự kiện có thời hạn theo mùa và Derby giữa các nhóm hàng xóm (hiểu biết chung, chưa kiểm lại chi tiết hệ số nhân).",
+    "nguyen_lieu_hiem_cong_thuc": "Vật liệu nâng kho, nâng silo, mở rộng đất rơi từ thu hoạch, hộp bí ẩn, vòng quay may mắn, lưới câu, phần thưởng hằng ngày, Derby. Mỗi người chơi có loại \"hiếm\" riêng trong nhóm vật liệu này.",
+    "giu_chan_liveops": "Deconstructor of Fun dẫn số liệu AppData: DAU/MAU từng đạt 55% (Game Developer ghi khoảng 50% trên Facebook). Nhà làm game nói tập trung vào giữ chân: bớt hướng dẫn bắt buộc, cập nhật để củng cố vòng lặp lõi và thêm tính năng xã hội thay vì thêm yếu tố mới. (Đã bỏ khẳng định \"Derby được coi là động lực giữ chân\" vì nguồn không nói vậy.)",
+    "diem_hay_ap_dung": [
+     "\"Túi quà bí ẩn\" xuất hiện ở hẻm, mỗi ngày thật mở miễn phí 1 lần. Không bán lượt mở bằng tiền thật, vì đây là game đào tạo.",
+     "Sự kiện ngắn \"khách trả thêm\" có thời hạn, ví dụ 1 giờ vàng trong ca với danh tiếng hoặc Tem ×2.",
+     "Nguyên liệu hiếm dùng cho cả nâng cấp lẫn món, người chơi phải cân nhắc dùng vào đâu.",
+     "Chuỗi chế biến dễ hiểu (nguyên liệu thô → món giá cao hơn) tự dạy người chơi mà không cần hướng dẫn dài."
+    ],
+    "nguon": [
+     "https://www.deconstructoroffun.com/blog//2013/01/behind-success-of-hay-day.html",
+     "https://www.gamedeveloper.com/business/game-monetization-design-analysis-of-hay-day",
+     "https://www.supercheats.com/hay-day/walkthrough/mystery-boxes",
+     "https://hayday.fandom.com/wiki/Supplies"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Township",
+    "the_loai": "Xây thị trấn kết hợp nông trại và chuỗi sản xuất trên di động (F2P)",
+    "nen_tang_nam": "Facebook 2011, di động 2013",
+    "co_che_cot_loi": "Vòng lặp: trồng, chế biến, giao hàng bằng tàu, máy bay, sở thú… để lấy tiền, rồi nâng cấp và mở rộng. Công thức gần đời thực: \"pizza = phô mai + cà chua + lúa mì + 2 giờ chờ\". Ga tàu mở ở cấp 5. Đơn máy bay có hạn 15 giờ; giao đủ thì nhận rương bí ẩn. Đơn sở thú làm mới sau 3 giờ, tối đa 8 đơn mỗi ngày, cứ 12 đơn thì nhận thưởng có thẻ thú. Mỏ mở ở cấp 21 (sau vài tuần chơi). Kho (Barn) là công trình quan trọng nhất vì quyết định sức chứa.",
+    "su_kien_ngau_nhien": "Sự kiện LiveOps thường kéo dài 7–10 ngày, khoảng cách giữa hai sự kiện khoảng 2 tuần. Mini-game sự kiện mỗi lượt khoảng 1–2 phút, dùng cơ chế năng lượng nạp lại được. Có Gold Pass 28 ngày.",
+    "nguyen_lieu_hiem_cong_thuc": "Quặng và thỏi từ Mỏ là tài nguyên hiếm lâu dài. Rương bí ẩn ở đơn máy bay.",
+    "giu_chan_liveops": "Kho là nút thắt chính. Có Regatta giữa các hội (mùa tới 4 tuần), thăm bạn bè.",
+    "diem_hay_ap_dung": [
+     "Nhịp LiveOps: sự kiện lễ 7–10 ngày, nghỉ khoảng 2 tuần. Khớp với lịch năm đầu của BKN (mục 7.5).",
+     "Trần số lần mỗi ngày cho nguồn hiếm (kiểu tối đa 8 đơn sở thú một ngày) để chống cày.",
+     "Mini-game sự kiện 1–2 phút mỗi lượt."
+    ],
+    "nguon": [
+     "https://www.deconstructoroffun.com/blog/2020/10/13/how-playrix-township-became-a-billion-dollar-game"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Supermarket Simulator",
+    "the_loai": "Mô phỏng cửa hàng, siêu thị góc nhìn thứ nhất",
+    "nen_tang_nam": "PC, macOS – truy cập sớm 02/2024, bản chính thức 06/2025",
+    "co_che_cot_loi": "Đặt hàng qua máy tính trong game, dỡ hàng, xếp kho và kệ, quét mã, nhận tiền mặt và thẻ. Giá thay đổi theo biến động thị trường, người chơi tự đặt giá bán. Thuê và quản lý nhân viên, mở rộng. Có đơn giao hàng online. Có trộm vặt và hệ thống an ninh (bảo vệ, cổng từ). Chơi co-op tối đa 4 người. Đánh giá Steam rất tích cực (khoảng 92%).",
+    "su_kien_ngau_nhien": "Theo hướng dẫn của cộng đồng Steam (qua trích đoạn tìm kiếm): trộm thường xuất hiện khi đông khách và khách mệt vì chờ lâu ở quầy; thuê bảo vệ phải kèm cổng từ mới có tác dụng; có thể tắt trộm trong phần Cài đặt. Một thảo luận Steam trước khi có tính năng trộm cho thấy cộng đồng chia rẽ: có người muốn trộm làm thử thách ngẫu nhiên, có người không muốn thêm việc vặt (\"xếp hàng đã đủ tốn thời gian\"). Đã bỏ khẳng định \"sự kiện sản phẩm hết hàng làm nhu cầu tăng\" vì không tìm được nguồn.",
+    "nguyen_lieu_hiem_cong_thuc": "Không có món hiếm. Thay vào đó là biến động giá thị trường.",
+    "giu_chan_liveops": "Mở rộng cửa hàng, thêm dòng sản phẩm.",
+    "diem_hay_ap_dung": [
+     "Phạt tiền có nguyên nhân rõ và gắn với lỗi vận hành. Ví dụ để khách chờ lâu thì tăng nguy cơ \"khách quên trả tiền, bỏ đi\"; xử lý nhanh thì tránh được.",
+     "Cho phép tắt sự kiện phạt trong Cài đặt (như Supermarket Simulator cho tắt trộm) để người mới luyện 4 khâu trước.",
+     "Sự kiện \"chợ đầu mối biến động\": một nguyên liệu tăng giá vốn trong ngày, có lựa chọn mua trước hay thay nguyên liệu (lấy ý từ cơ chế giá thị trường biến động).",
+     "Bài học từ cộng đồng: sự kiện phạt không nên thêm việc vặt lặp lại."
+    ],
+    "nguon": [
+     "https://store.steampowered.com/app/2670630/Supermarket_Simulator/",
+     "https://steamcommunity.com/app/2670630/discussions/0/4304949638719976308/",
+     "https://steamcommunity.com/sharedfiles/filedetails/?id=3406587565"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "TCG Card Shop Simulator",
+    "the_loai": "Mô phỏng cửa hàng thẻ bài kết hợp sưu tập",
+    "nen_tang_nam": "PC – truy cập sớm 2024",
+    "co_che_cot_loi": "Bày kệ, nhập các loại gói thẻ, tự đặt giá, theo dõi thị trường để điều chỉnh. Tự mở gói để tìm thẻ hiếm, rồi bán hoặc giữ sưu tập. Tổ chức bàn chơi. Lợi nhuận dùng mở rộng mặt bằng và mở bộ thẻ mới (các chi tiết này theo trang Steam, chưa đối chiếu từng dòng).",
+    "su_kien_ngau_nhien": "Độ hiếm kiểm tra nhiều tầng. Lấp lánh (foil) là lần kiểm tra riêng, chồng lên độ hiếm, tỉ lệ 1/20 (5%). Gói Ghost có tỉ lệ 1/1.000 (Tetramon) và 1/500 (Destiny); khi trúng thì thẻ cuối trong gói chắc chắn là thẻ Ghost. Phân bố xấp xỉ trên 10.000 thẻ: Base 66,29%, First Edition 16,57%, Silver 7,21%, Gold 3,75%, Base Foil 3,48%, EX 0,95%… Full Art Foil 0,01%.",
+    "nguyen_lieu_hiem_cong_thuc": "Thẻ hiếm vừa là hàng bán giá cao vừa là đồ sưu tập.",
+    "giu_chan_liveops": "Khoảnh khắc mở gói, bộ sưu tập, mở bộ mới.",
+    "diem_hay_ap_dung": [
+     "Nguyên liệu nhặt được qua 2 lần kiểm tra: bậc (thường, tốt, hiếm) và một lần \"lấp lánh\" riêng khoảng 5%. Bậc hiện bằng màu viền rõ ràng.",
+     "Có \"bảo đảm\" trong gói: ví dụ mỗi lượt Đi chợ chắc chắn ra ít nhất 1 món tốt.",
+     "Không bán lượt may rủi bằng tiền thật. Chỉ dùng tiền trong game hoặc lượt miễn phí theo ngày."
+    ],
+    "nguon": [
+     "https://store.steampowered.com/app/3070070/TCG_Card_Shop_Simulator/",
+     "https://www.treyexgaming.com/tcg-card-shop-simulator-card-rarity-probabilities-guide/"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Coffee Talk",
+    "the_loai": "Mô phỏng pha chế kết hợp truyện tương tác (visual novel)",
+    "nen_tang_nam": "PC, console – 2020",
+    "co_che_cot_loi": "Pha đồ uống bằng 3 nguyên liệu theo đúng thứ tự: nền, lớp chính, lớp phụ. Nguyên liệu mở dần; một số đồ uống cho vẽ latte art. Phục vụ đúng thì khách mở lòng kể chuyện riêng; hoàn thành câu chuyện của nhân vật thì được quay lại chơi từng ngày cụ thể. Mỗi ngày game được bỏ đồ uống đã pha tối đa 5 lần. Truyện gồm 14 ngày, mỗi ngày khoảng 15–30 phút. Chế độ Thử thách yêu cầu phục vụ đúng trong giới hạn thời gian với mô tả order ngày càng mơ hồ.",
+    "su_kien_ngau_nhien": "Không có sự kiện ngẫu nhiên kiểu kinh tế. Thử thách nằm ở order mơ hồ.",
+    "nguyen_lieu_hiem_cong_thuc": "Công thức ẩn tự khám phá bằng thử và sai.",
+    "giu_chan_liveops": "Câu chuyện khách quen kéo dài nhiều ngày.",
+    "diem_hay_ap_dung": [
+     "Khách quen có câu chuyện nhiều ngày và gọi món mơ hồ, ví dụ \"cho cô cái gì mát mát mà đừng ngọt quá\". Rất hợp với mục tiêu đào tạo đọc và xác nhận order.",
+     "Món bí mật chỉ mở khi người chơi tự thử đúng tổ hợp nguyên liệu hiếm, có gợi ý sau vài lần thử sai.",
+     "Giới hạn số lần làm lại mỗi ngày (Coffee Talk cho bỏ tối đa 5 ly/ngày) để giữ giá trị của nguyên liệu hiếm."
+    ],
+    "nguon": [
+     "https://en.wikipedia.org/wiki/Coffee_Talk_(video_game)"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Cafe Owner Simulator",
+    "the_loai": "Mô phỏng quản lý quán cà phê, nhà hàng góc nhìn thứ nhất",
+    "nen_tang_nam": "PC (Steam) – 12/2022, nhà phát triển Second Reality",
+    "co_che_cot_loi": "Dọn dẹp, sửa sang, thiết kế quán, lập thực đơn, quản lý nhân viên, trả hóa đơn, bảo trì thiết bị, diệt côn trùng, qua kiểm tra phòng cháy, làm quảng cáo. Có hệ thống cấp độ mở thêm nội thất, món và tính năng.",
+    "su_kien_ngau_nhien": "Kiểm tra phòng cháy, côn trùng, thiết bị cần bảo trì là các việc vận hành được nêu trên trang Steam (chưa rõ có phải sự kiện ngẫu nhiên hay không).",
+    "nguyen_lieu_hiem_cong_thuc": "Không có món hiếm đáng kể.",
+    "giu_chan_liveops": "Đánh giá Mixed: khoảng 65% tích cực trên Steam, Steambase 63/100 (khoảng 1.100 đánh giá, số liệu thay đổi theo thời gian). Người chơi trên diễn đàn Steam chê: \"trang trí xong, mở hết phòng, lên cấp 10 thì không còn gì làm\"; có ý kiến cho rằng thuê nhân viên làm hết việc thì mất vòng lặp lõi.",
+    "diem_hay_ap_dung": [
+     "Bài học ngược: đừng để tự động hóa xóa mất vòng lặp lõi, và phải có mục tiêu sau khi \"xong\" một chặng. Nhân viên hay đồ tự động của BKN chỉ nên đỡ việc lặp lại, không làm thay các bước đào tạo.",
+     "Sự kiện phạt kiểu \"đoàn kiểm tra vệ sinh an toàn thực phẩm\" hay \"thiết bị hỏng\" phải báo trước và có cách phòng bằng nâng cấp hoặc thói quen tốt."
+    ],
+    "nguon": [
+     "https://store.steampowered.com/app/1498140/Cafe_Owner_Simulator/",
+     "https://steambase.io/games/cafe-owner-simulator",
+     "https://steamcommunity.com/app/1498140/discussions/0/3722818378188148301/"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Animal Crossing: New Horizons",
+    "the_loai": "Mô phỏng đời sống theo giờ thật (cozy life sim)",
+    "nen_tang_nam": "Nintendo Switch – 2020",
+    "co_che_cot_loi": "Chạy theo giờ thật. Ngày thường có khách đặc biệt ở quảng trường; Celeste (đêm trời quang có sao băng) và Wisp (ngẫu nhiên từ 20:00) ghé ban đêm. Saharah, Kicks và Leif mỗi người chắc chắn ghé 1 lần mỗi tuần vào ngày thường. Hai ngày thường còn lại do 2 trong 5 người (Gulliver, C.J., Flick, Label, Redd) lấp. Người chưa ghé tuần này dường như có tỉ lệ cao hơn vào tuần sau (bảo hiểm). K.K. tới thứ Bảy, Daisy Mae tới sáng Chủ Nhật.",
+    "su_kien_ngau_nhien": "Củ cải: mua của Daisy Mae sáng Chủ Nhật (trước 12:00). Giá bán lại theo 1 trong 4 mẫu (giảm dần, tăng nhỏ, tăng lớn, ngẫu nhiên). Củ cải chưa bán sẽ hỏng lúc 5:00 Chủ Nhật tuần sau; chỉnh giờ tiến ra khỏi tuần hoặc lùi giờ (dù trong tuần) cũng làm hỏng. Redd thỉnh thoảng ghé (thuộc nhóm khách luân phiên), bày 4 tác phẩm, ít nhất 1 thật, mỗi người chỉ mua 1 món mỗi lượt, giá 4.980 Bells. Label ra đề thời trang: đạt thì được 1 món đồ hiệu và 1–2 vé may đo (đổi món tới 3.000 Bells), không đạt vẫn được 1 vé. Celeste ghé tối đa 1 lần mỗi tuần, 20:00–4:00, mỗi ngày cho 1 công thức; hết công thức thì 60% cho 5 mảnh sao, 20% mảnh sao lớn, 20% mảnh cung hoàng đạo.",
+    "nguyen_lieu_hiem_cong_thuc": "Ước sao băng thì sáng hôm sau có mảnh sao trên bãi biển: mảnh thường 85%, mảnh lớn 5%, mảnh cung hoàng đạo 10%; trong tháng cung của người chơi là 70/10/20. Mảnh sao dùng cho 58 công thức. Cá vây tay chỉ xuất hiện khi trời mưa, cả ngày, phải đã câu tổng 100 con cá; bán 15.000 Bells (C.J. trả 22.500). Nhờ vậy vật phẩm hiếm gắn với thời tiết, giờ và tháng thật.",
+    "giu_chan_liveops": "Nhịp tuần đều đặn: ngày thường nào cũng có \"ai đó ghé\". Có đầu cơ củ cải và bộ sưu tập bảo tàng.",
+    "diem_hay_ap_dung": [
+     "Lịch tuần kiểu túi bốc: mỗi ngày game ở Chặng 1 có đúng 1 \"vị khách của hẻm\". 3 người chắc chắn ghé mỗi tuần, 2 người luân phiên, người chưa ghé thì tuần sau có tỉ lệ cao hơn. Tăng mạnh cảm giác \"ngày nào cũng có chuyện\" mà vẫn kiểm soát được.",
+     "Nguyên liệu hiếm có hạn dùng (ví dụ hỏng sau 7 ngày thật) và hỏng khi lùi giờ máy. Khớp với luật khóa quà khi lùi giờ sẵn có ở mục 13.",
+     "Hàng thật và hàng giả: người bán dạo có 1 món \"nhái\" (ví dụ nước mắm pha), người chơi phải nhìn nhãn để nhận ra, hợp tinh thần dạy nhận biết ảnh chuyển khoản giả. Mỗi lượt chỉ mua 1 món.",
+     "Thua thử thách vẫn có quà an ủi, như cách Label vẫn cho 1 vé.",
+     "Tỉ lệ hiếm nhân đôi trong khung thời gian có ý nghĩa, ví dụ tuần lễ của chính món đó (như mảnh cung hoàng đạo tăng từ 10% lên 20% trong tháng cung)."
+    ],
+    "nguon": [
+     "https://nintendowire.com/guides/animal-crossing-new-horizons/special-visitor-appearance-rates/",
+     "https://nookipedia.com/wiki/Turnip",
+     "https://nookipedia.com/wiki/Redd",
+     "https://nookipedia.com/wiki/Label",
+     "https://nookipedia.com/wiki/Celeste",
+     "https://nookipedia.com/wiki/Star_fragment",
+     "https://nookipedia.com/wiki/Coelacanth"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Cookie Run: Kingdom",
+    "the_loai": "Xây vương quốc, sản xuất kết hợp nhập vai sưu tập nhân vật (F2P, di động)",
+    "nen_tang_nam": "iOS, Android – 2021",
+    "co_che_cot_loi": "Xây và nâng cấp công trình sản xuất hàng. Nhân vật là nhân công có chi phí cơ hội: đã gửi đi khinh khí cầu 30 phút thì không làm ở công trình khác được. Có nhiều lớp sự kiện chạy chồng lên nhau, đa số có tiền riêng. Gần như mọi thao tác đều có thể kéo theo một chấm đỏ nhỏ trên giao diện dẫn người chơi tới nơi nhận thưởng.",
+    "su_kien_ngau_nhien": "Theo Naavik, những phiên đầu có khoảng 6 sự kiện có thời hạn, đa số dùng tiền riêng. Theo wiki (trích đoạn tìm kiếm): Basic Events luân phiên trong một nhóm nhỏ, luôn có 2 loại chạy song song (loại gắn công trình và hoạt động thường ngày kéo dài 3 ngày, loại gắn đấu trường kéo dài 7 ngày), mỗi sự kiện 3–5 phần thưởng.",
+    "nguyen_lieu_hiem_cong_thuc": "Thưởng sự kiện là nguồn tài nguyên giá trị đều đặn.",
+    "giu_chan_liveops": "Game cho thể lực \"tràn\" nhờ thưởng từ sự kiện và nhiệm vụ, nên \"người chơi ít thời gian hiếm khi thiếu thể lực\". Phần thưởng dồi dào thay cho chặn cứng.",
+    "diem_hay_ap_dung": [
+     "Luôn có 1–2 \"việc nhỏ của hẻm\" chạy song song với nhiệm vụ ngày (một việc ngắn 3 ngày, một việc dài 7 ngày), thưởng nguyên liệu hiếm hoặc mảnh công thức. Chấm đỏ dẫn tới chỗ nhận.",
+     "Người chơi ít thời gian vẫn đủ nguyên liệu hiếm cho món cơ bản. Hiếm là để sưu tập và lấy danh tiếng, không để chặn tiến độ."
+    ],
+    "nguon": [
+     "https://naavik.co/game-deconstruction/cookie-run-kingdom/",
+     "https://cookierunkingdom.fandom.com/wiki/Basic_Events"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   }
+  ],
+  "nguyen_tac_thiet_ke": [
+   "Ba tầng sự kiện, ngày nào cũng có chuyện nhưng chuyện lớn thì hiếm. (1) Chuyện nhỏ gần như mỗi ngày: ACNH lấp cả 5 ngày thường bằng khách đặc biệt (3 người chắc chắn và 2 người luân phiên). (2) Sự kiện vừa vài lần mỗi tuần: thời tiết, xu hướng, tin chợ. (3) Sự kiện hiếm khoảng 0,5–1% mỗi đêm như Stardew (Tiên mùa màng 1%, Thiên thạch 1%, Cú đá 0,5%, Viên nang lạ 0,8% và chỉ 1 lần mỗi save) để người chơi có chuyện kể. Hiện BKN mới có tầng 2 (sự kiện ngày 30%/ngày từ ngày game 3) và tình huống trong ca (35% ở mức Vừa), nên cảm giác \"hiếm\" là đúng như người dùng nói.",
+   "Dùng lịch hoặc túi bốc theo tuần thay cho xác suất độc lập từng ngày. ACNH rải khách theo tuần và (theo quan sát cộng đồng) tăng tỉ lệ cho người chưa ghé; BKN đã có guaranteeAfter và noRepeat cho tình huống, nên mở rộng cách này sang sự kiện ngày và nguồn nguyên liệu hiếm để tránh chuỗi ngày trống.",
+   "Nguồn hiếm vừa đoán trước được vừa bất ngờ. Phần cố định: xe hàng rong Stardew Thứ Sáu và Chủ Nhật, Daisy Mae sáng Chủ Nhật, Queen of Sauce Chủ Nhật và chiếu lại thứ Tư, xu hướng Travellers Rest đổi thứ Hai và xem trước 2 tuần, VIP báo trước 1 ngày, Coral Island giảm giá dụng cụ mỗi thứ Ba. Phần ngẫu nhiên nằm bên trong: 10 món ngẫu nhiên, ô đặc biệt 100/40/25/10/5%. Người chơi có lý do quay lại đúng ngày mà vẫn hồi hộp.",
+   "Gắn nguyên liệu hiếm với điều kiện dễ hiểu như thời tiết, giờ, mùa. Cá vây tay ACNH chỉ có khi mưa và phải đã câu 100 cá; cá trê Stardew chủ yếu ở sông khi mưa; mảnh cung hoàng đạo tăng gấp đôi trong tháng cung. BKN có thể biến sự kiện ngày \"xấu\" như Trời mưa thành cơ hội nhặt nguyên liệu mùa mưa.",
+   "Độ hiếm nhiều tầng và công khai. ACNH chia 85/5/10; TCG có lần kiểm tra lấp lánh riêng 1/20 và gói Ghost 1/500–1/1.000 bảo đảm thẻ cuối. Với game đào tạo nên hiện rõ bậc và tỉ lệ. Nguyên liệu cần cho món hiếm không nên dưới khoảng 5% mỗi lượt; bậc dưới 1% chỉ dành cho đồ trang trí hoặc sưu tập.",
+   "Bảo hiểm xui phải công khai. Hearthstone bảo đảm thẻ huyền thoại trong 40 gói (hiểu biết chung); ACNH dường như tăng tỉ lệ cho khách chưa ghé. Bảo hiểm ẩn dễ làm mất niềm tin, nên BKN nên có \"thanh may mắn\" nhìn thấy được: sau N lượt không ra hiếm thì lượt kế chắc chắn ra.",
+   "Chống cày bằng trần theo ngày hoặc tuần thật và bằng hạn dùng. Stardew: 6 món hái lượm mỗi bản đồ mỗi tuần, xóa đồ chưa nhặt. Potion Craft: vườn thu 1 lần mỗi ngày. Township: tối đa 8 đơn sở thú mỗi ngày. Celeste: 1 công thức mỗi ngày, tối đa 1 lần ghé mỗi tuần. Hay Day: 1 hộp miễn phí mỗi ngày ở nông trại mình. Redd: 1 món mỗi lượt. Coffee Talk: bỏ tối đa 5 ly mỗi ngày. Củ cải ACNH hỏng sau 1 tuần và hỏng khi lùi giờ.",
+   "Thưởng và phạt công bằng. Phạt phải có nguyên nhân người chơi hiểu và phòng được: bẩn, nóng, thiếu sáng, ngồi gần khách quậy (Travellers Rest); trộm khi khách chờ lâu ở quầy (Supermarket Simulator, và game còn cho tắt trộm trong Cài đặt). Phạt có trần (BKN đã có lossCap = min(10% doanh thu dự kiến, 0,5 thu nhập tham chiếu)), luôn có lựa chọn an toàn, thua vẫn có quà an ủi (Label). Sự kiện tốt nên nhiều hơn sự kiện xấu (phần lớn sự kiện đêm của Stardew là có lợi).",
+   "Khách VIP hoặc khách đặc biệt tạo mục tiêu ngắn hạn mà không phá vòng lặp lõi (Dave the Diver: VIP buộc đi tìm nguyên liệu cụ thể, làm thành công thì mở cơ chế mới như rót bia). Báo trước và nhân đôi danh tiếng như Travellers Rest (×2 khi VIP có mặt).",
+   "Tin chợ và xu hướng giá dạy kỹ năng thật. Recettear có bảng tin từ ngày 10 với bốn loại tin (bùng nổ, tăng giá, giảm giá, trở lại bình thường), trong đó \"bùng nổ\" chỉ kéo thêm khách chứ không đổi giá; Travellers Rest tăng tối đa 20%; Supermarket Simulator có giá biến động theo thị trường; Moonlighter có 4 mức phản ứng khách. Nên giữ biên độ nhỏ, không cộng dồn và hiện rõ nguyên nhân.",
+   "Món hiếm là để sưu tập và lấy danh tiếng, không phải để hốt tiền. Giữ quy tắc 21 của BKN: lãi mỗi giây nấu không vượt quá 10% món tốt nhất cùng chặng. Món hiếm hấp dẫn nhờ danh tiếng, hình đẹp, khách riêng, huy hiệu. Travellers Rest cũng chỉ cho món thịnh hành tăng tối đa 20% và thưởng danh tiếng cho món mới.",
+   "Nhịp LiveOps nên có sự kiện 7–10 ngày rồi nghỉ khoảng 2 tuần (Township), mini-game sự kiện 1–2 phút mỗi lượt. Nhiều lớp việc nhỏ song song với thưởng dồi dào để người ít thời gian không bị chặn (Cookie Run: Kingdom luôn có 2 loại sự kiện cơ bản chạy song song, 3 ngày và 7 ngày).",
+   "Tránh để tự động hóa hay việc vặt giết vòng lặp lõi. Cafe Owner Simulator bị chê vì \"lên cấp 10, mở hết phòng thì không còn gì làm\"; cộng đồng Supermarket Simulator ngại thêm việc lặp. Sự kiện mới phải thêm quyết định, không thêm thao tác thừa, và nên cho phép tắt hoặc bỏ qua (như \"Đi an toàn\" của Spiritfarer).",
+   "Về yêu cầu tip 5.000đ khi hóa đơn từ 20.000đ: tipFor() trong src/core/scoring.js hiện trả tipBonus 10.000đ cho món Không tì vết hoặc khách khó tính; src/core/kitchen.js dòng 446 nâng tip lên tipBonus khi chuỗi Quầy chuẩn ≥ 5; dòng 448 áp tipMul của Ngày lãnh lương (1,5) rồi làm tròn bội 5.000đ, nên 5.000đ × 1,5 = 7.500đ bị làm tròn lên 10.000đ. Muốn tip thật sự chỉ còn 5.000đ thì phải bỏ tipBonus (cả ở src/data/balance.js và bản mặc định trong src/core/state.js dòng 22), thêm điều kiện tổng hóa đơn của khách ≥ 20.000đ và đổi hiệu ứng Ngày lãnh lương, ví dụ khách gọi nhiều phần hơn. Theo giá hiện tại, khách chỉ gọi 1 Trà tắc (10.000đ), 1 Cà phê sữa đá hay 1 Chè bưởi (15.000đ) sẽ không có tip; Bánh mì ốp la hay Bánh tráng trộn (20.000đ), hoặc gọi 2 món trở lên, thì có. Phần thưởng bị mất (chuỗi Quầy chuẩn, Không tì vết) nên bù bằng danh tiếng, Tem hoặc cơ hội nguyên liệu hiếm, như Travellers Rest thưởng bằng danh tiếng."
+  ],
+  "de_xuat_cho_bkn": [
+   {
+    "ten": "Tip 5.000đ khi hóa đơn từ 20.000đ, bù phần thưởng bằng danh tiếng",
+    "mo_ta": "Khách 5 sao và tổng hóa đơn từ 20.000đ thì tip đúng 5.000đ; dưới 20.000đ thì không tip. Bỏ tipBonus 10.000đ (cả nhánh Không tì vết/khách khó tính trong tipFor() và nhánh chuỗi Quầy chuẩn trong kitchen.js). Đổi Ngày lãnh lương từ tipMul 1,5 sang \"khách hào phóng\": tăng xác suất gọi 2 phần hoặc gọi thêm món, để hóa đơn dễ qua 20.000đ. Chuỗi Quầy chuẩn và Không tì vết chuyển sang +1 danh tiếng và +1 lượt \"thanh may mắn\" nguyên liệu hiếm thay vì tip 10.000đ. Cập nhật mục 6.9, dòng 30 bảng quyết định, src/data/balance.js, bản mặc định trong src/core/state.js, tipFor() và kitchen.js.",
+    "lay_cam_hung_tu": "Yêu cầu trực tiếp của người dùng; cách thưởng bằng danh tiếng thay tiền của Travellers Rest (danh tiếng cho món mới, VIP ×2 danh tiếng)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "Tăng tần suất sự kiện bằng lịch tuần kiểu túi bốc",
+    "mo_ta": "Sự kiện ngày tăng từ 30% lên khoảng 60–70%. Ngày không có sự kiện lớn vẫn có 1 \"tin nhỏ của hẻm\" (sự kiện nhẹ, có lợi). Rải theo túi 7 ngày game: mỗi tuần ít nhất 2 sự kiện thời tiết hoặc chợ và 1 ngày có khách đặc biệt; loại chưa xuất hiện thì tuần sau có tỉ lệ cao hơn. Tình huống trong ca ở mức Vừa tăng từ 35% lên khoảng 55%, guaranteeAfter giảm từ 3 xuống 2. Giữ Cài đặt Nhiều / Vừa / Ít cho người mới.",
+    "lay_cam_hung_tu": "Animal Crossing: New Horizons (mỗi ngày thường 1 khách, 3 người chắc chắn + 2 luân phiên mỗi tuần); Stardew Valley (tầng sự kiện hiếm 0,5–1%)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "Nhóm sự kiện thưởng và phạt tiền mới (có trần, có lựa chọn an toàn)",
+    "mo_ta": "Thêm khoảng 8 sự kiện, số thưởng nhiều hơn số phạt, tất cả đi qua lossCap sẵn có. Thưởng: 'Công ty đầu hẻm đặt trước 6 phần' (đơn lớn, trả thêm 10%); 'Phường khen xe sạch đẹp' (+20.000đ nếu 3 ca liền không có lỗi vệ sinh); 'Đoàn khách du lịch ghé' (thêm 2 khách, hóa đơn lớn); 'Khách cũ quay lại trả nợ và gửi thêm'; 'Chủ nhà giảm tiền mặt bằng tuần này'. Phạt, mỗi cái đều phòng được: 'Đoàn kiểm tra vệ sinh an toàn thực phẩm' (chỉ phạt nếu ca trước có lỗi vệ sinh hoặc bẩn); 'Trật tự đô thị nhắc lấn chiếm vỉa hè' (chọn dọn gọn thì mất 1 khách, hoặc nộp phạt nhỏ); 'Hết gas giữa ca' (mua bình dự phòng thì không bị); 'Khách chờ lâu bỏ đi không trả tiền' (chỉ khi hàng chờ vượt ngưỡng). Mỗi sự kiện ghi rõ vì sao xảy ra và cách tránh lần sau (Mẹo nghề). Sự kiện phạt tắt được trong Cài đặt cho người mới.",
+    "lay_cam_hung_tu": "Travellers Rest (mất danh tiếng vì bẩn, ngồi gần khách quậy); Supermarket Simulator (trộm khi khách chờ lâu ở quầy, cho tắt trộm trong Cài đặt); Cafe Owner Simulator (kiểm tra phòng cháy, côn trùng, bảo trì thiết bị); Stardew Valley (phần lớn sự kiện đêm có lợi); Hay Day (sự kiện có thời hạn)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "\"Đi chợ sớm\": mini-game thu thập nguyên liệu hiếm trước ca",
+    "mo_ta": "Ở màn Chuẩn bị, mỗi ngày thật có 1 lượt miễn phí 60–90 giây: chạm hoặc kéo để nhặt đồ trên sạp, dùng lại cơ chế Thớt. Đồ nhặt có bậc Thường, Tốt, Hiếm (gợi ý khoảng 85/10/5%) cộng 1 lần kiểm tra \"lấp lánh\" riêng khoảng 5%. Mỗi lượt chắc chắn có ít nhất 1 món Tốt. Hết giờ vẫn giữ những gì đã nhặt. Bố cục sạp lấy từ 6–8 mẫu vẽ tay xoay vòng, chỉ ngẫu nhiên đồ trên ô cố định. Không phạt; chơi giỏi thì nhặt được nhiều hơn. Có thêm lượt khi xong việc ngày.",
+    "lay_cam_hung_tu": "Spiritfarer (sự kiện mini-game khoảng 90 giây, an toàn, không phạt); Dave the Diver (ngày thu thập, tối bán; hết oxy vẫn giữ 1 món; bản đồ vẽ tay dùng lại, đồ ngẫu nhiên trên ô cố định); ACNH (tỉ lệ mảnh sao 85/5/10); TCG Card Shop Simulator (lấp lánh 1/20, bảo đảm thẻ cuối trong gói Ghost); Hay Day (1 hộp miễn phí mỗi ngày)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "Món công thức hiếm đầu tiên và Mảnh công thức",
+    "mo_ta": "Thêm 1–2 món hiếm cho Chặng 1, mỗi món dùng 1 nguyên liệu hiếm, ví dụ 'Bánh mì ốp la trứng gà ta' hay 'Trà tắc mật ong rừng'. Mở món bằng 4 Mảnh công thức rơi từ Đi chợ sớm, người bán dạo và sự kiện; lần đầu nhặt được nguyên liệu hiếm thì sổ công thức hiện gợi ý món bí mật. Món hiếm vẫn theo quy tắc lãi +10%, hấp dẫn nhờ +2 danh tiếng mỗi phần, hình trình bày riêng và huy hiệu sưu tập. Mỗi phần tiêu 1 nguyên liệu hiếm, nên món này là \"món trong ngày\" chứ không bán mãi được.",
+    "lay_cam_hung_tu": "Ooblets (ghép 4 mảnh thành 1 công thức ngẫu nhiên; công thức đặc biệt từ boss và mốc tiến độ); Fae Farm (nguyên liệu mới mở công thức, khoai tây khóa tới cấp 10); Dave the Diver (VIP cần nguyên liệu cụ thể, thành công mở cơ chế); quy tắc 21 của BKN",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "Gánh hàng rong ghé xe theo lịch",
+    "mo_ta": "Người bán dạo ghé vào 2 ngày cố định trong tuần game, hiện ở màn Chuẩn bị. Mỗi lượt bán 3–4 nguyên liệu hiếm với số lượng hạn chế (1–3 cái), giá thường cao hơn chợ nhưng đôi khi rẻ bất ngờ. Có 1 ô hàng đặc biệt theo tỉ lệ (ví dụ 100% nguyên liệu mùa, 25% mảnh công thức, 10% đồ trang trí). Mỗi người chơi mua tối đa 1 món đặc biệt mỗi lượt. Có nhiều gánh với chuyên môn khác nhau (rau thơm, trứng và sữa, trái cây).",
+    "lay_cam_hung_tu": "Stardew Valley (xe hàng rong Thứ Sáu và Chủ Nhật, 10 món ngẫu nhiên, ô đặc biệt 100/40/25/10/5%); Potion Craft (thương nhân có chuyên môn: thảo dược, đá quý, nấm); ACNH (Redd mỗi lượt chỉ mua 1)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "Nguyên liệu gắn thời tiết và sự kiện ngày",
+    "mo_ta": "Mỗi sự kiện ngày sẵn có tăng cơ hội ra một nguyên liệu hiếm liên quan: Trời mưa có rau mùa mưa, Nắng nóng có tắc chín cây, Chợ phiên thì người bán dạo chắc chắn ghé, Ngày lãnh lương có khách mang quà quê. Như vậy ngày \"xấu\" cũng có mặt tốt và người chơi có lý do đọc dự báo ở Tổng kết ca.",
+    "lay_cam_hung_tu": "ACNH (cá vây tay chỉ có khi mưa); Stardew Valley (cá trê khi mưa, hái lượm theo mùa)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "Thanh may mắn công khai và hạn dùng nguyên liệu hiếm",
+    "mo_ta": "Thanh hiện số lượt còn lại tới khi chắc chắn ra nguyên liệu hiếm (ví dụ sau 4 lượt Đi chợ không ra hiếm thì lượt thứ 5 chắc chắn có). Nguyên liệu hiếm có hạn 7 ngày thật, hết hạn thì thành nguyên liệu thường, và bị khóa hoặc hỏng khi lùi giờ máy (dùng thời gian tin cậy maxSeen ở mục 13). Trần: mỗi ngày thật tối đa khoảng 3 nguyên liệu hiếm từ mọi nguồn.",
+    "lay_cam_hung_tu": "Hearthstone (bảo đảm huyền thoại trong 40 gói, hiểu biết chung); ACNH (củ cải hỏng sau 1 tuần và khi lùi giờ); Stardew Valley (trần 6 món hái lượm mỗi bản đồ mỗi tuần)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "Bảng tin chợ sáng và món được chuộng tuần này",
+    "mo_ta": "Ở màn Chuẩn bị có 2 dòng tin: tăng hoặc giảm giá nguyên liệu (biên độ ±20% giá vốn, không cộng dồn) hoặc \"món đang hot\" (chỉ tăng số khách gọi, không đổi giá), và 1 dòng chuyện vui. Mỗi tuần có 1 món được chuộng: bán món đó thêm danh tiếng và giá chấp nhận cao hơn (trong trần +10%), xem trước 1 tuần. Dạy nhân viên thói quen đọc biến động giá vốn và nhập hàng.",
+    "lay_cam_hung_tu": "Recettear (bảng tin từ ngày 10: bùng nổ, tăng giá, giảm giá, trở lại bình thường; bùng nổ chỉ kéo khách); Travellers Rest (xu hướng đổi thứ Hai, xem trước 2 tuần, tối đa +20%); Supermarket Simulator (giá biến động theo thị trường)",
+    "uu_tien": "GĐ2"
+   },
+   {
+    "ten": "Khách VIP báo trước",
+    "mo_ta": "Khoảng 1 lần mỗi tuần game, Tổng kết ca báo \"Ngày mai có phóng viên ẩm thực ghé\". VIP gọi món cần 1 nguyên liệu hiếm và có ghi chú khó; trong ca có VIP thì danh tiếng ×2. Làm tốt thì mở 1 nâng cấp hoặc cơ chế nhỏ, làm hỏng thì trừ danh tiếng có trần. Có lựa chọn an toàn \"Mời món thường kèm lời xin lỗi\".",
+    "lay_cam_hung_tu": "Dave the Diver (VIP cần nguyên liệu cụ thể, thành công mở cơ chế mới); Travellers Rest (báo trước 1 ngày trên lịch, danh tiếng ×2, có thể tăng hoặc giảm)",
+    "uu_tien": "GĐ2"
+   },
+   {
+    "ten": "Vị khách của hẻm theo ngày trong tuần",
+    "mo_ta": "Mỗi ngày game có một nhân vật ghé: chú ve chai đổi đồ cũ lấy nguyên liệu, cô bán vé số kể chuyện phường, anh shipper xin nước và tặng mảnh công thức, người bán \"hàng nhái\" (có 1 món giả phải nhìn nhãn để nhận ra). 3 nhân vật chắc chắn mỗi tuần, 2 nhân vật luân phiên có bảo hiểm.",
+    "lay_cam_hung_tu": "ACNH (Saharah, Kicks, Leif chắc chắn mỗi tuần; Redd bày 4 tác phẩm, ít nhất 1 thật; Label thua vẫn cho 1 vé)",
+    "uu_tien": "GĐ2"
+   },
+   {
+    "ten": "Chậu rau sau xe",
+    "mo_ta": "Mỗi ngày thật thu hoạch miễn phí 1 lần được rau thơm dùng cho món. Thỉnh thoảng (khoảng 10%) mọc 1 cây hiếm. Nâng cấp chậu thì thêm ô. Đây là nguồn đều đặn, rẻ, chống cày.",
+    "lay_cam_hung_tu": "Potion Craft (vườn thu 1 lần mỗi ngày, có thảo dược mọc ít hơn hẳn các loại khác)",
+    "uu_tien": "GĐ2"
+   },
+   {
+    "ten": "Dự báo vận may trên lịch treo tường",
+    "mo_ta": "Màn Chuẩn bị hiện 1 trong vài biểu tượng vận may của ngày (gợi ý 5 mức cho gọn, Stardew dùng 7). Vận may chỉ đổi nhẹ tỉ lệ nguyên liệu hiếm và tỉ lệ sự kiện tốt, không ảnh hưởng điểm bếp và quầy. Người chơi có thể quyết định dùng lượt Đi chợ thêm vào ngày may.",
+    "lay_cam_hung_tu": "Stardew Valley (vận may −0,1 tới +0,1, TV Thầy bói 7 mức từ ngôi sao tới đầu lâu)",
+    "uu_tien": "GĐ2"
+   },
+   {
+    "ten": "Khách quen kể chuyện và order mơ hồ",
+    "mo_ta": "Một số khách quen có câu chuyện kéo dài nhiều ngày và gọi món mơ hồ (\"cái gì mát mát, đừng ngọt quá\"). Người chơi phải hỏi lại và xác nhận order, đúng như kỹ năng quầy cần đào tạo. Phục vụ đúng thì mở chương tiếp và có thể được tặng mảnh công thức hiếm.",
+    "lay_cam_hung_tu": "Coffee Talk (phục vụ đúng thì khách kể chuyện; chế độ Thử thách với order mơ hồ dần)",
+    "uu_tien": "GĐ2"
+   },
+   {
+    "ten": "Dụng cụ bếp mở món và giảm giá tuần",
+    "mo_ta": "Một số món hiếm cần dụng cụ riêng (lò than, nồi hầm) mua bằng Tiền quán. Mỗi tuần, vào một ngày cố định, 1 dụng cụ hoặc nâng cấp được giảm giá ngẫu nhiên (khoảng 10%) tới hết tuần, báo qua radio.",
+    "lay_cam_hung_tu": "Coral Island (dụng cụ bếp mua ở Socket Electronics, mỗi thứ Ba giảm 10% một dụng cụ ngẫu nhiên, báo trên TV); Sun Haven (trạm nấu nâng cao mở nhóm món mới)",
+    "uu_tien": "GĐ2"
+   },
+   {
+    "ten": "Mini-game sự kiện lễ và nhịp LiveOps",
+    "mo_ta": "Mỗi sự kiện lễ có 1 mini-game 1–2 phút để thu nguyên liệu lễ, ví dụ vớt bưởi hay gói bánh. Sự kiện 7–10 ngày, nghỉ khoảng 2 tuần. Luôn có 1–2 việc nhỏ song song (một việc 3 ngày, một việc 7 ngày) với chấm đỏ dẫn tới chỗ nhận thưởng, thưởng dồi dào để người ít thời gian vẫn đủ.",
+    "lay_cam_hung_tu": "Township (sự kiện 7–10 ngày, nghỉ khoảng 2 tuần, mini-game 1–2 phút); Cookie Run: Kingdom (nhiều lớp sự kiện, 2 sự kiện cơ bản song song, chấm đỏ, thưởng tràn)",
+    "uu_tien": "GĐ3"
+   },
+   {
+    "ten": "Định giá món hiếm theo phản ứng khách",
+    "mo_ta": "Ở chặng sau, người chơi tự đặt giá món hiếm và xem 4 biểu cảm của khách (rất vui, vui, cằn nhằn, không mua). Giá đúng thay đổi theo loại khách và thời tiết. Có sổ ghi lại giá đã thử.",
+    "lay_cam_hung_tu": "Moonlighter (4 mức phản ứng, độ phổ biến món thay đổi)",
+    "uu_tien": "GĐ3"
+   }
+  ]
+ },
+ {
+  "games": [
+   {
+    "ten": "RimWorld (người kể chuyện AI: Cassandra, Phoebe, Randy)",
+    "the_loai": "Mô phỏng thuộc địa sinh tồn, sự kiện do một người kể chuyện AI điều phối",
+    "nen_tang_nam": "PC (Steam), bản 1.0 năm 2018",
+    "co_che_cot_loi": "Người chơi quản lý thuộc địa. Một người kể chuyện AI quyết định khi nào tung sự kiện, dựa trên tài sản thuộc địa, tài sản công trình, số người, số thú, việc gần đây có người chết hoặc bị thương nặng không, và thời gian từ sự kiện lớn gần nhất (đã kiểm trên trang AI Storytellers). Người chơi chọn người kể chuyện, tức là chọn nhịp chơi.",
+    "su_kien_ngau_nhien": "Cassandra Classic chạy chu kỳ 10,6 ngày: pha 'On' 4,6 ngày, pha 'Off' 6 ngày. Trong pha On có 50-50 gửi 1 hoặc 2 đe dọa lớn. Hai đe dọa lớn cách nhau ít nhất 1,9 ngày. Sự kiện lặt vặt có mtbDays 4,8. Trung bình khoảng 8,5 đe dọa lớn mỗi năm game. Phoebe chạy 8 ngày On, 8 ngày Off, hai đe dọa lớn luôn cách nhau 8–24 ngày. Randy không có chu kỳ: trung bình 1 sự kiện mỗi 1,35 ngày, đe dọa lớn trung bình khoảng 7,14 ngày một lần. Nếu 13 ngày chưa có đe dọa lớn thì sự kiện kế tiếp bắt buộc là đe dọa lớn. Điểm tấn công của Randy nhân ngẫu nhiên 0,5–1,5. (Tất cả con số đã kiểm lại trên các trang wiki tương ứng.)",
+    "giu_chan_liveops": "Sự kiện nối nhau tạo thành câu chuyện riêng của mỗi người chơi. Chọn người kể chuyện (nhịp) tách khỏi chọn độ khó (cường độ).",
+    "diem_hay_ap_dung": [
+     "Ba mức Ít/Vừa/Nhiều hiện có của Bếp Khởi Nghiệp nên khác nhau về NHỊP chứ không chỉ về xác suất: Ít giống Phoebe (khoảng nghỉ dài, chỉ tình huống tốt), Vừa giống Cassandra (căng rồi nghỉ), Nhiều giống Randy (dồn dập nhưng có bảo hiểm).",
+     "Đặt khoảng cách tối thiểu giữa hai sự kiện xấu (Cassandra: 1,9 ngày). Với Bếp Khởi Nghiệp: không có hai tình huống trừ tiền trong hai ca liền nhau.",
+     "Áp luật 'lâu quá chưa có thì bắt buộc có' (Randy: 13 ngày) cho cả sự kiện ngày lẫn rớt nguyên liệu hiếm. Hiện mới chỉ tình huống trong ca có guaranteeAfter 3.",
+     "Cường độ theo quy mô quán: trần thiệt hại theo doanh thu dự kiến của ca (lossCap đã có) và thưởng cũng theo quy mô, để quán lớn không thấy sự kiện quá nhỏ."
+    ],
+    "nguon": [
+     "https://rimworldwiki.com/wiki/AI_Storytellers",
+     "https://rimworldwiki.com/wiki/Cassandra_Classic",
+     "https://rimworldwiki.com/wiki/Phoebe_Chillax",
+     "https://rimworldwiki.com/wiki/Randy_Random"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "FTL: Faster Than Light",
+    "the_loai": "Roguelike quản lý tàu vũ trụ, sự kiện văn bản có lựa chọn",
+    "nen_tang_nam": "PC 2012, sau có bản iPad",
+    "co_che_cot_loi": "Tàu nhảy qua từng điểm trên bản đồ. Nhiều điểm có sự kiện dạng văn bản với vài lựa chọn. Kết quả có thể là thưởng (tài nguyên, thuyền viên, vũ khí) hoặc phạt (hư hại, mất người), có khi phụ thuộc may rủi.",
+    "su_kien_ngau_nhien": "'Lựa chọn xanh' (blue option) chỉ chọn được khi tàu có trang bị, thuyền viên hoặc hệ thống đã nâng cấp phù hợp, và THƯỜNG cho kết quả tốt hơn các lựa chọn khác. Không bắt buộc phải chọn, và không phải lựa chọn xanh nào cũng có lợi: cộng đồng chỉ ra có lựa chọn xanh dở (ví dụ dùng tàng hình), hoặc đe dọa bằng vũ khí mạnh thường không cho thưởng hơn đánh nhau. Ví dụ đã kiểm: có Medbay từ cấp 2 thì trong sự kiện 'Slug hacker (medical)' Medbay chỉ bị giảm một nửa thay vì bị vô hiệu hoàn toàn khi đánh tàu Slug. Nâng cấp cấp 2 của Medbay, lái tàu (autopilot), cảm biến, cửa đều mở thêm lựa chọn xanh. (Trang wiki trả lỗi 402 khi mở trực tiếp; nội dung trên được kiểm qua trích đoạn kết quả tìm kiếm của wiki và thảo luận Steam. Đã BỎ khẳng định cũ 'Med bay cấp 2 cho ít nhất 3 sự kiện thưởng chắc chắn' vì không tìm thấy nguồn.)",
+    "diem_hay_ap_dung": [
+     "Hiện vật đã mua mở 'lựa chọn xanh' trong sự kiện. Bếp Khởi Nghiệp đã có mẫu freeWithItem (Bạt che mưa), nên mở rộng: Loa báo tiền xác nhận chuyển khoản tức thì; Máy tính cầm tay giúp quầy không chậm khi cúp điện; Phiếu Chợ Sớm miễn tăng giá nguyên liệu.",
+     "Nhờ vậy đồ đã mua có thêm công dụng trong câu chuyện, không chỉ là chỉ số. Lựa chọn xanh nên 'thường tốt hơn' chứ không 'luôn thắng', để người chơi vẫn phải cân nhắc.",
+     "Sự kiện nào cũng có một lựa chọn an toàn để thoát, không ép người chơi mạo hiểm."
+    ],
+    "nguon": [
+     "https://ftl.fandom.com/wiki/Blue_Options",
+     "https://ftl.fandom.com/wiki/Slug_hacker_(medical)",
+     "https://steamcommunity.com/app/212680/discussions/0/611696927930533989/"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Cafeteria Nipponica (Kairosoft)",
+    "the_loai": "Mô phỏng kinh doanh quán ăn (Kairosoft)",
+    "nen_tang_nam": "Di động (Kairosoft), 2012",
+    "co_che_cot_loi": "Nấu món ('Develop Dish') = món gốc + 1 hoặc 2 nguyên liệu + 1 đầu bếp, làm trong giờ đóng cửa. Khi dùng 2 nguyên liệu, tới mốc 50% tiến độ game xét độ hợp của nguyên liệu với món gốc (các mức Perfect, Good, Normal, Bad, Doubtful). Hợp thì món được cộng thêm Vị và Hấp dẫn; không hợp có thể bị trừ. Dùng 1 nguyên liệu thì không có thưởng hay phạt độ hợp. Đầu bếp chỉ nấu được khi chỉ số Nghiên cứu (Research) từ bằng tổng số sao của món gốc và nguyên liệu trở lên (kiểm qua trích đoạn tìm kiếm trang Ingredients). Một số sự kiện trong game thưởng công thức, nhưng không cần có công thức vẫn làm được món mới.",
+    "nguyen_lieu_hiem_cong_thuc": "Nguyên liệu có hai nguồn: mua ở cửa hàng Pumpkin Products, hoặc đi 'săn nguyên liệu' cùng nhân viên 4 lần mỗi năm (tháng 1, 4, 7, 10), có trả phí. Có 15 địa điểm, mỗi khu 3 điểm. Phí từ 0,2K (Local Woods, thuộc khu Sunny Village) đến 80K (Kairo Island, thuộc khu Heavenly Hills); ba điểm ở Heavenly Hills có phí 50K, 65K, 80K. (Đã sửa: bản cũ ghi tên khu thay cho tên điểm.) Game có 66 nguyên liệu, từ 1 đến 10 sao. Mỗi địa điểm còn có kho báu.",
+    "su_kien_ngau_nhien": "Chuyến săn nguyên liệu có lịch cố định theo tháng, nhưng thứ tìm được thì ngẫu nhiên. Điểm đắt hơn cho nguyên liệu nhiều sao hơn.",
+    "diem_hay_ap_dung": [
+     "Thêm 'Đi chợ đầu mối' định kỳ (ví dụ mỗi 5 ngày game): trả phí, chọn 1 trong 3 chợ. Chợ đắt hơn có bảng rớt nguyên liệu hiếm cao hơn, và bảng rớt được công khai. Đây là lựa chọn rủi ro đổi lợi nhuận, không phải lootbox.",
+     "Món hiếm = món gốc đã có + 1 nguyên liệu hiếm + 1 bước bếp mới. Cách này dùng lại mini-game trên Thớt, không phải làm món mới từ đầu.",
+     "Thêm 'độ hợp' nguyên liệu: phối đúng thì dễ đạt Tuyệt hảo hơn, và ghi công thức ẩn vào Sổ tay."
+    ],
+    "nguon": [
+     "https://kairosoft.wiki.gg/wiki/Ingredients_(Cafeteria_Nipponica)",
+     "https://kairosoft.wiki.gg/wiki/Cafeteria_Nipponica",
+     "https://kairosoft.wiki.gg/wiki/Compatibilities_(Cafeteria_Nipponica)"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Game Dev Tycoon",
+    "the_loai": "Mô phỏng kinh doanh công ty làm game",
+    "nen_tang_nam": "PC 2012 (Greenheart Games)",
+    "co_che_cot_loi": "Người chơi chọn chủ đề, thể loại, nền tảng và phân bổ công sức cho từng mảng. Thỉnh thoảng có hộp thoại sự kiện ngẫu nhiên với các lựa chọn.",
+    "su_kien_ngau_nhien": "Có sự kiện lừa đảo: một email viết đầy lỗi của công ty dầu Nigeria (WOMBOA OIL LIMITED) hứa đầu tư hàng triệu, đòi trước 'phí xác minh một lần' 120K. Ai trả tiền sẽ thấy dòng 'Gullibility Tax' (thuế cả tin) trong mục doanh thu; đây là bẫy nhại kiểu lừa đảo 419, được làm ra để người chơi từ chối. Theo lời khuyên cộng đồng, nên nhận các đề nghị lắp điều hòa, phần cứng mới, pin mặt trời. Trên diễn đàn chính thức, người chơi phàn nàn nhiều sự kiện 'vô dụng': gần như lúc nào cũng có một lựa chọn đúng; hệ quả chỉ wiki mới nói; có sự kiện chỉ tốn tiền mà không được gì (Improve Office Security); sự kiện bật ra sai lúc (Programmer Competition hay bật giữa lúc đang làm hợp đồng). (Trang wiki Random Events trả lỗi 402; phần sự kiện lừa đảo và lời khuyên được kiểm qua trích đoạn tìm kiếm và TV Tropes; phần phàn nàn đã đọc trực tiếp trên diễn đàn.)",
+    "diem_hay_ap_dung": [
+     "Làm sự kiện lừa đảo có dấu hiệu nhận biết, rất hợp với mục tiêu đào tạo: 'Tin nhắn trúng thưởng đòi chuyển phí', 'Ảnh chuyển khoản giả', 'Tờ tiền nghi giả'.",
+     "Bài học ngược: mỗi lựa chọn phải có đánh đổi thật và nói rõ hệ quả ngay trong game (icon tiền, danh tiếng, khách). Không làm sự kiện chỉ trừ tiền mà không cho gì.",
+     "Xét ngữ cảnh trước khi bốc sự kiện. Ví dụ: không tung đơn mang đi gấp khi hàng chờ đã từ 3 khách."
+    ],
+    "nguon": [
+     "https://forum.greenheartgames.com/t/most-random-events-are-useless/6058",
+     "https://gamedevtycoon.fandom.com/wiki/Random_Events",
+     "https://tvtropes.org/pmwiki/pmwiki.php/VideoGame/GameDevTycoon",
+     "https://gamedevtycoon.fandom.com/wiki/Success_Guide"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Two Point Hospital / Two Point Campus",
+    "the_loai": "Mô phỏng quản lý bệnh viện / trường đại học, phong cách hài",
+    "nen_tang_nam": "PC 2018 (Hospital), 2022 (Campus)",
+    "co_che_cot_loi": "Xây phòng, thuê nhân viên, phục vụ bệnh nhân hoặc sinh viên. Ngoài vòng lặp chính có các sự kiện: cấp cứu, khách VIP, mục tiêu ngẫu nhiên.",
+    "su_kien_ngau_nhien": "Cấp cứu: người chơi nhận thư báo một nhóm 4–12 bệnh nhân ngoài luồng thường; nhận thì họ tới ngay và phải chữa xong trong thời hạn. Họ không cần chẩn đoán và được xếp lên đầu hàng. Chữa đủ số (từ một nửa trở lên) thì được thưởng tiền, Kudosh và danh tiếng, tăng mạnh nếu chữa hết. Chữa được dưới một nửa thì mất danh tiếng. VIP (biểu tượng vương miện ba cánh) ghé 3–6 phòng, xem hành lang, nói chuyện với nhân viên và bệnh nhân. Mỗi VIP chú ý một mảng riêng (ví dụ thanh tra Jobsworth soi vệ sinh và thiết bị cần nâng cấp). Họ vui thì có thưởng, không vui thì giảm danh tiếng, ngoài ra có trạng thái trung tính (không thưởng không phạt). Ở Two Point Campus có mục tiêu ngẫu nhiên nhỏ, tùy chọn (hộp góp ý, thanh tra, đuổi kẻ đột nhập), thưởng tiền và một ít Kudosh (thường 5–10), không có hạn chót. (Phần cấp cứu kiểm qua trích đoạn tìm kiếm vì trang fandom trả lỗi 402.)",
+    "diem_hay_ap_dung": [
+     "'Đoàn khách đặc biệt' thưởng theo bậc: ví dụ 3/4 khách từ 4 sao thì có thưởng, 4/4 thì thưởng gấp rưỡi. Dưới một nửa thì chỉ trừ danh tiếng, không trừ tiền.",
+     "Báo trước mảng khách VIP chú ý (vệ sinh, tốc độ, thối tiền đúng) để người chơi chuẩn bị. Mảng này khớp với 4 khâu Order → Thanh toán → Tính tiền → Làm đồ.",
+     "Thêm nhiều mục tiêu nhỏ, tùy chọn, thưởng nhỏ mà đều."
+    ],
+    "nguon": [
+     "https://gamefaqs.gamespot.com/pc/230622-two-point-hospital/faqs/76595/vip-visits",
+     "https://two-point-hospital.fandom.com/wiki/Emergencies",
+     "https://www.gamesradar.com/two-point-campus-kudosh/",
+     "https://www.pcgamesn.com/two-point-campus/kudosh"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Theme Hospital",
+    "the_loai": "Mô phỏng quản lý bệnh viện",
+    "nen_tang_nam": "PC 1997 (Bullfrog)",
+    "co_che_cot_loi": "Quản lý bệnh viện. Sự kiện gồm VIP ghé thăm, cấp cứu có thời hạn, dịch bệnh và động đất.",
+    "su_kien_ngau_nhien": "VIP xin ghé thăm, người chơi được đồng ý hoặc từ chối. Nếu không có vấn đề lớn thì thường được tăng danh tiếng và tiền thưởng (từ 200$ khi đánh giá thấp nhất tới 4.000$ khi cao nhất); bệnh nhân chết hoặc than phiền trong lúc VIP đi xem sẽ kéo điểm xuống. Động đất (từ cuối màn 4) luôn có cảnh báo trước. Dịch bệnh báo bằng fax với 2 lựa chọn. (1) Khai báo: dịch dừng ngay, nộp phạt theo số bệnh nhân đang lây, mất danh tiếng. (2) Che giấu: chữa hết trước khi thanh tra tới thì nhận bồi thường ngẫu nhiên. Thất bại thì phạt theo số người còn nhiễm; nặng nhất mất 1/3 danh tiếng, bị phạt nặng và bệnh viện bị sơ tán.",
+    "diem_hay_ap_dung": [
+     "Mẫu 'nhận lỗi sớm: mất ít nhưng chắc' đối với 'tự xoay xở: có rủi ro, có cơ hội'. Áp cho tình huống làm đổ hoặc làm nhầm món: xin lỗi, làm ly mới (mất giá vốn chắc chắn) hay tính tiền ly mới (có thể bị trừ sao).",
+     "Sự kiện gây thiệt hại lớn phải báo trước. Bếp Khởi Nghiệp đã báo sự kiện ngày ở Tổng kết ca hôm trước, nên giữ.",
+     "Cho người chơi quyền nhận hay từ chối đoàn khách đặc biệt; thưởng tăng theo chất lượng phục vụ."
+    ],
+    "nguon": [
+     "https://github.com/CorsixTH/CorsixTH/wiki/How-epidemics-work",
+     "https://strategywiki.org/wiki/Theme_Hospital/Events",
+     "https://gamefaqs.gamespot.com/pc/198993-theme-hospital/faqs/75187/earthquakes",
+     "https://gamefaqs.gamespot.com/pc/198993-theme-hospital/faqs/75187/160vips160"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "RollerCoaster Tycoon (thời tiết và bán dù)",
+    "the_loai": "Mô phỏng công viên giải trí",
+    "nen_tang_nam": "PC 1999",
+    "co_che_cot_loi": "Xây công viên, đặt giá trò chơi và quầy hàng, giữ khách vui.",
+    "su_kien_ngau_nhien": "Game có 6 kiểu thời tiết (nắng, ít mây, nhiều mây, mưa, mưa to, dông) nhưng về tác động chỉ có mưa hoặc không mưa; khách không quan tâm trời nhiều mây và mưa to hay nhỏ đều như nhau. Khi mưa, khách không đi trò chơi ngoài trời không mái che và không mua bóng bay, kẹo bông, kem, kính râm dù giá rẻ. Bình thường khách chỉ trả tối đa khoảng 5$ cho dù; khi mưa thì trả bất kỳ giá nào họ đủ tiền, tới mức trần 20$, nên cộng đồng gọi là 'khai thác dù'. Khách cầm dù vẫn vui, vẫn xếp hàng và mua sắm lúc mưa. Vì vậy quầy thông tin hoặc quầy lưu niệm bán dù thành nguồn tiền nhanh lúc mưa.",
+    "diem_hay_ap_dung": [
+     "Sự kiện bất lợi nên kèm một cơ hội kiếm tiền. Ví dụ: Trời mưa thì mở lựa chọn bán 'áo mưa giấy 5.000đ' có trần số lượng. Như vậy mưa không chỉ là bị trừ khách.",
+     "Hiện vật mua trước (Bạt che mưa, giống cái dù) làm giảm thiệt hại. Bếp Khởi Nghiệp đã có, nên nhân rộng mẫu này.",
+     "Thời tiết đổi nhu cầu theo từng nhóm món (mưa thì khách không mua kem, kính râm): Trời mưa ở Bếp Khởi Nghiệp có thể giảm đồ uống đá và tăng món nóng thay vì chỉ giảm tổng số khách."
+    ],
+    "nguon": [
+     "https://outof.games/realms/rollercoastertycoon/guides/536-guide-to-climate-weather-and-temperature-in-rollercoaster-tycoon-1-2/",
+     "https://rct.fandom.com/wiki/Information_Kiosk",
+     "https://rct.fandom.com/wiki/Climate"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Papers, Please",
+    "the_loai": "Mô phỏng công việc (nhân viên kiểm tra giấy tờ), áp lực tiền bạc",
+    "nen_tang_nam": "PC 2013, sau có bản di động",
+    "co_che_cot_loi": "Người chơi xét giấy tờ từng người qua cửa. Xử lý đúng quy định mỗi người (trước 18h) được 5 credit. Cuối ngày phải chia tiền cho tiền nhà, ăn, sưởi, thuốc của gia đình. Rơi vào nợ là thua.",
+    "su_kien_ngau_nhien": "Phạt leo thang: 2 lỗi đầu mỗi ngày chỉ bị cảnh cáo. Từ lỗi thứ 3 phạt theo dãy 5, 5, 10, 15, 20, 25… credit (tức 0, 0, 5, 5, 10, 15…). Người bị xử lý sai cũng không được tính 5 credit. Có tiền hối lộ để kiếm thêm, nhưng nhận hối lộ có nguy cơ bị chính quyền phát hiện và bỏ tù. (Mức 5 credit và dãy phạt kiểm qua hướng dẫn GameFAQs và trích đoạn wiki; Wikipedia xác nhận cơ chế lương, phạt, nợ và hối lộ nhưng không ghi con số.)",
+    "diem_hay_ap_dung": [
+     "Nhắc trước, phạt sau: lỗi quầy đầu tiên trong ca chỉ hiện Mẹo nghề, từ lỗi thứ 3 mới trừ. Rất hợp với game đào tạo nhân viên mới.",
+     "Phạt tăng dần nhưng có trần (lossCap hiện có).",
+     "Tổng kết cuối ca ghi rõ dòng thu và chi. Nên thêm dòng 'Sự kiện' riêng để người chơi thấy mỗi tình huống lời hay lỗ bao nhiêu.",
+     "KHÔNG đưa hối lộ vào game: không phù hợp mục đích đào tạo và văn hóa doanh nghiệp."
+    ],
+    "nguon": [
+     "https://en.wikipedia.org/wiki/Papers,_Please",
+     "https://papersplease.fandom.com/wiki/Citation",
+     "https://gamefaqs.gamespot.com/pc/713440-papers-please/faqs/67997"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Reigns",
+    "the_loai": "Mô phỏng quản lý vương quốc bằng lá bài vuốt trái/phải",
+    "nen_tang_nam": "PC và di động, 2016",
+    "co_che_cot_loi": "Mỗi lá bài là một quyết định nhị phân. Có 4 chỉ số: giáo hội, dân, quân đội, tiền. Chỉ số nào về 0 hoặc đầy tràn thì vua chết, nên cốt lõi là giữ cân bằng.",
+    "su_kien_ngau_nhien": "Nhà thiết kế François Alliot mô tả hệ thống xác suất như một 'cái túi co giãn được để vừa với thứ bỏ vào'. Lá nào không hợp trạng thái vương quốc thì bị loại khỏi túi (ví dụ chưa cưới thì bỏ các lá liên quan tới hoàng hậu). Mỗi lá còn lại được gán một 'kích thước' (trọng số): lá càng lớn càng chiếm nhiều chỗ trong túi, càng dễ được bốc. Chỉ một phần nhỏ lá tính tới lựa chọn trước đó, nhưng vì người chơi rất khó phân biệt lá bốc ngẫu nhiên với lá có kịch bản, cả game vẫn cho cảm giác được viết sẵn. (Đã bỏ ví dụ 'lá chiến tranh' của bản cũ vì bài gốc không nêu đúng như vậy.)",
+    "diem_hay_ap_dung": [
+     "Mỗi sự kiện có điều kiện hợp lệ (ngày game, món có trong thực đơn, két đủ tiền thối, đã mở QR, có hiện vật) và trọng số đổi theo trạng thái. Ví dụ: đang Trời mưa thì tăng trọng số tình huống 'Khách trú mưa'.",
+     "Nối sự kiện thành chuỗi ngắn (cho mượn → trả lại, ghi nợ → trả nợ) để tạo cảm giác có kịch bản.",
+     "Trên mỗi lựa chọn hiện icon những thứ sẽ đổi (tiền, danh tiếng, khách), không cần ghi con số.",
+     "Cực đoan chiều nào cũng không tốt: cân giữa tiền và danh tiếng."
+    ],
+    "nguon": [
+     "https://www.gamedeveloper.com/design/game-design-deep-dive-creating-an-adaptive-narrative-in-i-reigns-i-"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Stardew Valley",
+    "the_loai": "Mô phỏng nông trại, đời sống",
+    "nen_tang_nam": "PC 2016, di động 2018",
+    "co_che_cot_loi": "Vòng lặp theo ngày: trồng trọt, chăn nuôi, nấu ăn, giao lưu. Mỗi ngày có chỉ số may mắn ngẫu nhiên, và có lịch cố định trong tuần (xe hàng rong, chương trình TV).",
+    "su_kien_ngau_nhien": "May mắn ngày dao động từ −0,1 đến 0,1 (thêm 0,025 nếu có Special Charm). Người chơi xem trên TV mục 'Thầy bói', với khoảng 6 mức thông điệp từ 'thần linh rất vui' tới 'rất bực', kèm một thông điệp hiếm khi may mắn đúng bằng 0 ('tuyệt đối trung lập'). (Đã sửa: bản cũ ghi 5 mức.) May mắn ảnh hưởng tới nhiều hoạt động với mức độ khác nhau, nhưng không tăng tỉ lệ khoáng vật hay cổ vật hiếm khi đập geode. Sự kiện ban đêm: Tiên mùa màng 1% (trừ mùa đông và ngày cuối mùa), Phù thủy 1%, Thiên thạch 1% (vừa phá cây trồng trong vùng 3×3 vừa cho quặng), Cú đá 0,5%, Viên nang lạ 0,8% (từ năm 2, chỉ 1 lần mỗi save). Sự kiện thú nuôi sinh con được chọn 50%, nhưng chỉ thành khi có chuồng lớn đã nâng cấp và chưa đầy (xác suất tính theo 0,55% × số con trong chuồng).",
+    "nguyen_lieu_hiem_cong_thuc": "Xe hàng rong ghé thứ Sáu và Chủ nhật (cộng Chợ đêm và Lễ hội sa mạc), đóng cửa lúc 20:00. Xe bán 10 món ngẫu nhiên, số lượng giới hạn (1 hoặc 5 mỗi món), kèm 1 món nội thất. Giá thường đắt, thỉnh thoảng rẻ hơn giá gốc. Hạt giống hiếm có 100% vào xuân và hè; Rarecrow #4 có 40%, hạt cà phê 25% vào thu và đông. Hàng luôn ở chất lượng thường. Chương trình TV Queen of Sauce: mỗi Chủ nhật (từ ngày 7 mùa xuân) dạy 1 công thức mới, thứ Tư phát lại và ưu tiên công thức người chơi chưa biết. Có 32 công thức, lặp theo chu kỳ 2 năm, và có sách Queen of Sauce Cookbook dạy toàn bộ.",
+    "diem_hay_ap_dung": [
+     "'Vận quán hôm nay' ở màn Chuẩn bị: báo 5 mức may bằng chữ và icon, ảnh hưởng nhẹ tới tỉ lệ rớt nguyên liệu hiếm và tình huống tốt. Tạo thành nghi thức nhỏ khi mở ca.",
+     "'Gánh hàng rong' ghé 2 ngày cố định mỗi tuần. Hàng ngẫu nhiên, số lượng giới hạn, có 1 món chắc chắn có theo mùa.",
+     "Radio 'Bếp nhà mình': mỗi Chủ nhật thật dạy 1 công thức hiếm, thứ Tư phát lại và ưu tiên món người chơi chưa có. Bỏ lỡ vẫn học được, nên không gây FOMO.",
+     "Thêm vài sự kiện siêu hiếm (0,5–1%) chỉ để có chuyện kể, như 'Mèo hoang ghé xe đẩy', 'Cụ bà tặng hũ trứng muối'."
+    ],
+    "nguon": [
+     "https://stardewvalleywiki.com/Luck",
+     "https://stardewvalleywiki.com/Random_Events",
+     "https://stardewvalleywiki.com/Traveling_Cart",
+     "https://stardewvalleywiki.com/The_Queen_of_Sauce"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Animal Crossing: New Horizons (tàu của Redd)",
+    "the_loai": "Mô phỏng đời sống",
+    "nen_tang_nam": "Nintendo Switch 2020",
+    "co_che_cot_loi": "Người chơi xây dựng đảo. Khách lạ ghé theo lịch ngẫu nhiên, mang hàng hoặc cơ hội riêng.",
+    "su_kien_ngau_nhien": "Tàu của Redd thường ghé 1–2 lần mỗi tuần, bán 4 tác phẩm. Mỗi người chỉ mua được 1 tác phẩm mỗi ngày (kể cả khi mua ở đảo khác). Phân bố hàng giả: 10% lượt có 1 giả, 30% có 2 giả, 50% có 3 giả, 10% cả 4 đều giả. Mỗi tác phẩm thật có 20% chắc chắn là món chưa hiến. Hàng giả không hiến bảo tàng được (Blathers từ chối), không bán được ở Nook's Cranny và không được hoàn tiền; chỉ dùng để trang trí.",
+    "nguyen_lieu_hiem_cong_thuc": "Đồ hiếm đến từ người bán ghé ngẫu nhiên, giới hạn 1 món mỗi ngày, và có rủi ro mua phải hàng giả.",
+    "diem_hay_ap_dung": [
+     "Gánh hàng rong đôi khi có 'hàng dởm' như trứng muối nhuộm màu hay mật ong pha đường. Người chơi soi dấu hiệu để chọn đúng, qua đó học kiểm hàng khi nhập kho. Mất tiền có trần.",
+     "Hầu hết lượt phải có ít nhất 1 món thật (ở Redd là 90% lượt), để người chơi không thấy bị lừa hoàn toàn. Với game đào tạo nên làm chặt hơn: lượt nào cũng có ít nhất 1 món thật.",
+     "Giới hạn mua mỗi ngày tạo lý do quay lại mà không cần cày."
+    ],
+    "nguon": [
+     "https://nookipedia.com/wiki/Jolly_Redd%27s_Treasure_Trawler",
+     "https://nookipedia.com/wiki/Forgery",
+     "https://www.gamerevolution.com/guides/644358-what-to-do-with-fake-art-in-animal-crossing-new-horizons"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Hay Day",
+    "the_loai": "Mô phỏng nông trại, sản xuất, giao đơn (di động)",
+    "nen_tang_nam": "Di động 2012 (Supercell)",
+    "co_che_cot_loi": "Trồng trọt, chăn nuôi, sản xuất hàng rồi giao đơn bằng xe tải, thuyền. Có hội 'hàng xóm' (neighborhood) và sự kiện tuần.",
+    "su_kien_ngau_nhien": "Derby diễn ra mỗi tuần giữa các nhóm hàng xóm, dài khoảng 6 ngày từ thứ Ba tới thứ Hai (nhiều nguồn ghi 8h UTC; một nguồn mới hơn ghi 23h UTC, nên giờ cụ thể chưa chắc). Nhiệm vụ thường cho khoảng 50–320 điểm; derby chủ đề có nhiệm vụ tới khoảng 400 điểm, nhiệm vụ trên 320 điểm là nhiệm vụ chủ đề. Số nhiệm vụ mỗi người tùy hạng giải; theo một trang hướng dẫn không chính thức là từ Rookie 5 tới Champion 9. Đạt mốc điểm thì nhận Móng ngựa; mỗi Móng ngựa cho chọn 1 trong 3 phần thưởng. Top 3 lên hạng; 3 đội cuối, hoặc đội không đạt mốc Móng ngựa đầu, xuống hạng; còn lại giữ hạng.",
+    "nguyen_lieu_hiem_cong_thuc": "Vật liệu mở rộng đất (giấy tờ đất, búa, cọc mốc…) rớt với tỉ lệ nhỏ khi thu hoạch hoặc thu sản phẩm. Ngoài ra có trong hộp bí ẩn, báo Daily Dirt, sạp ven đường, vòng quay may mắn, lưới câu bí ẩn, thưởng derby. Đường chắc chắn có: làm hài lòng hoàn toàn khách thăm trại, mua bằng kim cương, hoặc nhờ Tom tìm (Tom chỉ tìm một số loại). Vì rất hiếm nên người chơi được khuyên không bán. Nguồn đã đọc không nêu tỉ lệ rớt cụ thể.",
+    "giu_chan_liveops": "Nhịp tuần cố định, đổi quà tự chọn theo mốc, có lên và xuống hạng.",
+    "diem_hay_ap_dung": [
+     "Gắn rớt đồ hiếm vào thao tác bình thường: mỗi món Tuyệt hảo có cơ hội nhỏ ra mảnh nguyên liệu hiếm. Không cần màn chơi riêng.",
+     "Luôn có một đường chắc chắn song song với rớt ngẫu nhiên (Hay Day: làm hài lòng khách thăm trại). Với Bếp Khởi Nghiệp: phục vụ tốt Khách lạ chắc chắn được nguyên liệu hiếm.",
+     "Thưởng mốc cho chọn quà (giống Móng ngựa chọn 1 trong 3) thay vì quà ngẫu nhiên, để tránh cảm giác lootbox.",
+     "'Tuần lễ chủ đề' 6 ngày với nhiệm vụ nhẹ, chỉ so với chính mình hoặc với 'phường ảo'."
+    ],
+    "nguon": [
+     "https://hayday.fandom.com/wiki/Derby",
+     "https://myfarm.site/articles/hay-day-derby-events-guide/",
+     "https://hayday.fandom.com/wiki/Supplies",
+     "https://hayday.fandom.com/wiki/Expansion"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Cooking Fever",
+    "the_loai": "Nấu ăn nhịp nhanh theo màn (time management), di động",
+    "nen_tang_nam": "Di động (Nordcurrent), khoảng 2014",
+    "co_che_cot_loi": "Phục vụ khách theo màn ở nhiều nhà hàng, nâng cấp bếp và nguyên liệu bằng xu và kim cương.",
+    "su_kien_ngau_nhien": "Giải đấu mở 2 lần mỗi tuần ở các địa điểm khác nhau. Điều kiện: tài khoản cấp 4, đã mở hết thiết bị và nguyên liệu của nhà hàng đó. Phí vào 20.000 xu + 20 kim cương. Chỉ top 10 có thưởng; một người chơi kể đạt hạng 8 chỉ nhận 10 kim cương, ít hơn phí vào, chưa kể kim cương tiêu thêm trong giải. (Đã bỏ khẳng định cũ 'từ khoảng hạng 8 trở lên mới có lời' vì nguồn cho thấy ngược lại.) Thử thách (Challenge): phí 16.500 xu + 14 kim cương, phải vượt 15 màn khó dần mới nhận 30.000 xu + 30 kim cương. (Đã sửa: bản cũ ghi 'thưởng chắc 30 kim cương', thực ra chỉ nhận khi vượt hết 15 màn.)",
+    "diem_hay_ap_dung": [
+     "Tách 'thử thách tự đấu' (vượt đủ màn thì nhận thưởng cố định, không so với người khác) khỏi 'giải cạnh tranh' (chỉ top 10 có thưởng). Bếp Khởi Nghiệp chỉ nên làm loại tự đấu và bỏ phí vào.",
+     "Đặt điều kiện tham gia là đã mở hết món ở chặng, để thưởng cho người đã đầu tư.",
+     "Cảnh báo: giải thu phí mà đa số người chơi lỗ thì gần với cờ bạc. Không làm."
+    ],
+    "nguon": [
+     "https://cookingfever.fandom.com/wiki/Cooking_Fever_Tournament",
+     "https://cookingfever.fandom.com/wiki/Cooking_Fever_Challenge",
+     "https://cookingfever.fandom.com/wiki/Gems"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Cooking Diary",
+    "the_loai": "Nấu ăn nhịp nhanh theo màn kèm cốt truyện, di động",
+    "nen_tang_nam": "Di động (MYTONA)",
+    "co_che_cot_loi": "Phục vụ theo màn ở nhiều nhà hàng, kèm cốt truyện, trang phục và nhiều sự kiện có thời hạn.",
+    "su_kien_ngau_nhien": "Food Truck là sự kiện có thời hạn, 'thỉnh thoảng' mới diễn ra. Người chơi đi theo lộ trình xe, mỗi chặng mở một phần thưởng. Khác màn thường ở 2 điểm: có 2 quầy gọi món, và khách trả bằng tiền riêng của sự kiện. Hết sự kiện thì số tiền đó mất. Path to Glory: sự kiện có thời hạn, tích 'glory coin' từ các sự kiện khác (Food Truck, Circus Star, Creighton's Challenge) để đi hết lộ trình thưởng; có 2 nhánh: nhánh Thường thưởng chắc, nhánh Vàng phải mua Vé Vàng. Pie Cup: cuộc thi ngắn hạn giữa người chơi, làm nhiệm vụ để leo bảng TOP. Trang trợ giúp còn liệt kê nhiều sự kiện khác (Culinary Tournament, Daily Marathon, Hand of Fortune…). (Đã BỎ 'Lucky Spring Tavern' và 'điểm danh đủ 30 ngày được bộ trang phục' vì không tìm thấy nguồn.)",
+    "diem_hay_ap_dung": [
+     "Làm biến thể 'Xe đẩy lưu động' với các điểm dừng như cổng trường, bến xe, chợ đêm. Mỗi điểm có luật khác (ví dụ 2 hàng khách), dùng làm sự kiện ngày.",
+     "Tiền sự kiện hết hạn dễ gây ức chế. Bếp Khởi Nghiệp đang quy đổi Tem dư sang tiền, nên giữ cách này để người chơi không mất trắng.",
+     "Cho các sự kiện nhỏ cùng góp điểm vào một lộ trình thưởng lớn (giống Path to Glory), nhưng chỉ có một nhánh miễn phí, không có nhánh trả tiền."
+    ],
+    "nguon": [
+     "https://cookingdiary.game/game-guide/events/food-truck",
+     "https://mytona.helpshift.com/hc/en/5-cooking-diary/section/114-events-1653021686/",
+     "https://mytona.helpshift.com/a/cooking-diary/?s=events&f=what-is-path-to-glory&l=en"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "My Café: Recipes & Stories",
+    "the_loai": "Mô phỏng quán cà phê, di động",
+    "nen_tang_nam": "Di động (Melsoft)",
+    "co_che_cot_loi": "Kinh doanh quán, pha chế theo công thức, cốt truyện với khách quen. Có 'thị trấn' (hội) và lễ hội, giải đấu.",
+    "su_kien_ngau_nhien": "Lễ hội (Festival) giữa các thị trấn. Nhóm đấu được ghép chủ yếu theo số cúp từ các lễ hội trước, nên thường gặp đối thủ cùng trình (nhóm vẫn có thể có đội mạnh hơn và yếu hơn). Ngoài nhiệm vụ thường có nhiệm vụ cá nhân khó hơn và lời hơn (thường khoảng 5 trong tổng 400 nhiệm vụ, 2–3 cái lúc bắt đầu). Giải đấu: phải đạt điểm vòng loại mới vào nhóm (cohort), xếp hạng theo điểm, có thể nhiều giải chạy song song. Quên nhận thưởng thì thưởng tự cộng khi giải sau bắt đầu. Racing Tournament: bắt đầu ở cấp 1, người đạt mốc điểm trước thì thắng; thắng mỗi cấp nhận thưởng và lên cấp tiếp.",
+    "diem_hay_ap_dung": [
+     "Nếu có xếp hạng thì ghép theo trình độ, ví dụ so với 'quán ảo' cùng mức sao hoặc chặng.",
+     "Quên nhận thì tự cộng: Bếp Khởi Nghiệp đã làm cho việc sự kiện, nên mở rộng cho Giỏ chợ và nguyên liệu hiếm.",
+     "Thêm nhiệm vụ 'khó hơn, lời hơn' cho người chơi giỏi tự chọn."
+    ],
+    "nguon": [
+     "https://melsoft-games.helpshift.com/hc/en/3-my-cafe-recipes-stories---world-restaurant-game/faq/1529-tournaments/",
+     "https://melsoft-games.helpshift.com/hc/en/3-my-cafe-recipes-stories---world-restaurant-game/faq/817-how-are-the-opponents-selected-at-the-festival/",
+     "https://melsoft-games.helpshift.com/hc/en/3-my-cafe-recipes-stories---world-restaurant-game/faq/385-all-about-personal-tasks/",
+     "https://melsoft-games.helpshift.com/hc/en/3-my-cafe-recipes-stories---world-restaurant-game/faq/1694-racing-tournament/?l=enALL"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "PlateUp!",
+    "the_loai": "Roguelite điều hành nhà hàng (chơi đơn hoặc hợp tác)",
+    "nen_tang_nam": "PC 2022",
+    "co_che_cot_loi": "Mỗi lượt chơi kéo dài tới 15 ngày: nhận order, nấu, phục vụ, rửa chén. Khách chờ quá lâu thì thua. Hết mỗi ngày có đồ nâng cấp ngẫu nhiên để mua (ví dụ bồn rửa, bếp mới). Ngoài lượt chơi có nhà kho để mở khóa dần.",
+    "su_kien_ngau_nhien": "Thẻ đầu tiên được chọn ở đầu ngày 4, rồi cứ 3 ngày một lần; mỗi lần chọn 1 trong 2 thẻ. Thẻ Món mở rộng thực đơn; phần lớn thẻ Món kèm giảm khoảng 15% số khách để bù khối lượng việc (theo thảo luận cộng đồng trên Steam). Thẻ Khách đổi số lượng hoặc hành vi của khách. Thẻ luôn làm game khó hơn ('chọn cái ít tệ hơn') và thay đổi vĩnh viễn trong lượt. (Mốc 'đầu ngày 4' kiểm qua trích đoạn tìm kiếm của wiki PlateUp.)",
+    "diem_hay_ap_dung": [
+     "'Thẻ thử thách ngày', chọn 1 trong 2. Ví dụ 'Khách vội: kiên nhẫn ×0,8, thưởng 1 lượt Giỏ chợ' hoặc 'Thêm 2 khách, giá vốn ×1,1'. Người chơi tự chọn mức khó để đổi lấy nguyên liệu hiếm.",
+     "Mở món mới thì giảm khách để cân tải (PlateUp: phần lớn thẻ Món −15% khách), khớp với ràng buộc ρ ≤ 0,9 của Bếp Khởi Nghiệp.",
+     "Đồ nâng cấp ngẫu nhiên mỗi đêm là mẫu cho 'Gánh hàng rong' bán hàng ngẫu nhiên."
+    ],
+    "nguon": [
+     "https://en.wikipedia.org/wiki/PlateUp!",
+     "https://wiki.plateupgame.com/Cards",
+     "https://steamcommunity.com/app/1599600/discussions/0/4406291330027688242/"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Cook, Serve, Delicious!",
+    "the_loai": "Nấu ăn nhịp nhanh, điều hành quán theo ngày",
+    "nen_tang_nam": "PC 2012",
+    "co_che_cot_loi": "Nấu từng món bằng thao tác phím, món được chấm điểm. Thiếu bước, thiếu nguyên liệu, thêm sai nguyên liệu hoặc nấu sai thì điểm thấp, thu ít. Thực đơn giữ nguyên nhiều ngày sẽ 'cũ' và kém hấp dẫn; quá nhiều món không lành mạnh khiến khách tránh.",
+    "su_kien_ngau_nhien": "Ngày có giờ cao điểm trưa và tối, 12–13h và 18–19h (mỗi giờ cao điểm dài 1 giờ game, khoảng 1 phút thật); lúc đó khách ùa tới bất kể chỉ số buzz. Việc vặt (rửa chén, đổ rác, xả toilet…) chen vào giữa ca. Trong giờ cao điểm không có cướp hay khách hẹn hò (cướp chỉ tới lúc 10h, 11h và 21h30), nhưng vẫn có thể có thanh tra an toàn, tin nhắn, khách VIP. Ngày thanh tra: bỏ sót từ 2 việc vặt trở lên thì rớt thanh tra; qua hay rớt thanh tra làm buzz ngày hôm sau tăng hoặc giảm.",
+    "diem_hay_ap_dung": [
+     "Giờ cao điểm cố định là mẫu cho 'Giờ vàng' theo giờ thật (chỉ có thưởng).",
+     "'Buzz' ngày mai: kết quả hôm nay ảnh hưởng số khách ngày mai. Bếp Khởi Nghiệp đã có sao và danh tiếng, có thể cho sự kiện tác động tới đây.",
+     "Thêm việc vặt ngắn giữa ca (lau xe đẩy, thay bịch đá) làm tình huống nhỏ không dính tiền.",
+     "Món bán lặp nhiều ngày giảm sức hút, nên người chơi có lý do xoay sang món hiếm."
+    ],
+    "nguon": [
+     "https://en.wikipedia.org/wiki/Cook,_Serve,_Delicious!",
+     "https://cookservedelicious.fandom.com/wiki/How_to_play_guide_for_Cook,_Serve,_Delicious",
+     "https://csd.fandom.com/wiki/Opening_hours",
+     "https://csd.fandom.com/wiki/Chores"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Good Pizza, Great Pizza",
+    "the_loai": "Mô phỏng tiệm pizza theo ngày, di động",
+    "nen_tang_nam": "Di động (TapBlaze), khoảng 2014",
+    "co_che_cot_loi": "Làm pizza theo yêu cầu của khách, nhiều yêu cầu nói mơ hồ. Tip phụ thuộc tốc độ và độ chính xác khi làm đúng đơn. Khách không hài lòng có thể đòi hoàn tiền, khoản này trừ thêm ngoài tiền nguyên liệu đã dùng. Người chơi trả tiền cho từng phần nguyên liệu dùng. Lãi cuối ngày tính từ doanh thu, tip, hoàn tiền, tiền thuê, nguyên liệu và sửa chữa. Tiền thuê ở chương 1 cố định; từ chương 2 tùy điểm đánh giá của tiệm trên ứng dụng Pie Chart (điểm càng cao, thuê càng rẻ). (Kiểm qua trích đoạn tìm kiếm của wiki vì trang fandom trả lỗi 402; đã bỏ khẳng định cũ 'khách không hài lòng có thể không tip' vì không thấy nguồn nói đúng như vậy.)",
+    "diem_hay_ap_dung": [
+     "Tip gắn với chất lượng phục vụ chứ không tự động có. Khớp với luật mới: tip 5.000đ khi khách 5 sao và hóa đơn từ 20.000đ.",
+     "Bảng lãi cuối ngày có dòng 'hoàn tiền' và 'sửa chữa' riêng. Bếp Khởi Nghiệp nên thêm dòng 'Sự kiện, tình huống' trong Tổng kết ca.",
+     "Chi phí cố định giảm theo danh tiếng (tiền thuê theo điểm Pie Chart) là một dạng thưởng gián tiếp cho phục vụ tốt, không cần phát thêm tiền."
+    ],
+    "nguon": [
+     "https://good-pizza-great-pizza.fandom.com/wiki/Profit",
+     "https://www.touchtapplay.com/how-to-play-good-pizza-great-pizza-tips-tricks/"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Civilization Revolution và World of Warcraft (bài học xác suất của Sid Meier, Rob Pardo)",
+    "the_loai": "Chiến thuật theo lượt / MMORPG: bài học thiết kế xác suất cảm nhận",
+    "nen_tang_nam": "2008 / 2004 (bài nói tại GDC 2010)",
+    "co_che_cot_loi": "Sid Meier: người chơi thấy lợi thế 3:1 hay 4:1 (3:1 tức thắng 75%) thì mong thắng mọi lần. Ở 2:1 họ chấp nhận thỉnh thoảng thua, nhưng thua liên tiếp thì bực. Ông phải chỉnh công thức có tính tới các trận trước để người chơi không bỏ game sau chuỗi thua. Rob Pardo: điểm kinh nghiệm 'nghỉ ngơi' bị ghét khi trình bày là 'chơi lâu chỉ còn 50%', nhưng được yêu khi đổi thành 'mới vào được 200%, sau đó về 100%', dù toán học y hệt. Blizzard cũng sửa code để tỉ lệ rớt vật phẩm nhiệm vụ tăng dần sau mỗi lần giết tới 100% rồi đặt lại.",
+    "diem_hay_ap_dung": [
+     "Trình bày thay đổi tip theo hướng thưởng: 'Hóa đơn từ 20.000đ: khách vui có thể tip 5.000đ'. Tránh ghi kiểu 'đã bỏ tip 10.000đ'.",
+     "Rớt nguyên liệu hiếm tăng dần sau mỗi lần trượt, chắc chắn có ở lần thứ N.",
+     "Hiện 'khả năng' bằng chữ (Hiếm / Thỉnh thoảng / Thường) thay vì con số %. Kết quả xấu nên xảy ra hơi ít hơn cảm nhận của người chơi, và sau chuỗi xui phải có bù."
+    ],
+    "nguon": [
+     "https://www.shacknews.com/article/62807/sid-meier-and-rob-pardo",
+     "https://www.adachen.com/gdc10-notes-sid-meier-on-why-everything-you-know-is-wrong/"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   },
+   {
+    "ten": "Warcraft III / Dota 2: phân phối giả ngẫu nhiên (PRD)",
+    "the_loai": "Chiến thuật thời gian thực / MOBA: cơ chế xác suất chống chuỗi may rủi",
+    "nen_tang_nam": "Warcraft III 2002, Dota 2 2013",
+    "co_che_cot_loi": "Xác suất ở lần thử thứ n là P(n) = C × n, mỗi lần trượt thì cộng thêm C, trúng thì đặt lại. Với tỉ lệ danh nghĩa 25% thì C ≈ 8,47%: lần 1 khoảng 8,5%, lần 2 khoảng 17%, lần 3 khoảng 25,5%, và chắc chắn xảy ra trong vòng 1/C lần (khoảng lần 12). Cơ chế này giảm cả chuỗi trúng liên tiếp lẫn chuỗi trượt dài, mà trung bình dài hạn vẫn là 25%. C không có công thức đóng, phải tính lặp.",
+    "diem_hay_ap_dung": [
+     "Dùng cho tình huống trong ca và cho Giỏ chợ (nguyên liệu hiếm) thay cho xác suất độc lập kèm guaranteeAfter. Bản đơn giản: bậc thang 50% → 70% → 100%.",
+     "Rng của Bếp Khởi Nghiệp đang bốc theo seed của save + ngày game, nên cần lưu bộ đếm 'số lần trượt' trong save để kết quả vẫn tái lập được."
+    ],
+    "nguon": [
+     "https://diplograph.net/notes/games/randomness/dota-2-prd",
+     "https://liquipedia.net/dota2/Pseudo_Random_Distribution"
+    ],
+    "do_tin_cay": "da_kiem_chung_nguon"
+   }
+  ],
+  "nguyen_tac_thiet_ke": [
+   "Nhịp 'căng rồi nghỉ' hay hơn ngẫu nhiên thuần: RimWorld Cassandra có pha On 4,6 ngày, Off 6 ngày, hai đe dọa lớn cách nhau ít nhất 1,9 ngày; Phoebe 8 ngày On, 8 ngày Off. Với Bếp Khởi Nghiệp: sau một ca có thiệt hại thì ca kế là 'ca nghỉ', chỉ có tình huống tốt hoặc không có gì; không bao giờ có hai tình huống trừ tiền trong hai ca liền.",
+   "Dùng xác suất phụ thuộc (PRD, bảo hiểm) thay cho xác suất độc lập: tỉ lệ tăng dần sau mỗi lần trượt và chắc chắn có ở lần N (Dota 2 PRD; Randy: 13 ngày chưa có đe dọa lớn thì bắt buộc; Blizzard tăng dần tỉ lệ rớt vật phẩm nhiệm vụ tới 100%). Áp cho tình huống trong ca, sự kiện ngày và rớt nguyên liệu hiếm. Lưu bộ đếm trong save để seed vẫn tái lập được.",
+   "Người chơi cảm nhận xác suất lệch về phía có lợi cho mình: lợi thế 3:1 (75%) được mong đợi như chắc thắng (Sid Meier). Vì vậy hiện khả năng bằng chữ (Hiếm / Thỉnh thoảng / Thường), cho kết quả xấu xảy ra ít hơn cảm nhận, và bù sau chuỗi xui: 3 sự kiện gần nhất đều lỗ thì sự kiện kế chắc chắn tốt.",
+   "Trình bày thành thưởng, đừng trình bày thành phạt (Rob Pardo: '200% rồi về 100%' được yêu, 'chỉ còn 50%' bị ghét dù cùng một phép tính). Luật tip mới nên ghi là 'Hóa đơn từ 20.000đ, khách vui có thể tip 5.000đ'. Nếu có thể, để phạt ở dạng 'mất cơ hội thưởng' thay vì trừ thẳng vào ví.",
+   "Mỗi sự kiện phải có lựa chọn thật, không có đáp án đúng tuyệt đối, và hiện hệ quả ngay trong game. Game Dev Tycoon bị chê vì 'gần như luôn có một lựa chọn đúng' và 'chỉ wiki mới nói sự kiện làm gì'. Reigns gắn mỗi lá với 4 chỉ số nên thao tác đơn giản vẫn có ý nghĩa.",
+   "Sự kiện nào cũng có một lựa chọn an toàn. Thêm 'lựa chọn xanh' mở bằng hiện vật đã mua (FTL: thường tốt hơn nhưng không phải lúc nào cũng thắng). Bếp Khởi Nghiệp đã có freeWithItem với Bạt che mưa, nên nhân rộng cho Loa báo tiền, Máy tính cầm tay, Phiếu Chợ Sớm.",
+   "Tiền phải có trần ở cả hai chiều. Thiệt hại mỗi tình huống ≤ lossCap hiện có (min(10% doanh thu dự kiến ca, 0,5 TNC)). Thưởng mỗi tình huống ≤ min(15% doanh thu dự kiến ca, 0,75 TNC) (đề xuất). Kỳ vọng tiền mỗi sự kiện từ 0 tới hơi dương. Tổng thưởng ngoài bán hàng vẫn giữ mục tiêu 20–30%, trần 35% mỗi ngày thật (docs/can-bang.md).",
+   "Nhắc trước, phạt sau, phạt tăng dần: Papers, Please cho 2 lỗi đầu mỗi ngày chỉ bị cảnh cáo, từ lỗi thứ 3 mới phạt 5, 5, 10, 15… Với game đào tạo, lần đầu gặp một lỗi thì chỉ hiện Mẹo nghề, từ lần sau mới trừ tiền (trong trần).",
+   "Sự kiện gây thiệt hại lớn phải báo trước (Theme Hospital luôn cảnh báo động đất; Bếp Khởi Nghiệp báo sự kiện ngày ở Tổng kết ca hôm trước). Tình huống nhỏ trong ca thì được phép bất ngờ.",
+   "Lọc sự kiện theo trạng thái và đổi trọng số theo bối cảnh (Reigns 'cái túi co giãn'). Không bốc sự kiện sai ngữ cảnh, như đơn gấp khi hàng chờ đã đầy hay sự kiện Trà tắc khi thực đơn không có Trà tắc; Game Dev Tycoon bị chê vì bật sự kiện sai lúc (thi lập trình giữa lúc làm hợp đồng).",
+   "Sự kiện tốt phải chiếm đa số. Đề xuất tỉ lệ khi bốc ở mức Vừa: tốt 45%, lựa chọn trung tính 35%, xấu 20%. Mức Ít chỉ có tốt và trung tính. Sự kiện siêu hiếm 0,5–1% (kiểu Stardew) dùng để tạo chuyện kể, không dùng để thưởng lớn.",
+   "Đồ hiếm cần nhiều nguồn và ít nhất một đường không phụ thuộc may: Stardew có xe hàng rong ghé lịch cố định, TV phát lại công thức chưa biết, sách dạy toàn bộ; Hay Day rớt đồ hiếm khi làm việc bình thường và có đường chắc chắn (làm hài lòng khách thăm trại). Không bán nguyên liệu hiếm bằng tiền thật, không làm hộp quà ngẫu nhiên trả phí.",
+   "Nhịp LiveOps nhiều tầng: theo ca (tình huống), theo ngày game (sự kiện ngày), theo ngày thật (Khách lạ, Giờ vàng), theo tuần thật (gánh hàng rong, radio công thức; Hay Day có derby khoảng 6 ngày, Cooking Fever có giải 2 lần mỗi tuần), theo tháng (lễ như 20/10, 20/11, Tết). GameAnalytics khuyên chạy một số sự kiện không theo lịch đoán trước để tránh nhàm và tránh cày (https://www.gameanalytics.com/blog/liveops-strategies-for-f2p-games).",
+   "Không FOMO độc hại: vắng mặt không bị mất trắng. Tem dư quy đổi, thưởng quên nhận tự cộng (My Café), công thức bỏ lỡ được phát lại (Queen of Sauce). Sự kiện theo giờ thật chỉ có thưởng, không phạt người không chơi, không gửi thông báo đẩy ép chơi. Nội dung chỉ có trong thời gian giới hạn mà ảnh hưởng lối chơi là mẫu bị phê phán (https://www.gamedeveloper.com/design/how-video-games-abuse-the-fear-of-missing-out).",
+   "Chốt đạo đức cho game đào tạo: không lootbox, không cờ bạc hay vé số, không phí vào giải khiến đa số người chơi lỗ (giải Cooking Fever thu 20.000 xu + 20 kim cương mà chỉ top 10 có thưởng; một người chơi hạng 8 chỉ nhận 10 kim cương), không nhánh thưởng trả tiền (nhánh Vàng của Cooking Diary), không hối lộ (khác Papers, Please). Sự kiện tiêu cực nên dạy đúng nghiệp vụ: nhận biết tiền giả, chờ tiền về mới giao món, kiểm hàng trước khi ký nhận, đặt cọc đơn lớn.",
+   "Kho sự kiện phải đủ lớn để không lặp: với tình huống trong ca khoảng 60% mỗi ca và 3–4 ca mỗi ngày thật, mỗi tuần có khoảng 13–17 tình huống. Cần ít nhất 12 loại tình huống cùng noRepeat 5 để mỗi loại chỉ gặp khoảng 1–1,5 lần mỗi tuần."
+  ],
+  "de_xuat_cho_bkn": [
+   {
+    "ten": "Tip mới: 5.000đ, chỉ khi khách 5 sao và hóa đơn từ 20.000đ",
+    "mo_ta": "Luật mới: tip = 5.000đ khi khách chấm 5 sao VÀ tổng hóa đơn (tính cả phụ thu) từ 20.000đ trở lên. Bỏ mức 10.000đ (Không tì vết, khách khó tính, chuỗi 'Quầy chuẩn' từ 5).\n• Với giá hiện tại (Bánh mì ốp la 20.000đ, Bánh tráng trộn 20.000đ, Cà phê sữa đá 15.000đ, Chè bưởi 15.000đ, Trà tắc 10.000đ): đơn chỉ có 1 Trà tắc hoặc 1 Cà phê sữa đá sẽ không có tip; 2 ly Trà tắc thì đủ ngưỡng. Luật này tự nhiên dạy nhân viên gợi ý bán thêm, một bài học đào tạo thực tế.\n• Phần thưởng bị bỏ được chuyển sang chỗ khác: chuỗi Quầy chuẩn từ 5 khách → 1 lượt Giỏ chợ (nguyên liệu hiếm) thay cho tip 10.000đ; Không tì vết giữ +1 danh tiếng và thêm cơ hội rớt mảnh công thức.\n• Ngày lãnh lương: 5.000đ ×1,5 = 7.500đ, không phải bội 5.000đ. Đề xuất đổi hiệu ứng thành 'hạ ngưỡng tip còn 15.000đ', tip vẫn 5.000đ. Người dùng cần chốt.\n• Code cần sửa: src/data/balance.js (tipFiveStar 5000, thêm tipMinBill 20000, bỏ tipBonus), src/core/state.js dòng 22, src/core/scoring.js dòng 143–144, src/core/kitchen.js dòng 442–446 (tip theo chuỗi), docs/can-bang.md mục 7 và các test liên quan.\n• Rủi ro: tip từng là đòn bẩy chính cho chỉ số 21 (chênh lãi người 4,7 sao với 3,8 sao phải từ 25%). Cần đo lại, và bù bằng kỳ vọng dương của sự kiện mới.",
+    "lay_cam_hung_tu": "Rob Pardo (trình bày thành thưởng), Good Pizza Great Pizza (tip gắn tốc độ và độ chính xác), Hay Day (thưởng bằng vật phẩm thay tiền)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "Bảng tần suất mục tiêu (sự kiện ngày, tình huống trong ca, sự kiện theo giờ thật)",
+    "mo_ta": "Giả định: 1 ngày game = 1 ca, người chơi trung bình chơi 3–4 ca mỗi ngày thật, tính từ ngày game 3.\n• Sự kiện ngày. Hiện tại: 30% mỗi ngày game, không bảo hiểm, tức khoảng 1 sự kiện mỗi ngày thật. Đề xuất: 50%, và nếu 2 ngày game liền không có thì ngày kế chắc chắn có; tỉ lệ thực khoảng 57% (1,7–2,3 sự kiện mỗi ngày thật). Không lặp loại vừa gặp. Kho sự kiện tăng từ 4 lên 10 loại.\n• Tình huống trong ca, mức Vừa. Hiện tại: 35% cộng bảo hiểm sau 3 ca, tỉ lệ thực khoảng 43%. Đề xuất bậc thang kiểu PRD: 50% → 70% → 100%, không bao giờ quá 2 ca liền trống, tỉ lệ thực khoảng 61%.\n• Mức Nhiều. Hiện tại khoảng 53%. Đề xuất 65% → 100%, tỉ lệ thực khoảng 74%.\n• Mức Ít. Hiện tại khoảng 31%. Đề xuất 20% cộng bảo hiểm 3 ca, tỉ lệ thực khoảng 34%, và chỉ có tình huống tốt.\n• Kho tình huống tăng từ 3 lên 12 loại, giữ noRepeat 5.\n• Trần mỗi ca: tối đa 2 hộp thoại sự kiện (1 sự kiện ngày + 1 tình huống, hoặc Khách lạ). Ca có Khách lạ thì tình huống trong ca chỉ bốc loại tốt hoặc nhẹ.\n• Sự kiện theo giờ thật:\n  – Khách lạ ghé: chắc chắn 1 lần mỗi ngày thật, rơi ngẫu nhiên vào 1 trong 3 ca đầu của ngày (ai chơi 1 ca thì rơi vào ca đó).\n  – Giờ vàng: 2 khung mỗi ngày (10:30–13:30 và 17:00–20:00 giờ Việt Nam). Mỗi khung: ca bắt đầu trong khung được +1 lượt Giỏ chợ và +1 khách (vẫn trong trần). Tối đa 2 lượt mỗi ngày thật. Chỉ có thưởng.\n  – Gánh hàng rong (GĐ2): 2 ngày thật cố định mỗi tuần, cộng thêm ngày game có Chợ phiên.\n  – Radio công thức (GĐ2): Chủ nhật phát món mới, thứ Tư phát lại món chưa có.\n  – Sự kiện lễ: giữ khoảng 1 lần mỗi tháng như hiện nay.\n• Cách tính tỉ lệ thực: kỳ vọng số ca giữa hai lần có sự kiện = tổng xác suất 'chưa xảy ra' qua từng bậc; tỉ lệ = 1 / kỳ vọng. Ví dụ 50/70/100 → 1 + 0,5 + 0,15 = 1,65 ca → khoảng 61%. Các con số này cần đo lại bằng mô phỏng tests/unit/integration-meta.test.mjs.",
+    "lay_cam_hung_tu": "RimWorld (Cassandra, Phoebe, Randy), Dota 2 PRD, Cook Serve Delicious (giờ cao điểm), Stardew Valley (lịch tuần cố định)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "Bộ điều tiết nhịp (người kể chuyện thu nhỏ)",
+    "mo_ta": "• Gắn nhãn kind cho mỗi sự kiện và tình huống: 'tot' (tốt), 'chon' (lựa chọn trung tính), 'xau' (xấu).\n• Trọng số khi bốc ở mức Vừa: tốt 45%, lựa chọn 35%, xấu 20%. Mức Nhiều: 35 / 35 / 30. Mức Ít: chỉ tốt và lựa chọn có phương án an toàn.\n• Luật nhịp:\n  (1) Không có 2 tình huống 'xau' trong 2 ca liền.\n  (2) Ca có thiệt hại vượt 50% lossCap thì ca kế là 'ca nghỉ', chỉ bốc 'tot' hoặc không có gì.\n  (3) 3 sự kiện gần nhất đều lỗ ròng thì sự kiện kế chắc chắn 'tot'.\n  (4) Trần mỗi ngày thật: tổng thiệt hại từ sự kiện ≤ 1 TNC; tổng thưởng tiền từ sự kiện ≤ 1,5 TNC, và tỉ lệ thưởng vẫn ≤ 35%.\n• Tổng kết ca có dòng 'Sự kiện, tình huống: +x / −y'.\n• Dữ liệu: thêm kind vào src/data/incidents.js và src/data/day-events.js; lưu recentKinds và missStreak trong save; bốc vẫn theo seed save + ngày game.",
+    "lay_cam_hung_tu": "RimWorld (khoảng cách tối thiểu, pha nghỉ), Sid Meier (bù chuỗi thua), Papers, Please (bảng thu chi cuối ngày)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "6 sự kiện ngày mới có thưởng hoặc phạt tiền (màu Việt, có lựa chọn, có trần)",
+    "mo_ta": "Mọi thiệt hại ≤ lossCap; mọi thưởng ≤ min(15% doanh thu dự kiến ca, 0,75 TNC). Các con số là đề xuất, cần mô phỏng lại.\n1) Mở hàng ngày Rằm, Mùng Một (tốt; trọng số 15, nhân 3 nếu ngày thật đúng là mùng 1 hoặc rằm âm lịch). Khách đầu ca 'lì xì mở hàng' 10.000đ. Lựa chọn: nhận lì xì (+10.000đ), hoặc mời lại khách một ly Trà tắc (−2.500đ giá vốn, +3 danh tiếng).\n2) Tắc lên giá (lựa chọn/xấu; từ ngày 3; chỉ khi thực đơn có Trà tắc hoặc Bánh tráng trộn). Giá vốn Tắc ×2. (a) Giữ giá bán: lãi mỗi ly Trà tắc giảm khoảng 1.000đ. (b) Tăng Trà tắc lên 12.000đ: khách gọi Trà tắc ×0,7, nhưng 2 ly đã đủ ngưỡng tip. (c) Lựa chọn xanh: dùng Phiếu Chợ Sớm, giá vốn như thường. Trần: tổng giá vốn tăng trong ca ≤ lossCap. Bài học: giá vốn và định giá.\n3) Cúp điện theo lịch (xấu, báo trước; từ ngày 5 khi đã có Cà phê sữa đá hoặc Loa báo tiền). (a) Mua đá cây dự trữ 10.000đ: bán bình thường, Loa báo tiền tắt nên phải tự xác nhận QR. (b) Không mua: đồ uống có đá bị gọi ×0,6. Lựa chọn xanh: có Máy tính cầm tay thì quầy không bị chậm.\n4) Ví điện tử khuyến mãi (tốt; từ ngày 4 khi đã có QR). Mỗi đơn trả QR được đối tác thưởng 2.000đ, trần 10.000đ mỗi ca, khách chọn QR ×1,5. Lựa chọn: dán bảng QR (thu nhanh hơn, có thưởng) hoặc không tham gia. Bài học: đối soát thanh toán điện tử.\n5) Đám giỗ đầu hẻm đặt 4 phần bánh mì mang đi (lựa chọn; từ ngày 5; cần Bánh mì ốp la). (a) Lấy cọc 50%, an toàn: thêm 10.000đ nếu cả 4 phần đạt từ Được trở lên. (b) Không lấy cọc: thêm 15.000đ, nhưng 15% bị bom hàng, mất giá vốn (≤ lossCap). (c) Từ chối. Bài học: đặt cọc đơn lớn.\n6) Đoàn kiểm tra vệ sinh an toàn thực phẩm của phường (lựa chọn, báo trước; từ ngày 6; tối đa 1 lần mỗi 7 ngày game). (a) Chuẩn bị bao tay, khẩu trang, khăn sạch hết 10.000đ: chắc chắn đạt, +5 danh tiếng, nhận 'Giấy khen' trang trí. (b) Không chuẩn bị: nếu trong ca không có món Kém và không làm rơi nguyên liệu thì đạt, +3 danh tiếng; nếu có thì bị nhắc nhở, −3 danh tiếng; bị nhắc lần 2 trong 14 ngày game thì phạt đúng bằng lossCap (nhắc trước, phạt sau). Không có lựa chọn 'bôi trơn'.",
+    "lay_cam_hung_tu": "RollerCoaster Tycoon (thời tiết tạo cơ hội bán), Theme Hospital, Two Point (VIP, thanh tra báo trước), Cook, Serve, Delicious! (thanh tra ảnh hưởng buzz ngày sau), Papers, Please (nhắc rồi mới phạt), FTL (lựa chọn xanh)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "9 tình huống trong ca mới có thưởng hoặc phạt tiền (màu Việt, có lựa chọn, có trần)",
+    "mo_ta": "Cộng với 3 tình huống hiện có là đủ 12 loại. Mọi thiệt hại ≤ lossCap; thưởng ≤ min(15% doanh thu dự kiến ca, 0,75 TNC).\n1) Tờ 200.000đ nghi giả (lựa chọn/xấu; từ ngày 4; đơn từ 20.000đ). (a) Soi kỹ: mini thao tác 3 chạm (cửa sổ trong, dây bảo an đổi màu, chữ nổi), mất thêm 4 giây. 50% là tiền giả thì từ chối lịch sự, khách bỏ đi, ví không mất gì; 50% là thật thì bán bình thường. (b) Mời chuyển QR: an toàn. (c) Nhận luôn: 50% là giả, cuối ca bị trừ đúng lossCap. Mở Mẹo nghề 'Nhận biết tiền polymer'.\n2) Chuyển khoản chưa 'ting ting' (lựa chọn/xấu; từ ngày 5, cần QR; gộp với tình huống 'Ảnh chuyển khoản giả' đang có). (a) Chờ tiền về: khách đợi thêm 6 giây; có Loa báo tiền thì xác nhận ngay (lựa chọn xanh). (b) Tin lời khách: 25% chuyển lỗi, mất tiền đơn (≤ lossCap). Mẹo nghề 'Thấy tiền về mới giao món'.\n3) Mối giao đá giao thiếu (lựa chọn; đầu ca; từ ngày 3). (a) Đếm bịch khi nhận, mất 8 giây đầu ca: phát hiện thiếu, được bù đủ. (b) Ký nhận luôn: 40% thiếu 1 bịch, −4.000đ. Mẹo nghề 'Kiểm hàng trước khi ký phiếu nhập'.\n4) Khách bỏ quên ví (tốt; từ ngày 3). (a) Giữ hộ: 70% khách quay lại cảm ơn, được chọn nhận 10.000đ hoặc 1 mẻ nguyên liệu hiếm 'quà quê', cộng +2 danh tiếng; 30% khách không quay lại, đem nộp công an phường, +1 danh tiếng. (b) Gọi theo số điện thoại trong ví: +1 danh tiếng, 0đ.\n5) Công trình đặt 4 ly Trà tắc mang đi (lựa chọn; từ ngày 4; không bốc khi hàng chờ từ 3 khách). (a) Hứa giao trong 2 phút: đúng hạn thêm 10.000đ, trễ giảm 10% hóa đơn (4.000đ). (b) Hẹn lâu hơn: không thưởng, không phạt. (c) Từ chối.\n6) Người làm review TikTok ghé (lựa chọn; từ ngày 5). (a) Mời miễn phí, mất giá vốn món (3.000–9.000đ): món từ Ngon trở lên thì ca sau +2 khách (trong trần) và +3 danh tiếng; món Kém thì −2 danh tiếng. (b) Tính tiền bình thường: món Tuyệt hảo thì ca sau +1 khách.\n7) Chị bán xôi kế bên mượn 2 ổ bánh mì (lựa chọn; từ ngày 3; cần Bánh mì ốp la). (a) Cho mượn (−6.000đ giá vốn): 80% được trả lại 8.000đ trong 2 ca, +1 danh tiếng. (b) Bán luôn giá gốc. (c) Từ chối khéo.\n8) Khách thật thà quay lại trả tiền thối dư (tốt; chỉ bốc khi trong ca người chơi đã thối dư từ 2.000đ). 60% khách trả lại đúng số dư (≤ 10.000đ). Mở Mẹo nghề 'Đếm tiền thối hai lần'. Tình huống này gắn với lỗi thật của người chơi nên có giá trị dạy nghề.\n9) Khách làm đổ ly (lựa chọn; từ ngày 3; khách có gọi đồ uống). (a) Làm ly mới miễn phí: −3.000đ giá vốn, +2 danh tiếng. (b) Tính tiền ly mới 10.000đ: 50% khách đồng ý, 50% khách trừ 1 sao.\nKỳ vọng tiền: tình huống 4 và 8 dương; 1, 2, 3 gần 0 nếu người chơi làm đúng nghiệp vụ và âm nếu làm ẩu; 5, 6, 7, 9 là đánh đổi giữa tiền và danh tiếng.",
+    "lay_cam_hung_tu": "Game Dev Tycoon (sự kiện lừa đảo có dấu hiệu nhận biết), Animal Crossing (hàng giả), Two Point Hospital (khách VIP), Theme Hospital (nhận lỗi hay tự xoay xở), Reigns (lọc theo trạng thái), FTL (lựa chọn xanh)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "Nguyên liệu hiếm: Giỏ chợ, bảo hiểm và kho",
+    "mo_ta": "• 4 nguyên liệu hiếm cho Chặng 1, mỗi 'mẻ' đủ làm 3 phần: Trứng muối (hũ), Mật ong rừng (chai), Khô mực (gói), Muối kem (hộp).\n• Nguồn ở M4:\n  (1) Khách lạ ghé, 1 lần mỗi ngày thật: phục vụ đạt từ 4 sao thì tặng 1 mẻ; 3 sao thì tặng 1 mảnh công thức.\n  (2) Giỏ chợ: mỗi khung Giờ vàng 1 lượt; chuỗi Quầy chuẩn từ 5 khách 1 lượt (thay tip 10.000đ); sự kiện ngày Chợ phiên 1 lượt.\n  (3) Tình huống tốt, ví dụ khách quên ví chọn tặng quà quê.\n• Tỉ lệ Giỏ chợ: 25% ra 1 mẻ nguyên liệu hiếm; 75% còn lại ra 1 mảnh công thức của món chưa mở (hết món chưa mở thì ra 1 phần nguyên liệu thường miễn phí). Giỏ không bao giờ trống. Trượt 3 lượt liền thì lượt thứ 4 chắc chắn ra nguyên liệu hiếm; tỉ lệ thực khoảng 37%. Ưu tiên loại có công thức đã mở, tránh trùng vô ích.\n• Kho: tối đa 5 mẻ mỗi loại, không hỏng. Vượt trần thì tự đổi sang Muỗng Vàng. Hạn dùng để GĐ2 xem xét.\n• Đường dự phòng không phụ thuộc may: Quầy đổi Muỗng Vàng, ví dụ 15 Muỗng Vàng một mẻ, tối đa 2 mẻ mỗi tuần thật. Con số cần mô phỏng.\n• Mục tiêu: người chơi 3–4 ca mỗi ngày thật có khoảng 2 mẻ mỗi ngày (khoảng 6 phần món hiếm); người chơi 1 ca mỗi ngày có ít nhất khoảng 1 mẻ nhờ Khách lạ chắc chắn ghé.\n• Không bán bằng tiền thật, không có hộp quà ngẫu nhiên trả phí. Bảng tỉ lệ công khai trong Sổ tay.",
+    "lay_cam_hung_tu": "Hay Day (rớt đồ hiếm khi làm việc thường, có đường chắc chắn qua khách thăm trại), Stardew Valley (xe hàng rong, ưu tiên công thức chưa biết), Dota 2 PRD và Blizzard (tăng dần tới chắc chắn), Cafeteria Nipponica (nguyên liệu nhiều sao)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "4 công thức hiếm Chặng 1",
+    "mo_ta": "Mở công thức bằng 3 mảnh công thức. Mục tiêu: có công thức hiếm đầu tiên sau khoảng 2–3 ngày thật chơi, tương đương thời gian nhận Chè bưởi.\n• Bánh mì trứng muối: Bánh mì ốp la + Trứng muối, thêm bước 'Tán trứng muối' (mini-game chạm). Giá 25.000đ.\n• Trà tắc mật ong: Trà tắc, thay Đường bằng Mật ong rừng; bẫy là Đường phèn. Giá 15.000đ.\n• Bánh tráng trộn khô mực: thay Khô bò bằng Khô mực, thêm bước 'Xé khô mực'. Giá 25.000đ.\n• Cà phê muối: Cà phê sữa đá + Muối kem; bẫy là Muối thường. Giá 20.000đ; cần đã mở Cà phê sữa đá.\n• Ràng buộc cân bằng: giữ quy tắc 'món ngang giá trị' (lãi mỗi giây nấu không vượt món Tiền quán tốt nhất quá 10%) bằng cách tính giá vốn quy đổi của nguyên liệu hiếm. Giá trị của món hiếm nằm ở chỗ khác: khi còn hàng thì khách gọi ×2; mỗi phần đạt từ Ngon trở lên +1 danh tiếng; hóa đơn từ 20.000đ nên đủ ngưỡng tip; ghi vào Sổ tay món hiếm.\n• Món hiếm chỉ vào danh sách khách gọi khi kho còn nguyên liệu (lọc theo trạng thái).\n• Làm ngay 2 món ở M4 (Trà tắc mật ong, Bánh mì trứng muối), 2 món còn lại để GĐ2.",
+    "lay_cam_hung_tu": "Cafeteria Nipponica (món gốc + nguyên liệu, độ hợp xét ở mốc 50%), Stardew Valley (công thức học từ TV), Reigns (lọc theo trạng thái)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "Khách lạ ghé: sự kiện may mắn chắc chắn mỗi ngày thật",
+    "mo_ta": "Mỗi ngày thật có đúng 1 khách đặc biệt ghé, rơi vào một ca ngẫu nhiên trong 3 ca đầu. Ví dụ: 'Cụ bà quê Cà Mau', 'Anh ngư dân Phan Thiết', 'Chị buôn mật ong Tây Nguyên'. Khách gọi món bình thường; phục vụ đạt từ 4 sao thì tặng 1 mẻ nguyên liệu hiếm theo quê của khách, 3 sao thì tặng 1 mảnh công thức, dưới 3 sao thì cảm ơn và hẹn lần sau (không phạt). Có biểu tượng riêng ở hàng chờ. Người chơi không đoán được ca nào khách ghé, nhưng biết chắc hôm nay có, nên vừa bất ngờ vừa không ức chế. Không bốc cùng ca với tình huống 'xau'.",
+    "lay_cam_hung_tu": "Animal Crossing (khách lạ ghé), Two Point Hospital (khách VIP), Stardew Valley (lịch cố định kèm nội dung ngẫu nhiên)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "Giờ vàng theo giờ thật (chỉ có thưởng)",
+    "mo_ta": "Hai khung mỗi ngày: 10:30–13:30 và 17:00–20:00 giờ Việt Nam, khớp giờ ca trưa và ca tối trong mô phỏng. Ca bắt đầu trong khung được +1 khách (vẫn trong trần hiện có) và 1 lượt Giỏ chợ. Tối đa 2 lượt mỗi ngày thật. Bỏ lỡ thì không mất gì khác. Không gửi thông báo đẩy. Màn tiêu đề hiện 'Đang Giờ vàng' hoặc 'Giờ vàng kế tiếp: 17:00'. Khi lùi giờ máy thì khóa, giống cách điểm danh đang làm.",
+    "lay_cam_hung_tu": "Cook, Serve, Delicious! (giờ cao điểm cố định 12–13h và 18–19h), GameAnalytics LiveOps (sự kiện nhịp ngày), nguyên tắc chống FOMO",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "Lựa chọn xanh mở bằng hiện vật",
+    "mo_ta": "Mở rộng mẫu freeWithItem (hiện chỉ có Bạt che mưa) thành trường blueOptions: [{item, label, effects}] cho cả sự kiện ngày và tình huống. Loa báo tiền: xác nhận chuyển khoản tức thì (tình huống 2). Máy tính cầm tay: quầy không chậm khi cúp điện (sự kiện 3). Phiếu Chợ Sớm: miễn tăng giá tắc (sự kiện 2). Ghế nhựa chờ: người làm review ngồi lâu, dễ đạt 5 sao hơn (tình huống 6). Dao thép tốt: nhận đơn mang đi gấp với hạn 2 phút 30 giây (tình huống 5). Lựa chọn xanh hiện màu riêng, có dòng 'Nhờ có …'. Giống FTL, lựa chọn xanh nên thường tốt hơn chứ không phải lúc nào cũng là đáp án đúng.",
+    "lay_cam_hung_tu": "FTL: Faster Than Light (blue options)",
+    "uu_tien": "M4"
+   },
+   {
+    "ten": "Gánh hàng rong ghé 2 ngày mỗi tuần",
+    "mo_ta": "Gánh hàng rong có mặt ở màn Chuẩn bị vào 2 ngày thật cố định mỗi tuần (ví dụ thứ Tư và Chủ nhật), cộng thêm ngày game có Chợ phiên. Bán 3 món ngẫu nhiên, số lượng giới hạn: nguyên liệu hiếm giá bằng 1,5–2 lần giá vốn quy đổi, hiện vật nhỏ, và 1 món chắc chắn có theo mùa. Mỗi loại mua tối đa 2 mẻ. Thỉnh thoảng có 'hàng dởm' (khoảng 10%), người chơi soi dấu hiệu để tránh; mất tiền có trần là lossCap; lượt nào cũng có ít nhất 1 món thật. Qua đó dạy kiểm hàng khi nhập kho.",
+    "lay_cam_hung_tu": "Stardew Valley (Traveling Cart), Animal Crossing (hàng giả của Redd), PlateUp! (đồ nâng cấp ngẫu nhiên mỗi đêm)",
+    "uu_tien": "GĐ2"
+   },
+   {
+    "ten": "Vận quán hôm nay",
+    "mo_ta": "Màn Chuẩn bị hiện 1 trong 5 mức may mắn bằng lời Dì Sáu kèm icon (ví dụ 'Hôm nay trời thương, bán đắt như tôm tươi' / 'Hôm nay coi chừng tiền lẻ'). Mức may chỉnh nhẹ trọng số tốt hoặc xấu (±10%) và tỉ lệ Giỏ chợ (±5 điểm %). Không hiện con số. Việc xem vận tạo thành một nghi thức nhỏ khi mở ca.",
+    "lay_cam_hung_tu": "Stardew Valley (may mắn ngày −0,1 tới 0,1, TV Thầy bói)",
+    "uu_tien": "GĐ2"
+   },
+   {
+    "ten": "Radio 'Bếp nhà mình': công thức hiếm hằng tuần, có phát lại",
+    "mo_ta": "Mỗi Chủ nhật thật, radio ở xe đẩy phát 1 công thức hiếm (tặng 1 mảnh, hoặc cả công thức nếu đã đủ mảnh). Thứ Tư phát lại, ưu tiên món người chơi chưa có. Hết vòng thì lặp lại. Có 'Sổ tay Dì Sáu' đổi bằng Muỗng Vàng để lấy công thức còn thiếu. Nhờ vậy không ai bị mất món vĩnh viễn.",
+    "lay_cam_hung_tu": "Stardew Valley (The Queen of Sauce: Chủ nhật phát mới, thứ Tư phát lại, có sách dạy toàn bộ)",
+    "uu_tien": "GĐ2"
+   },
+   {
+    "ten": "Đi chợ đầu mối định kỳ",
+    "mo_ta": "Cứ 5 ngày game mở 1 lần ở màn Chuẩn bị. Trả phí, chọn 1 trong 3 chợ: Chợ quê (rẻ, tỉ lệ hiếm thấp), Chợ đầu mối (vừa), Chợ đặc sản (đắt, tỉ lệ hiếm cao). Bảng rớt công khai, trả về 3–5 món. Phí và tỉ lệ nằm trong ngân sách thưởng; kỳ vọng hòa vốn tới hơi lời, để đây là chuyện quản lý rủi ro chứ không phải cờ bạc.",
+    "lay_cam_hung_tu": "Cafeteria Nipponica (săn nguyên liệu 4 lần mỗi năm, 15 địa điểm, phí từ 0,2K tới 80K)",
+    "uu_tien": "GĐ2"
+   },
+   {
+    "ten": "Thẻ thử thách ngày: chọn 1 trong 2",
+    "mo_ta": "Từ ngày game 6, cứ 3 ngày game một lần, người chơi chọn 1 trong 2 thẻ, hiệu lực trong 3 ngày game. Ví dụ: 'Khách vội: kiên nhẫn ×0,8, mỗi ca +1 lượt Giỏ chợ' hoặc 'Phố đông: +1 khách mỗi ca, giá vốn ×1,1, mỗi ca +3 danh tiếng'. Có thẻ thứ 3 'Bình thường' để người chơi đang học có thể bỏ qua. Mức khó tự chọn gắn với phần thưởng nguyên liệu hiếm.",
+    "lay_cam_hung_tu": "PlateUp! (chọn 1 trong 2 thẻ từ đầu ngày 4, mỗi 3 ngày)",
+    "uu_tien": "GĐ2"
+   },
+   {
+    "ten": "Đoàn khách đặc biệt, thưởng theo bậc",
+    "mo_ta": "Sự kiện ngày được báo trước: một nhóm 3–4 khách, ví dụ 'Đoàn học sinh thi xong' hay 'Nhóm nhân viên văn phòng', có mảng chú ý riêng (tốc độ, thối đúng, món đúng ghi chú). Thưởng theo số khách đạt từ 4 sao: 3/4 thì thưởng, 4/4 thì thưởng gấp 1,5. Dưới một nửa đạt thì chỉ −danh tiếng, không trừ tiền. Người chơi được nhận hoặc từ chối từ Tổng kết ca hôm trước.",
+    "lay_cam_hung_tu": "Two Point Hospital (cấp cứu thưởng theo số người chữa được, dưới một nửa thì mất danh tiếng; VIP có mảng chú ý), Theme Hospital (nhận hoặc từ chối VIP, thưởng 200$–4.000$ theo đánh giá)",
+    "uu_tien": "GĐ2"
+   },
+   {
+    "ten": "Sổ tay món hiếm và bộ sưu tập nguyên liệu",
+    "mo_ta": "Trang mới trong Sổ tay: nguyên liệu hiếm đã gặp (quê, cách nhận biết hàng thật), công thức hiếm đã mở, số phần đã bán, lần đầu đạt Tuyệt hảo. Hoàn thành bộ thì nhận danh hiệu và đồ trang trí, không thưởng tiền, để không vượt ngân sách thưởng. Bảng tỉ lệ rớt công khai cũng đặt ở đây.",
+    "lay_cam_hung_tu": "Stardew Valley (bộ sưu tập), Hay Day (chọn quà theo mốc), nguyên tắc minh bạch tỉ lệ",
+    "uu_tien": "GĐ2"
+   },
+   {
+    "ten": "Tuần lễ chủ đề và 'phường ảo' xếp hạng",
+    "mo_ta": "Mỗi tuần thật có một chủ đề (Tuần Trà tắc, Tuần Bánh mì…) với 5–7 nhiệm vụ nhẹ, cho điểm và đổi quà tự chọn theo mốc. Xếp hạng với 9 'quán ảo' do máy tạo theo mức sao hoặc chặng của người chơi, chạy offline được. Top 3 lên 'hạng phường' kế, nhưng không bao giờ xuống quá 1 hạng. Không thu phí tham gia, không có bảng xếp hạng thật với người khác cho tới khi có máy chủ.",
+    "lay_cam_hung_tu": "Hay Day (derby tuần khoảng 6 ngày, Móng ngựa chọn quà, top 3 lên hạng), My Café (ghép theo số cúp, tức theo trình độ), Cooking Fever (giải hai lần mỗi tuần; lấy bài học tránh phí vào)",
+    "uu_tien": "GĐ3"
+   },
+   {
+    "ten": "Xe đẩy lưu động (sự kiện điểm dừng)",
+    "mo_ta": "Sự kiện có thời hạn, đẩy xe qua các điểm dừng: Cổng trường (nhiều học sinh, sinh viên, tờ tiền nhỏ), Bến xe (khách vội, kiên nhẫn thấp), Chợ đêm (2 hàng khách). Mỗi điểm dừng là một lộ trình mở thưởng. Tiền sự kiện, nếu có, được quy đổi khi hết mùa như Tem hiện nay (khác Cooking Diary, nơi tiền sự kiện mất khi hết hạn).",
+    "lay_cam_hung_tu": "Cooking Diary (Food Truck: lộ trình, 2 quầy, tiền riêng của sự kiện)",
+    "uu_tien": "GĐ3"
+   },
+   {
+    "ten": "Chốt đạo đức cho sự kiện và phần thưởng",
+    "mo_ta": "Ghi vào docs/de-xuat-thiet-ke.md thành ràng buộc cứng:\n(1) Không lootbox; không bán nguyên liệu, công thức bằng tiền thật; không nhánh thưởng trả tiền.\n(2) Không cờ bạc hay vé số; không có giải thu phí mà đa số người chơi lỗ.\n(3) Không hối lộ, không 'bôi trơn' trong sự kiện kiểm tra.\n(4) Vắng mặt không bị mất trắng: quy đổi, tự cộng, phát lại.\n(5) Sự kiện theo giờ thật chỉ có thưởng; không thông báo đẩy ép chơi.\n(6) Tình huống tiêu cực phải dạy đúng nghiệp vụ bán hàng (tiền giả, chuyển khoản, kiểm hàng, đặt cọc) và mở Mẹo nghề tương ứng.\n(7) Tỉ lệ và trần công khai trong Sổ tay.",
+    "lay_cam_hung_tu": "Game Developer: 'How video games abuse the fear of missing out'; Cooking Fever (bài học về phí vào giải); Cooking Diary (nhánh Vàng trả tiền của Path to Glory); Papers, Please (bài học ngược về hối lộ)",
+    "uu_tien": "M4"
+   }
+  ]
+ }
+]
