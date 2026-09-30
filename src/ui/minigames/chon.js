@@ -39,12 +39,22 @@ function mount(stage, step, ctx = {}) {
   const doneBtn = h('button', { class: 'btn btn-primary mg-done', type: 'button', 'data-testid': 'chon-done' }, 'Xong')
   stage.append(basket, grid, msg, h('div', { class: 'mg-foot' }, h('span', { class: 'mg-count', 'data-testid': 'chon-count' }), doneBtn))
 
+  // Số lượng cần: 1 lần chạm lấy đủ cả phần (vd "Trứng gà ×2" chạm 1 lần). Ô đã chọn và rổ hiện huy hiệu ×n để người
+  // chơi đối chiếu với thẻ công thức (chạm lần nữa là bỏ ra, không phải lấy thêm). Nguyên liệu không ghi số lượng
+  // (kể cả bẫy) chỉ nhân theo số phần của dòng phiếu → huy hiệu không lộ đâu là bẫy.
+  const portions = Math.max(1, Math.floor(Number(ctx.qty) || 1))
+  const qtyOf = id => {
+    const ing = (recipe.ingredients || []).find(x => x.id === id)
+    return (ing && ing.qty > 1 ? ing.qty : 1) * portions
+  }
   const cells = new Map()
   for (const id of shelf) {
+    const n = qtyOf(id)
     const cell = h('button', {
       class: 'chon-cell', type: 'button', 'data-testid': 'shelf-' + id, 'aria-pressed': 'false',
-      dataset: { ing: id }
-    }, svgBox(ingIcon(id, ctx), 'chon-icon'), h('span', { class: 'chon-label' }, ingName(id, ctx)))
+      dataset: { ing: id, qty: n }, 'aria-label': ingName(id, ctx) + (n > 1 ? ` ×${n}` : '')
+    }, svgBox(ingIcon(id, ctx), 'chon-icon'), h('span', { class: 'chon-label' }, ingName(id, ctx)),
+    n > 1 ? h('span', { class: 'chon-qty', 'data-testid': 'shelf-qty-' + id, 'aria-hidden': 'true' }, '×' + n) : null)
     if (picked.includes(id)) { cell.classList.add('is-picked'); cell.setAttribute('aria-pressed', 'true') }
     cell.addEventListener('click', () => toggle(id))
     cells.set(id, cell)
@@ -57,7 +67,9 @@ function mount(stage, step, ctx = {}) {
     basket.textContent = ''
     if (!picked.length) { basket.appendChild(basketEmpty); return }
     for (const id of picked) {
-      basket.appendChild(h('span', { class: 'chon-in', title: ingName(id, ctx) }, svgBox(ingIcon(id, ctx), 'chon-in-icon')))
+      const n = qtyOf(id)
+      basket.appendChild(h('span', { class: 'chon-in', title: ingName(id, ctx) + (n > 1 ? ` ×${n}` : '') },
+        svgBox(ingIcon(id, ctx), 'chon-in-icon'), n > 1 ? h('span', { class: 'chon-in-qty' }, '×' + n) : null))
     }
   }
 

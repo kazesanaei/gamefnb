@@ -1,6 +1,8 @@
-// Màn Chuẩn bị ca: thông tin ngày, Muỗng Vàng, lối vào Chợ Công Thức / Việc hôm nay / Điểm danh / Hộp thư (chấm đỏ),
-// sự kiện ngày và lựa chọn, Phiếu Chợ Sớm, thẻ sự kiện có thời hạn, chuỗi "Dì Sáu dặn", "Giấc mơ tiếp theo",
-// thực đơn, dự báo khách, Mẹo nghề, mượn Dì Sáu, cài đặt, nút "Mở hàng" luôn nhìn thấy.
+// Màn Chuẩn bị ca: thông tin ngày, Muỗng Vàng, lưới lối vào có chấm đỏ (Chợ Công Thức, Việc hôm nay, Điểm danh,
+// Hộp thư, Sổ công thức, Sổ tay nghề, Cài đặt), sự kiện ngày và lựa chọn, Phiếu Chợ Sớm, thẻ sự kiện có thời hạn,
+// chuỗi "Dì Sáu dặn", "Giấc mơ tiếp theo", thẻ "Hôm nay" (dự báo khách + thực đơn), Mẹo nghề đã mở (ngẫu nhiên),
+// mượn Dì Sáu, nút "Mở hàng" luôn nhìn thấy (dính đáy màn).
+// M3: thẻ nhắc sao lưu mỗi 7 ngày thật, nút "Có bản mới – Tải lại"; khách thêm nhờ ly trà "mở hàng", sổ ghi nợ khách quen.
 // Vào màn: cập nhật meta theo ngày thật; lần đầu trong ngày thật (kể cả lần mở game đầu tiên) → bảng điểm danh.
 import { h, svgBox } from '../dom.js'
 import { DI_SAU, icon } from '../art.js'
@@ -17,11 +19,17 @@ import { chainStatus } from '../../core/chains.js'
 import { shopCatalog } from '../../core/shop.js'
 import { eventsOverview, dayEventInfo, dayEventEffects, setDayEventChoice, setMarketCoupon, applyCustomerMods } from '../../core/events.js'
 import { checkStageUp } from '../../core/progression.js'
-import { formatVND, formatStars } from '../format.js'
+import { formatVND, formatStars, formatMoneyShort } from '../format.js'
 import { spoonPill, reasonText, progressBar, redDot, rewindNote, durationText } from '../components/meta-ui.js'
 import { chainCard } from '../components/chain-card.js'
 import { openCheckin } from '../components/checkin-popup.js'
 import { phaseText } from './event.js'
+import { GEAR_SVG } from './settings.js'
+import { NOTEBOOK_SVG } from './notebook.js'
+import { RECIPE_BOOK_SVG } from './recipe-book.js'
+import { backupDue } from '../../core/save.js'
+import { notebookBadge, randomSeenTip } from '../../core/notebook.js'
+import { incidentBonusFor, pendingDebts } from '../../core/incidents.js'
 
 function pickRandom(arr) {
   return arr.length ? arr[Math.floor(Math.random() * arr.length)] : null
@@ -46,11 +54,26 @@ export function dayEffectLines(effects, data, state = null) {
 
 // Số khách dự báo sau sự kiện ngày (không trừ tiền, không dùng phiếu). Đã chọn Căng bạt (hoặc tự căng nhờ Bạt che mưa)
 // thì dùng hiệu ứng của lựa chọn, giống dòng hiệu ứng trên thẻ (dayEventEffects).
+// M3: ly trà "mở hàng" tặng ở ca trước → thêm khách (trong trần 8), giống startShift.
 export function forecastCustomers(state, ctx, info) {
-  const n = customerCount(state, ctx, state.day)
-  if (!info) return n
-  const eff = dayEventEffects(info, ctx)
-  return applyCustomerMods(n, { customerMul: eff.customerMul ?? 1, extraCustomers: eff.extraCustomers || 0 }, ctx)
+  return forecastDetail(state, ctx, info).n
+}
+
+// Dự báo chi tiết: { n, base (chưa tính ly trà mở hàng), added (khách thêm thật sự vào được), rep (danh tiếng thay thế
+// khi ca đã đủ khách) } — giống startShift, để màn Chuẩn bị không ghi "thêm 1 khách" khi ca đã đủ trần.
+export function forecastDetail(state, ctx, info) {
+  let n = customerCount(state, ctx, state.day)
+  if (info) {
+    const eff = dayEventEffects(info, ctx)
+    n = applyCustomerMods(n, { customerMul: eff.customerMul ?? 1, extraCustomers: eff.extraCustomers || 0 }, ctx)
+  }
+  const base = n
+  const bonus = incidentBonusFor(state, state.day)
+  if (bonus > 0 && n < 8) n = Math.min(8, n + bonus)
+  const added = n - base
+  const b = state.incidents && state.incidents.bonus
+  const rep = bonus > 0 && added === 0 && b ? Math.max(0, Math.round(Number(b.rep) || 0)) : 0
+  return { n, base, added, rep }
 }
 
 // Lời Dì Sáu lúc chuẩn bị ca: ngày 1 là lời hướng dẫn; có sự kiện ngày thì nói theo sự kiện (không nói "trời đẹp"
@@ -76,6 +99,7 @@ export default {
     let destroyed = false
     let lastDayKey = ''
     const talk = prepTalk(app.state, D, dayEventInfo(app.state, app.state.day, app.ctx))
+    let shownTip = null        // Mẹo nghề hiện ở màn (chọn ngẫu nhiên 1 lần mỗi lần vào màn)
 
     function refresh() {
       const nowInfo = app.nowInfo()
@@ -97,21 +121,41 @@ export default {
       const dayEv = dayEventInfo(state, state.day, app.ctx)
       const forecast = forecastCustomers(state, app.ctx, dayEv)
 
-      // Đầu màn
+      // Đầu màn: tên xe, Muỗng Vàng, ngày, Tiền quán / danh tiếng / sao
       el.appendChild(h('header', { class: 'prep-head' },
         h('div', { class: 'prep-toprow' },
           h('div', { class: 'prep-shop' }, state.shopName),
           spoonPill(state.goldSpoons || 0, 'prep-spoons')),
-        h('div', null,
+        h('div', { class: 'prep-dayrow' },
           h('h1', { class: 'prep-day', testid: 'prep-day' }, `Ngày ${state.day}`),
           h('div', { class: 'prep-sub' }, S.screens.prep + ' · ' + S.chang[state.chang || 1])),
         h('div', { class: 'prep-stats' },
-          stat(S.labels.wallet, formatVND(state.wallet), 'prep-wallet'),
+          // từ 1 triệu ghi gọn "1,16tr" (không ngắt dòng giữa con số), số đầy đủ ở title/aria-label
+          stat(S.labels.wallet, formatMoneyShort(state.wallet), 'prep-wallet', { title: formatVND(state.wallet), amount: state.wallet }),
           stat(S.labels.reputation, String(state.reputation)),
-          stat(S.labels.rating, '★ ' + formatStars(avg)))))
+          // sao trung bình của 30 đánh giá gần nhất; dưới 5 lượt là số tạm (đệm 4 sao)
+          stat(S.labels.rating, '★ ' + formatStars(avg), 'prep-rating', {
+            note: (state.ratings || []).length < 5 ? 'tạm tính' : '30 lượt gần nhất',
+            title: (state.ratings || []).length < 5 ? 'Tính tạm, cần đủ 5 lượt đánh giá' : 'Trung bình 30 lượt đánh giá gần nhất'
+          }))))
+
+      // Lưới lối vào (M3): 7 ô biểu tượng có chấm đỏ
+      el.appendChild(navGrid(state, nowInfo))
 
       const rw = rewindNote(app, nowInfo)
       if (rw) el.appendChild(rw)
+
+      // M3: có bản mới của game → nút Tải lại (chỉ ở màn Chuẩn bị/Tổng kết, không bao giờ giữa ca)
+      if (typeof app.updateSlot === 'function') el.appendChild(app.updateSlot())
+      // M3: đã 7 ngày thật chưa sao lưu → thẻ nhắc, bấm để mở Cài đặt ở mục Sao lưu
+      if (backupDue(state, app.now())) {
+        el.appendChild(h('button', { class: 'backup-reminder', type: 'button', testid: 'backup-reminder', onclick: () => go('settings', { focus: 'backup' }) },
+          svgBox(icon('ruong'), 'backup-reminder-icon'),
+          h('span', { class: 'backup-reminder-text' },
+            h('b', null, 'Đã lâu chưa sao lưu'),
+            h('small', null, 'Chép mã sao lưu để giữ tiến trình khi đổi máy hoặc trình duyệt dọn dữ liệu.')),
+          h('span', { class: 'backup-reminder-go', 'aria-hidden': 'true' }, '›')))
+      }
 
       const first = isFirstVisit(state)
       const talkEl = h('div', { class: 'npc-talk', testid: 'prep-talk' }, svgBox(DI_SAU.vui, 'npc-face'),
@@ -121,15 +165,12 @@ export default {
       chains.sort((a, b) => (b.main ? 1 : 0) - (a.main ? 1 : 0))
       const chainEls = chains.map((c, i) => chainCard(app, c, { testid: i === 0 ? 'chain-card' : 'chain-card-' + c.id, compact: true, onChange: render }))
 
-      // Lần mở đầu tiên: lời hướng dẫn của Dì Sáu và "Dì Sáu dặn: Phục vụ khách đầu tiên" lên ngay dưới đầu màn;
+      // Lần mở đầu tiên: lời hướng dẫn của Dì Sáu và "Dì Sáu dặn: Phục vụ khách đầu tiên" lên ngay dưới lưới lối vào;
       // chưa hiện "Giấc mơ tiếp theo" (mở dần sau ca đầu)
       if (first) {
         el.appendChild(talkEl)
         for (const c of chainEls) el.appendChild(c)
       }
-
-      // Lối vào 4 hệ thống
-      el.appendChild(navGrid(state, nowInfo))
 
       // Sự kiện có thời hạn
       for (const ev of eventsOverview(state, nowInfo, app.ctx)) el.appendChild(eventCard(ev))
@@ -143,8 +184,6 @@ export default {
         for (const c of chainEls) el.appendChild(c)
         // Lên chặng / Giấc mơ tiếp theo
         el.appendChild(stageCard(state))
-        // Lời Dì Sáu
-        el.appendChild(talkEl)
       }
 
       // Nợ và mượn Dì Sáu
@@ -167,45 +206,48 @@ export default {
           }, 'Dì Sáu cho mượn')))
       }
 
-      // Thực đơn
-      el.appendChild(h('section', { class: 'card' },
-        h('h2', { class: 'card-title' }, 'Thực đơn hôm nay'),
+      // Hôm nay: dự báo khách + thực đơn gọn (2 cột) + ghi chú tình huống ca trước (khách thêm, sổ ghi nợ)
+      const fc = forecastDetail(state, app.ctx, dayEv)
+      const debts = pendingDebts(state)
+      el.appendChild(h('section', { class: 'card prep-today' },
+        h('h2', { class: 'card-title' }, 'Hôm nay'),
+        h('p', { class: 'prep-forecast', testid: 'prep-forecast' }, `Khoảng ${forecast} khách ghé xe trong ca sáng nay (06:00 – 10:00).`),
+        state.day >= (app.data.BALANCE.qrFromDay || 4) ? h('p', { class: 'small muted' }, 'Có khách trả bằng chuyển khoản QR.') : null,
+        fc.added > 0 ? h('p', { class: 'small prep-bonus', testid: 'prep-incident-bonus', dataset: { kind: 'khach' } }, `Nhờ ly trà "mở hàng" hôm trước, ca này có thêm ${fc.added} khách.`)
+          : fc.rep > 0 ? h('p', { class: 'small prep-bonus', testid: 'prep-incident-bonus', dataset: { kind: 'danh_tieng' } }, `Ca này đã đủ khách, nên ly trà "mở hàng" hôm trước thành +${fc.rep} danh tiếng.`) : null,
+        debts.length ? h('p', { class: 'small prep-debts', testid: 'prep-debts' },
+          'Sổ ghi nợ: ' + debts.map(d => `${d.name} ${formatVND(d.amount)}`).join(', ') + ' (khách quen thường trả trong 3 ca)') : null,
         h('div', { class: 'prep-menu' }, menu.map(id => {
           const r = app.data.RECIPES[id]
           const p = state.recipes[id]
           const lv = masteryLevel(p, levels)
           const evLabel = state.eventRecipes && state.eventRecipes[id] ? state.eventRecipes[id].label : ''
           return h('div', { class: 'prep-dish', testid: 'prep-dish-' + id },
-            svgBox(icon(r.icon || id), 'dish-icon'),
-            h('div', { class: 'prep-dish-name' }, r.name),
-            h('div', { class: 'prep-dish-price' }, formatVND(r.price)),
-            h('div', { class: 'prep-dish-lv' }, `${S.labels.mastery}: ${S.masteryLevels[lv] || lv}`),
-            evLabel ? h('div', { class: 'prep-dish-tag' }, evLabel) : null)
+            svgBox(icon(r.icon || id), 'dish-icon small'),
+            h('div', { class: 'prep-dish-info' },
+              h('div', { class: 'prep-dish-name' }, r.name),
+              h('div', { class: 'prep-dish-price' }, formatVND(r.price)),
+              h('div', { class: 'prep-dish-lv' }, `${S.labels.mastery}: ${S.masteryLevels[lv] || lv}`),
+              evLabel ? h('div', { class: 'prep-dish-tag' }, evLabel) : null))
         }))))
 
-      // Dự báo
-      el.appendChild(h('section', { class: 'card prep-forecast' },
-        h('h2', { class: 'card-title' }, 'Dự báo'),
-        h('p', { testid: 'prep-forecast' }, `Khoảng ${forecast} khách ghé xe trong ca sáng nay (06:00 – 10:00).`),
-        state.day >= (app.data.BALANCE.qrFromDay || 4) ? h('p', { class: 'muted' }, 'Có khách trả bằng chuyển khoản QR.') : null))
-
-      // Mẹo nghề đã mở
-      const tips = (Array.isArray(app.data.TIPS) ? app.data.TIPS : []).filter(t => state.tipsSeen.includes(t.id))
-      const tip = pickRandom(tips)
+      // Lời Dì Sáu + Mẹo nghề đã mở (ngẫu nhiên, chọn 1 lần mỗi lần vào màn) + lối vào Sổ tay nghề
+      if (!first) el.appendChild(talkEl)
+      const tip = shownTip && (state.tipsSeen || []).includes(shownTip.id) ? shownTip : (shownTip = randomSeenTip(state, app.ctx, Math.random))
       if (tip) {
         el.appendChild(h('section', { class: 'card tip-card', testid: 'prep-tip' },
           h('h2', { class: 'card-title' }, 'Mẹo nghề: ' + tip.title),
-          h('p', null, tip.text)))
+          h('p', null, tip.text),
+          h('button', { class: 'btn btn-ghost btn-small tip-more', type: 'button', testid: 'prep-tip-notebook', onclick: () => go('notebook') }, 'Mở Sổ tay nghề ›')))
       }
-
-      // Cài đặt nhanh
-      el.appendChild(settingsCard(app))
 
       el.appendChild(h('div', { class: 'sticky-foot' },
         h('button', {
           class: 'btn btn-primary btn-big', type: 'button', testid: 'open-shift',
           onclick: () => {
-            startShift(app.state, app.ctx)
+            const sh = startShift(app.state, app.ctx)
+            // phiên bản game lúc mở ca: bản mới kích hoạt giữa ca (đóng hết tab rồi mở lại) thì main.js biết để báo
+            if (sh) sh.appVersion = app.version
             app.sound('bell')
             app.saveNow()
             app.go('service')
@@ -213,11 +255,14 @@ export default {
         }, S.buttons.openShift)))
     }
 
-    function stat(label, value, testid) {
-      return h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, label), h('b', { class: 'stat-value', testid }, value))
+    function stat(label, value, testid, { title = null, amount = null, note = null } = {}) {
+      return h('div', { class: 'stat', title },
+        h('span', { class: 'stat-label' }, label),
+        h('b', { class: 'stat-value', testid, dataset: amount !== null ? { amount } : undefined, 'aria-label': title ? `${label} ${title}` : null }, value),
+        note ? h('small', { class: 'stat-note' }, note) : null)
     }
 
-    // ---------- Lối vào ----------
+    // ---------- Lối vào (M3: lưới biểu tượng có chấm đỏ) ----------
     function navGrid(state, nowInfo) {
       const ck = checkinStatus(state, nowInfo, app.ctx)
       const ql = questList(state, app.ctx)
@@ -226,17 +271,25 @@ export default {
       const mails = mailBadge(state, nowInfo)
       const cat = shopCatalog(state, app.ctx)
       const buyable = cat.recipes.filter(r => r.canBuy).length
-      const tile = (testid, iconId, label, sub, dot, onclick) => h('button', { class: 'nav-tile', type: 'button', testid, onclick, dataset: { dot: dot ? String(dot) : '0' } },
-        svgBox(icon(iconId), 'nav-icon'),
-        h('span', { class: 'nav-label' }, label),
-        h('small', { class: 'nav-sub' }, sub),
-        dot ? redDot(dot, testid + '-dot') : null)
-      return h('nav', { class: 'nav-grid', 'aria-label': 'Lối vào' },
-        tile('open-shop', 'ro', M.shop, buyable ? `${buyable} món mua được` : 'Món mới, màu dù', buyable ? 1 : 0, () => go('shop')),
-        tile('open-quests', 'lich', M.quests, `${qDone}/${ql.quests.length} việc xong`, qClaim, () => go('quests')),
-        tile('open-checkin', 'ruong', M.checkin, ck.canClaim ? 'Có quà' : ck.reason === 'lui_gio' ? 'Tạm khóa' : 'Mai ghé tiếp', ck.canClaim ? 1 : 0,
+      const nb = notebookBadge(state, app.ctx)
+      const backup = backupDue(state, app.now()) ? 1 : 0
+      // status: chữ cho trình đọc màn hình (ô chỉ ghi tên, chấm đỏ báo việc cần làm)
+      const tile = (testid, svg, label, status, dot, onclick) => h('button', {
+        class: ['nav-tile', 'icon-tile'], type: 'button', testid, onclick,
+        dataset: { dot: dot ? String(dot) : '0' }, 'aria-label': `${label}: ${status}`, title: status
+      },
+      svgBox(svg, 'nav-icon'),
+      h('span', { class: 'nav-label' }, label),
+      dot ? redDot(dot, testid + '-dot') : null)
+      return h('nav', { class: 'nav-grid icon-grid', 'aria-label': 'Lối vào', testid: 'prep-nav' },
+        tile('open-shop', icon('ro'), M.shop, buyable ? `${buyable} món mua được` : 'Món mới, nâng cấp, màu dù', buyable ? 1 : 0, () => go('shop')),
+        tile('open-quests', icon('lich'), M.quests, `${qDone}/${ql.quests.length} việc xong`, qClaim, () => go('quests')),
+        tile('open-checkin', icon('ruong'), M.checkin, ck.canClaim ? 'Có quà' : ck.reason === 'lui_gio' ? 'Tạm khóa' : 'Mai ghé tiếp', ck.canClaim ? 1 : 0,
           () => openCheckin(app, { onClaim: () => setTimeout(render, 0) }).then(() => render())),
-        tile('open-mail', 'thu', M.mailbox, mails ? `${mails} thư mới` : 'Không có thư mới', mails, () => go('mailbox')))
+        tile('open-mail', icon('thu'), M.mailbox, mails ? `${mails} thư mới` : 'Không có thư mới', mails, () => go('mailbox')),
+        tile('open-recipe-book', RECIPE_BOOK_SVG, S.screens.recipeBook, 'Món, thạo món, Sổ từ vùng miền', 0, () => go('recipe-book')),
+        tile('open-notebook', NOTEBOOK_SVG, S.screens.notebook, nb ? `${nb} nhóm chờ nhận thưởng` : 'Thẻ Mẹo nghề đã mở', nb, () => go('notebook')),
+        tile('open-settings', GEAR_SVG, S.screens.settings, backup ? 'Đã lâu chưa sao lưu' : 'Âm thanh, hỗ trợ, sao lưu', backup, () => go('settings')))
     }
 
     function go(name, params) {
@@ -405,22 +458,4 @@ export default {
     }, 30000)
     return { unmount() { destroyed = true; clearInterval(timer) } }
   }
-}
-
-// Công tắc cài đặt cơ bản (M3 sẽ có màn Cài đặt riêng).
-function settingsCard(app) {
-  const s = app.state.settings
-  const items = [
-    ['sound', 'Âm thanh'], ['vibrate', 'Rung'], ['tips', 'Mẹo nghề'],
-    ['assistCash', 'Hỗ trợ tính tiền'], ['assistMotion', 'Hỗ trợ thao tác'], ['reducedMotion', 'Giảm chuyển động']
-  ]
-  return h('details', { class: 'card settings-card' },
-    h('summary', { class: 'card-title' }, 'Cài đặt'),
-    h('div', { class: 'toggle-list' }, items.map(([key, label]) =>
-      h('label', { class: 'toggle' },
-        h('input', {
-          type: 'checkbox', checked: !!s[key], testid: 'setting-' + key,
-          onchange: e => { app.state.settings[key] = e.target.checked; app.applySettings(); app.saveNow() }
-        }),
-        h('span', null, label)))))
 }

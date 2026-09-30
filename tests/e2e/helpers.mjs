@@ -95,6 +95,33 @@ export async function waitSave(page, pred, timeout = 5000) {
   }
 }
 
+// Thăm dò page.evaluate(fn, arg) tới khi trả giá trị truthy (fn được phép async). KHÔNG dùng page.waitForFunction với
+// hàm trả Promise: Playwright coi Promise là truthy nên trả ngay, kể cả khi Promise ra false. → giá trị cuối cùng.
+export async function pollEval(page, fn, arg, { timeout = 20000, every = 200, label = 'điều kiện' } = {}) {
+  const end = Date.now() + timeout
+  for (;;) {
+    const v = await page.evaluate(fn, arg)
+    if (v) return v
+    if (Date.now() > end) throw new Error('hết giờ chờ: ' + label)
+    await page.waitForTimeout(every)
+  }
+}
+
+// Chờ service worker kích hoạt (đã lưu đủ tệp để chơi offline) và điều khiển trang.
+// Không dùng page.waitForFunction với hàm async: Playwright coi Promise trả về là "đúng" nên không chờ gì cả.
+export async function waitController(page, timeout = 20000) {
+  const end = Date.now() + timeout
+  for (;;) {
+    const ok = await page.evaluate(async () => {
+      const reg = await navigator.serviceWorker.getRegistration()
+      return !!(reg && reg.active && reg.active.state === 'activated' && navigator.serviceWorker.controller)
+    })
+    if (ok) return
+    if (Date.now() > end) throw new Error('service worker chưa kích hoạt')
+    await page.waitForTimeout(200)
+  }
+}
+
 // ---------- Bắt đầu game ----------
 
 // Bảng điểm danh tự bật ở lần mở đầu tiên trong ngày thật (kể cả save mới): nhận ô kế tiếp rồi chờ bảng đóng.
@@ -139,11 +166,40 @@ export async function passTime(g, ms, useClock) {
   else await g.page.waitForTimeout(ms)
 }
 
+// ---------- Tình huống trong ca (M3) ----------
+
+// Hộp thoại tình huống (hiện giữa hai khách, ở tab Quầy): chọn `choice` hoặc cách an toàn (data-safe="true"),
+// rồi bấm "Bán tiếp". waitMs > 0: chờ hộp hiện tối đa waitMs. Trả { id, choice } nếu đã xử lý, null nếu không có.
+export async function resolveIncidentIfShown(g, { choice = null, waitMs = 0 } = {}) {
+  const { page } = g
+  const modal = waitMs
+    ? await page.waitForSelector(T('incident-modal'), { timeout: waitMs }).catch(() => null)
+    : await page.$(T('incident-modal'))
+  if (!modal) return null
+  // hộp vừa bấm "Bán tiếp" đang mờ dần: chờ biến mất
+  if (await page.$(`.modal-layer.hide ${T('incident-modal')}`)) {
+    await page.waitForSelector(T('incident-modal'), { state: 'detached' }).catch(() => {})
+    return null
+  }
+  const id = await page.getAttribute(`${T('incident-modal')} .incident`, 'data-incident').catch(() => null)
+  if (!(await page.$(T('incident-result')))) {
+    await g.shot('tinh-huong')
+    await page.click(choice ? T('incident-choice-' + choice) : `${T('incident-modal')} [data-safe="true"]`)
+    await page.waitForSelector(T('incident-result'))
+  }
+  const picked = await page.getAttribute(T('incident-result'), 'data-choice')
+  await page.click(T('incident-ok'))
+  await page.waitForSelector(T('incident-modal'), { state: 'detached' })
+  return { id, choice: picked }
+}
+
 // Chờ tới khi có khách ở khâu order (bóng thoại) hoặc hết ca (màn tổng kết). Trả 'customer' | 'summary'.
+// Gặp tình huống trong ca (vd khách mở hàng trước khách đầu tiên) thì chọn cách an toàn.
 export async function waitCustomerOrEnd(g, { useClock = false, timeoutGameMs = 400000 } = {}) {
   const { page } = g
   let waited = 0
   for (;;) {
+    await resolveIncidentIfShown(g)
     if (await page.$(T('summary'))) return 'summary'
     if (await page.$(T('speech-bubble'))) return 'customer'
     if (await page.$(`${T('counter-panel')}[data-stage]:not([data-stage=""])`)) return 'customer'
@@ -163,6 +219,7 @@ export function lineTotal(request) {
 // Phục vụ khách đang ở quầy qua 3 khâu Order → Thanh toán → Tính tiền và kẹp phiếu. Trả {request, total, ticketNo}.
 export async function serveAtCounter(g) {
   const { page } = g
+  await resolveIncidentIfShown(g)
   if (!(await page.isVisible(T('panel-counter')))) await page.click(T('tab-counter'))
   await page.waitForSelector(T('speech-bubble'))
   const request = JSON.parse(await page.getAttribute(T('speech-bubble'), 'data-request'))
@@ -184,7 +241,7 @@ export async function serveAtCounter(g) {
   assert.equal(await page.isDisabled(T('confirm-order')), true, 'chưa đọc lại mà đã chốt được')
   await page.click(T('readback'))
   await page.waitForSelector(`${T('confirm-order')}:not([disabled])`)
-  assert.equal(await page.$(T('caught-list')), null, 'phiếu đúng mà khách bắt lỗi')
+  assert.equal(!!(await page.$(T('caught-list'))), false, 'phiếu đúng mà khách bắt lỗi')
   await g.shot('quay-doc-lai')
   await page.click(T('confirm-order'))
 
@@ -293,6 +350,15 @@ export async function playShiftUi(g, { useClock = false, until = null, maxCustom
     if (what === 'summary') return served
     const order = await serveAtCounter(g)
     if (order.rejected) continue
+    // M3: tình huống giữa hai khách (ngay sau khi kẹp phiếu) → cách an toàn; khách đổi ý thì cập nhật yêu cầu thật
+    const inc = await resolveIncidentIfShown(g, { waitMs: 300 })
+    if (inc) {
+      order.incident = inc
+      const s = await readSave(page)
+      const t = s && s.shift && s.shift.tickets.find(x => x.id === order.ticketId)
+      const c = t && s.shift.customers[t.customerId]
+      if (c) order.request = c.request
+    }
     const res = await cookAndServe(g, order.ticketId, { shots: false })
     served.push({ ...order, ...res })
     if (until && await until(order, res)) return served
@@ -308,6 +374,7 @@ export async function playShiftUi(g, { useClock = false, until = null, maxCustom
 // Nấu hết các dòng của phiếu (ticketId dạng 'p1') và giao. Trả số sao trên phiếu chấm.
 export async function cookAndServe(g, ticketId, { shots = true } = {}) {
   const { page } = g
+  await resolveIncidentIfShown(g)
   if (!(await page.isVisible(T('panel-kitchen')))) await page.click(T('tab-kitchen'))
   await page.waitForSelector(T('ticket-' + ticketId))
   const save = await waitSave(page, st => st.shift && st.shift.tickets.some(t => t.id === ticketId))

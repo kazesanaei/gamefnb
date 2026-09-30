@@ -61,7 +61,7 @@ test('điểm danh: 03:59 chưa sang ngày, 04:00 hiện bảng và nhận bằn
     await seedSave(page, state)
     await enterPrep(g, '2026-09-30T03:59')
     await page.waitForTimeout(500)
-    assert.equal(await page.$(T('checkin-popup')), null, '03:59 vẫn là ngày cũ, không được hiện bảng')
+    assert.equal(!!(await page.$(T('checkin-popup'))), false, '03:59 vẫn là ngày cũ, không được hiện bảng')
     assert.equal(await page.getAttribute(T('open-checkin'), 'data-dot'), '0')
 
     await enterPrep(g, '2026-09-30T04:00')
@@ -98,7 +98,7 @@ test('sự kiện Tri ân 20/11: nhận Chè bưởi qua chuỗi, hết mùa v�
     await enterPrep(g, '2026-11-19T09:00')
     await page.waitForSelector(T('event-card'))
     assert.equal(await page.getAttribute(T('event-card'), 'data-phase'), 'dang_dien_ra')
-    assert.equal(await page.$(T('prep-dish-che_buoi')), null, 'chưa nhận mà đã có món')
+    assert.equal(!!(await page.$(T('prep-dish-che_buoi'))), false, 'chưa nhận mà đã có món')
     await page.tap(T('open-event'))
     await page.waitForSelector(T('screen-event'))
     await page.waitForSelector(T('event-tem'))
@@ -113,7 +113,7 @@ test('sự kiện Tri ân 20/11: nhận Chè bưởi qua chuỗi, hết mùa v�
     // sau mùa sự kiện (và hết ân hạn): món vẫn trong thực đơn, thẻ sự kiện không còn
     await enterPrep(g, '2026-12-05T09:00')
     await page.waitForSelector(T('prep-dish-che_buoi'))
-    assert.equal(await page.$(T('event-card')), null)
+    assert.equal(!!(await page.$(T('event-card'))), false)
     const later = await readSave(page)
     assert.ok(later.recipes.che_buoi)
     assert.deepEqual(errors, [], 'có lỗi console/trang')

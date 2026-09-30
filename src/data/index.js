@@ -7,7 +7,7 @@ import { MINIGAME_TYPES } from './minigame-types.js'
 import { PERSONAS, REGULARS, NAMES } from './customers.js'
 import { DIALOGUE, SPOKEN, SYNONYMS, LINE_KINDS, makeSpeech, makeLine, describeLine, readbackText } from './dialogue.js'
 import { REVIEWS, makeReview } from './reviews.js'
-import { TIPS, TIP_GROUPS, tipsForTrigger } from './tips.js'
+import { TIPS, TIP_GROUPS, TIP_GROUP_REWARDS, tipsForTrigger } from './tips.js'
 import { UPGRADES } from './upgrades.js'
 import { STRINGS } from './strings.js'
 import { CHECKIN } from './checkin.js'
@@ -18,6 +18,7 @@ import { SHOP, ITEMS, COSMETICS, TITLES, UNLOCKS } from './shop.js'
 import { EVENTS } from './events.js'
 import { DAY_EVENTS, DAY_EVENT_CONFIG } from './day-events.js'
 import { STAGE_UP, POST_GOALS } from './progression.js'
+import { INCIDENTS, INCIDENT_CONFIG } from './incidents.js'
 
 export const DATA = Object.freeze({
   BALANCE, INGREDIENTS, RECIPES, METHOD_LABELS, MINIGAME_TYPES,
@@ -29,7 +30,9 @@ export const DATA = Object.freeze({
   CHECKIN, QUESTS, QUEST_GROUPS, QUEST_CONFIG,
   MAIL_CONFIG, MAIL_WELCOME, MAIL_VERSIONS, MAIL_HOLIDAYS, MAIL_EVERYDAY, MAIL_LATE_REVIEW, MAIL_QUEST,
   CHAINS, NPCS, CHAIN_WHERE, SHOP, ITEMS, COSMETICS, TITLES, UNLOCKS,
-  EVENTS, DAY_EVENTS, DAY_EVENT_CONFIG, STAGE_UP, POST_GOALS
+  EVENTS, DAY_EVENTS, DAY_EVENT_CONFIG, STAGE_UP, POST_GOALS,
+  // M3: tình huống trong ca, thưởng đủ nhóm Sổ tay nghề
+  INCIDENTS, INCIDENT_CONFIG, TIP_GROUP_REWARDS
 })
 
 export {
@@ -39,5 +42,6 @@ export {
   CHECKIN, QUESTS, QUEST_GROUPS, QUEST_CONFIG,
   MAIL_CONFIG, MAIL_WELCOME, MAIL_VERSIONS, MAIL_HOLIDAYS, MAIL_EVERYDAY, MAIL_LATE_REVIEW, MAIL_QUEST,
   CHAINS, NPCS, CHAIN_WHERE, SHOP, ITEMS, COSMETICS, TITLES, UNLOCKS,
-  EVENTS, DAY_EVENTS, DAY_EVENT_CONFIG, STAGE_UP, POST_GOALS
+  EVENTS, DAY_EVENTS, DAY_EVENT_CONFIG, STAGE_UP, POST_GOALS,
+  INCIDENTS, INCIDENT_CONFIG, TIP_GROUP_REWARDS
 }

@@ -4,6 +4,7 @@ import { requiredIngredients, ingredientErrors, dishQuality, customerStars, tipF
 import { scoreChon, stepLabel } from './minigame-scoring.js'
 import { recordDish, canAutoStep } from './mastery.js'
 import { makeRand } from './rng.js'
+import { roundCost } from './money.js'
 
 const SCALE_KEYS = ['n', 'N', 'cuts', 'strokes']
 
@@ -171,7 +172,11 @@ export function submitChon(state, picked, mistakes, ctx) {
   }
   // M2: Phiếu Chợ Sớm (sh.mods.cogsMul) giảm giá vốn trong ca
   const cogsMul = sh.mods && sh.mods.cogsMul > 0 ? sh.mods.cogsMul : 1
-  if (cogsMul !== 1) { cogs = Math.round(cogs * cogsMul); waste = Math.round(waste * cogsMul) }
+  if (cogsMul !== 1) { cogs = cogs * cogsMul; waste = waste * cogsMul }
+  // M3: mỗi lượt nấu trừ giá vốn theo bội 500đ (nguyên liệu lẻ 100–400đ, ghi chú bớt/thêm, Phiếu Chợ Sớm ×0,8)
+  // để Tiền quán không bao giờ lẻ dưới 500đ.
+  cogs = roundCost(cogs)
+  waste = roundCost(waste)
   spend(state, cogs, 'cogs')
   spend(state, waste, 'waste')
   cook.cost = { cogs, waste }
@@ -267,7 +272,8 @@ export function submitStep(state, stepId, result, ctx) {
   if (isRetry) cook.retryPending = null
   cook.activeStepId = null
   if (score >= 90) bumpCount(sh, 'perfectSteps')
-  if (tag) unlockTip(state, tag, ctx)
+  // thẻ "Chảo dầu bốc cháy" chỉ hợp với bước chiên chảo; phin cà phê, nồi luộc (skin) quá lửa thì không mở thẻ này
+  if (tag && !(tag === 'chay' && step.skin && step.skin !== 'chao')) unlockTip(state, tag, ctx)
   if (step.type === 'cham' && step.params && step.params.mode === 'targets' && score < 70) unlockTip(state, 'nem_lech', ctx)
   emit(ctx, 'step.done', { recipeId: cook.recipeId, type: step.type, score, grade, auto: false })
   return { ok: true, score, grade, methodWrong, tag }
@@ -300,7 +306,7 @@ export function retryStep(state, stepId, ctx) {
   if (cook.retriesLeft <= 0) return { ok: false, reason: 'het_luot' }
   if (cook.retryPending) return { ok: false, reason: 'dang_lam_lai' }
   cook.retriesLeft -= 1
-  const cost = Math.max(0, Math.round(Number(step.retryCost) || 0))
+  const cost = roundCost(step.retryCost)
   spend(state, cost, 'waste')
   delete cook.steps[stepId]
   cook.retryPending = stepId

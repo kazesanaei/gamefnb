@@ -75,7 +75,7 @@ export function openCheckin(app, opts = {}) {
           const r = claimCheckin(app.state, app.nowInfo(), app.ctx)
           if (!r.ok) { app.toast(reasonText(app, r.reason), { kind: 'bad' }); return }
           result = { claimed: true, reward: r.reward }
-          app.sound('coin')
+          app.sound(r.index === 6 ? 'chest' : 'coin')   // ô 7 là Rương
           app.vibrate(20)
           app.saveNow()
           // vẽ ô vừa nhận (vòng vừa xong thì giữ bảng cũ, đánh dấu cả 7 ô)

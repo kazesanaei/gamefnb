@@ -92,6 +92,8 @@ export function refreshChains(state, nowInfo, ctx) {
       let guard = 0
       while (!cs.done && guard++ < 20) {
         const st = def.steps[cs.step]
+        // bước vượt quá dữ liệu (save/mã sửa tay; migrate đã kẹp): coi như chuỗi đã xong, không ném lỗi
+        if (!st) { cs.done = true; break }
         if (!st.check || !stepGateOpen(state, def, cs.step, nowInfo, ctx) || !checkPasses(state, st.check, ctx)) break
         completeStep(state, def, cs, ctx)
         if (nowInfo) cs.since = nowInfo.dayKey
@@ -106,6 +108,7 @@ export function refreshChains(state, nowInfo, ctx) {
         const es = eventState(state, def.eventId)
         for (const k of cs.claimable) {
           const st = def.steps[k]
+          if (!st) continue
           const rw = resolveReward(state, st.reward || {}, ctx)
           const tem = rw.tem || 0
           delete rw.tem
@@ -175,6 +178,7 @@ export function claimChainReward(state, chainId, stepIndex = null, nowInfo = nul
   const k = stepIndex === null || stepIndex === undefined ? cs.claimable[0] : stepIndex
   const i = cs.claimable.indexOf(k)
   if (i < 0) return { ok: false, reason: 'chua_xong' }
+  if (!def.steps[k]) return { ok: false, reason: 'khong_co' }
   if (def.eventId && nowInfo) {
     const ev = D(ctx).EVENTS[def.eventId]
     if (ev && eventPhase(ev, nowInfo.trusted) === 'da_ket_thuc') return { ok: false, reason: 'het_su_kien' }
@@ -209,7 +213,7 @@ export function chainStatus(state, nowInfo, ctx) {
       progress: cs ? cs.progress : 0, target: st ? (st.check ? 1 : st.target || 1) : 0,
       isCheck: !!(st && st.check),
       gateLocked: !!(st && def.eventId && !stepGateOpen(state, def, k, nowInfo, ctx)),
-      claimable: cs ? cs.claimable.map(i => ({ stepIndex: i, reward: resolveReward(state, def.steps[i].reward || {}, ctx, { eventId: def.eventId }) })) : []
+      claimable: cs ? cs.claimable.filter(i => def.steps[i]).map(i => ({ stepIndex: i, reward: resolveReward(state, def.steps[i].reward || {}, ctx, { eventId: def.eventId }) })) : []
     })
   }
   return out

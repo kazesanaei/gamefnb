@@ -1,6 +1,7 @@
 // Phần thưởng dùng chung cho các hệ thống meta (điểm danh, nhiệm vụ, hộp thư, chuỗi, sự kiện).
 // Lược đồ Reward xem src/data/checkin.js. Lõi đọc dữ liệu qua ctx.data.
 import { emit, refIncomeFor, newRecipeProgress } from './state.js'
+import { roundReward } from './money.js'
 
 const isObj = v => v && typeof v === 'object' && !Array.isArray(v)
 
@@ -18,7 +19,7 @@ function itemDef(data, id) {
 export function incomeMoney(ctx, mul, day) {
   const m = Number(mul) || 0
   if (m <= 0) return 0
-  return Math.ceil((m * refIncomeFor(ctx, day)) / 1000) * 1000
+  return roundReward(m * refIncomeFor(ctx, day))
 }
 
 // Hiện vật vĩnh viễn đã có (hoặc nâng cấp đã mua) → phần thưởng cần quy đổi.
@@ -44,7 +45,8 @@ export function resolveReward(state, reward, ctx, opts = {}) {
   if (needsFallback(state, reward, data) && isObj(reward.fallback)) { src = reward.fallback; converted = true }
   const out = {}
   const day = opts.day ?? state.day ?? 1
-  const money = (Math.round(Number(src.money) || 0)) + incomeMoney(ctx, src.incomeMul, day)
+  // M3: mọi khoản thưởng Tiền quán là bội 1.000đ (số tiền cố định trong dữ liệu cũng được làm tròn lên)
+  const money = roundReward(src.money) + incomeMoney(ctx, src.incomeMul, day)
   if (money > 0) out.money = money
   for (const k of ['gold', 'rep', 'tem']) {
     const v = Math.round(Number(src[k]) || 0)

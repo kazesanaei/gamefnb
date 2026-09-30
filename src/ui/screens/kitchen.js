@@ -10,7 +10,7 @@ import {
   finishDish, abandonDish, serveTicket, effectiveSteps
 } from '../../core/kitchen.js'
 import { zoneMul } from '../../core/minigame-scoring.js'
-import { playStep, hintFor } from '../minigames/index.js'
+import { playStep, hintFor, skinFor } from '../minigames/index.js'
 import { uiRand, hashKey } from '../minigames/_util.js'
 
 export const HINT_MS = 800
@@ -74,7 +74,8 @@ export function dishComment(dish, recipe, data) {
     const { r, def } = worst
     const label = def.label || ''
     if (r.skipped || r.tag === 'bo_qua') return `Con quên ${lowerFirst(label)} rồi kìa.`
-    if (r.tag === 'chay') return `${label} bị cháy rồi, nhấc sớm chút nha con.`
+    // lời nhắc theo lớp vỏ của bước (chảo: cháy; phin: đắng gắt; nồi: nhũn)
+    if (r.tag === 'chay') return `${label} ${skinFor(def, data).overTip || 'bị cháy rồi, nhấc sớm chút nha con.'}`
     if (r.tag === 'song') return `${label} còn sống quá, đợi kim vô vùng xanh nha.`
     if (r.tag === 'tran') return 'Rót tràn rồi, gần vạch thì rót chậm lại nha con.'
     if (r.tag === 'sai_cach' && def.method) {
@@ -181,7 +182,9 @@ export function mountKitchen(root, app, opts = {}) {
       const st = Object.keys(c.steps || {}).map(k => k + '=' + c.steps[k].score + (c.steps[k].auto ? 'a' : '')).join(',')
       return `thot:${cookKey(c)}:${st}:${c.retryPending || ''}:${c.retriesLeft}`
     }
-    const t = sh.tickets.map(x => [x.id, x.status, (x.done || []).map(Boolean).join('')].join('/')).join('|')
+    // dòng phiếu cũng vào khóa: tình huống "khách đổi ý" (M3) sửa món của phiếu còn chờ
+    const t = sh.tickets.map(x => [x.id, x.status, (x.done || []).map(Boolean).join(''),
+      x.lines.map(l => `${l.recipeId}*${l.qty}:${(l.notes || []).join(',')}`).join(';')].join('/')).join('|')
     return `rail:${t}:${c ? cookKey(c) + c.phase : ''}:${ui.openTicket || ''}:${ui.lastDish ? cookKey(ui.lastDish) : ''}`
   }
 
@@ -215,7 +218,8 @@ export function mountKitchen(root, app, opts = {}) {
     const recipe = recipeOf(cook.recipeId) || {}
     const notes = noteLabels(recipe, cook.notes)
     const ings = (recipe.ingredients || []).map(i => {
-      let text = ingName(i.id) + (i.qty && i.qty > 1 ? ` ×${i.qty}` : '')
+      // "×2" là số lượng trong món, lấy 1 lần chạm (chạm lần nữa là bỏ ra) → ghi rõ để người mới không chạm 2 lần
+      let text = ingName(i.id) + (i.qty && i.qty > 1 ? ` ×${i.qty} (chạm 1 lần)` : '')
       if (i.role === 'tuy_chon') {
         const by = (recipe.notes || []).filter(n => (n.adds || []).includes(i.id)).map(n => n.label)
         text += by.length ? ` (khi dặn ${by.join(', ')})` : ' (tùy chọn)'
@@ -425,10 +429,11 @@ export function mountKitchen(root, app, opts = {}) {
       ? h('div', { class: 'k-ready', 'data-testid': 'board-ready' }, h('span', { class: 'k-card-lbl' }, 'Sẵn sàng:'),
         ready.map(id => h('span', { class: 'k-ready-item', dataset: { ing: id } }, svgBox(ingIconSvg(id), 'k-card-ing-icon'), ingName(id), ' ✓')))
       : null
-    main.appendChild(h('div', { class: 'k-thot' }, h('div', { class: 'k-thot-title' }, 'Thớt sơ chế'), readyRow, boardEl))
-    // lời Dì Sáu (ngày 1) đặt dưới thớt, không đẩy các bước xuống dưới thanh nút
+    // lời Dì Sáu (ngày 1) nằm ngay dưới tên thớt, gọn một bong bóng nhỏ: đặt dưới thớt thì bị thanh "Bỏ món / Ra món"
+    // che mất ở màn thấp, người mới không thấy lời giải thích duy nhất về Thớt sơ chế
     const tip = diSauLine(tutorialLine('thot'))
-    if (tip) main.appendChild(tip)
+    if (tip) tip.classList.add('is-compact')
+    main.appendChild(h('div', { class: 'k-thot' }, h('div', { class: 'k-thot-title' }, 'Thớt sơ chế'), tip, readyRow, boardEl))
 
     const retryInfo = cook.retriesLeft > 0 ? `Còn ${cook.retriesLeft} lượt làm lại` : 'Hết lượt làm lại'
     main.appendChild(h('div', { class: 'k-toolbar' },

@@ -21,8 +21,8 @@ export function renderDrawer(drawer, { onTake, disabled = false } = {}) {
     }))
 }
 
-/** Khay tiền thối: mỗi mệnh giá một chồng tray-<mệnh giá>; chạm để trả 1 tờ về két. */
-export function renderTray(tray, { onReturn } = {}) {
+/** Khay tiền thối: mỗi mệnh giá một chồng tray-<mệnh giá>; chạm để trả 1 tờ về két. emptyText: chữ khi khay trống. */
+export function renderTray(tray, { onReturn, emptyText = null } = {}) {
   const items = BILLS.filter(b => (Number(tray && tray[b]) || 0) > 0)
   const total = drawerTotal(tray || {})
   return h('div', { class: 'tray', testid: 'tray', dataset: { amount: total } },
@@ -34,7 +34,7 @@ export function renderTray(tray, { onReturn } = {}) {
           class: 'tray-stack fly-in', type: 'button', testid: 'tray-' + b, dataset: { count: n, bill: b },
           'aria-label': `Trả lại tờ ${formatVND(b)} về két`, onclick: () => onReturn && onReturn(b)
         }, svgBox(billSvg(b), 'bill-img'), n > 1 ? h('span', { class: 'stack-count' }, '×' + n) : null)
-      }) : h('span', { class: 'tray-empty' }, 'Chạm ngăn két để lấy tiền thối')))
+      }) : h('span', { class: 'tray-empty', testid: 'tray-empty' }, emptyText || 'Chạm ngăn két để lấy tiền thối')))
 }
 
 /** Tiền khách đưa (nằm trên nắp két tới khi thối xong). */

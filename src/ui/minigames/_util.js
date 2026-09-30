@@ -175,13 +175,14 @@ export function settleOnce() {
   }
 }
 
-// Âm thanh và rung qua app (bỏ qua nếu không có).
+// Âm thanh và rung qua app (bỏ qua nếu không có). Âm tổng hợp ở src/ui/audio.js:
+// cut/chop = dao thái "tách" (cut: nhát chuẩn, rung 15 ms), hit = chạm trúng, sizzle = dầu "xèo", pour = rót nước.
 export function feedback(ctx, kind) {
   const app = ctx && ctx.app
   if (!app) return
   const map = {
-    tap: ['click', 0], cut: ['click', 15], good: ['ding', 15], ok: ['click', 0],
-    bad: ['error', 80], done: ['bell', 0], spill: ['error', 80]
+    tap: ['click', 0], cut: ['chop', 15], chop: ['chop', 0], hit: ['click', 15], good: ['ding', 15], ok: ['click', 0],
+    bad: ['error', 80], done: ['bell', 0], spill: ['error', 80], sizzle: ['sizzle', 0], pour: ['pour', 0]
   }
   const [snd, vib] = map[kind] || ['click', 0]
   try { if (typeof app.sound === 'function') app.sound(snd) } catch { /* bỏ qua */ }
@@ -225,7 +226,7 @@ export function ingName(ingId, ctx) {
   return (INGS[ingId] && INGS[ingId].name) || ingId || ''
 }
 
-// Nhãn nổi ngắn tại một điểm trong phần tử (vd "+100", "Lệch 8px").
+// Nhãn nổi ngắn tại một điểm trong phần tử (vd "+100", "Hơi lệch").
 export function popLabel(host, text, x, y, cls = '') {
   const el = h('div', { class: ['mg-pop', cls].filter(Boolean).join(' '), style: { left: x + 'px', top: y + 'px' } }, text)
   host.appendChild(el)

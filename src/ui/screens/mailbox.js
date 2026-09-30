@@ -14,6 +14,8 @@ export default {
     const open = new Set()
     const el = h('section', { class: 'meta-screen mail-screen', testid: 'screen-mail' })
     root.appendChild(el)
+    // đã mở Hộp thư: thông báo "Vừa có thư mới" (bật ở màn Chuẩn bị) thừa và che đầu màn → cất đi
+    if (app.overlay) for (const t of app.overlay.querySelectorAll('[data-testid="mail-toast"]')) t.remove()
 
     function render() {
       const state = app.state

@@ -336,7 +336,11 @@ test('Phiếu Chợ Sớm: giá vốn −20% trong 1 ca, dùng xong mất phiế
   assert.equal(setMarketCoupon(b, true).ok, true)
   const ra = playShift(a, ctx), rb = playShift(b, ctx)
   assert.equal(b.items.phieu_cho_som, 0)
-  assert.equal(rb.summary.cogs, Math.round(ra.summary.cogs * 0.8))
+  // M3: giá vốn mỗi lượt nấu làm tròn tới bội 500đ (gần nhất) nên tổng lệch ×0,8 tối đa 250đ mỗi lượt nấu
+  const cooks = rb.sheets.reduce((n, sh) => n + ((sh && sh.dishes) || []).length, 0)
+  assert.ok(rb.summary.cogs < ra.summary.cogs)
+  assert.ok(Math.abs(rb.summary.cogs - ra.summary.cogs * 0.8) <= 250 * cooks, `${rb.summary.cogs} ≉ ${ra.summary.cogs} × 0,8`)
+  assert.equal(rb.summary.cogs % 500, 0)
   assert.equal(rb.walletAfter - rb.walletBefore, rb.summary.profit)
   // ca sau không còn giảm giá
   assert.equal(playShift(b, ctx).summary.cogs, playShift(a, ctx).summary.cogs)

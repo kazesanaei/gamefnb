@@ -223,7 +223,7 @@ async function scenarioAdvanced(browser, srv) {
   await shot('adv-chon')
   await page.click(T('chon-done'))
   await page.waitForSelector(T('board'))
-  assert.equal(await page.$(T('board-step-nem')), null, 'không lấy nước tương thì không có bước nêm')
+  assert.equal(!!(await page.$(T('board-step-nem'))), false, 'không lấy nước tương thì không có bước nêm')
   // Tự làm bước rửa dưa (w = 1, thạo cấp 2)
   await page.click(T('board-step-rua_dua'))
   await page.click(T('auto-step'))

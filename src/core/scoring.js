@@ -123,8 +123,10 @@ export function customerStars(customer, dishes, recipes, opts = {}) {
   if (anyHong) base = Math.min(base, 2)
   const tutorial = !!customer.tutorial
   const penalties = tutorial ? [] : (customer.penalties || []).slice()
-  if (!tutorial && customer.strict && (penalties.length > 0 || anyKitchenError)) {
-    penalties.push({ code: 'kho_tinh', stars: 1, source: penalties.length ? penalties[0].source : 'bep' })
+  // khách khó tính trừ thêm khi có LỖI (phạt do tình huống trong ca, vd từ chối đổi món, không phải lỗi)
+  const faults = penalties.filter(p => p.source !== 'tinh_huong')
+  if (!tutorial && customer.strict && (faults.length > 0 || anyKitchenError)) {
+    penalties.push({ code: 'kho_tinh', stars: 1, source: faults.length ? faults[0].source : 'bep' })
   }
   const total = penalties.reduce((s, p) => s + (Number(p.stars) || 0), 0)
   let stars = clamp(Math.floor(base - total + 1e-9), 1, 5)

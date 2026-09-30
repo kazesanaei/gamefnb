@@ -16,8 +16,15 @@ function mount(stage, step, ctx = {}) {
   const [za, zb] = scaledZone(zone, mul, 0, 1)
   const clock = createClock()
   const out = settleOnce()
-  stage.classList.add('mg-rot')
-  const fr = buildFrame(stage, step, ctx, { sub: 'Giữ để rót, thả tay đúng vạch.' })
+  // lớp vỏ: ly (rót nước) hoặc tô (rưới dầu hành, nước cốt dừa lên món)
+  const skinId = step.skin === 'to' ? 'to' : 'ly'
+  const skin = ((((ctx.data || {}).MINIGAME_TYPES || {}).rot || {}).skins || {})[skinId] || {}
+  const actText = skin.act || 'Giữ để rót'
+  const moreText = skin.actMore || 'Giữ để rót bù'
+  const countText = skin.count || 'Lần rót'
+  stage.classList.add('mg-rot', 'skin-' + skinId)
+  stage.dataset.skin = skinId
+  const fr = buildFrame(stage, step, ctx, { sub: skin.sub || 'Giữ để rót, thả tay đúng vạch.' })
 
   const level = h('div', { class: 'rot-level', 'data-testid': 'rot-level', 'data-v': '0' })
   const zoneEl = h('div', {
@@ -25,11 +32,11 @@ function mount(stage, step, ctx = {}) {
     style: { bottom: (za * 100).toFixed(2) + '%', height: ((zb - za) * 100).toFixed(2) + '%' }
   })
   const stream = h('div', { class: 'rot-stream' })
-  const cup = h('div', { class: 'rot-cup' }, level, zoneEl, h('div', { class: 'rot-rim' }))
+  const cup = h('div', { class: ['rot-cup', 'is-' + skinId] }, level, zoneEl, h('div', { class: 'rot-rim' }))
   const bottle = h('div', { class: 'rot-bottle' }, svgBox(ingIcon(step.ing, ctx), 'rot-bottle-icon'))
-  const pour = h('button', { class: 'btn btn-primary rot-pour', type: 'button', 'data-testid': 'rot-pour' }, 'Giữ để rót')
+  const pour = h('button', { class: 'btn btn-primary rot-pour', type: 'button', 'data-testid': 'rot-pour' }, actText)
   const done = h('button', { class: 'btn btn-ghost mg-done', type: 'button', 'data-testid': 'rot-done', disabled: true }, 'Xong')
-  const counter = h('div', { class: 'mg-count', 'data-testid': 'rot-count' }, 'Lần rót 0/' + ROT_MAX_POURS)
+  const counter = h('div', { class: 'mg-count', 'data-testid': 'rot-count' }, `${countText} 0/${ROT_MAX_POURS}`)
   fr.area.append(h('div', { class: 'rot-scene' }, bottle, stream, cup))
   fr.foot.append(counter, pour, done)
 
@@ -54,10 +61,11 @@ function mount(stage, step, ctx = {}) {
     else pours++
     pouring = true
     holdStart = clock.elapsed()
+    feedback(ctx, 'pour')
     stage.classList.add('is-pouring')
     pour.classList.add('is-down')
-    counter.textContent = `Lần rót ${pours}/${ROT_MAX_POURS}`
-    if (pours >= 2) pour.textContent = 'Giữ để rót bù'
+    counter.textContent = `${countText} ${pours}/${ROT_MAX_POURS}`
+    if (pours >= 2) pour.textContent = moreText
   }
   function stop() {
     if (!pouring) return
@@ -67,7 +75,7 @@ function mount(stage, step, ctx = {}) {
     feedback(ctx, 'tap')
     if (pours >= ROT_MAX_POURS) { setTimeout(finish, 250); return }
     done.disabled = false
-    pour.textContent = 'Giữ để rót bù'
+    pour.textContent = moreText
   }
 
   const unbind = bindPointer(pour, { down: start, up: stop, cancel: stop }, { space: true })
@@ -79,7 +87,7 @@ function mount(stage, step, ctx = {}) {
     resumable = true
     stage.classList.remove('is-pouring')
     pour.classList.remove('is-down')
-    pour.textContent = 'Giữ để rót tiếp'
+    pour.textContent = skin.actResume || 'Giữ để rót tiếp'
   }
   const onVis = () => { if (document.hidden) pauseHidden() }
   document.addEventListener('visibilitychange', onVis)

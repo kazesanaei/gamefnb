@@ -18,11 +18,12 @@ export function chainCard(app, c, opts = {}) {
     for (const k of c.claimable.slice()) {
       const r = claimChainReward(app.state, c.id, k.stepIndex, app.nowInfo(), app.ctx)
       if (!r.ok) { app.toast(reasonText(app, r.reason), { kind: 'bad' }); break }
-      got.push(rewardLine(r.reward, app.data, { currency }))
+      got.push(r.reward || {})
     }
     if (!got.length) return
     app.sound('coin')
-    app.toast('Nhận: ' + got.join(' · '), { kind: 'good' })
+    // gộp thưởng nhiều bước thành 1 dòng ngắn (cộng tiền, Muỗng Vàng; đếm thẻ Mẹo nghề) thay vì nối từng bước
+    app.toast('Nhận: ' + rewardLine(mergeRewards(got), app.data, { currency }), { kind: 'good' })
     app.saveNow()
     if (typeof opts.onChange === 'function') opts.onChange()
   }
@@ -79,11 +80,13 @@ function gateText(app, c, S) {
 }
 
 // Gộp nhiều phần thưởng (tiền, Muỗng Vàng, danh tiếng, Tem cộng dồn; món/đồ lấy cái đầu) để hiện gọn.
-function mergeRewards(list) {
+export function mergeRewards(list) {
   const out = {}
   for (const r of list) {
     for (const k of ['money', 'gold', 'rep', 'tem']) if (r[k]) out[k] = (out[k] || 0) + r[k]
     for (const k of ['recipe', 'title', 'unlock', 'upgrade', 'cosmetic', 'tipId', 'eventId']) if (r[k] && !out[k]) out[k] = r[k]
+    if (r.tipId) out.tipCount = (out.tipCount || 0) + 1
+    for (const [id, n] of Object.entries(r.items || {})) out.items = { ...(out.items || {}), [id]: ((out.items && out.items[id]) || 0) + n }
   }
   return out
 }

@@ -2,6 +2,23 @@
 import { nextFloat, chance, pick, weightedPick, makeRand } from './rng.js'
 import { cfg, emit } from './state.js'
 import { linePar } from './kitchen.js'
+import { averageRating } from './scoring.js'
+
+// Trần số khách một ca thường (Chợ phiên có trần riêng BALANCE.eventCustomerCap).
+export const MAX_CUSTOMERS = 8
+
+// Số khách của ca: customersPerShift(day) ±1 theo sao trung bình (sàn 3, trần 8). shift.js xuất lại hàm này.
+export function customerCount(state, ctx, day = state.day) {
+  const f = cfg(ctx, 'customersPerShift')
+  let n = typeof f === 'function' ? f(day) : Number(f) || 4
+  const ratings = state.ratings || []
+  if (day > 1 && ratings.length >= 5) {
+    const avg = averageRating(ratings)
+    if (avg >= 4.5) n += 1
+    else if (avg < 3.5) n -= 1
+  }
+  return Math.max(3, Math.min(MAX_CUSTOMERS, n))
+}
 
 export const STATUSES = Object.freeze(['den', 'xep_hang', 'order', 'thanh_toan', 'tinh_tien', 'cho_mon', 'nhan_mon', 'roi_di', 'bo_ve'])
 const TRANSITIONS = Object.freeze({

@@ -1,6 +1,9 @@
 // Màn Ca bán: HUD, hàng khách, tiến trình 4 khâu, dây phiếu, 2 panel Quầy/Bếp, phiếu chấm, xử lý phàn nàn.
+// M3: tình huống trong ca (hộp thoại chặn thời gian ca — kiên nhẫn khách tạm dừng) chỉ bật ở tab Quầy, giữa hai khách
+// (ngay sau khi kẹp phiếu, hoặc lúc quầy trống), không chen vào mini-game; khách quen trả nợ báo đầu ca.
 import { h, svgBox } from '../dom.js'
-import { face } from '../art.js'
+import { face, billSvg, DI_SAU } from '../art.js'
+import { incidentDue, openIncident, resolveIncident } from '../../core/incidents.js'
 import { isShiftOver, endShift } from '../../core/shift.js'
 import { beginCounter } from '../../core/order.js'
 import { stageOf, personaObj } from '../../core/customer.js'
@@ -49,6 +52,16 @@ export default {
     const dots = { counter: false, kitchen: false }
     let destroyed = false
     const offs = []
+    // Thông báo nổi chỉ che dải khách (đặc tả mục 12): chồng thông báo không vượt xuống thanh 4 khâu; thông báo không
+    // vừa thì chờ thông báo trước tắt (toast.js).
+    if (typeof app.toastLimit === 'function') {
+      app.toastLimit(() => {
+        const stack = app.overlay && app.overlay.querySelector('.toast-stack')
+        const bar = progress.el
+        if (!stack || !bar || !bar.isConnected) return 0
+        return bar.getBoundingClientRect().top - stack.getBoundingClientRect().top - 4
+      })
+    }
 
     const counter = mountCounter(panelCounter, app, { switchTab: t => showTab(t) })
     let kitchen = null
@@ -168,6 +181,7 @@ export default {
       if (head && !head.tutorial && head.patience < 0.3 && warnedLow !== head.id) {
         warnedLow = head.id
         app.vibrate(30)
+        app.sound('nudge')
       }
     }
 
@@ -208,6 +222,7 @@ export default {
       const sh = app.state.shift
       const c = sh && sh.customers[customerId]
       if (!c) return
+      if (reason === 'hang_day' || reason === 'het_kien_nhan') app.sound('nudge')
       if (reason === 'hang_day') app.toast(`${c.name} thấy hàng dài quá nên đi ngang.`, { kind: 'bad' })
       else if (reason === 'het_kien_nhan') app.toast(`${c.name} chờ lâu quá nên bỏ về.`, { kind: 'bad' })
     }))
@@ -216,6 +231,26 @@ export default {
     // ---------- M2: thông báo tiến độ (không chặn thao tác) ----------
     const M = S.meta
     const lastQuestToast = {}
+    // khách hướng dẫn ngày 1 còn trong ca: người mới chưa mở "Việc hôm nay", không báo tiến độ việc lúc này
+    const inTutorial = () => {
+      const sh = app.state.shift
+      return !!(sh && sh.day === 1 && Object.values(sh.customers || {}).some(c => c.tutorial && c.status !== 'roi_di' && c.status !== 'bo_ve'))
+    }
+    // tiến độ nhiều việc cùng lúc (vd một món vừa Tuyệt hảo vừa không lỗi nguyên liệu) gộp thành 1 thông báo
+    let questBatch = []
+    let questBatchTimer = 0
+    const flushQuestBatch = () => {
+      questBatchTimer = 0
+      const list = questBatch
+      questBatch = []
+      if (destroyed || !list.length) return
+      if (list.length === 1) {
+        app.toast(M.questProgress.replace('{cur}/{target}', list[0].num).replace('{text}', list[0].text), { kind: 'info', testid: 'quest-toast', duration: 1800 })
+        return
+      }
+      app.toast(list.map(x => `${x.num} ${x.text}`).join(' · '), { kind: 'info', title: M.quests, testid: 'quest-toast', duration: 2400 })
+    }
+    offs.push(() => clearTimeout(questBatchTimer))
     offs.push(app.bus.on('quest.progress', (c = {}) => {
       const def = questDef(app.ctx, c.id)
       if (!def) return
@@ -226,14 +261,16 @@ export default {
         return
       }
       if (!c.progress) {
-        if (def.breakOn) app.toast(`${M.quests}: chuỗi "${text}" bị đứt, đếm lại từ đầu.`, { kind: 'bad', testid: 'quest-toast' })
+        if (def.breakOn && !inTutorial()) app.toast(`${M.quests}: chuỗi "${text}" bị đứt, đếm lại từ đầu.`, { kind: 'bad', testid: 'quest-toast' })
         return
       }
+      if (inTutorial()) return
       const t = performance.now()
       if (lastQuestToast[c.id] && t - lastQuestToast[c.id] < 4000) return
       lastQuestToast[c.id] = t
       const num = def.money ? `${formatVND(c.progress)}/${formatVND(c.target)}` : `${c.progress}/${c.target}`
-      app.toast(M.questProgress.replace('{cur}/{target}', num).replace('{text}', text), { kind: 'info', testid: 'quest-toast', duration: 1800 })
+      questBatch = questBatch.filter(x => x.id !== c.id).concat([{ id: c.id, num, text }])
+      if (!questBatchTimer) questBatchTimer = setTimeout(flushQuestBatch, 400)
     }))
     // "Dì Sáu dặn", "Cô Hạnh nhờ": động từ theo NPC (NPCS[npc].verb)
     const chainWho = def => {
@@ -286,10 +323,16 @@ export default {
       app.toast(`+${n} ${ev.currencyName}` + (full ? ` · ${M.eventDailyCap.replace('{n}', String(cap)).replace('{currency}', ev.currencyName)}` : ` (hôm nay ${today}/${cap})`),
         { kind: 'good', icon: icon('phan_trang'), testid: 'tem-toast', duration: 1600 })
     }))
-    // Đầu ca: nhắc sự kiện ngày / Phiếu Chợ Sớm đang áp dụng
+    // Đầu ca: nhắc sự kiện ngày / Phiếu Chợ Sớm đang áp dụng; M3: khách quen trả nợ / quên trả nợ
     {
       const sh = app.state.shift
       const mods = sh && sh.mods
+      if (sh && sh.t < 2) {
+        for (const n of sh.debtNotes || []) {
+          app.toast(n.text, { kind: n.kind === 'tra' ? 'good' : 'info', title: 'Sổ ghi nợ', testid: 'debt-toast', duration: 3200 })
+          if (n.kind === 'tra') app.sound('coin')
+        }
+      }
       if (mods && sh.t < 2) {
         const de = mods.dayEvent && app.data.DAY_EVENTS && app.data.DAY_EVENTS[mods.dayEvent.id]
         if (de) {
@@ -300,6 +343,102 @@ export default {
       }
     }
     offs.push(app.bus.on('ui.tab', ({ tab } = {}) => { if (tab && tab !== active) showTab(tab) }))
+
+    // ---------- M3: Tình huống trong ca ----------
+    // Hỏi lõi mỗi khung hình và NGAY khi kẹp phiếu (trước khi khách kế bước lên quầy): chỉ ở tab Quầy, quầy trống,
+    // không có hộp thoại khác. Hộp thoại chặn nên thời gian ca và kiên nhẫn khách tạm dừng tới khi chọn xong.
+    let incidentOpen = false
+    function checkIncident() {
+      if (incidentOpen || destroyed || ended || active !== 'counter' || app.locked || app.modalOpen()) return
+      if (!app.state.shift || !incidentDue(app.state, app.ctx)) return
+      const view = openIncident(app.state, app.ctx)
+      if (!view) return
+      incidentOpen = true
+      app.save()
+      showIncident(view).finally(() => { incidentOpen = false })
+    }
+    offs.push(app.bus.on('ticket.clipped', () => checkIncident()))
+
+    function incidentArt(view) {
+      const sh = app.state.shift
+      if (view.id === 'khach_mo_hang') return svgBox(billSvg((view.detail && view.detail.bill) || 500000), 'incident-art is-bill')
+      const c = view.detail && view.detail.customerId && sh && sh.customers[view.detail.customerId]
+      if (c) return svgBox(face(c.persona, 'binh_thuong', c.gender), 'incident-art')
+      const rg = view.detail && view.detail.regularId && app.data.REGULARS && app.data.REGULARS[view.detail.regularId]
+      if (rg) return svgBox(face(rg.persona, 'vui', rg.gender), 'incident-art')
+      return svgBox(DI_SAU.lo, 'incident-art')
+    }
+
+    function effectChips(eff) {
+      const out = []
+      if (eff.money > 0) out.push(['good', '+' + formatVND(eff.money) + ' tiền bán'])
+      if (eff.cost > 0) out.push(['bad', '−' + formatVND(eff.cost) + ' giá vốn'])
+      if (eff.refund > 0) out.push(['bad', '−' + formatVND(eff.refund) + ' hoàn khách'])
+      if (eff.rep > 0) out.push(['good', `+${eff.rep} danh tiếng`])
+      if (eff.bonus > 0) out.push(['good', `Ca sau thêm ${eff.bonus} khách`])
+      if (eff.debt) out.push(['info', `Sổ ghi nợ: ${eff.debt.name} ${formatVND(eff.debt.amount)}`])
+      if (eff.starLoss > 0) out.push(['bad', `−${eff.starLoss} sao khi nhận món`])
+      if (!out.length) out.push(['info', 'Không tốn gì'])
+      return h('div', { class: 'incident-effects', testid: 'incident-effects' }, out.map(([k, t]) => h('span', { class: 'incident-fx ' + k }, t)))
+    }
+
+    async function showIncident(view) {
+      app.sound('nudge')
+      app.vibrate(20)
+      const tips = Array.isArray(app.data.TIPS) ? app.data.TIPS : []
+      const cfgI = app.data.INCIDENT_CONFIG || {}
+      const done = await app.modal({
+        testid: 'incident-modal', className: 'incident-modal',
+        render: close => {
+          const box = h('div', { class: 'incident', dataset: { incident: view.id } })
+          // thay nội dung hộp (bỏ qua mục rỗng: Element.append(null) sẽ in chữ "null")
+          const fillBox = (...nodes) => { box.textContent = ''; for (const n of nodes) if (n) box.appendChild(n) }
+          const ask = () => {
+            fillBox(
+              h('div', { class: 'incident-head' }, incidentArt(view),
+                h('div', { class: 'incident-titles' },
+                  h('span', { class: 'incident-kicker' },
+                    (view.when === 'mo_hang' ? (cfgI.introOpening || 'Tình huống đầu ca') : (cfgI.intro || 'Tình huống giữa hai khách')) +
+                    (view.positive ? ' · ' + (cfgI.positiveTag || 'chuyện vui') : '')),
+                  h('h2', { class: 'modal-title incident-title' }, view.name))),
+              h('p', { class: 'incident-text', testid: 'incident-text' }, view.text),
+              view.note ? h('p', { class: 'incident-note' }, view.note) : null,
+              h('p', { class: 'incident-pause small muted' }, 'Khách đang chờ cũng tạm dừng, cứ bình tĩnh chọn.'),
+              h('div', { class: 'choice-list incident-choices' }, view.choices.map(c => h('button', {
+                class: ['choice', 'incident-choice', c.safe ? 'is-safe' : ''], type: 'button', testid: 'incident-choice-' + c.id,
+                disabled: !c.available, dataset: { safe: String(c.safe), choice: c.id },
+                onclick: () => choose(c)
+              },
+              h('b', null, c.label),
+              h('small', null, c.available ? c.cost : c.reason),
+              c.safe ? h('span', { class: 'safe-badge' }, cfgI.safeLabel || 'An toàn') : null))))
+          }
+          const choose = c => {
+            const r = resolveIncident(app.state, c.id, app.ctx)
+            if (!r.ok) { app.toast('Chưa chọn được cách này.', { kind: 'bad' }); return }
+            app.sound(r.effects.money > 0 ? 'coin' : 'paper')
+            app.saveNow()
+            const tip = r.tipId ? tips.find(t => t.id === r.tipId) : null
+            fillBox(
+              h('div', { class: 'incident-head' }, incidentArt(view),
+                h('div', { class: 'incident-titles' },
+                  h('span', { class: 'incident-kicker' }, 'Đã chọn: ' + c.label),
+                  h('h2', { class: 'modal-title incident-title' }, view.name))),
+              h('div', { class: 'incident-result', testid: 'incident-result', dataset: { choice: c.id } },
+                h('p', { class: 'incident-text' }, r.text),
+                effectChips(r.effects),
+                tip ? h('div', { class: 'incident-tip', testid: 'incident-tip' }, h('b', null, 'Mẹo nghề: ' + tip.title), h('p', null, tip.text)) : null),
+              h('div', { class: 'modal-actions' },
+                h('button', { class: 'btn btn-primary', type: 'button', testid: 'incident-ok', onclick: () => close(r) }, 'Bán tiếp')))
+            const ok = box.querySelector('[data-testid="incident-ok"]')
+            if (ok) setTimeout(() => ok.focus({ preventScroll: true }), 30)
+          }
+          ask()
+          return box
+        }
+      })
+      if (done && !destroyed) app.save()
+    }
 
     // ---------- Phàn nàn ----------
     let complaintOpen = false
@@ -400,11 +539,15 @@ export default {
           try { kitchen.update(dt) } catch (err) { console.error(err) }
         }
         checkComplaint()
+        checkIncident()
+        // thời gian ca (giây) cho kiểm thử tự động: đứng yên khi có hộp thoại chặn (vd tình huống trong ca)
+        el.dataset.t = sh.t.toFixed(2)
         checkEnd(performance.now())
       },
       unmount() {
         destroyed = true
         for (const off of offs) off()
+        if (typeof app.toastLimit === 'function') app.toastLimit(null)
         if (app.switchTab === showTab) app.switchTab = null
         counter.unmount()
         if (kitchen && kitchen.unmount) { try { kitchen.unmount() } catch (err) { console.error(err) } }
@@ -428,9 +571,13 @@ export function renderScoreSheet(app, sheet) {
   const row = (label, bad, extra = '') => h('li', { class: bad ? 'bad' : 'ok' },
     h('span', null, label), h('b', null, (bad ? 'Sai' : 'Đạt') + (extra ? ' · ' + extra : '')))
   const labels = []
-  if (counterErr.length) labels.push(h('span', { class: 'err-tag counter' }, S.labels.counterError))
-  if (kitchenErr.length || kitchenBad) labels.push(h('span', { class: 'err-tag kitchen' }, S.labels.kitchenError))
+  // modifier riêng (err-tag--quay/--bep): tên '.counter'/'.kitchen' là class bố cục của panel Quầy/Bếp, dùng chung thì
+  // nhãn bị nhiễm kiểu panel (chữ màu mực trên nền gạch, cao lệch nhau)
+  if (counterErr.length) labels.push(h('span', { class: 'err-tag err-tag--quay', testid: 'score-sheet-tag-quay' }, S.labels.counterError))
+  if (kitchenErr.length || kitchenBad) labels.push(h('span', { class: 'err-tag err-tag--bep', testid: 'score-sheet-tag-bep' }, S.labels.kitchenError))
   const errNames = [...counterErr, ...kitchenErr].map(c => S.errors[c] || c)
+  // M3: phạt do tình huống trong ca (vd từ chối đổi món) — không phải lỗi quầy/bếp nhưng ghi rõ vì sao mất sao
+  const incidentPen = (sheet.penalties || []).filter(p => p.source === 'tinh_huong')
   return h('div', { class: 'score-sheet', testid: 'score-sheet', dataset: { customerId: sheet.customerId, stars: sheet.stars }, 'aria-live': 'polite' },
     h('div', { class: 'ss-head' },
       h('b', null, sheet.name),
@@ -444,6 +591,8 @@ export function renderScoreSheet(app, sheet) {
       row('Thời gian chờ', waitBad, speed)),
     labels.length ? h('div', { class: 'ss-tags' }, labels) : null,
     errNames.length ? h('div', { class: 'ss-errors small' }, errNames.join(' · ')) : null,
+    incidentPen.length ? h('div', { class: 'ss-errors small', testid: 'score-sheet-incident' },
+      incidentPen.map(p => `${S.errors[p.code] || p.code}: −${p.stars} sao`).join(' · ')) : null,
     sheet.tip > 0 ? h('div', { class: 'ss-tip' }, 'Tip: +' + formatVND(sheet.tip)) : null,
     sheet.review ? h('p', { class: 'ss-review' }, '“' + sheet.review + '”') : null)
 }

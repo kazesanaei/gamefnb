@@ -103,7 +103,7 @@ export const RECIPES = deepFreeze({
       { id: 'boc_trung_cut', type: 'cha', label: 'Bóc trứng cút', ing: 'trung_cut', params: { spots: 3 }, par: 3, w: 1 },
       { id: 'nem', type: 'cham', label: 'Nêm sa tế, vắt tắc', ing: 'tac',
         params: { mode: 'targets', targets: { sa_te: 2, tac: 2 } }, par: 3, w: 2 },
-      { id: 'rot_dau_hanh', type: 'rot', label: 'Rưới dầu hành phi', ing: 'hanh_phi',
+      { id: 'rot_dau_hanh', type: 'rot', skin: 'to', label: 'Rưới dầu hành phi', ing: 'hanh_phi',
         params: { zone: [0.55, 0.70] }, par: 2, w: 1 },
       { id: 'tron', type: 'cha', label: 'Trộn đều',
         after: ['cat_banh_trang', 'got_xoai', 'thai_xoai', 'boc_trung_cut', 'nem', 'rot_dau_hanh'],
@@ -132,7 +132,7 @@ export const RECIPES = deepFreeze({
       { id: 'chon', type: 'chon', label: 'Chọn nguyên liệu', par: 5, w: 1 },
       { id: 'rot_nuoc', type: 'rot', label: 'Chế nước sôi vào phin', ing: 'ca_phe',
         params: { zone: [0.60, 0.75] }, par: 3, w: 2 },
-      { id: 'u_phin', type: 'lua', label: 'Chờ phin nhỏ giọt', ing: 'ca_phe', after: ['rot_nuoc'],
+      { id: 'u_phin', type: 'lua', skin: 'phin', label: 'Chờ phin nhỏ giọt', ing: 'ca_phe', after: ['rot_nuoc'],
         params: { period: 6, zone: [0.60, 0.80] }, par: 6, w: 2 },
       { id: 'them_sua', type: 'cham', label: 'Thêm sữa đặc', ing: 'sua_dac',
         params: { mode: 'exact', n: 2, target: false }, par: 2, w: 3 },
@@ -170,9 +170,9 @@ export const RECIPES = deepFreeze({
         params: { strokes: 6 }, par: 3, w: 1 },
       { id: 'ao_bot', type: 'cham', label: 'Lăn bột năng', ing: 'bot_nang', after: ['bop_muoi'],
         params: { mode: 'min', N: 8, T: 3.5 }, par: 4, w: 2 },
-      { id: 'luoc', type: 'lua', label: 'Luộc tới khi trong', ing: 'bot_nang', after: ['ao_bot'], critical: true,
+      { id: 'luoc', type: 'lua', skin: 'noi', label: 'Luộc tới khi trong', ing: 'bot_nang', after: ['ao_bot'], critical: true,
         params: { period: 5, zone: [0.55, 0.75] }, par: 5, w: 3, retryCost: 3000 },
-      { id: 'rot_cot_dua', type: 'rot', label: 'Rưới nước cốt dừa', ing: 'cot_dua',
+      { id: 'rot_cot_dua', type: 'rot', skin: 'to', label: 'Rưới nước cốt dừa', ing: 'cot_dua',
         params: { zone: [0.65, 0.80] }, par: 2, w: 2 }
     ]
   }

@@ -7,6 +7,19 @@ import {
 import { startCook, submitChon, availableSteps, getStep, submitStep, finishDish, serveTicket, resolveComplaint } from '../../src/core/kitchen.js'
 import { requiredIngredients } from '../../src/core/scoring.js'
 import { minBillsChange, addBills } from '../../src/core/money.js'
+import { incidentDue, openIncident, resolveIncident } from '../../src/core/incidents.js'
+
+// Tình huống trong ca (M3), như giao diện ở tab Quầy: quầy trống giữa hai khách → mở → chọn.
+// choose(view, state) → id lựa chọn (mặc định: cách an toàn). Trả { view, res } hoặc null.
+export function handleIncident(state, ctx, choose = view => view.safeId) {
+  if (!incidentDue(state, ctx)) return null
+  const view = openIncident(state, ctx)
+  if (!view) return null
+  const id = choose(view, state)
+  const res = resolveIncident(state, id, ctx)
+  if (!res.ok) throw new Error('không xử lý được tình huống ' + view.id + '/' + id + ': ' + res.reason)
+  return { view, res }
+}
 
 // Một bước ở quầy. Trả true nếu có tiến triển.
 export function counterStep(state, ctx) {
@@ -83,19 +96,29 @@ export function cookTicket(state, ctx, ticket, { score = 100 } = {}) {
   return sheet
 }
 
-// Chơi trọn một ca. Trả {summary, sheets, walletBefore, walletAfter, steps}.
-export function playShift(state, ctx, { dt = 0.5, maxSteps = 20000, score = 100 } = {}) {
+// Chơi trọn một ca. Trả {summary, sheets, walletBefore, walletAfter, steps, incidents}.
+// incident (tùy chọn, M3): hàm chọn cách xử lý tình huống trong ca (xem handleIncident); không có thì bỏ qua
+// tình huống (như người chơi không ở tab Quầy lúc quầy trống).
+export function playShift(state, ctx, { dt = 0.5, maxSteps = 20000, score = 100, incident = null } = {}) {
   const walletBefore = state.wallet
   startShift(state, ctx)
   const sheets = []
+  const incidents = []
+  const tryIncident = () => {
+    if (!incident) return
+    const r = handleIncident(state, ctx, incident)
+    if (r) incidents.push(r)
+  }
   let steps = 0
   while (!isShiftOver(state)) {
     if (++steps > maxSteps) throw new Error('ca không kết thúc')
     const sh = state.shift
-    while (counterStep(state, ctx)) { /* xử lý quầy tới khi phải chờ */ }
+    tryIncident()
+    while (counterStep(state, ctx)) { tryIncident() /* xử lý quầy tới khi phải chờ */ }
+    tryIncident()
     for (const t of sh.tickets.slice()) sheets.push(cookTicket(state, ctx, t, { score }))
     if (!isShiftOver(state)) advance(state, dt, ctx)
   }
   const summary = endShift(state, ctx)
-  return { summary, sheets, walletBefore, walletAfter: state.wallet, steps }
+  return { summary, sheets, walletBefore, walletAfter: state.wallet, steps, incidents }
 }

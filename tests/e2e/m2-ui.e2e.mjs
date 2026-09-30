@@ -92,12 +92,12 @@ test('nấu thử: chọn nguyên liệu + Thớt sơ chế, không tốn tiền
     assert.match(await page.textContent(T('tasting-label')), /Nấu thử/)
     // không có nút về dây phiếu / bỏ món trong nấu thử
     await page.waitForSelector(`${T('minigame-stage')}[data-type="chon"]`)
-    assert.equal(await page.$(T('kitchen-back')), null)
+    assert.equal(!!(await page.$(T('kitchen-back'))), false)
     const recipe = DATA.RECIPES.banh_trang_tron
     for (const id of requiredIngredients(recipe, []).required) await page.click(T('shelf-' + id))
     await page.click(T('chon-done'))
     await page.waitForSelector(T('board'))
-    assert.equal(await page.$(T('abandon-dish')), null)
+    assert.equal(!!(await page.$(T('abandon-dish'))), false)
     await playBoard(g, recipe)
     await page.click(T('finish-dish'))
     const res = await page.waitForSelector(T('tasting-result'), { timeout: 10000 })

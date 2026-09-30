@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Biểu tượng Bếp Khởi Nghiệp: xe đẩy bánh mì dưới tán dù vàng trên nền đỏ gạch.
+       Toàn bộ hình nằm trong vùng an toàn (bán kính 40% quanh tâm) để dùng được cả cho biểu tượng "maskable". -->
+  <defs>
+    <radialGradient id="nen" cx="50%" cy="36%" r="78%">
+      <stop offset="0" stop-color="#d4603f"/>
+      <stop offset="1" stop-color="#a23b25"/>
+    </radialGradient>
+    <clipPath id="tan">
+      <path d="M126 216 Q126 104 256 98 Q386 104 386 216 Z"/>
+    </clipPath>
+    <linearGradient id="banh" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f0b865"/>
+      <stop offset="1" stop-color="#cf8a3a"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#nen)"/>
+  <ellipse cx="256" cy="414" rx="138" ry="15" fill="#6e2413" opacity=".4"/>
+  <!-- cán dù -->
+  <rect x="250" y="200" width="12" height="100" rx="6" fill="#3b2a1f"/>
+  <!-- tán dù chia múi vàng / kem -->
+  <g clip-path="url(#tan)">
+    <rect x="120" y="90" width="272" height="130" fill="#f2b632"/>
+    <path d="M256 98 L169.33 216 L212.67 216 Z" fill="#fbf3e2"/>
+    <path d="M256 98 L256 216 L299.33 216 Z" fill="#fbf3e2"/>
+    <path d="M256 98 L342.67 216 L400 216 L400 120 Z" fill="#fbf3e2"/>
+  </g>
+  <!-- mép tán lượn sóng -->
+  <path d="M126 216 a21.67 21.67 0 0 0 43.33 0 Z" fill="#f2b632"/>
+  <path d="M169.33 216 a21.67 21.67 0 0 0 43.33 0 Z" fill="#fbf3e2"/>
+  <path d="M212.67 216 a21.67 21.67 0 0 0 43.33 0 Z" fill="#f2b632"/>
+  <path d="M256 216 a21.67 21.67 0 0 0 43.33 0 Z" fill="#fbf3e2"/>
+  <path d="M299.33 216 a21.67 21.67 0 0 0 43.33 0 Z" fill="#f2b632"/>
+  <path d="M342.67 216 a21.67 21.67 0 0 0 43.33 0 Z" fill="#fbf3e2"/>
+  <circle cx="256" cy="97" r="9" fill="#3b2a1f"/>
+  <!-- tay đẩy -->
+  <path d="M350 300 L394 272" stroke="#3b2a1f" stroke-width="11" stroke-linecap="round"/>
+  <!-- mặt quầy và thân xe -->
+  <rect x="146" y="284" width="220" height="24" rx="9" fill="#3b2a1f"/>
+  <rect x="158" y="304" width="196" height="84" rx="12" fill="#fffaf0"/>
+  <rect x="158" y="372" width="196" height="16" rx="6" fill="#efe2c6"/>
+  <!-- ổ bánh mì -->
+  <g transform="rotate(-9 256 338)">
+    <ellipse cx="256" cy="338" rx="62" ry="21" fill="url(#banh)"/>
+    <path d="M218 330 q8 -9 16 0 M246 327 q8 -9 16 0 M274 330 q8 -9 16 0" stroke="#a9651f" stroke-width="5" fill="none" stroke-linecap="round"/>
+  </g>
+  <!-- bánh xe -->
+  <circle cx="202" cy="394" r="25" fill="#3b2a1f"/>
+  <circle cx="202" cy="394" r="9" fill="#f2b632"/>
+  <circle cx="310" cy="394" r="25" fill="#3b2a1f"/>
+  <circle cx="310" cy="394" r="9" fill="#f2b632"/>
+</svg>

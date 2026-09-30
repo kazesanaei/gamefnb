@@ -63,7 +63,7 @@ function mount(stage, step, ctx = {}) {
           pan.appendChild(splat)
           const good = d <= R2
           popLabel(pan, good ? 'Đẹp!' : 'Lệch', p.x, p.y - 20, good ? 'is-good' : 'is-off')
-          feedback(ctx, good ? 'cut' : 'tap')
+          feedback(ctx, good ? 'hit' : 'tap')
           render()
           if (taps >= n) setTimeout(finish, 260)
         }

@@ -16,6 +16,14 @@ const FOOD_COLORS = {
   xoai_xanh: ['#9ccc4a', '#f2f0b4'], vo_buoi: ['#a8d46f', '#fff6e8']
 }
 
+// Nhãn sau mỗi nhát thái theo điểm nhát (thaiCutScore): 100 Chuẩn · 80 Hơi lệch · 55 Lệch · 20 Lệch xa.
+export function cutLabel(score) {
+  if (score >= 100) return 'Chuẩn!'
+  if (score >= 80) return 'Hơi lệch'
+  if (score >= 55) return 'Lệch'
+  return 'Lệch xa'
+}
+
 function mount(stage, step, ctx = {}) {
   const params = step.params || {}
   const n = Math.max(1, Math.floor(Number(params.cuts) || 1))
@@ -88,8 +96,9 @@ function mount(stage, step, ctx = {}) {
     el.dataset.dev = String(hit.dev)
     const mark = h('div', { class: 'thai-cut', style: { left: xBoard + 'px' } })
     board.appendChild(mark)
-    popLabel(board, s >= 100 ? 'Chuẩn!' : `Lệch ${Math.round(Math.abs(hit.dev))}px`, xBoard, 24, s >= 80 ? 'is-good' : 'is-off')
-    feedback(ctx, s >= 100 ? 'cut' : 'tap')
+    // chữ theo ngưỡng chấm (không hiện đơn vị kỹ thuật như "px")
+    popLabel(board, cutLabel(s), xBoard, 24, s >= 80 ? 'is-good' : 'is-off')
+    feedback(ctx, s >= 100 ? 'cut' : 'chop')
     food.classList.add('is-cut')
     renderCount()
     if (cuts.every(c => c !== null)) setTimeout(finish, 260)

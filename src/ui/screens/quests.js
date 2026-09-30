@@ -87,7 +87,7 @@ export default {
           onclick: () => {
             const r = claimDailyChest(app.state, app.nowInfo(), app.ctx)
             if (!r.ok) { app.toast(reasonText(app, r.reason), { kind: 'bad' }); return }
-            app.sound('coin')
+            app.sound('chest')
             app.vibrate(30)
             done('Rương ngày: ' + rewardLine(r.reward, app.data))
           }

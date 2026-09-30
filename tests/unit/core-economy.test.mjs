@@ -86,7 +86,9 @@ test('Mẹo nghề: mở 1 lần; ngoài ngày 1 tối đa 1 thẻ mỗi ca', ()
   assert.equal(unlockTip(s, 'fake_qr', ctx), null)
   assert.deepEqual(s.tipsSeen, ['doc_lai_order', 'dem_hai_lan'])
   assert.equal(ctx.events.filter(e => e.type === 'tip.unlocked').length, 2)
+  // M3 (vòng soát lỗi): tắt công tắc "Mẹo nghề" chỉ tắt thẻ nổi; thẻ vẫn mở và vào Sổ tay nghề
   s.settings.tips = false
   s.shift = null
-  assert.equal(unlockTip(s, 'fake_qr', ctx), null)
+  assert.equal(unlockTip(s, 'fake_qr', ctx), 'qr_dung_so')
+  assert.ok(s.tipsSeen.includes('qr_dung_so'))
 })

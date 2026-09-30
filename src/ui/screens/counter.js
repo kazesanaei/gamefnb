@@ -112,6 +112,16 @@ export function mountCounter(root, app, opts = {}) {
     if (over > 0) sc.scrollTop += Math.min(over, Math.max(0, a.top - b.top))
   }
 
+  // Cuộn panel để phần tử nằm trên thanh nút dính đáy (.act-bar) của khâu hiện tại.
+  function revealAboveBar(node) {
+    const sc = root
+    if (!node || destroyed || !sc || !sc.getBoundingClientRect) return
+    const bar = el.querySelector('.act-bar')
+    const limit = bar ? bar.getBoundingClientRect().top : sc.getBoundingClientRect().bottom
+    const over = node.getBoundingClientRect().bottom - (limit - 6)
+    if (over > 0) sc.scrollTop += over
+  }
+
   function renderIdle(s) {
     const waiting = Object.values(s.customers).filter(c => c.status === 'cho_mon' || c.status === 'nhan_mon')
     return h('div', { class: 'counter-idle', testid: 'counter-idle' },
@@ -262,12 +272,15 @@ export function mountCounter(root, app, opts = {}) {
     const setQty = q => { sheet.qty = Math.max(1, Math.min(3, q)); rerender() }
     const submit = () => {
       const line = { recipeId: sheet.recipeId, qty: sheet.qty, notes: sheet.notes.slice() }
+      const index = editing ? sheet.editIndex : (counter() ? counter().draft.length : 0)
       if (editing) updateLine(app.state, sheet.editIndex, line)
       else addLine(app.state, line)
       app.sound('paper')
       ui.sheet = null
       app.save()
       rerender()
+      // dòng vừa ghi phải lọt khỏi thanh nút dính đáy (màn thấp 360×740: thanh "Đọc lại đơn" che mất)
+      revealAboveBar(el.querySelector(`[data-testid="order-line-${index}"]`))
     }
     const close = () => { ui.sheet = null; rerender() }
     const unit = unitPriceOf(r, sheet.notes)
@@ -389,8 +402,11 @@ export function mountCounter(root, app, opts = {}) {
         h('div', null, 'Tổng: ', h('b', { testid: 'amount-due' }, formatVND(c.amountDue))),
         h('div', null, 'Khách đưa: ', h('b', null, formatVND(c.given ? c.given.total : 0))),
         c.changePaid > 0 ? h('div', null, 'Đã thối: ', h('b', null, formatVND(c.changePaid))) : null,
-        showChangeHint() ? h('div', { class: 'change-hint', testid: 'change-hint', dataset: { amount: due } }, (c.changePaid > 0 ? 'Cần thối bù: ' : 'Cần thối: '), h('b', null, formatVND(due))) : null)))
+        showChangeHint() ? h('div', { class: 'change-hint', testid: 'change-hint', dataset: { amount: due } }, (c.changePaid > 0 ? 'Cần thối bù: ' : 'Cần thối: '), h('b', null, formatVND(due))) : null,
+        // ngày đầu (đang hiện "Cần thối"): khay nhiều hơn số cần thối → cảnh báo đỏ trước khi đưa
+        showChangeHint() && trayAmt > due ? h('div', { class: 'change-over', testid: 'change-over', role: 'status' }, 'Đang thối dư ', h('b', null, formatVND(trayAmt - due))) : null)))
     wrap.appendChild(renderTray(c.tray, {
+      emptyText: due === 0 ? 'Không cần thối tiền' : null,
       onReturn: b => { if (trayRemove(app.state, b)) { app.sound('click'); app.save(); rerender() } }
     }))
     if (ui.lastAdded) {
@@ -422,7 +438,7 @@ export function mountCounter(root, app, opts = {}) {
     const said = res.given > 0 ? `Dạ thối mình ${formatVND(res.given)} ạ.` : 'Dạ mình đưa vừa đủ ạ, cảm ơn nhiều!'
     say('ban', said)
     if (res.correct) {
-      app.sound('coin')
+      app.sound('cash')
       say('khach', lineOf('change_ok', customer) || lineOf('thanks', customer))
       if (res.given > 0) app.toast(res.optimal ? 'Thối đúng · Thối gọn' : 'Thối đúng', { kind: 'good', duration: 1400 })
     } else if (res.diff < 0 && res.detected) {
@@ -508,7 +524,7 @@ export function mountCounter(root, app, opts = {}) {
 
   function doConfirmQr() {
     const r = confirmQr(app.state, app.ctx)
-    if (r.ok && !r.fake) { app.sound('coin'); app.toast('Đã nhận tiền chuyển khoản.', { kind: 'good', duration: 1400 }) }
+    if (r.ok && !r.fake) { app.sound('cash'); app.toast('Đã nhận tiền chuyển khoản.', { kind: 'good', duration: 1400 }) }
     else if (r.ok && r.fake) {
       app.sound('error'); app.vibrate(80)
       app.toast(app.data.DIALOGUE.anhKhoa.fakeQr, { kind: 'bad', title: 'Anh Khoa', duration: 3200 })
@@ -604,7 +620,14 @@ export function mountCounter(root, app, opts = {}) {
     if (step === 'readback') return T.readback
     if (step === 'confirm-order') return 'Khách nghe xong thấy đúng rồi, bấm "Chốt order" nha con.'
     if (step === 'report-total') return T.total
-    if (step === 'give-change') return T.change
+    if (step === 'give-change') {
+      // khách đưa vừa đủ: đừng bảo lấy tiền thối (làm theo là thối dư); khay dư thì nhắc trả về két
+      const due = changeRemaining(app.state)
+      const tray = drawerTotal(c.tray)
+      if (due === 0 && tray === 0) return T.noChange || T.change
+      if (tray > due && T.overChange) return fill(T.overChange, { amount: formatVND(tray - due) })
+      return T.change
+    }
     if (step === 'clip-ticket') return T.ticket
     return ''
   }

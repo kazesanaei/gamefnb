@@ -1,5 +1,5 @@
 // Kinh tế: tổng kết ca, tất toán ví, chi tiêu, vay Dì Sáu, mua nâng cấp/công thức.
-import { drawerTotal } from './money.js'
+import { drawerTotal, roundReward } from './money.js'
 import { DEFAULT_BALANCE, emit, newRecipeProgress } from './state.js'
 
 function countCodes(into, codes) {
@@ -36,7 +36,9 @@ export function summarizeShift(state, data = null) {
   const drawerExpected = sh.floatAmount + L.cash
   const fixedCost = sh.fixedCost ?? DEFAULT_BALANCE.fixedCostPerShift
   const cashNet = drawerActual - sh.floatAmount
-  const profit = cashNet + sh.qrBalance + sh.tipJar - fixedCost - L.refunds - L.cogs - L.waste
+  // M3: tiền khách quen trả nợ (tình huống ghi nợ ở ca trước) vào ca này
+  const debtIn = Number(sh.debtIn) || 0
+  const profit = cashNet + sh.qrBalance + sh.tipJar + debtIn - fixedCost - L.refunds - L.cogs - L.waste
   const sheets = sh.scoreSheets.filter(s => s.final)
   const starsList = sheets.map(s => s.stars)
   const avgStars = starsList.length ? Math.round((starsList.reduce((a, b) => a + b, 0) / starsList.length) * 100) / 100 : 0
@@ -71,7 +73,10 @@ export function summarizeShift(state, data = null) {
     qrBalance: sh.qrBalance, tipJar: sh.tipJar,
     avgStars, ratings: starsList, reputationGain: sh.reputationGain || 0,
     counterErrors, kitchenErrors, bestDish, advice,
-    lateReviews, loanRepaid: 0
+    lateReviews, loanRepaid: 0,
+    // M3: tình huống trong ca (đã xử lý) và tiền khách quen trả nợ
+    incidents: sh.incident && sh.incident.status === 'xong' && sh.incident.result ? [{ ...sh.incident.result }] : [],
+    debtIn, debtNotes: (sh.debtNotes || []).map(n => ({ ...n }))
   }
 }
 
@@ -80,7 +85,7 @@ export function summarizeShift(state, data = null) {
 export function settleShift(state, summary) {
   const sh = state.shift
   const cashNet = drawerTotal(sh.drawer) - sh.floatAmount
-  state.wallet += cashNet + sh.qrBalance + sh.tipJar - summary.fixedCost - summary.refunds
+  state.wallet += cashNet + sh.qrBalance + sh.tipJar + (Number(sh.debtIn) || 0) - summary.fixedCost - summary.refunds
   let repaid = 0
   if (state.loan && state.loan.remaining > 0 && summary.profit > 0) {
     const rate = sh.loanRepayRate ?? DEFAULT_BALANCE.loanRepayRate
@@ -123,7 +128,8 @@ export function takeLoan(state, balance = DEFAULT_BALANCE) {
   const amount = balance.loanAmount ?? DEFAULT_BALANCE.loanAmount
   const interest = balance.loanInterest ?? DEFAULT_BALANCE.loanInterest
   state.wallet += amount
-  state.loan = { amount, remaining: Math.round(amount * (1 + interest)) }
+  // tiền nợ (gốc + lãi) làm tròn lên bội 1.000đ để ví không lẻ
+  state.loan = { amount, remaining: roundReward(amount * (1 + interest)) }
   return true
 }
 

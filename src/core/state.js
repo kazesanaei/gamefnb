@@ -98,8 +98,33 @@ export function defaultMeta() {
   }
 }
 
+// Mức tần suất tình huống trong ca (Cài đặt, M3): Nhiều / Vừa / Ít. 'it' chỉ gồm tình huống tích cực.
+export const INCIDENT_FREQUENCIES = Object.freeze(['nhieu', 'vua', 'it'])
+
 export function defaultSettings() {
-  return { sound: true, vibrate: true, tips: true, reducedMotion: false, assistCash: false, assistMotion: false }
+  return {
+    sound: true, vibrate: true, tips: true, reducedMotion: false, assistCash: false, assistMotion: false,
+    // M3: âm lượng 0..1; tần suất tình huống trong ca ('nhieu' | 'vua' | 'it')
+    volume: 0.8, incidentFrequency: 'vua'
+  }
+}
+
+// M3: tình huống trong ca (src/core/incidents.js): since = số ca liền (từ ngày có tình huống) chưa gặp tình huống nào
+// (bảo hiểm), recent = loại gặp gần nhất (không lặp), log = nhật ký ngắn, debts = sổ ghi nợ khách quen,
+// bonus = khách thêm ở ca sau ({day, customers}), total = số tình huống đã xử lý.
+export function defaultIncidents() {
+  return { since: 0, recent: [], log: [], debts: [], bonus: null, total: 0 }
+}
+
+// M3: Sổ tay nghề (src/core/notebook.js): claimed = nhóm Mẹo nghề đã nhận thưởng đủ nhóm (mỗi nhóm 1 lần).
+export function defaultNotebook() {
+  return { claimed: [] }
+}
+
+// M3: mốc sao lưu (ms, giờ máy do giao diện ghi): lastAt = lần chép/tải mã sao lưu gần nhất,
+// since = lần đầu bản lưu này được mở ở bản có sao lưu (làm mốc nhắc khi chưa sao lưu lần nào).
+export function defaultBackupInfo() {
+  return { lastAt: 0, since: 0 }
 }
 
 // data (tùy chọn): lấy các món source 'default' của chặng 1 thay cho danh sách mặc định.
@@ -133,17 +158,20 @@ export function defaultState(seed = 0, data = null) {
     shift: null,
     clock: { maxSeen: 0 },
     rev: 0,                  // số hiệu bản ghi, tăng mỗi lần lưu (chống tab cũ ghi đè bản mới hơn)
+    backup: defaultBackupInfo(),
+    incidents: defaultIncidents(),
+    notebook: defaultNotebook(),
     ...defaultMeta()
   }
 }
 
 // Mở thẻ Mẹo nghề đầu tiên có trigger = code mà người chơi chưa thấy.
-// Ngoài ngày 1 (hướng dẫn), tối đa 1 thẻ mỗi ca; tắt khi settings.tips = false.
+// Ngoài ngày 1 (hướng dẫn), tối đa 1 thẻ mỗi ca. Công tắc "Mẹo nghề" (settings.tips = false) chỉ tắt thẻ NỔI trong ca
+// (giao diện không hiện): thẻ vẫn được mở và ghi vào Sổ tay nghề, nên thưởng đủ nhóm vẫn đạt được.
 // Trả id thẻ hoặc null. Phát 'tip.unlocked' {tipId}.
 export function unlockTip(state, code, ctx) {
   const tips = ctx && ctx.data && ctx.data.TIPS
   if (!tips || !code) return null
-  if (state.settings && state.settings.tips === false) return null
   const list = Array.isArray(tips) ? tips : Object.values(tips)
   const seen = state.tipsSeen || (state.tipsSeen = [])
   const tip = list.find(t => t && t.trigger === code && !seen.includes(t.id))

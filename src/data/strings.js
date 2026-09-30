@@ -176,7 +176,9 @@ export const STRINGS = deepFreeze({
     tran: 'Rót tràn',
     bo_qua: 'Bỏ qua bước',
     cho_goi_mon: 'Chờ gọi món lâu',
-    kho_tinh: 'Khách khó tính trừ thêm'
+    kho_tinh: 'Khách khó tính trừ thêm',
+    // M3: tình huống trong ca (không phải lỗi quầy/bếp)
+    tu_choi_doi_mon: 'Khách phật ý vì không được đổi món'
   },
 
   summary: {
@@ -200,7 +202,7 @@ export const STRINGS = deepFreeze({
     drawerExpected: 'Két phải có',
     drawerActual: 'Két thực có',
     drawerDiff: 'Lệch két',
-    avgStars: 'Sao trung bình',
+    avgStars: 'Sao ca này',
     reputationGain: 'Danh tiếng nhận được',
     bestDish: 'Món ngon nhất',
     advice: 'Mẹo của Dì Sáu',

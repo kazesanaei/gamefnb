@@ -16,7 +16,7 @@
 .pill-spoon b { color: #9a6a00; }
 .pill-money { padding-left: 10px; }
 .pill.compact { padding: 3px 8px 3px 5px; gap: 4px; }
-.pill-money.compact b { color: var(--green); }
+.pill-money.compact b { color: var(--green-ink); }
 .pill-icon { display: inline-block; width: 24px; height: 24px; line-height: 0; flex: none; }
 .pill-icon svg { width: 100%; height: 100%; }
 
@@ -123,7 +123,7 @@
 .chain-gate { color: #2a679e; }
 .chain-assist { color: #2a679e; font-weight: 600; }
 .chain-done { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
-.chain-done-tag { font-size: 14px; font-weight: 800; color: var(--green); background: var(--green-soft); border-radius: 999px; padding: 1px 10px; }
+.chain-done-tag { font-size: 14px; font-weight: 800; color: var(--green-ink); background: var(--green-soft); border-radius: 999px; padding: 1px 10px; }
 .chain-quote { font-weight: 600; font-style: italic; }
 .event-card > .red-dot { top: -6px; right: -6px; }
 .event-card.has-pending { border-color: var(--brick); }
@@ -199,7 +199,7 @@
 .shop-fact.wide { grid-column: 1 / -1; }
 .shop-fact dt { font-size: 14px; color: var(--muted); font-weight: 700; }
 .shop-fact dd { margin: 0; font-size: 15px; font-weight: 800; overflow-wrap: anywhere; }
-.shop-fact.good dd { color: var(--green); }
+.shop-fact.good dd { color: var(--green-ink); }
 .shop-actions { display: flex; gap: 8px; }
 .shop-actions .btn { flex: 1 1 0; min-width: 0; padding-left: 8px; padding-right: 8px; }
 .shop-lack { color: var(--bad); font-weight: 700; }
@@ -269,7 +269,7 @@
 .tasting-result-dish { width: 120px; height: 120px; display: inline-block; line-height: 0; }
 .tasting-result-dish svg { width: 100%; height: 100%; }
 .tasting-grade { font-size: 26px; font-weight: 900; color: var(--brick); }
-.tasting-grade.grade-tuyet_hao, .tasting-grade.grade-ngon { color: var(--green); }
+.tasting-grade.grade-tuyet_hao, .tasting-grade.grade-ngon { color: var(--green-ink); }
 .tasting-result .npc-talk { width: 100%; }
 .tasting-actions { width: 100%; display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
 
@@ -370,7 +370,7 @@
 .ev-block { display: flex; flex-direction: column; gap: 8px; }
 .ev-ck-row { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
 .ev-ck { display: flex; align-items: center; justify-content: center; height: 36px; border-radius: 10px; border: 2px solid var(--line); background: #fff; font-weight: 800; font-size: 14px; }
-.ev-ck.is-claimed { background: var(--green-soft); border-color: #b6dbb0; color: var(--green); }
+.ev-ck.is-claimed { background: var(--green-soft); border-color: #b6dbb0; color: var(--green-ink); }
 .ev-ck.is-next { border-color: var(--brick); }
 .ev-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .ev-quests { display: flex; flex-direction: column; gap: 8px; }
@@ -423,7 +423,7 @@
 .sum-quests { display: flex; flex-direction: column; gap: 6px; }
 .sum-quests li { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; font-size: 14px; }
 .sum-quests li .pbar { grid-column: 1 / -1; }
-.sum-quests li.is-done .sq-text { color: var(--green); font-weight: 800; }
+.sum-quests li.is-done .sq-text { color: var(--green-ink); font-weight: 800; }
 .sq-num { font-weight: 800; font-variant-numeric: tabular-nums; }
 
 /* Màn hẹp 360px */
@@ -434,4 +434,165 @@
   .ex-grid { grid-template-columns: 1fr; }
   .seg-tab { font-size: 14px; }
   .meta-title { font-size: 20px; }
+}
+
+/* =====================================================================================
+   M3 nội dung: màn Chuẩn bị gọn (lưới biểu tượng, thẻ Hôm nay), Sổ tay nghề, Sổ công thức,
+   Sổ từ vùng miền, hộp thoại tình huống trong ca, thẻ tình huống ở Tổng kết.
+   Vùng chạm ≥ 44px, chữ ≥ 14px, không tràn ngang ở 360px.
+   ===================================================================================== */
+
+/* ---------- Màn Chuẩn bị ---------- */
+.prep-head .prep-dayrow { display: flex; align-items: baseline; justify-content: flex-start; flex-wrap: wrap; gap: 2px 10px; }
+.nav-grid.icon-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.nav-tile.icon-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px;
+  min-height: 80px; padding: 8px 2px 6px; text-align: center;
+}
+.icon-tile .nav-icon { width: 34px; height: 34px; color: var(--brick-dark); flex: none; }
+.icon-tile .nav-label { font-size: 14px; font-weight: 800; line-height: 1.15; overflow-wrap: break-word; max-width: 100%; }
+.icon-tile .red-dot { top: -6px; right: -4px; }
+.prep-today { display: flex; flex-direction: column; gap: 6px; }
+.prep-today .card-title { margin-bottom: 0; }
+.prep-today .prep-menu { margin-top: 4px; }
+.prep-forecast { font-size: 15px; }
+.prep-bonus { color: var(--green-ink); font-weight: 700; }
+.prep-debts { color: #2f4a63; }
+.prep-dish { flex-direction: row; align-items: center; justify-content: flex-start; gap: 8px; padding: 8px; text-align: left; min-width: 0; }
+.prep-dish .dish-icon { flex: none; }
+.prep-dish-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.prep-dish-info .prep-dish-name { line-height: 1.2; }
+.tip-card .tip-more { align-self: flex-start; margin-top: 8px; }
+.tip-card { display: flex; flex-direction: column; }
+
+/* ---------- Sổ tay nghề ---------- */
+.nb-overall { display: flex; align-items: center; gap: 10px; }
+.nb-overall-num { font-weight: 900; font-size: 15px; font-variant-numeric: tabular-nums; }
+.nb-featured .bubble p { font-size: 15px; }
+.nb-group { position: relative; display: flex; flex-direction: column; gap: 8px; }
+.nb-group.is-complete { background: #f7fbf4; border-color: #b6dbb0; }
+.nb-group.has-pending { border-color: #f0b8a8; background: #fff7f2; }
+.nb-group-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.nb-group-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.nb-group-title .card-title { margin-bottom: 0; }
+.nb-group-head .red-dot { top: -6px; right: -6px; }
+.nb-reward { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.nb-reward .btn, .nb-reward .nb-claimed { margin-left: auto; }
+.nb-claimed { font-size: 14px; font-weight: 800; color: var(--green-ink); }
+.nb-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.nb-tab {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
+  min-height: 52px; padding: 4px 2px; border-radius: 12px; border: 2px solid var(--line); background: #fff; color: var(--muted);
+  font-weight: 800; line-height: 1.15; touch-action: manipulation;
+}
+.nb-tab-name { font-size: 15px; }
+.nb-tab-num { font-size: 14px; font-variant-numeric: tabular-nums; }
+.nb-tab.is-complete { border-color: #b6dbb0; color: var(--green-ink); }
+.nb-tab.active { background: var(--brick); border-color: var(--brick); color: #fff; }
+.nb-tab .red-dot { top: -6px; right: -4px; }
+.nb-tips { display: flex; flex-direction: column; gap: 6px; }
+.nb-tip { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--line); background: #fff; }
+.nb-tip b { font-size: 15px; }
+.nb-tip p { font-size: 14px; line-height: 1.35; }
+.nb-tip.is-locked {
+  color: var(--muted); border-style: dashed; opacity: .78;
+  background: repeating-linear-gradient(135deg, #f6efe1 0 8px, #efe6d3 8px 16px);
+}
+.nb-tip.is-locked b { letter-spacing: 3px; }
+.nb-hint { font-style: italic; }
+
+/* ---------- Sổ công thức ---------- */
+.book-list { display: flex; flex-direction: column; gap: 8px; }
+.book-card {
+  display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; min-width: 0;
+  background: var(--paper); border: 2px solid var(--line); border-radius: var(--radius);
+}
+.book-card.st-owned { background: #f7fbf4; border-color: #cfe6c6; }
+.book-card.st-event { border-color: #9ac6e2; }
+.book-card.st-teaser { border-style: dashed; opacity: .62; filter: grayscale(.55); }
+.book-card-btn {
+  display: block; width: 100%; min-height: 44px; padding: 0; border: 0; background: transparent; text-align: left;
+  color: inherit; touch-action: manipulation; border-radius: 10px;
+}
+.book-card-btn:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+.book-card-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.book-icon { width: 48px; height: 48px; flex: none; background: #fff; border-radius: 12px; border: 1px solid var(--line); padding: 3px; }
+.book-card-title { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.book-card-title b { font-size: 17px; font-weight: 900; }
+.book-source { font-size: 14px; font-weight: 700; color: var(--muted); }
+.book-source.src-shop { color: var(--brick-dark); }
+.book-source.src-event { color: #2a679e; }
+.book-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.book-flawless {
+  flex: none; font-size: 14px; font-weight: 800; color: #9a6a00; background: #fff4d2; border: 1px solid #f0d68a;
+  border-radius: 999px; padding: 1px 8px; white-space: nowrap;
+}
+.book-money, .book-stats { display: flex; flex-wrap: wrap; gap: 2px 12px; }
+.book-mastery { display: flex; flex-direction: column; gap: 4px; }
+.book-level { line-height: 1.35; }
+.book-note { line-height: 1.35; }
+.book-detail-body { display: flex; flex-direction: column; gap: 8px; }
+.book-detail-body small, .incident small, .sum-incident small { font-size: 14px; }
+.book-detail-head { display: flex; align-items: center; gap: 10px; }
+.book-detail-head .modal-title { text-align: left; }
+.book-h3 { font-size: 16px; font-weight: 900; color: var(--brick-dark); margin-top: 2px; }
+.book-ings { display: flex; flex-direction: column; gap: 4px; }
+.book-ings li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: 15px; }
+.book-ings li small { text-align: right; }
+.book-ing-icon { display: inline-block; width: 28px; height: 28px; line-height: 0; }
+.book-ing-icon svg { width: 100%; height: 100%; }
+.book-steps { display: flex; flex-direction: column; gap: 4px; padding-left: 22px; list-style: decimal; }
+.book-steps li { display: list-item; font-size: 15px; }
+.book-steps li small { display: block; }
+.book-dialect-intro { line-height: 1.4; }
+.dialect-head { display: grid; grid-template-columns: 1fr 1fr; padding: 0 12px; font-size: 14px; font-weight: 800; color: var(--muted); }
+.dialect-head span:last-child { text-align: right; }
+.dialect-list { display: flex; flex-direction: column; gap: 6px; }
+.dialect-item { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; background: #fff; border: 1px solid var(--line); border-radius: 12px; }
+.dialect-pair { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; }
+.dialect-nam { color: var(--brick-dark); font-size: 16px; }
+.dialect-bac { color: #2a679e; font-size: 16px; text-align: right; }
+.dialect-eq { color: var(--muted); font-weight: 900; }
+
+/* ---------- Tình huống trong ca ---------- */
+.incident { display: flex; flex-direction: column; gap: 10px; }
+.incident-head { display: flex; align-items: center; gap: 12px; }
+.incident-titles { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.incident-kicker { font-size: 14px; font-weight: 800; color: var(--muted); }
+.incident-title { text-align: left; }
+.incident-art { display: inline-block; width: 64px; height: 64px; line-height: 0; flex: none; }
+.incident-art svg { width: 100%; height: 100%; }
+.incident-art.is-bill { width: 84px; height: 45px; }
+.incident-text { font-size: 15px; line-height: 1.4; }
+.incident-note, .incident-pause { font-size: 14px; color: var(--muted); }
+.incident-choice { position: relative; }
+.incident-choice b { font-size: 16px; }
+.incident-choice.is-safe { border-color: #b6dbb0; }
+.incident-choice:disabled { opacity: .55; cursor: not-allowed; }
+.safe-badge {
+  align-self: flex-start; margin-top: 2px; padding: 0 8px; border-radius: 999px;
+  font-size: 14px; font-weight: 800; color: var(--green-ink); background: var(--green-soft);
+}
+.incident-result { display: flex; flex-direction: column; gap: 8px; }
+.incident-effects { display: flex; flex-wrap: wrap; gap: 6px; }
+.incident-fx { font-size: 14px; font-weight: 800; padding: 3px 10px; border-radius: 999px; background: #fff; border: 1px solid var(--line); }
+.incident-fx.good { background: var(--green-soft); border-color: #b6dbb0; color: var(--green-ink); }
+.incident-fx.bad { background: #fdeceb; border-color: #f0b8a8; color: var(--bad); }
+.incident-fx.info { background: #eef3f8; border-color: #9fb6cc; color: #2f4a63; }
+.incident-tip { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 12px; background: #fff8e0; border: 1px solid #f0d68a; }
+.incident-tip b { font-size: 15px; color: var(--brick-dark); }
+.incident-tip p { font-size: 14px; line-height: 1.35; }
+
+/* ---------- Tổng kết: tình huống, sổ ghi nợ ---------- */
+.sum-incident { display: flex; flex-direction: column; gap: 6px; }
+.sum-incident-item { display: flex; flex-direction: column; gap: 2px; }
+.sum-incident-fx { display: flex; flex-wrap: wrap; gap: 2px 12px; font-weight: 700; }
+.sum-debt.is-paid { color: var(--green-ink); font-weight: 700; }
+.sum-debt.is-unpaid { color: #2f4a63; }
+
+/* Màn hẹp 360px: 4 ô biểu tượng vẫn vừa một hàng */
+@media (max-width: 370px) {
+  .nav-grid.icon-grid { gap: 6px; }
+  .nav-tile.icon-tile { padding: 8px 1px 6px; }
+  .icon-tile .nav-icon { width: 30px; height: 30px; }
 }

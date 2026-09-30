@@ -14,6 +14,7 @@
   --yellow-soft: #fdf0c8;
   --green: #3d8b4c;       /* xanh lá */
   --green-soft: #dcefd9;
+  --green-ink: #2a6e3a;   /* chữ xanh: 5,1:1 trên --green-soft, 6:1 trên nền kem (--green chỉ dùng làm nền/viền) */
   --good: #3f9a52;
   --warn: #e0a31d;
   --bad: #cf3b2b;
@@ -140,7 +141,7 @@ code { font-family: ui-monospace, Menlo, Consolas, monospace; background: var(--
 .card-warn { background: var(--yellow-soft); border-color: #f0d68a; }
 .badge {
   display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px;
-  background: var(--green-soft); color: var(--green); font-size: 12px; font-weight: 700; vertical-align: middle;
+  background: var(--green-soft); color: var(--green-ink); font-size: 13px; font-weight: 700; vertical-align: middle;
 }
 
 /* SVG nội bộ */
@@ -186,7 +187,22 @@ code { font-family: ui-monospace, Menlo, Consolas, monospace; background: var(--
   background: #3b2a1f; color: #ffe9a8; padding: 0 8px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;
 }
-.app-frame.is-dev-now > .screen, .app-frame.is-dev-now > .overlay-root { top: 24px; }
+/* Dải trên cùng đẩy màn chơi xuống: giờ giả (24px) và cảnh báo không lưu được (48px) có thể cùng lúc. */
+.app-frame { --bar-dev: 0px; --bar-save: 0px; }
+.app-frame.is-dev-now { --bar-dev: 24px; }
+.app-frame.has-save-warning { --bar-save: 48px; }
+.app-frame > .screen, .app-frame > .overlay-root { top: calc(var(--bar-dev) + var(--bar-save)); }
+
+/* Trình duyệt không cho lưu (bị chặn, bộ nhớ đầy): dải cảnh báo cố định, nút mở mã sao lưu. */
+.save-warning {
+  position: absolute; top: var(--bar-dev); left: 0; right: 0; height: 48px; z-index: 61;
+  display: flex; align-items: center; gap: 8px; padding: 2px 6px 2px 12px;
+  background: var(--brick-dark); color: #fff;
+}
+.save-warning-text { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.save-warning-text b { font-size: 14px; }
+.save-warning-text small { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.save-warning-btn { flex: none; background: #fff; color: var(--brick-dark); }
 
 /* Game mở ở tab khác: tab cũ tự dừng, không ghi đè bản lưu mới hơn. */
 .tab-lock {

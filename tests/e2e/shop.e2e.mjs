@@ -40,7 +40,7 @@ test('Chợ Công Thức: nấu thử, mua món, mua nâng cấp, đổi màu d�
     await enterPrep(g, `?devNow=${DEV_NOW}&test=1`)
     const s0 = await readSave(page)
     assert.equal(s0.wallet, 700000)
-    assert.equal(await page.$(T('prep-dish-' + BTT)), null, 'chưa mua thì chưa có trong thực đơn')
+    assert.equal(!!(await page.$(T('prep-dish-' + BTT))), false, 'chưa mua thì chưa có trong thực đơn')
 
     // --- Kệ Chính: thẻ xem trước + nấu thử miễn phí
     await page.tap(T('open-shop'))

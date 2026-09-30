@@ -107,6 +107,22 @@ export function roundUpTo(n, step) {
   return Math.ceil(n / step) * step
 }
 
+// M3: bước làm tròn giá vốn mỗi lượt nấu (nguyên liệu lẻ 100–400đ) và bước làm tròn tiền thưởng.
+export const COST_STEP = 500
+export const REWARD_STEP = 1000
+
+// Giá vốn trừ vào ví: làm tròn tới bội 500đ gần nhất (0,5 làm tròn lên), để Tiền quán luôn là bội 500đ.
+export function roundCost(n) {
+  const v = Math.max(0, Number(n) || 0)
+  return Math.round(v / COST_STEP) * COST_STEP
+}
+
+// Tiền thưởng (quà, thu nhập tham chiếu × hệ số…): làm tròn LÊN bội 1.000đ.
+export function roundReward(n) {
+  const v = Math.max(0, Number(n) || 0)
+  return Math.ceil(Math.round(v) / REWARD_STEP) * REWARD_STEP
+}
+
 export function roundDownTo(n, step) {
   return Math.floor(n / step) * step
 }

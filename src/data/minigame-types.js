@@ -27,6 +27,33 @@ export const MINIGAME_TYPES = deepFreeze({
     },
     icon: 'nuoc_tuong'
   },
-  lua: { name: 'Canh lửa', hint: 'Nhấc chảo khi kim nằm trong vùng xanh.', icon: 'chao_chong_dinh' },
-  rot: { name: 'Rót', hint: 'Giữ để rót, thả tay đúng vạch.', icon: 'ly' }
+  // skins: "lớp vỏ" theo bước (bước khai báo `skin` trong recipes.js): cùng cơ chế nhưng hình, nhãn, lời nhắc hợp món.
+  //   act: chữ nút; over: nhãn vạch quá lửa; sub: dòng hướng dẫn trên sân khấu; overTip: lời nhắc khi quá (bị "cháy");
+  //   sound: âm lúc bắt đầu (chảo: dầu "xèo"; phin, nồi: không xèo).
+  lua: {
+    name: 'Canh lửa', hint: 'Nhấc chảo khi kim nằm trong vùng xanh.', icon: 'chao_chong_dinh',
+    skins: {
+      chao: { act: 'Nhấc', over: 'Cháy', sub: 'Nhấc khi kim nằm trong vùng xanh.', overTip: 'bị cháy rồi, nhấc sớm chút nha con.', sound: 'sizzle' },
+      phin: {
+        name: 'Canh phin', hint: 'Cà phê nhỏ giọt dần, bấm "Nhấc phin" khi kim nằm trong vùng xanh.', icon: 'ca_phe',
+        act: 'Nhấc phin', over: 'Quá đặc', sub: 'Nhấc phin khi kim nằm trong vùng xanh.',
+        overTip: 'để lâu quá nên cà phê đắng gắt, nhấc phin sớm chút nha con.', sound: null
+      },
+      noi: {
+        name: 'Canh nồi', hint: 'Bột luộc trong dần, bấm "Vớt ra" khi kim nằm trong vùng xanh.', icon: 'bot_nang',
+        act: 'Vớt ra', over: 'Nhũn', sub: 'Vớt ra khi kim nằm trong vùng xanh.',
+        overTip: 'luộc lâu quá nên bị nhũn, vớt sớm chút nha con.', sound: null
+      }
+    }
+  },
+  rot: {
+    name: 'Rót', hint: 'Giữ để rót, thả tay đúng vạch.', icon: 'ly',
+    skins: {
+      ly: { act: 'Giữ để rót', actMore: 'Giữ để rót bù', actResume: 'Giữ để rót tiếp', count: 'Lần rót', sub: 'Giữ để rót, thả tay đúng vạch.' },
+      to: {
+        name: 'Rưới', hint: 'Giữ để rưới lên món, thả tay khi tới vạch xanh.',
+        act: 'Giữ để rưới', actMore: 'Giữ để rưới thêm', actResume: 'Giữ để rưới tiếp', count: 'Lần rưới', sub: 'Giữ để rưới, thả tay đúng vạch.'
+      }
+    }
+  }
 })

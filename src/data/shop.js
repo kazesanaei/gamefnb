@@ -53,7 +53,12 @@ export const COSMETICS = deepFreeze({
 
 export const TITLES = deepFreeze({
   chu_xe_moi_toanh: { id: 'chu_xe_moi_toanh', name: 'Chủ xe mới toanh' },
-  chu_xe_dau_hem: { id: 'chu_xe_dau_hem', name: 'Chủ xe đầu hẻm' }
+  chu_xe_dau_hem: { id: 'chu_xe_dau_hem', name: 'Chủ xe đầu hẻm' },
+  // M3 Sổ tay nghề: đủ một nhóm thẻ Mẹo nghề (src/data/tips.js TIP_GROUP_REWARDS)
+  thu_ngan_chu_dao: { id: 'thu_ngan_chu_dao', name: 'Thu ngân chu đáo' },
+  tay_bep_can_than: { id: 'tay_bep_can_than', name: 'Tay bếp cẩn thận' },
+  giu_kho_ky_luong: { id: 'giu_kho_ky_luong', name: 'Giữ kho kỹ lưỡng' },
+  chu_quan_tu_te: { id: 'chu_quan_tu_te', name: 'Chủ quán tử tế' }
 })
 
 // Mở khóa (thẻ, màn) theo id.

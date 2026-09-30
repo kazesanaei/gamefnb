@@ -63,7 +63,7 @@ test('R1: mở game ở tab thứ hai thì tab cũ tự khóa, không ghi đè q
     await a.tap(T('start-button'))
     await a.waitForSelector(T('screen-prep'))
     assert.equal(await a.getAttribute(T('prep-spoons'), 'data-amount'), '20')
-    assert.equal(await a.$(T('tab-lock')), null)
+    assert.equal(!!(await a.$(T('tab-lock'))), false)
     assert.deepEqual(errors, [])
   } finally {
     await g.close()
@@ -104,8 +104,8 @@ test('R14 + UX-03: ?devNow lưu riêng; nút Back ở màn con về màn Chuẩn
     assert.ok(real1.clock.maxSeen < Date.parse('2026-11-01T00:00:00+07:00'), 'save thật không có mốc giờ giả')
     await page.tap(T('start-button'))
     await page.waitForSelector(T('screen-prep'))
-    assert.equal(await page.$(T('devnow-banner')), null)
-    assert.equal(await page.$(T('rewind-note')), null, 'không bị khóa lùi giờ')
+    assert.equal(!!(await page.$(T('devnow-banner'))), false)
+    assert.equal(!!(await page.$(T('rewind-note'))), false, 'không bị khóa lùi giờ')
     assert.deepEqual(errors, [])
   } finally {
     await g.close()

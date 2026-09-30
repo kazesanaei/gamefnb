@@ -524,8 +524,10 @@ export const DIALOGUE = deepFreeze({
       readback: 'Ghi xong bấm "Đọc lại đơn" cho khách nghe, sai còn sửa kịp.',
       total: 'Nhìn bảng giá, cộng tổng rồi báo khách. Gõ theo nghìn thôi: gõ 20 là 20.000đ.',
       change: 'Chạm ngăn két để lấy tiền thối, đếm cho đủ rồi bấm "Đưa tiền thối".',
+      noChange: 'Khách đưa vừa đủ rồi, khỏi thối. Bấm "Không cần thối" nha con.',
+      overChange: 'Khay đang dư {amount} rồi con, chạm tờ trong khay để trả về két.',
       ticket: 'Thu tiền xong mới kẹp phiếu vào dây bếp nghen.',
-      chon: 'Nhìn thẻ công thức, lấy đúng và đủ nguyên liệu. Coi chừng mấy thứ na ná nhau!',
+      chon: 'Lấy đúng, đủ theo thẻ, coi chừng đồ na ná nhau. Chạm lần nữa là bỏ ra.',
       thot: 'Sơ chế từng thứ trên thớt, làm bước nào trước cũng được, trừ bước phải chờ.',
       serve: 'Món xong rồi, bấm "Giao cho khách" nha con.'
     }

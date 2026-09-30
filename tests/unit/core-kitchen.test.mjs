@@ -83,8 +83,9 @@ test('chọn nguyên liệu: thiếu chính bị chặn, trừ giá vốn vào v
   const r2 = submitChon(env.state, [...FULL, 'nuoc_mam'], 1, env.ctx)
   assert.equal(r2.ok, true); assert.equal(r2.score, 85)
   assert.equal(env.sh.ledger.cogs, 3000 + 2 * 2500 + 500 + 250 + 250)
-  assert.equal(env.sh.ledger.waste, 250)
-  assert.equal(env.state.wallet, w0 - 9250)
+  // M3: mỗi lượt nấu trừ theo bội 500đ (nước mắm bẫy 250đ → 500đ) để Tiền quán không lẻ
+  assert.equal(env.sh.ledger.waste, 500)
+  assert.equal(env.state.wallet, w0 - 9500)
   assert.deepEqual(availableSteps(env.state).sort(), ['dap_trung', 'rua_dua', 'thai_hanh'])
   assert.ok(env.ctx.events.some(e => e.type === 'step.done' && e.payload.type === 'chon'))
   const board = boardSteps(env.state, env.ctx)

@@ -110,7 +110,7 @@ test('điểm danh qua mốc 04:00, khóa khi lùi giờ; Việc hôm nay xong t
     // --- giờ máy đúng lại: hết nhắc, nhận tiếp ô 3 của ngày 08/10
     await page.clock.setSystemTime(vn('2026-10-08T10:00'))
     await reopenPrep(page)
-    assert.equal(await page.$(T('rewind-note')), null)
+    assert.equal(!!(await page.$(T('rewind-note'))), false)
     await page.tap(T('open-checkin'))
     await claimCheckin(page)
     s = await waitSave(page, st => st.checkin.next === 3)
@@ -119,7 +119,7 @@ test('điểm danh qua mốc 04:00, khóa khi lùi giờ; Việc hôm nay xong t
     // --- Việc hôm nay: 3 việc (Quầy, Bếp, Chất lượng), chưa xong thì chưa nhận được
     await page.tap(T('open-quests'))
     await page.waitForSelector(T('quest-2'))
-    assert.equal(await page.$(T('quest-3')), null, 'đúng 3 việc')
+    assert.equal(!!(await page.$(T('quest-3'))), false, 'đúng 3 việc')
     const ids = []
     for (let i = 0; i < 3; i++) ids.push(await page.getAttribute(T('quest-' + i), 'data-id'))
     assert.deepEqual(ids.map(id => DATA.QUESTS.find(q => q.id === id).group), ['quay', 'bep', 'chat_luong'])

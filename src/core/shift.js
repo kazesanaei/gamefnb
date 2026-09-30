@@ -2,31 +2,22 @@
 import { seedFrom, nextRange, chance, nextInt, pick } from './rng.js'
 import { makeFloat, drawerTotal } from './money.js'
 import { cfg, emit, unlockTip } from './state.js'
-import { createCustomer, createRegular, drainPatience, isGone, loseCustomer } from './customer.js'
+import { createCustomer, createRegular, drainPatience, isGone, loseCustomer, customerCount, MAX_CUSTOMERS } from './customer.js'
 import { beginCounter, confirmQr } from './order.js'
 import { abandonDish } from './kitchen.js'
-import { averageRating } from './scoring.js'
 import { summarizeShift, settleShift } from './economy.js'
 import { prepareShiftMods, applyCustomerMods } from './events.js'
 import { chainForcesFakeQr } from './chains.js'
+import { planIncident, takeIncidentBonusInfo, collectDebts, finishShiftIncidents } from './incidents.js'
 
 export function emptyLedger() {
   return { sales: 0, cash: 0, qr: 0, listValue: 0, undercharge: 0, overchange: 0, rounding: 0,
     cogs: 0, waste: 0, refunds: 0, tips: 0, fakeQrLoss: 0 }
 }
 
-// Số khách của ca: customersPerShift(day) ±1 theo sao trung bình (sàn 3, trần 8).
-export function customerCount(state, ctx, day = state.day) {
-  const f = cfg(ctx, 'customersPerShift')
-  let n = typeof f === 'function' ? f(day) : Number(f) || 4
-  const ratings = state.ratings || []
-  if (day > 1 && ratings.length >= 5) {
-    const avg = averageRating(ratings)
-    if (avg >= 4.5) n += 1
-    else if (avg < 3.5) n -= 1
-  }
-  return Math.max(3, Math.min(8, n))
-}
+// Số khách của ca: customersPerShift(day) ±1 theo sao trung bình (sàn 3, trần 8). Cài ở customer.js
+// (tình huống trong ca cũng cần), xuất lại ở đây theo hợp đồng.
+export { customerCount }
 
 // Lịch đến: khoảng cách = arrivalLoad × thời gian phục vụ kỳ vọng của khách trước × [0,85; 1,15];
 // đoạn giữa ca × peakMul; sau khách hướng dẫn × tutorialGapMul. Co giãn để hệ số tải ρ ≤ maxLoad.
@@ -91,7 +82,18 @@ export function startShift(state, ctx) {
     walletStart: state.wallet,
     mods
   }
-  const N = applyCustomerMods(customerCount(state, ctx, day), mods, ctx)
+  let N = applyCustomerMods(customerCount(state, ctx, day), mods, ctx)
+  // M3: ly trà "mở hàng" tặng ở ca trước → ca này thêm khách (trong trần 8 khách). Ca đã đủ khách (vd Chợ phiên)
+  // thì khách thêm không vào được: đổi thành danh tiếng (bonus.rep), sh.bonusNote để giao diện báo đúng.
+  const bonus = takeIncidentBonusInfo(state, day)
+  if (bonus.customers > 0) {
+    const before = N
+    if (N < MAX_CUSTOMERS) N = Math.min(MAX_CUSTOMERS, N + bonus.customers)
+    const added = N - before
+    const rep = added > 0 ? 0 : bonus.rep
+    if (rep > 0) sh.reputationGain += rep
+    sh.bonusNote = { customers: added, rep }
+  }
   const RG = (ctx.data && ctx.data.REGULARS) || {}
   const regIds = Object.keys(RG)
   // khách quen quay lại (từ ngày 2)
@@ -120,6 +122,11 @@ export function startShift(state, ctx) {
     if (target) target.forcePay = 'qr_fake'
   }
   sh.plan = planArrivals(sh, list, ctx)
+  // M3: tình huống trong ca (bốc theo luồng ngẫu nhiên riêng, không đổi lịch khách) và khách quen trả nợ tới hạn
+  sh.incident = planIncident(state, sh, ctx)
+  sh.debtIn = 0
+  sh.debtNotes = []
+  collectDebts(state, sh, ctx)
   state.shift = sh
   emit(ctx, 'shift.started', { day })
   return sh
@@ -211,7 +218,10 @@ function compactHistory(s) {
     fixedCost: s.fixedCost, drawerDiff: s.drawerDiff, avgStars: s.avgStars, reputationGain: s.reputationGain,
     counterErrors: s.counterErrors, kitchenErrors: s.kitchenErrors, loanRepaid: s.loanRepaid,
     // M2: review đến muộn (thối thiếu không bị phát hiện) → Hộp thư ngày thật hôm sau
-    lateReviews: (s.lateReviews || []).map(r => ({ customerId: r.customerId, name: r.name, amount: r.amount || 0 }))
+    lateReviews: (s.lateReviews || []).map(r => ({ customerId: r.customerId, name: r.name, amount: r.amount || 0 })),
+    // M3: tình huống trong ca đã xử lý, tiền khách quen trả nợ
+    incidents: (s.incidents || []).map(r => ({ id: r.id, choice: r.choice })),
+    debtIn: s.debtIn || 0
   }
 }
 
@@ -241,6 +251,8 @@ export function endShift(state, ctx) {
   state.reviews = (state.reviews || []).concat(sh.reviews || []).slice(-60)
   state.reputation += summary.reputationGain
   state.history = (state.history || []).concat([compactHistory(summary)]).slice(-60)
+  // M3: bảo hiểm tình huống (ca không có tình huống nào được xử lý thì đếm thêm)
+  finishShiftIncidents(state, ctx)
   state.day += 1
   state.shift = null
   emit(ctx, 'shift.ended', { day: summary.day, profit: summary.profit, served: summary.served, lost: summary.lost })

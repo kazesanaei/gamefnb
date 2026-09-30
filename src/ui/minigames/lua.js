@@ -25,12 +25,17 @@ function mount(stage, step, ctx = {}) {
   const slow = ctx.slowBurn ? zb : null
   const clock = createClock()
   const out = settleOnce()
-  stage.classList.add('mg-lua')
-  const fr = buildFrame(stage, step, ctx, { sub: 'Nhấc khi kim nằm trong vùng xanh.' })
+  // lớp vỏ theo bước: chảo (chiên), phin (cà phê nhỏ giọt), nồi (luộc) — cùng cơ chế, khác hình và nhãn
+  const skinId = step.skin === 'phin' || step.skin === 'noi' ? step.skin : 'chao'
+  const skin = ((((ctx.data || {}).MINIGAME_TYPES || {}).lua || {}).skins || {})[skinId] || {}
+  stage.classList.add('mg-lua', 'skin-' + skinId)
+  stage.dataset.skin = skinId
+  const fr = buildFrame(stage, step, ctx, { sub: skin.sub || 'Nhấc khi kim nằm trong vùng xanh.' })
 
   const pct = v => (clamp(v, 0, LUA_MAX) / LUA_MAX * 100).toFixed(2) + '%'
   const food = h('div', { class: 'lua-food', 'data-state': 'song' }, svgBox(ingIcon(step.ing, ctx), 'lua-food-icon'))
-  const pan = h('div', { class: 'lua-pan' }, food, h('div', { class: 'lua-steam' }))
+  const pan = h('div', { class: ['lua-pan', 'is-' + skinId] }, food, h('div', { class: 'lua-steam' }),
+    skinId === 'phin' ? h('div', { class: 'lua-drip' }) : null)
   const zoneEl = h('div', {
     class: 'lua-zone', 'data-testid': 'lua-zone', 'data-a': za.toFixed(3), 'data-b': zb.toFixed(3),
     style: { left: pct(za), width: `calc(${pct(zb)} - ${pct(za)})` }
@@ -38,13 +43,15 @@ function mount(stage, step, ctx = {}) {
   const burn = h('div', { class: 'lua-burn', style: { left: pct(1.0) } })
   const needle = h('div', { class: 'lua-needle', 'data-testid': 'lua-needle', 'data-v': '0', style: { left: '0%' } })
   const gauge = h('div', { class: 'lua-gauge', role: 'meter', 'aria-valuemin': '0', 'aria-valuemax': String(LUA_MAX) },
-    zoneEl, burn, needle, h('span', { class: 'lua-tick', style: { left: pct(1.0) } }, 'Cháy'))
-  const lift = h('button', { class: 'btn btn-primary lua-lift', type: 'button', 'data-testid': 'lua-lift' }, 'Nhấc')
+    zoneEl, burn, needle, h('span', { class: 'lua-tick', style: { left: pct(1.0) } }, skin.over || 'Cháy'))
+  const lift = h('button', { class: 'btn btn-primary lua-lift', type: 'button', 'data-testid': 'lua-lift' }, skin.act || 'Nhấc')
   fr.area.append(pan, gauge)
   fr.foot.append(lift)
 
   let v = 0
   const unbind = bindPointer(lift, { down() { finish() } }, { space: true })
+  // dầu "xèo" khi món vào chảo; phin, nồi không xèo
+  if (skin.sound !== null) feedback(ctx, skin.sound || 'sizzle')
 
   const loop = frameLoop(() => {
     const t = clock.elapsed()

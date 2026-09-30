@@ -1,4 +1,5 @@
 // Màn Tổng kết ca: sổ lãi lỗ, két, lỗi quầy/bếp, sao, danh tiếng, thạo món, review, Mẹo của Dì Sáu.
+// M3: thẻ "Tình huống trong ca" (lựa chọn và kết quả), dòng "Khách quen trả nợ", nhắc Sổ tay nghề đủ nhóm.
 import { h, svgBox } from '../dom.js'
 import { DI_SAU, icon } from '../art.js'
 import { averageRating } from '../../core/scoring.js'
@@ -10,6 +11,7 @@ import { dayEventInfo, dayEventEffects, eventsOverview } from '../../core/events
 import { progressBar } from '../components/meta-ui.js'
 import { chainTitle } from '../components/chain-card.js'
 import { dayEffectLines, forecastCustomers } from './prep.js'
+import { notebookBadge } from '../../core/notebook.js'
 
 export default {
   mount(root, app, params = {}) {
@@ -49,6 +51,8 @@ export default {
       [SM.cashSales, n(sum.cashSales), 'plus'],
       [SM.qrSales, n(sum.qrSales), 'plus'],
       [SM.tips, n(sum.tips), 'plus'],
+      // M3: tiền khách quen trả nợ (tình huống ghi nợ ở ca trước)
+      ...(n(sum.debtIn) ? [['Khách quen trả nợ', n(sum.debtIn), 'plus']] : []),
       [SM.drawerDiff, n(sum.drawerDiff), 'signed'],
       [SM.cogs, n(sum.cogs), 'minus'],
       [SM.waste, n(sum.waste), 'minus'],
@@ -74,6 +78,28 @@ export default {
         h('li', { class: 'muted' }, 'Các khoản trên đã nằm trong tiền két và lãi.')) : null,
       n(sum.loanRepaid) ? h('p', { class: 'small' }, `Trả nợ Dì Sáu: ${formatVND(sum.loanRepaid)}`) : null,
       h('p', { class: 'small muted' }, `${S.labels.wallet} hiện có: ${formatVND(state.wallet)}`)))
+
+    // M3: Tình huống trong ca và sổ ghi nợ
+    // (bản rút gọn trong lịch sử chỉ có id + lựa chọn: tra tên từ dữ liệu)
+    const incidents = (sum.incidents || []).map(r => {
+      if (r.name) return r
+      const d = app.data.INCIDENTS && app.data.INCIDENTS[r.id]
+      const c = d && (d.choices || []).find(x => x.id === r.choice)
+      return { ...r, name: d ? d.name : r.id, label: c ? c.label.replace(/\{\w+\}/g, '').replace(/,\s*$/, '') : r.choice, text: '' }
+    })
+    const debtNotes = sum.debtNotes || []
+    if (incidents.length || debtNotes.length) {
+      el.appendChild(h('section', { class: 'card sum-incident', testid: 'summary-incident', dataset: {
+        incident: incidents[0] ? incidents[0].id : '', choice: incidents[0] ? incidents[0].choice : '' } },
+      h('h2', { class: 'card-title' }, 'Tình huống trong ca'),
+      incidents.map(r => h('div', { class: 'sum-incident-item' },
+        h('b', null, r.name),
+        h('p', { class: 'small' }, 'Bạn chọn: ' + r.label + (r.safe ? ' (cách an toàn)' : '')),
+        h('p', { class: 'small' }, r.text),
+        h('ul', { class: 'sum-incident-fx small' }, incidentLines(r).map(t => h('li', null, t))))),
+      debtNotes.map(d => h('p', { class: ['small', 'sum-debt', d.kind === 'tra' ? 'is-paid' : 'is-unpaid'], testid: 'summary-debt' }, d.text)),
+      h('p', { class: 'small muted' }, 'Tiền của tình huống đã nằm trong sổ lãi lỗ ở trên.')))
+    }
 
     // Két
     if (drawerStart !== null) {
@@ -149,6 +175,14 @@ export default {
     // M2: tiến độ Việc hôm nay, chuỗi nhiệm vụ, Tem sự kiện
     metaProgress(app, el)
 
+    // M3: Sổ tay nghề có nhóm đủ thẻ chờ nhận thưởng
+    const nbReady = notebookBadge(state, app.ctx)
+    if (nbReady > 0) {
+      el.appendChild(h('section', { class: 'card tip-card', testid: 'summary-notebook' },
+        h('h2', { class: 'card-title' }, 'Sổ tay nghề'),
+        h('p', null, `Đủ thẻ ${nbReady} nhóm Mẹo nghề! Mở Sổ tay nghề ở màn Chuẩn bị để nhận danh hiệu và Muỗng Vàng.`)))
+    }
+
     // Ngày mai: sự kiện ngày báo trước (tính theo ngày game kế tiếp)
     const tomorrow = dayEventInfo(state, state.day, app.ctx)
     if (tomorrow) {
@@ -162,8 +196,13 @@ export default {
           ? `Bạt che mưa sẽ tự căng, không tốn tiền.`
           : `Có thể chọn "${tomorrow.choice.label}" (${formatVND(tomorrow.choice.cost)}) ở màn Chuẩn bị.`) : null))
     }
-    el.appendChild(h('p', { class: 'center muted' },
-      `Ngày mai (ngày ${state.day}): khoảng ${forecastCustomers(state, app.ctx, tomorrow)} khách · Sao trung bình ★ ${formatStars(averageRating(state.ratings))}`))
+    // Sao trung bình của 30 lượt gần nhất (khác "Sao ca này" ở trên); dưới 5 lượt là số tạm tính (đệm 4 sao)
+    const fewRatings = (state.ratings || []).length < 5
+    el.appendChild(h('p', { class: 'center muted', testid: 'summary-tomorrow' },
+      `Ngày mai (ngày ${state.day}): khoảng ${forecastCustomers(state, app.ctx, tomorrow)} khách · Sao trung bình (30 lượt gần nhất) ★ ${formatStars(averageRating(state.ratings))}` +
+      (fewRatings ? ' · tính tạm, cần đủ 5 lượt' : '')))
+    // M3: có bản mới của game → nút Tải lại (ca đã kết thúc nên tải lại an toàn)
+    if (typeof app.updateSlot === 'function') el.appendChild(app.updateSlot())
     el.appendChild(nextBtn())
 
     function nextBtn() {
@@ -174,6 +213,20 @@ export default {
     }
     return { unmount() {} }
   }
+}
+
+// Các dòng hiệu ứng của một tình huống đã xử lý (tiền, giá vốn, danh tiếng, khách thêm, ghi nợ, sao).
+function incidentLines(r) {
+  const out = []
+  if (r.money > 0) out.push('Tiền bán: +' + formatVND(r.money))
+  if (r.cost > 0) out.push('Giá vốn: −' + formatVND(r.cost))
+  if (r.refund > 0) out.push('Hoàn cho khách: −' + formatVND(r.refund))
+  if (r.rep > 0) out.push(`Danh tiếng: +${r.rep}`)
+  if (r.bonus > 0) out.push(`Ca sau thêm ${r.bonus} khách`)
+  if (r.debt) out.push(`Ghi sổ nợ: ${r.debt.name} ${formatVND(r.debt.amount)}`)
+  if (r.starLoss > 0) out.push(`Khách phật ý: −${r.starLoss} sao`)
+  if (!out.length) out.push('Không tốn gì')
+  return out
 }
 
 function tr(label, value) {

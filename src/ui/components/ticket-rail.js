@@ -34,15 +34,19 @@ export function createTicketRail(app, { onTap } = {}) {
       return
     }
     for (const t of sh.tickets) {
+      // phiếu 1 dòng: tên món (≤ 2 dòng) + ghi chú 1 dòng; phiếu nhiều dòng: mỗi món 1 dòng kèm ghi chú.
+      // Ghi chú dài bị cắt "…" trong khung riêng (không để dấu của dòng bị ẩn lòi lên), đủ chữ ở title và trong Bếp.
+      const multi = t.lines.length > 1
       const lines = t.lines.map((l, i) => {
         const r = R[l.recipeId]
         const notes = (l.notes || []).map(id => {
           const n = r && (r.notes || []).find(x => x.id === id)
           return n ? upper(n.label) : ''
         }).filter(Boolean)
-        return h('div', { class: ['rail-line', t.done && t.done[i] ? 'done' : ''] },
-          h('span', null, `${l.qty} × ${r ? r.name : l.recipeId}`),
-          notes.length ? h('span', { class: 'rail-note' }, notes.join(' · ')) : null)
+        const name = `${l.qty} × ${r ? r.name : l.recipeId}`
+        return h('div', { class: ['rail-line', multi ? 'is-multi' : '', t.done && t.done[i] ? 'done' : ''], title: notes.length ? `${name}: ${notes.join(' · ')}` : name },
+          h('span', { class: 'rail-name' }, name),
+          notes.length ? h('span', { class: 'rail-note' }, (multi ? ' · ' : '') + notes.join(' · ')) : null)
       })
       const node = h('button', {
         class: ['rail-ticket', t.remake ? 'remake' : ''], type: 'button', testid: 'rail-ticket-' + t.id,
@@ -61,7 +65,9 @@ export function createTicketRail(app, { onTap } = {}) {
     if (!sh) return
     const R = app.data.RECIPES
     const max = (app.data.BALANCE && app.data.BALANCE.ticketRailMax) || 3
-    const key = JSON.stringify(sh.tickets.map(t => [t.id, t.status, t.done && t.done.map(Boolean)]))
+    // gồm cả các dòng phiếu: tình huống "khách đổi ý" (M3) sửa món trên phiếu đã kẹp mà không đổi trạng thái
+    const key = JSON.stringify(sh.tickets.map(t => [t.id, t.status, t.done && t.done.map(Boolean),
+      t.lines.map(l => [l.recipeId, l.qty, (l.notes || []).join(',')])]))
     if (key !== sig) {
       sig = key
       render(sh, R, max)

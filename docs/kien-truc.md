@@ -20,9 +20,14 @@ Thiết kế gameplay chi tiết: `docs/de-xuat-thiet-ke.md` (bản gốc tham k
 ## 2. Cấu trúc thư mục
 
 ```
-index.html                 trang game (có khối <noscript>/thông báo file:// viết bằng HTML + script thường)
+index.html                 trang game (có khối <noscript>/thông báo file:// viết bằng HTML + script thường; gắn manifest, biểu tượng)
+manifest.webmanifest       PWA (M3): tên, màu, biểu tượng 192/512 + maskable, standalone, dọc
+sw.js                      service worker (M3): PRECACHE toàn bộ tệp, cache-first, VERSION = package.json (mục 16)
+icons/                     icon.svg (gốc) + icon-192.png, icon-512.png, apple-touch-icon.png (dựng bằng tools/make-icons.mjs)
+tools/make-icons.mjs       dựng PNG từ icon.svg bằng Chromium (Playwright); chạy tay `npm run icons`, PNG được commit
 css/base.css               biến màu, font hệ thống, reset, bố cục khung điện thoại
 css/game.css               giao diện các màn và mini-game
+css/settings.css           (M3) màn Cài đặt, nút Cài đặt/nhắc sao lưu/"Có bản mới" ở màn Chuẩn bị, hộp thoại sao lưu
 src/main.js                khởi động: nạp save, tạo app, router, vòng lặp
 src/core/                  logic thuần
   rng.js  money.js  clock.js  bus.js  state.js  save.js
@@ -40,36 +45,50 @@ tests/unit/*.test.mjs      node:test (integration-shift.test.mjs: DATA thật, 3
                            integration-meta.test.mjs: 5 ngày thật × 3 ca kèm toàn bộ hệ thống meta M2 và người chơi
                            trung bình, mục 15.10; review-m2-fixes.test.mjs: hồi quy vòng soát lỗi M2, mục 15.11)
 tests/e2e/*.e2e.mjs        Playwright (Chromium ở /opt/pw-browsers): one-shift, reload, kitchen-back (M1);
-                           m2-meta, m2-ui, checkin-quests, shop, event-2011, review-m2 (M2, mục 15.10–15.11)
+                           m2-meta, m2-ui, checkin-quests, shop, event-2011, review-m2 (M2, mục 15.10–15.11);
+                           pwa-backup (M3 nền tảng, mục 16.6), incident-notebook (M3 nội dung, mục 17.5);
+                           stability (ráp nối M1–M3: chuyển màn nhanh, rò rỉ, mục 18);
+                           save-safety, review-m3-ux (vòng soát lỗi M3: bộ nhớ bị chặn/đầy, bản lưu hỏng, mã từ bản mới
+                           hơn; giao diện ngày 1 ở 360×740, chép mã thất bại, mục 18.5)
+tests/e2e/hanh-trinh.mjs   hành trình dài chạy tay `node tests/e2e/hanh-trinh.mjs` (không nằm trong `npm run e2e`, mục 18.1)
 tests/e2e/helpers.mjs      nạp Playwright, ngữ cảnh 390×844 cảm ứng (openGame({clock, viewport}): clock true | {time} cài đồng hồ giả),
                            người chơi tự động qua data-testid (playBoard dùng cả cho Nấu thử; playShiftUi chơi cả ca),
                            seedSave (nạp save dựng sẵn bằng encodeSave vào khóa thật), enterPrep, claimCheckinIfShown,
-                           readSave/waitSave (đọc DEV_SAVE_KEY khi đã mở bằng ?devNow, không thì SAVE_KEY)
-tests/helpers/static-server.mjs  perfect-player.mjs
+                           readSave/waitSave (đọc DEV_SAVE_KEY khi đã mở bằng ?devNow, không thì SAVE_KEY),
+                           resolveIncidentIfShown (M3: gặp hộp tình huống trong ca thì chọn cách an toàn; người chơi tự
+                           động gọi sẵn ở waitCustomerOrEnd / serveAtCounter / cookAndServe / playShiftUi),
+                           waitController (chờ service worker kích hoạt, đã cất đủ tệp), pollEval(page, fn, arg, {timeout, label})
+                           (thăm dò page.evaluate tới khi truthy — thay page.waitForFunction với hàm trả Promise)
+tests/helpers/static-server.mjs  perfect-player.mjs (M3: playShift(state, ctx, { incident: chọn }) và handleIncident
+                           xử lý tình huống trong ca như giao diện ở tab Quầy)
 docs/                      tài liệu
 package.json
 ```
 
 M2 (lõi + dữ liệu, đã có — chi tiết mục 15): `core/meta.js stats.js rewards.js checkin.js quests.js mail.js chains.js shop.js events.js progression.js`, `data/checkin.js quests.js mail.js chains.js shop.js events.js day-events.js progression.js`, test `tests/unit/meta-*.test.mjs` (tiện ích `tests/helpers/meta-helpers.mjs`).
 M2 giao diện (đã có — mục 13.1): `css/meta.css`, `ui/screens/shop.js tasting.js quests.js mailbox.js event.js stage-up.js`, `ui/components/meta-ui.js chain-card.js checkin-popup.js`; e2e `tests/e2e/m2-meta.e2e.mjs` (điểm danh qua 04:00, sự kiện → Chè bưởi → hết mùa vẫn giữ, Shop, Việc hôm nay), `tests/e2e/m2-ui.e2e.mjs` (Nấu thử, sự kiện ngày + Phiếu Chợ Sớm, soát bố cục 360×740), `tests/e2e/checkin-quests.e2e.mjs`, `tests/e2e/shop.e2e.mjs`, `tests/e2e/event-2011.e2e.mjs` (luồng đầy đủ qua giao diện thật, mục 15.10).
-(M3 thêm: `core/incidents.js`, `data/incidents.js`, các màn `recipe-book.js notebook.js settings.js`, `manifest.webmanifest`, `sw.js`.)
+M3 nền tảng (đã có — mục 16): `manifest.webmanifest`, `sw.js`, `icons/`, `tools/make-icons.mjs`, `css/settings.css`, `ui/screens/settings.js`, mã sao lưu trong `core/save.js`, âm thanh `ui/audio.js`; test `tests/unit/pwa.test.mjs backup-code.test.mjs audio.test.mjs`, e2e `tests/e2e/pwa-backup.e2e.mjs`.
+Vòng soát lỗi M3 (mục 18.5): test `tests/unit/review-m3-fixes.test.mjs`, e2e `tests/e2e/save-safety.e2e.mjs`, `tests/e2e/review-m3-ux.e2e.mjs`.
+M3 nội dung (đã có — mục 17): `core/incidents.js notebook.js recipe-book.js`, `data/incidents.js`, `ui/screens/notebook.js recipe-book.js` (đăng ký trong `SCREENS` của `src/main.js`, có trong PRECACHE của `sw.js`); màn Chuẩn bị gọn (lưới 7 ô lối vào); test `tests/unit/incidents.test.mjs notebook-recipe-book.test.mjs money-rounding.test.mjs`, e2e `tests/e2e/incident-notebook.e2e.mjs`.
 
 ## 3. package.json
 
 ```json
 {
   "name": "bep-khoi-nghiep",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test \"tests/unit/**/*.test.mjs\"",
     "serve": "node tests/helpers/static-server.mjs 8080",
-    "e2e": "node --test --test-concurrency=1 \"tests/e2e/**/*.e2e.mjs\""
+    "e2e": "node --test --test-concurrency=1 \"tests/e2e/**/*.e2e.mjs\"",
+    "icons": "node tools/make-icons.mjs"
   }
 }
 ```
 
+`version` trùng `VERSION` của `sw.js` và `APP_VERSION` của `src/ui/app.js` (có test). Đổi tệp của game khi phát hành thì tăng cả ba.
 E2E nạp Playwright bằng `createRequire`, thử `require('playwright')` rồi tới `/opt/node22/lib/node_modules/playwright`. Biến `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers` đã có sẵn trong môi trường.
 
 ## 4. Cấu trúc save (state gốc)
@@ -103,16 +122,30 @@ E2E nạp Playwright bằng `createRequire`, thử `require('playwright')` rồi
   settings: {
     sound: true, vibrate: true, tips: true, reducedMotion: false,
     assistCash: false,     // Hỗ trợ tính tiền: hiện tổng và tiền thối
-    assistMotion: false    // Hỗ trợ thao tác: vùng mục tiêu rộng hơn, chậm hơn
+    assistMotion: false,   // Hỗ trợ thao tác: vùng mục tiêu rộng hơn, chậm hơn
+    volume: 0.8,           // M3: âm lượng 0..1
+    incidentFrequency: 'vua'   // M3: tần suất tình huống trong ca 'nhieu' | 'vua' | 'it' (INCIDENT_FREQUENCIES của state.js)
   },
   history: [],             // tối đa 60 bản tổng kết ca (xem economy.summarizeShift)
   shift: null,             // ca đang chơi (mục 7) hoặc null
   clock: { maxSeen: 0 },
-  rev: 0                   // số hiệu bản ghi: tăng mỗi lần lưu (writeSave); tab cũ thấy bản lưu có rev lớn hơn thì không ghi đè
+  rev: 0,                  // số hiệu bản ghi: tăng mỗi lần lưu (writeSave); tab cũ thấy bản lưu có rev lớn hơn thì không ghi đè
+  backup: { lastAt: 0, since: 0 },  // M3: ms lần chép/tải mã sao lưu gần nhất; since = mốc bắt đầu tính nhắc (main.js ghi lần đầu mở)
+  incidents: {             // M3 (mục 17.1): tình huống trong ca
+    since: 0,              //   số ca liền (từ ngày 3) chưa gặp tình huống nào → bảo hiểm khi đủ 3
+    recent: [],            //   id tình huống đã gặp, mới nhất cuối (tối đa 10) → không lặp 5 loại gần nhất
+    log: [],               //   nhật ký ngắn [{day, id, choice, money, cost, refund, rep}] (tối đa 20, mới nhất đầu)
+    debts: [],             //   sổ ghi nợ khách quen [{id, regularId, name, amount, fromDay, dueDay, repayDay|null, status: 'cho'|'da_tra'|'quen', paidDay?}]
+    bonus: null,           //   {day, customers, rep}: khách thêm ở ca `day` (ly trà "mở hàng"); ca đó đã đủ trần khách
+                           //   thì thay bằng `rep` danh tiếng (vòng soát lỗi M3)
+    total: 0               //   số tình huống đã xử lý
+  },
+  notebook: { claimed: [] }  // M3 (mục 17.2): nhóm Mẹo nghề đã nhận thưởng đủ nhóm
   // M2 thêm (defaultMeta() trong state.js, mô tả ở mục 15): items, cosmetics, titles, unlocks, prep, checkin, daily,
   // mail, chains, shop, eventRecipes, tasting, events, realDays, progression, track; stats có thêm các khóa M2.
 }
 ```
+`version` vẫn là 2: các trường M3 (`settings.volume`, `settings.incidentFrequency`, `backup`, `incidents`, `notebook`) chỉ thêm, `save.migrate` điền mặc định cho save v1/v2 (`migrateSettings`, `migrateContentM3`). `settings.tips = false` chỉ tắt thẻ Mẹo nghề **nổi** trong ca: lõi (`state.unlockTip`) vẫn mở thẻ, ghi `tipsSeen` và phát `tip.unlocked` (Sổ tay nghề vẫn đầy), `app.js` không hiện thẻ.
 
 ## 5. Module lõi dùng chung
 
@@ -140,6 +173,9 @@ export function canMakeChange(amount, drawer) → boolean
 export function customerCash(holder, total, persona, day) → {bills:{mệnh giá: số tờ}, total}   // cách khách đưa tiền (mục 3.6 tài liệu thiết kế)
 export function roundUpTo(n, step) , roundDownTo(n, step)
 // bổ sung: emptyDrawer() ; addBills(drawer, bills, sign = 1) (sửa trực tiếp) ; billsCount(bills) ; composeGreedy(amount) → bills | null
+// M3 (mục 17.4): COST_STEP = 500, REWARD_STEP = 1000
+export function roundCost(n) → bội 500đ gần nhất (0,5 làm tròn lên)     // giá vốn mỗi lượt nấu, làm lại bước, giá vốn tình huống
+export function roundReward(n) → làm tròn LÊN bội 1.000đ                // mọi khoản thưởng Tiền quán, nợ Dì Sáu
 ```
 
 ### clock.js
@@ -169,7 +205,7 @@ Sự kiện bổ sung (thực tế): `qr.rejected {customerId, fake, blocked}` (
 export const DATA = Object.freeze({ BALANCE, INGREDIENTS, RECIPES, METHOD_LABELS, MINIGAME_TYPES,
   PERSONAS, REGULARS, NAMES, DIALOGUE, makeSpeech, makeLine, makeReview, TIPS, UPGRADES, STRINGS })
 ```
-`DATA` thực tế có thêm (chỉ thêm, không đổi): `ROLE_LABELS, SPOKEN, SYNONYMS, LINE_KINDS, REVIEWS, TIP_GROUPS, describeLine, readbackText, tipsForTrigger`; M2: `CHECKIN, QUESTS, QUEST_GROUPS, QUEST_CONFIG, MAIL_CONFIG, MAIL_WELCOME, MAIL_VERSIONS, MAIL_HOLIDAYS, MAIL_EVERYDAY, MAIL_LATE_REVIEW, MAIL_QUEST, CHAINS, NPCS, CHAIN_WHERE, SHOP, ITEMS, COSMETICS, TITLES, UNLOCKS, EVENTS, DAY_EVENTS, DAY_EVENT_CONFIG, STAGE_UP, POST_GOALS` (mục 15). `BALANCE` thêm `refIncomeTable`, `eventCustomerCap`; `STRINGS` thêm `meta`, `reasons`.
+`DATA` thực tế có thêm (chỉ thêm, không đổi): `ROLE_LABELS, SPOKEN, SYNONYMS, LINE_KINDS, REVIEWS, TIP_GROUPS, describeLine, readbackText, tipsForTrigger`; M2: `CHECKIN, QUESTS, QUEST_GROUPS, QUEST_CONFIG, MAIL_CONFIG, MAIL_WELCOME, MAIL_VERSIONS, MAIL_HOLIDAYS, MAIL_EVERYDAY, MAIL_LATE_REVIEW, MAIL_QUEST, CHAINS, NPCS, CHAIN_WHERE, SHOP, ITEMS, COSMETICS, TITLES, UNLOCKS, EVENTS, DAY_EVENTS, DAY_EVENT_CONFIG, STAGE_UP, POST_GOALS` (mục 15). `BALANCE` thêm `refIncomeTable`, `eventCustomerCap`; `STRINGS` thêm `meta`, `reasons`. M3 nội dung thêm `INCIDENTS, INCIDENT_CONFIG` (`data/incidents.js`, mục 17.1), `TIP_GROUP_REWARDS` (`data/tips.js`, mục 17.2); mỗi thẻ `TIPS[]` có thêm `hint` (gợi ý cách mở); `TITLES` thêm 4 danh hiệu nhóm Sổ tay nghề; `STRINGS.errors.tu_choi_doi_mon`.
 
 **Lõi không import trực tiếp `src/data`** (trừ khi cần hằng số thuần); mọi hàm lõi đọc dữ liệu từ `ctx.data`. Test lõi dùng dữ liệu mẫu nhỏ ở `tests/fixtures/data.mjs`; test tích hợp dùng `DATA` thật. `ctx = { emit(type, payload), data }`.
 
@@ -277,10 +313,11 @@ export const MINIGAME_TYPES = Object.freeze({
   cha:  { name: 'Chà rửa', hint: 'Vuốt qua lại lên các vết bẩn.' },
   thai: { name: 'Thái', hint: 'Kéo dao tới vạch chấm, nhấc tay để cắt.' },
   cham: { name: 'Chạm', hint: '…' },
-  lua:  { name: 'Canh lửa', hint: 'Nhấc chảo khi kim nằm trong vùng xanh.' },
-  rot:  { name: 'Rót', hint: 'Giữ để rót, thả tay đúng vạch.' }
+  lua:  { name: 'Canh lửa', hint: 'Nhấc chảo khi kim nằm trong vùng xanh.', skins: { chao, phin, noi } },
+  rot:  { name: 'Rót', hint: 'Giữ để rót, thả tay đúng vạch.', skins: { ly, to } }
 })
 ```
+Lớp vỏ (vòng soát lỗi M3): bước trong `recipes.js` có thể khai báo `skin` (`u_phin` → `phin`, `luoc` → `noi`, `rot_dau_hanh`/`rot_cot_dua` → `to`); mỗi skin có `name, hint, icon` (thẻ gợi ý) và `act, over, sub, overTip, sound` (lua: nút "Nhấc phin"/"Vớt ra", vạch "Quá đặc"/"Nhũn", không xèo) hoặc `act, actMore, actResume, count` (rot: "Giữ để rưới", "Lần rưới"). `minigames/index.js` xuất thêm `skinFor(step, data)`; `hintFor` dùng tên/gợi ý của skin. Lõi: bước lua có skin khác chảo quá lửa vẫn gắn tag `chay` nhưng không mở thẻ "Chảo dầu bốc cháy".
 
 ### customers.js
 ```js
@@ -310,12 +347,17 @@ Ca là dữ liệu thuần nằm ở `state.shift`. Mọi hàm nhận `(state, �
 export function startShift(state, ctx) → shift        // tạo ca mới cho state.day; seed = seedFrom(state.seed, state.day)
    // M2: sh.mods = events.prepareShiftMods(state, ctx, ctx.now?.()) — sự kiện ngày, món lễ đang mùa, Phiếu Chợ Sớm, tiền căng bạt
    //     (trừ TRƯỚC khi ghi walletStart); số khách qua applyCustomerMods; chuỗi "Làm quen QR" ép 1 khách customer.forcePay = 'qr_fake'
+   // M3: + khách thêm nhờ ly trà "mở hàng" ca trước (takeIncidentBonusInfo, trần 8; ca đã đủ khách → +bonus.rep danh tiếng,
+   //     ghi sh.bonusNote = {customers, rep}); sh.incident = planIncident(...) (luồng ngẫu nhiên
+   //     riêng seedFrom(seed, ngày, 'tinh_huong'), không đổi lịch khách); sh.debtIn / sh.debtNotes = collectDebts(...) (mục 17.1)
 export function advance(state, dt, ctx)               // dt giây; không làm gì khi shift.paused; sinh khách tới, trừ kiên nhẫn, khách bỏ về
 export function isShiftOver(state) → boolean          // mọi khách đã rời đi (served hoặc lost) và không còn phiếu
 export function endShift(state, ctx) → summary        // tất toán ví, cập nhật stats/ratings/history, day += 1, shift = null
+   // M3: finishShiftIncidents (ca từ ngày 3 không có tình huống được xử lý → incidents.since += 1); history[] có thêm
+   //     incidents [{id, choice}], debtIn
 export function setPaused(state, paused)
 // bổ sung
-export function customerCount(state, ctx, day = state.day) → số khách
+export function customerCount(state, ctx, day = state.day) → số khách   // cài ở customer.js (kèm MAX_CUSTOMERS = 8), shift.js xuất lại
 export function planArrivals(shift, customers, ctx) → plan
 export function loadFactor(shift) → ρ
 export function gameTime(shift) → 'HH:MM' (06:00 → 10:00, ước lượng)
@@ -343,7 +385,13 @@ Cấu trúc `state.shift`:
   served: [id], lost: [id], missed: 0,
   scoreSheets: [ScoreSheet],                   // phiếu chấm từng khách
   counterStreak: 0,                            // chuỗi "Quầy chuẩn" (luôn 0 khi bật Hỗ trợ tính tiền)
-  nextTicketNo: 1
+  nextTicketNo: 1,
+  // M3 (mục 17.1)
+  incident: null | { id, afterClips, status: 'cho'|'xong', rng, cap, guaranteed, detail, choice, result, shownAt? },
+  debtIn: 0,                                   // tiền khách quen trả nợ vào ca này (tính vào lãi ca)
+  debtNotes: [ {kind: 'tra'|'quen', name, amount, text} ],
+  bonusNote?: {customers, rep},                // khách thêm nhờ ly trà "mở hàng" (hoặc danh tiếng thay thế khi đã đủ khách)
+  appVersion?: '0.3.0'                         // (giao diện ghi lúc mở ca) phiên bản game; main.js báo khi ca mở lại ở bản khác
 }
 ```
 
@@ -474,7 +522,7 @@ export function linePar(recipe, line) ; linesPar(lines, recipes) → giây
 ```
 Một dòng phiếu có số lượng n = **một lượt nấu** (tham số nhân theo n, par × (1 + 0,4(n − 1))). Dòng khác ghi chú là lượt riêng.
 
-Giá vốn: khi `submitChon` thành công, trừ tổng `cost × qty` của **mọi nguyên liệu đã chọn** vào `ledger.cogs` (phần thừa, bẫy ghi thêm vào `ledger.waste`).
+Giá vốn: khi `submitChon` thành công, trừ tổng `cost × qty` của **mọi nguyên liệu đã chọn** vào `ledger.cogs` (phần thừa, bẫy ghi thêm vào `ledger.waste`). M3: sau hệ số Phiếu Chợ Sớm, `cogs` và `waste` của mỗi lượt nấu được làm tròn tới bội 500đ gần nhất (`roundCost`; nguyên liệu lẻ 100–400đ, ghi chú "Cay"/"Không hành"/"Không đá") nên Tiền quán luôn là bội 500đ; `retryCost` cũng qua `roundCost`.
 
 ## 10. Chấm điểm — `src/core/minigame-scoring.js` và `src/core/scoring.js`
 
@@ -504,6 +552,8 @@ export function dishQuality(recipe, stepsResult, ingErrors, opts?) → { q, grad
 export function customerStars(customer, dishes, recipes, opts?) → { stars, base, penalties, cap }
    // base = hạng của Q trung bình có trọng số theo giá; có món Hỏng → base ≤ 2
    // sao = kẹp(làm_tròn_xuống(base − Σ phạt quầy − phạt chờ), 1, 5); khách khó tính: có lỗi → −1 thêm; khách tutorial không bị phạt
+   // M3: phạt nguồn 'tinh_huong' (vd tu_choi_doi_mon −1 sao) trừ sao nhưng KHÔNG tính là lỗi (không kích hoạt −1 của khách khó tính,
+   //     không vào counterErrors/kitchenErrors; phiếu chấm ghi riêng testid score-sheet-incident)
 export function tipFor(stars, flawlessAny, persona, balance?) → đồng   // 5 sao: 5.000đ; có món Không tì vết hoặc khách khó tính: 10.000đ
    // M2 (kitchen.finalizeCustomer): đang trong chuỗi "Quầy chuẩn" (sh.counterStreak ≥ 5) → 10.000đ; không áp khi bật Hỗ trợ tính tiền
    //   (lúc đó clipTicket giữ counterStreak = 0). Trong mùa sự kiện: + EVENTS[id].festiveRep danh tiếng mỗi phần món lễ đạt Ngon trở lên.
@@ -522,10 +572,12 @@ export const ERROR_TIP_TRIGGER ; export function tipForError(code, tips) → th�
    //   fakeQrLoss, fixedCost, profit, drawerExpected, drawerActual, drawerDiff, avgStars, reputationGain,
    //   counterErrors: {code: số lần}, kitchenErrors: {code: số lần}, bestDish, advice }
    // thực tế thêm: sales, listValue, rounding, qrBalance, tipJar, ratings[], lateReviews[], loanRepaid; advice = {code, count, tipId, text} | null
+   // M3: incidents [kết quả tình huống đã xử lý: {id, name, choice, label, safe, text, money, cost, refund, rep, bonus, debt, starLoss, loss, who, tipId}],
+   //     debtIn (khách quen trả nợ, cộng vào profit), debtNotes
    // bất biến (có test): ví sau ca − ví đầu ca = profit − loanRepaid
-export function settleShift(state, summary)   // wallet += (tiền mặt vượt quỹ lẻ) + QR + tip − chi phí cố định − hoàn tiền; trả nợ nếu có
+export function settleShift(state, summary)   // wallet += (tiền mặt vượt quỹ lẻ) + QR + tip + tiền trả nợ (M3) − chi phí cố định − hoàn tiền; trả nợ nếu có
 export function canAfford(state, price) ; spend(state, price, reason) ; earn(state, amount, reason)
-export function offerLoan(state, balance?) → boolean ; takeLoan(state, balance?)   // khoản vay {amount, remaining}
+export function offerLoan(state, balance?) → boolean ; takeLoan(state, balance?)   // khoản vay {amount, remaining}; M3: remaining = roundReward(gốc × (1 + lãi))
 export function buyUpgrade(state, upgradeId, ctx) → { ok, reason? }   // kiểm fromDay, tiền; không mua trong ca
 export function buyRecipe(state, recipeId, price, ctx) → { ok, reason? }
 // mastery.js
@@ -540,16 +592,40 @@ export function canAutoStep(state, recipeId, levels?) → boolean     // cấp �
 export const SAVE_KEY = 'bkn.save', BACKUP_KEY = 'bkn.bak'
 export function encodeSave(state) → 'BKN1.' + base64url(UTF-8 JSON) + '.' + fnv1a(SALT + payload)
 export function decodeSave(str) → object thô (CHƯA migrate) | null            // sai checksum → null
-export function migrate(raw, data?) → state               // gộp với defaultState(), kẹp giá trị, bỏ id công thức/nâng cấp không còn trong data; giữ ca đang dở nếu đủ cấu trúc
+export function migrate(raw, data?, report?) → state      // gộp với defaultState(), kẹp giá trị, bỏ id công thức/nâng cấp không còn trong data; giữ ca đang dở nếu đủ cấu trúc
    // version 1 → 2: migrateMeta(raw, s, data) thêm/kẹp các trường meta M2; save v1 được mail.seenVersion = '0.1.0' (nhận thư phiên bản mới)
-export function saveTo(storage, state, { backup, keys, guard }?) → boolean ; loadFrom(storage, data?, { keys }?) → state|null   // storage có getItem/setItem; thử bản chính rồi bản dự phòng; tự migrate
+   // Vòng soát lỗi M3: ví lẻ của save cũ làm tròn LÊN bội 500đ (report.walletRounded; đang dở ca thì sh.walletStart dời theo),
+   //   kỷ lục lãi ca lên bội 500đ, nợ Dì Sáu xuống bội 500đ, quà thư chưa nhận lên bội 1.000đ; bước chuỗi kẹp theo số bước
+   //   trong dữ liệu (≥ số bước → done, bỏ claimable ngoài khoảng); ca dở không đủ cấu trúc (bản khác đổi cấu trúc ca, hỏng)
+   //   → hủy ca, hoàn ledger.cogs + ledger.waste vào ví, ngày giữ nguyên (report.shiftDropped = {day, refund}), không bỏ im lặng
+export function saveTo(storage, state, { backup, keys, guard }?) → boolean ; loadFrom(storage, data?, { keys, report }?) → state|null   // storage có getItem/setItem; thử bản chính rồi bản dự phòng; tự migrate; report.from = khóa đã nạp
 export function writeSave(storage, state, { backup, keys, guard, lastCode }?) → { ok: true, code } | { ok: false, reason: 'tab_khac'|'loi_ghi' }
    // mỗi lần ghi state.rev += 1; guard: bản trong storage có rev > state.rev (tab khác đã ghi) → KHÔNG ghi ('tab_khac')
 export function storedRev(storage, { keys }?) → số | null
 export const DEV_SAVE_KEY = 'bkn.save.dev', DEV_BACKUP_KEY = 'bkn.bak.dev', DEV_KEYS = { save, backup }   // khóa riêng khi mở bằng ?devNow
-export function exportCode(state) → chuỗi ; importCode(str, data?) → state|null  // mã sao lưu (M3)
+export function exportCode(state) → 'BKN1.z.' + base64url(lzCompress(UTF-8 JSON)) + '.' + fnv1a(SALT + 'z.' + payload)   // mã sao lưu (M3)
+export function importCode(str, data?) → state|null                 // = readCode(...).state
+// M3 bổ sung (mục 16.2)
+export function readCode(text, data?) → { ok: true, state, code, warn: null|'ban_moi_hon', lost: {recipes, upgrades}, report } | { ok: false, reason: 'rong'|'khong_phai_ma'|'sai_ma'|'hong' }
+   // warn 'ban_moi_hon': raw.version > STATE_VERSION hoặc có món/nâng cấp bản này chưa có (codeLosses) → xem trước cảnh báo
+export function codeLosses(raw, data?) → { recipes: [id], upgrades: [id] }
+export function extractCode(text) → mã | null                       // bỏ khoảng trắng/xuống dòng/chữ thừa; nhiều đoạn 'BKN1.' thì lấy đoạn dài nhất
+export function backupSummary(state) → { shopName, day, chang, wallet, reputation, goldSpoons, recipes /*số món*/, shiftsPlayed, inShift }
+export function lzCompress(bytes) → bytes ; lzDecompress(bytes, maxBytes = BACKUP_MAX_BYTES) → bytes   // LZ77 kiểu LZ4, đồng bộ; hỏng → ném lỗi
+export const ARCHIVE_PREFIX = 'bkn.save.old.' ; archivePrefix({ keys }?) → '<khóa save>.old.'
+export function archiveSave(storage, state, ms, { keys }?) → { ok: true, key, code } | { ok: false, reason: 'loi_ghi' }   // không ghi đè khóa đã có
+export function listArchives(storage, { keys }?) → [{ key, at, code }] (mới nhất trước)
+export function backupDue(state, nowMs, everyMs = BACKUP_REMIND_MS /*7 ngày*/) → boolean
+export function migrateSettings(raw) → settings                    // công tắc boolean, volume kẹp 0..1, incidentFrequency hợp lệ
+// Vòng soát lỗi M3: bản lưu không đọc được (sai checksum, định dạng lạ, save chương trình khác) không bị ghi đè im lặng
+export function unreadableSaves(storage, data?, { keys }?) → [{ key, raw }]      // khóa save/dự phòng có chuỗi không nạp được (trùng thì 1)
+export function archiveUnreadable(storage, ms, data?, { keys }?) → { ok, archived: [khóa] } | { ok: false, reason: 'loi_ghi', archived }
+   // chép NGUYÊN chuỗi sang '<khóa save>.hong.<ms>' (đọc lại kiểm tra; chuỗi đã cất ở lần mở trước thì bỏ qua); ok: false → không ghi đè
+export function brokenPrefix({ keys }?) → '<khóa save>.hong.' ; countBrokenArchives(storage, { keys }?) → số bản hỏng đã cất
 ```
 UI gọi `writeSave(localStorage, state, { guard: true, lastCode, keys })` có debounce 300 ms, sau mỗi hành động quan trọng, khi `visibilitychange`/`pagehide`, và cuối ca (kèm ghi bản dự phòng). Tải lại giữa ca: khôi phục `state.shift`; nếu đang ở giữa một mini-game thì bước đó chơi lại từ đầu (cùng tham số).
+
+**Không lưu được thì báo, không im lặng** (vòng soát lỗi M3, `main.js` + `app.js`): `localStorage` bị chặn (`getStorage()` trả null) → `app.setSaveProblem('chan')`; `writeSave` trả `loi_ghi` (bộ nhớ đầy) → `setSaveProblem('loi_ghi')`, ghi lại được thì tự tắt; không cất được bản lưu hỏng → `setSaveProblem('loi_cat', { block: true })` (tạm không ghi để khỏi đè). Giao diện: dải cố định `save-warning` (`data-kind`) trên cùng (màn chơi lùi xuống 48px, biến CSS `--bar-save`), nút `save-warning-backup` "Sao lưu" mở hộp mã sao lưu (`app.openBackup`, main.js gắn `copyBackup`); lần đầu mỗi loại lỗi hiện hộp thoại `save-warning-modal` (`save-warning-copy` / `save-warning-later`), đang trong ca bán thì chỉ báo `save-warning-toast`. Lúc mở game (`bootNotices`): bản lưu hỏng đã cất / mở bản dự phòng / ca dở bị hủy vì đổi bản → hộp thoại `save-notice` (`save-notice-ok`); ca dở mở ở phiên bản khác (`shift.appVersion`) → `version-toast` "Game vừa lên phiên bản … Ca đang bán vẫn giữ nguyên".
 
 **Một tab chơi tại một thời điểm** (`app.js`): tab nào mở game cũng lưu ngay lúc khởi động (rev tăng). Tab cũ nhận sự kiện `storage` của khóa save (hoặc bị `writeSave` từ chối vì rev nhỏ hơn) thì tự khóa: `app.locked = true`, không lưu nữa (kể cả `pagehide`), vòng lặp ca dừng, lớp phủ `tab-lock` "Game đang mở ở tab khác" với nút `tab-lock-reload` "Chơi ở tab này" (tải lại bản mới nhất). Nhờ vậy tab cũ không ghi đè quà, ca, món đã mua ở tab mới, cũng không dùng để lùi một ca hỏng.
 
@@ -558,18 +634,20 @@ UI gọi `writeSave(localStorage, state, { guard: true, lastCode, keys })` có d
 - `dom.js`: `h(tag, props, ...children)` tạo phần tử (props hỗ trợ `class`, `style`, `dataset`, `on*`), `clear(el)`, `$(sel, root)`.
 - `main.js` (M2): `?devNow=YYYY-MM-DDTHH:mm` (giờ Việt Nam, hoặc `?devNow=YYYY-MM-DD` = 12:00; chỉ localhost/127.0.0.1, `clock.parseDevNow`) ghi đè đồng hồ, `app.now()` chạy tiếp từ mốc đó. Giờ giả ghi mốc tương lai vào save (`clock.maxSeen`, ngày điểm danh, Việc hôm nay…) nên khi có `devNow` game **lưu ở khóa riêng** `DEV_KEYS` (lần đầu chép từ save thật; save thật không bao giờ bị ghi) và hiện dải `devnow-banner` "Giờ giả DD/MM HH:mm · bản lưu riêng" trên cùng (màn chơi lùi xuống 24px). Gắn `attachMeta(app.bus, () => app.state, app.ctx)` một lần và gọi `refreshMeta` khi mở game. `app.ctx` có thêm `now()`.
 - `app.js`: `createApp({ root, storage, now, screens, saveKeys?, devBanner? })` → `app = { state, data /*mọi export từ src/data*/, bus, ctx /*{emit, data}*/, save(), go(screenName, params), toast(text, opts), modal(opts) → Promise, vibrate(ms), sound(name), now(), locked }`.
-  Nút Back của điện thoại (history API): `app.go` tới màn con (`SUB_SCREENS`: shop, tasting, quests, mailbox, event, stage-up, service, summary) đẩy 1 mục lịch sử; về màn gốc (prep, title) bằng nút trong game thì bỏ mục đó (`history.back()` có cờ bỏ qua). `popstate`: đang mở hộp thoại đóng được thì đóng; màn có `onBack()` tự xử lý (Nấu thử: hỏi như nút "‹ Về Chợ", phiên được giữ; ca bán: ở lại, báo "phục vụ hết khách rồi mới rời xe"); còn lại về `prep`. Ở màn gốc Back rời trang như thường.
+  Nút Back của điện thoại (history API): `app.go` tới màn con (mọi màn trừ `title`, `prep` — `isSubScreen` của `router.js`; `SUB_SCREENS` chỉ là danh sách tham khảo: shop, tasting, quests, mailbox, event, stage-up, service, summary, settings, notebook, recipe-book) đẩy 1 mục lịch sử; về màn gốc (prep, title) bằng nút trong game thì bỏ mục đó (`history.back()` có cờ bỏ qua). `history.back()` chạy không đồng bộ: trong lúc đang lùi mà người chơi mở ngay màn con khác thì chưa đẩy mục mới, chỉ ghi lại và đẩy khi popstate của lần lùi về tới (hoặc sau 1,5 giây) — đẩy chen vào làm lệch sổ lịch sử và vài vòng sau game lùi ra khỏi trang (e2e `stability`). `popstate`: đang mở hộp thoại đóng được thì đóng; màn có `onBack()` tự xử lý (Nấu thử: hỏi như nút "‹ Về Chợ", phiên được giữ; ca bán: ở lại, báo "phục vụ hết khách rồi mới rời xe"); còn lại về `prep`. Ở màn gốc Back rời trang như thường.
   Thực tế thêm: `saveNow({backup}?)`, `modalOpen()`, `modalBlocking()` (hộp thoại chặn → tạm dừng thời gian ca), `settings()`, `applySettings()`, `router`, `switchTab(name)` (khi đang ở màn ca bán). `toast(text, {duration, kind:'info'|'good'|'bad'|'tip', title, icon, testid})` không chặn thao tác, tối đa 2 cái thường; thẻ Mẹo nghề (`kind:'tip'`) hiện gọn (tiêu đề + tối đa 2 dòng, chỉ che dải khách), mỗi lần 1 thẻ, thẻ sau xếp hàng (tối đa 2 thẻ chờ); thẻ trigger `shift_end` không nổi mà hiện trong mục "Mẹo của Dì Sáu" ở Tổng kết. `modal({title, text, icon, body, render(close), actions:[{label, value, testid, kind}], dismissible, testid, blocking = true})`.
+  M3 thêm (mục 16): `version` (`APP_VERSION`), `audio`, `replaceState(next)`, `pwa`, `onPwaChange(fn)`, `setPwa(patch)`, `setUpdateReady(worker)`, `applyUpdate()`, `updateSlot()`, `installMode()`, `promptInstall()`; `sound(name)` trả boolean.
+  Vòng soát lỗi M3: `saveProblem()`, `setSaveProblem(kind | null, { block })`, `openBackup` (main.js gắn), `toastLimit(fn | null)` (màn ca bán giới hạn chiều cao chồng thông báo tới mép trên thanh 4 khâu: thông báo không vừa xếp hàng theo thứ tự đến, thông báo thường chờ quá 3,5 giây thì bỏ vì tin đã cũ; thẻ Mẹo nghề vẫn mỗi lần 1 thẻ). Màn ca bán gộp tiến độ Việc hôm nay đến cùng lúc thành 1 thông báo và không báo tiến độ việc khi khách hướng dẫn ngày 1 còn trong ca.
   Tham số URL: `?seed=N` chỉ có tác dụng khi chưa có save; `?test=1` (chỉ trên localhost/127.0.0.1) bật `settings.assistMotion` cho kiểm thử tự động.
 - `screens/counter.js`: `mountCounter(root, app, { switchTab })` → `{ el, update, onShow, onHide, unmount }`. Nút hành động mỗi khâu (Đọc lại đơn/Chốt order, Đưa tiền thối, QR, Kẹp phiếu bếp) nằm trong thanh `.act-bar` dính đáy panel; sang khâu mới panel tự cuộn để thấy phần thao tác. Phiếu chấm có 5 hàng: Order, Báo tổng (`bao_du`, `bao_thieu`), Thối tiền (`thoi_thieu`, `thoi_du`, `qr_gia`), Bếp, Thời gian chờ. `screens/kitchen.js`: `mountKitchen(root, app)` → `{ unmount, update, onShow, onHide, selectTicket(ticketId) }`; nút "‹ Phiếu" (và chạm phiếu trên dây chung) đưa về dây phiếu ở cả bước chọn lẫn Thớt, rổ đang chọn được giữ; ô "Đang làm" trên dây phiếu có "Bỏ món" + "Làm tiếp"; trên Thớt thẻ công thức thu gọn (chỉ ghi chú đỏ, nguyên liệu và các bước gập lại); màn `service` nạp bếp bằng `import()` động, gọi `update(dt)` mỗi khung hình và `onShow/onHide` khi đổi tab (rời tab giữa mini-game → bước đó chơi lại từ đầu).
-- `router.js`: mỗi màn là module `export default { mount(root, app, params) → { unmount(), update?(dt) } }`. Các màn: `title` (lần đầu: đặt tên xe; sau đó: vào game), `prep` (màn Chuẩn bị ca: thông tin ngày, nút "Mở hàng", nâng cấp — M2 thêm shop/nhiệm vụ/điểm danh), `service` (ca bán: chứa HUD + thanh tab Quầy/Bếp, gắn `counter` và `kitchen` làm panel con), `summary` (tổng kết ca).
+- `router.js`: mỗi màn là module `export default { mount(root, app, params) → { unmount(), update?(dt), onBack?() } }`. M3: `ROOT_SCREENS = ['title', 'prep']`, `isSubScreen(name)` (mọi màn khác là màn con, Back → Chuẩn bị), `createRouter(...)` có thêm `register(name, screen)`, `has(name)`, `names()`; bảng màn `SCREENS` ở `src/main.js` (mục 16.4). Các màn: `title` (lần đầu: đặt tên xe; sau đó: vào game), `prep` (màn Chuẩn bị ca: thông tin ngày, nút "Mở hàng", nâng cấp — M2 thêm shop/nhiệm vụ/điểm danh), `service` (ca bán: chứa HUD + thanh tab Quầy/Bếp, gắn `counter` và `kitchen` làm panel con), `summary` (tổng kết ca).
 - `loop.js`: `requestAnimationFrame`, gọi `advance(state, dt)` (dt kẹp 0,05 s) và `screen.update(dt)`; tạm dừng khi tab ẩn (`visibilitychange`).
 - `input.js`: tiện ích Pointer Events: `bindPointer(el, {down, move, up, cancel}, { space }?) → unbind` với `setPointerCapture`, chỉ nhận con trỏ chính, `pointercancel` coi như thả tay; phím Space mô phỏng nhấn/giữ trên máy tính khi bật `{ space: true }` (lua, rot, cham bật sẵn). Mỗi handler nhận `(p, e)`, `p = {x, y, rx, ry, clientX, clientY, rect, t, pointerId, pointerType, synthetic, …}`.
 - CSS sân khấu mini-game: `touch-action: none; user-select: none; -webkit-touch-callout: none;` chặn `contextmenu`.
 - Bố cục dọc, chuẩn 390×844; khung tối đa 480px chiều ngang, căn giữa trên máy tính. Vùng chạm ≥ 44px, cách mép 16px.
 - Mọi phần tử quan trọng có `data-testid` (danh sách ở mục 14) để test tự động.
 - Tôn trọng `prefers-reduced-motion` và cài đặt giảm chuyển động.
-- Âm thanh WebAudio tổng hợp (M3); rung `navigator.vibrate` nếu có và được bật.
+- Âm thanh WebAudio tổng hợp (M3, `ui/audio.js`, mục 16.5); rung `navigator.vibrate` nếu có và được bật.
 
 ### Mini-game plugin — `src/ui/minigames/index.js`
 ```js
@@ -595,6 +673,14 @@ Mini-game chỉ đo thao tác và gọi hàm chấm trong `core/minigame-scoring
 - Nấu thử: `mountKitchen(root, app, { tasting: { onDone(dish) } })` chạy trên app "hộp cát" (`tastingSandbox`, bus riêng): mini-game nhận `ctx.untimed` (bước không tự kết thúc, bước Chọn không bị tính quá giờ, Chà không trừ điểm chậm) và `ctx.guide` (ô cần lấy ở bước Chọn nhấp nháy ngay: "tay chỉ"); par × `TASTING_PAR_MUL` (4), ẩn thanh thời gian, không dòng đầu Thớt ("‹ Phiếu") và nút "Bỏ món" — màn Nấu thử có đầu riêng: nút "‹ Về Chợ", nhãn "Nấu thử" + tên món, dòng "Không tính giờ · Có gợi ý · Miễn phí · Không tính thạo món"; Ra món → `finishTasting` → màn kết quả (Mua món / Về Chợ Công Thức). Thoát giữa chừng giữ phiên nấu thử (`state.tasting`) để làm tiếp.
 - Hình xe: `cartSvg({ name, umbrellaColor, umbrellaAlt, pattern: 'soc', sign: 'vien'|'den', decor: 'chau_hoa' })` (tên xe cắt ở 22 ký tự, cỡ chữ giảm theo độ dài 13 → 9 và ép khít `textLength` trong biển trắng, không tràn ra thân xe); `cartOptions(state, data)` / `cartView(state, data)` (meta-ui.js) đọc `cosmetics.equipped` (dù mặc định: "Dù cũ của Dì Sáu" màu gạch phai). Màn mở đầu và Góc Muỗng Vàng vẽ theo đồ đang dùng. `art.js` thêm icon `phieu_cho_som bat_che_mua troi_mua nang_nong lanh_luong cho_phien thu ruong lich phan_trang danh_hieu mon_goi_cuon mon_bun_thit_nuong mon_che_ba_mau` và mặt `CO_HANH`.
 
+### 13.2 Giao diện M3 nội dung
+
+- `prep` gọn lại: đầu màn gồm tên xe + Muỗng Vàng, "Ngày N", 3 ô số Tiền quán / danh tiếng / sao trung bình; lưới biểu tượng `prep-nav` (4 cột: hàng 4 ô + hàng 3 ô, giữ 4 cột cả ở 360px, ô thu hẹp lề) gồm 7 ô: Chợ Công Thức (`open-shop`), Việc hôm nay (`open-quests`), Điểm danh (`open-checkin`), Hộp thư (`open-mail`), Sổ công thức (`open-recipe-book`), Sổ tay nghề (`open-notebook`), Cài đặt (`open-settings`, thay nút bánh răng cũ). Mỗi ô chỉ ghi tên (trạng thái ngắn như "2 thư mới" nằm trong `aria-label`/`title`) và có `data-dot` = số chấm đỏ (món mua được, việc chờ nhận, quà điểm danh, thư mới, nhóm Sổ tay chờ nhận, nhắc sao lưu). Thẻ "Hôm nay" (`prep-forecast` dự báo khách, gồm cả khách thêm nhờ tình huống `prep-incident-bonus`; `prep-debts` sổ nợ đang chờ; `prep-dish-<id>` món bán hôm nay). Thẻ Mẹo nghề ngẫu nhiên đã mở (`prep-tip`, nút `prep-tip-notebook` mở Sổ tay nghề), chọn một lần mỗi lần vào màn (`randomSeenTip` với `Math.random` ở UI). Nút "Mở hàng" (`open-shift`) luôn thấy được, không tràn ngang ở 360×740.
+- `title`: người chơi quay lại (đã đặt tên xe) thấy một thẻ Mẹo nghề đã mở (`title-tip`) khi chờ vào game.
+- `service`: đầu ca hiện thông báo nợ (`debt-toast`, khách quen trả nợ / quá hạn chưa trả). Mỗi khung hình và ngay khi `ticket.clipped` (trước khi khách kế tiếp bước lên quầy) gọi `checkIncident()`: chỉ khi tab đang mở là Quầy, không có hộp thoại, tab không bị khóa và `incidentDue(state, ctx)` đúng thì mở hộp thoại chặn `incident-modal` (vòng lặp không chạy `advance` khi hộp thoại chặn → thời gian ca và kiên nhẫn của khách đứng yên). Hộp thoại: nhãn "Tình huống đầu ca" / "Tình huống giữa hai khách" (+ "chuyện vui"), `incident-text`, các nút `incident-choice-<id>` (`data-safe`, `data-choice`, dòng cái giá; lựa chọn không dùng được bị khóa kèm lý do), sau khi chọn đổi sang `incident-result` (`data-choice`), `incident-effects` (tiền, giá vốn, danh tiếng, khách thêm…), `incident-tip` (thẻ Mẹo nghề mở được, nếu có) và nút `incident-ok` "Bán tiếp". `screen-service` có `data-t` = giờ trong ca (giây, 2 số lẻ) để test đo thời gian đứng yên. Phiếu chấm món có dòng `score-sheet-incident` khi món bị trừ sao vì từ chối đổi món.
+- `summary`: bảng tiền có dòng "Khách quen trả nợ" (`sh.debtIn`); thẻ `summary-incident` (`data-incident`, `data-choice`: tình huống, lựa chọn, kết quả), `summary-debt` (sổ nợ), `summary-notebook` (tiến độ Sổ tay nghề, nhóm chờ nhận thưởng).
+- Màn mới `notebook` (`ui/screens/notebook.js`) và `recipe-book` (`ui/screens/recipe-book.js`), đăng ký ở `SCREENS` của `src/main.js`; mở từ lưới màn Chuẩn bị và từ mục Chơi của Cài đặt (`settings-open-notebook`, `settings-open-recipe-book`). Chi tiết mục 17.
+
 ## 14. data-testid bắt buộc (cho e2e)
 
 - Màn title: `shop-name-input`, `start-button`. Màn prep: `open-shift`.
@@ -607,7 +693,7 @@ Mini-game chỉ đo thao tác và gọi hàm chấm trong `core/minigame-scoring
   - Quầy: `counter-panel` (có `data-stage`), `order-sheet`, `qty-value`, `order-line-remove-<i>`, `caught-list`, `numpad-display` (`data-amount`), `amount-due`, `change-hint` (`data-amount`), `tray` (`data-amount`), `drawer-<mệnh giá>` có `data-count`, `no-change-modal`, `no-change-<xin_tien_le|moi_qr|lam_tron>`, `qr-reject`, `rail-full`, `complaint-modal`.
   - Bếp: `kitchen`, `recipe-card`, `board`, `step-sheet`, `step-start`, `step-hint`, `step-result` (`data-score`), `critical-prompt`, `confirm-ok`, `confirm-cancel`, `dish-reveal` (`data-grade`, `data-q`), `dish-result`, `serve-ticket` có `data-ticket-id`; `board-step-<id>` có class `is-available`/`is-done` và `data-step-id`.
   - Mini-game: `chon-basket`, `cha-area`, `cha-progress`, `cha-spot-<i>` (`data-clean`), `thai-board`, `thai-guide-<i>` (`data-x` tính từ mép trái `minigame-stage`), `cham-pan`, `cham-target` (`data-n`), `cham-pad` (`data-n`, `data-t`), `cham-bottle-<id>` (`data-target`, `data-count`), `rot-done`, `mg-time`.
-  - Tổng kết: `summary-drawer-diff`, `summary-stars`, `summary-advice`, `summary-reviews`, `summary-tip`.
+  - Tổng kết: `summary-drawer-diff`, `summary-stars` (nhãn "Sao ca này"), `summary-advice`, `summary-reviews`, `summary-tip`, `summary-tomorrow` (dòng "Ngày mai …", sao trung bình 30 lượt gần nhất).
 - M2:
   - Chuẩn bị: `open-shop`, `open-quests`, `open-checkin`, `open-mail` (mỗi ô có `data-dot` = số chấm đỏ), `prep-spoons`, `chain-card` (chuỗi chính; chuỗi khác `chain-card-<chainId>`), `chain-claim-<chainId>` (gộp) / `chain-claim-<chainId>-<bước>`, `dream-card`, `stage-up-card`, `event-card` (`data-phase`), `open-event`, `day-event-card`, `day-event-choice-<choiceId>`, `coupon-card`, `use-coupon`, `rewind-note`, `stage-up-modal`, `stage-up-open`, `stage-up-later`, `mail-toast`.
   - Điểm danh: `checkin-popup`, `checkin-claim`, `checkin-close`, `checkin-slot-<i>` (`data-claimed`), `checkin-note`.
@@ -618,7 +704,16 @@ Mini-game chỉ đo thao tác và gọi hàm chấm trong `core/minigame-scoring
   - Sự kiện: `screen-event`, `event-tem` (`data-amount`), `event-recipe-<recipeId>`, `event-checkin-claim`, `event-quest-<id>`, `event-quest-claim-<id>`, `event-chain-step`, `event-exchange-<id>`, `event-exchange-item-<id>`.
   - Lên chặng: `screen-stage-up` (`data-eligible`), `stage-up-locked`, `stage-conditions`, `stage-cond-<id>`, `post-goals`.
   - Chung: `meta-back`, `meta-wallet`, `meta-spoons`. Trong ca: `quest-toast`, `chain-toast`, `tem-toast`, `day-event-toast`, `event-quest-toast`. Tổng kết: `summary-quests`, `summary-chain`, `summary-event-chain`, `summary-event`, `summary-day-event`.
+  - M3 nền tảng: Chuẩn bị `open-settings`, `backup-reminder`; Chuẩn bị/Tổng kết `update-ready`, `update-reload`; màn mở đầu `title-import`.
+    Cài đặt: `screen-settings`, `settings-sound|settings-assist|settings-play|settings-backup|settings-install|settings-info` (các mục), `setting-<khóa>` (công tắc: sound, vibrate, tips, reducedMotion, assistCash, assistMotion), `setting-volume` (range 0–100), `setting-volume-value`, `setting-incident-<nhieu|vua|it>` (`aria-checked`), `backup-last`, `backup-copy`, `backup-download`, `backup-import`, `archive-list`, `archive-<ms>`, `archive-restore-<ms>`, `install-app`, `install-state`, `install-hint` (+`install-hint-ok`), `offline-state`, `app-version`, `open-about`, `about-modal` (+`about-close`), `reset-game`.
+    Hộp thoại: `backup-code-modal` (`backup-code`, `backup-copy-status`, `backup-copy-again`, `backup-done`), `backup-import-modal` (`backup-input`, `backup-file`, `backup-file-pick`, `backup-check`, `backup-error`, `backup-preview` có `data-shop/day/wallet/chang/recipes`, `backup-change`, `backup-confirm`, `backup-cancel`), `reset-step1` (`reset-next`), `reset-step2` (`reset-confirm`), `reset-cancel`; thông báo `replace-done`, `replace-error`, `backup-download-toast`.
   - Vòng soát lỗi M2: `tab-lock`, `tab-lock-reload` (tab cũ tự khóa), `devnow-banner` (giờ giả), `prep-talk`, `event-card-dot`, `event-pending`, `event-auto-toast`, `event-grace-chain` (màn sự kiện, ân hạn), `chain-assist-<chainId>` (bước chuỗi đếm mức thay thế khi bật Hỗ trợ thao tác), `shop-trial-note-<recipeId>` (đang nấu thử dở món khác).
+- Vòng soát lỗi M3: `save-warning` (`data-kind` = chan|loi_ghi|loi_cat), `save-warning-backup`, `save-warning-modal`, `save-warning-copy`, `save-warning-later`, `save-warning-toast`, `save-notice`, `save-notice-ok`, `version-toast`; Cài đặt `broken-archives`; nhập mã `backup-newer` (mã từ bản mới hơn; nút `backup-confirm` đổi chữ "Vẫn dùng bản này"); hộp mã sao lưu `backup-copy-status` có `data-copied`; Quầy `tray-empty`, `change-over` (đang thối dư, ngày ≤ 3 hoặc Hỗ trợ tính tiền); Bếp `shelf-qty-<id>` (huy hiệu ×n trên ô đã chọn); phiếu chấm `score-sheet-tag-quay`, `score-sheet-tag-bep`; Chuẩn bị `prep-rating` (kèm dòng "30 lượt gần nhất"/"tạm tính"), `prep-wallet` có `data-amount` (từ 1 triệu ghi gọn "1,16tr"), `prep-incident-bonus` có `data-kind` = khach|danh_tieng.
+- M3 nội dung:
+  - Chuẩn bị: `prep-nav` (lưới 7 ô, mỗi ô có `data-dot`): `open-shop`, `open-quests`, `open-checkin`, `open-mail`, `open-recipe-book`, `open-notebook`, `open-settings`; `prep-forecast`, `prep-incident-bonus`, `prep-debts`, `prep-dish-<recipeId>`, `prep-tip`, `prep-tip-notebook`. Màn mở đầu: `title-tip`. Cài đặt: `settings-open-notebook`, `settings-open-recipe-book`.
+  - Tình huống trong ca: `incident-modal` (phần tử `.incident` có `data-incident`), `incident-text`, `incident-choice-<choiceId>` (`data-safe`, `data-choice`), `incident-result` (`data-choice`), `incident-effects`, `incident-tip`, `incident-ok`; `debt-toast`; `score-sheet-incident`; `screen-service` có `data-t`. Tổng kết: `summary-incident` (`data-incident`, `data-choice`), `summary-debt`, `summary-notebook`.
+  - Sổ tay nghề: `screen-notebook`, `notebook-progress` (`data-unlocked`, `data-total`), `notebook-featured`, `notebook-tab-<nhóm>` (`data-dot`), `notebook-group-<nhóm>` (`data-unlocked`, `data-total`, `data-claimed`), `notebook-claim-<nhóm>`, `notebook-claimed-<nhóm>`, `notebook-tip-<tipId>` (`data-unlocked`), `notebook-toast`.
+  - Sổ công thức: `screen-recipe-book`, `recipe-book-tab-mon`, `recipe-book-tab-tu`, `book-recipe-<recipeId>` (`data-status` = owned|shop|event|teaser, `data-cooks`, `data-best`, `data-level`, `data-flawless`), `book-open-<recipeId>`, `book-cooks-<id>`, `book-best-<id>`, `book-level-<id>`, `book-flawless-<id>`; hộp thoại `recipe-detail` (`recipe-detail-ing-<ingredientId>`, `recipe-detail-step-<stepId>`, `recipe-detail-close`); `dialect-list`, `dialect-<synonymId>`.
 
 ## 15. Hệ thống meta M2 (lõi + dữ liệu)
 
@@ -783,3 +878,123 @@ Lệch so với `docs/can-bang.md`: lãi bán hàng của người chơi hoàn h
 - Nấu thử: không mở phiên món khác khi đang dở (`dang_nau_thu`); không tính giờ thật sự, có gợi ý ngay.
 - Dữ liệu theo đặc tả: ô 5 Tuần Khai Trương = 2 Phiếu Chợ Sớm; ngưỡng danh tiếng 150.
 - Giao diện: Back điện thoại, điểm danh trước thông báo thư, lần mở đầu gọn (lời Dì Sáu lên trên), hiệu ứng sự kiện ngày theo lựa chọn, lời Dì Sáu theo thời tiết, thẻ chuỗi đã xong không lặp chữ, thư việc quên nhận ghi đúng ngày, biển tên xe không tràn, tên tiền sự kiện thay chữ "Tem", động từ NPC thống nhất.
+
+## 16. Nền tảng M3: PWA, sao lưu, Cài đặt, âm thanh
+
+### 16.1 PWA — `manifest.webmanifest`, `sw.js`, `icons/`
+- Manifest: `name` "Bếp Khởi Nghiệp", `short_name` "Bếp KN", `display: standalone`, `orientation: portrait`, `start_url`/`scope` `./`, `theme_color` = `--brick` (#b9472f, trùng `<meta name="theme-color">`), `background_color` = `--bg` (#fbf3e2); biểu tượng PNG 192/512 (`any`) + 512/192 (`maskable`, hình nằm trong vùng an toàn 40%) + SVG. `index.html` gắn manifest, `icons/icon.svg`, `apple-touch-icon.png` (180), `mobile-web-app-capable`, `apple-mobile-web-app-title` (không dùng `apple-mobile-web-app-capable` vì Chrome cảnh báo trên console).
+- `sw.js`: `VERSION` = "version" của package.json; cache `bkn-<VERSION>`; `PRECACHE` liệt kê **toàn bộ** tệp chơi offline: `index.html`, `manifest.webmanifest`, mọi `.js` trong `src/`, mọi `.css` trong `css/`, mọi tệp trong `icons/` (test đối chiếu với cây thư mục thật: thiếu hay thừa đều hỏng; mọi import tương đối trong `src/` phải có trong PRECACHE). Cài: `cache.addAll` với `cache: 'reload'`, **không** `skipWaiting` tự động. Kích hoạt: xóa các cache `bkn-*` khác bản này (chỉ cache của chính game), `clients.claim()`. Tải tệp: chỉ GET cùng nguồn; cache-first, so khóa `ignoreSearch` (bỏ `?devNow`, `?test`, `?seed`…); mở trang (`navigate`) luôn trả `index.html` đã lưu; tệp chưa có thì lấy mạng (tệp của game được cất thêm). Ở `localhost`/`127.0.0.1` còn tải lại nền sau khi trả cache (khi phát triển thấy code mới ở lần mở sau). Tin nhắn: `{type: 'SKIP_WAITING'}` → kích hoạt bản mới; `{type: 'GET_VERSION'}` → trả `{type: 'VERSION', version}`.
+- `main.js` (`setupPwa`): không đăng ký khi `file://`; `beforeinstallprompt` → `preventDefault()` và giữ lại (`app.setPwa({installPrompt})`), `appinstalled`; `navigator.storage.persist()` sau thao tác đầu tiên (nếu chưa bền vững); đăng ký `./sw.js`: worker mới `installed` khi đã có controller → `app.setUpdateReady(worker)`; `controllerchange` chỉ tải lại khi người chơi đã bấm Tải lại (`app.pwa.reloading`); kiểm tra bản mới khi quay lại tab (tối đa 30 phút/lần).
+- Bản mới: `app.updateSlot()` (ô tự điền khi có bản mới, cả khi đang mở màn) chỉ được đặt ở màn **Chuẩn bị** và **Tổng kết**: thẻ `update-ready` "Có bản mới" + nút `update-reload` "Tải lại" → `app.applyUpdate()` (từ chối khi đang có ca; lưu, gửi SKIP_WAITING, tải lại). Giữa ca không bao giờ hiện, tải lại giữa ca vẫn dùng bản cũ (bản mới chờ **khi game còn mở**).
+- Giới hạn của trình duyệt (vòng soát lỗi M3): khi người chơi đóng **hết** tab/ứng dụng rồi mở lại, trình duyệt tự kích hoạt bản đang chờ, có thể rơi vào giữa ca; không chặn được. Cách giữ ca: giao diện ghi `shift.appVersion` lúc mở ca; mở lại ở bản khác mà ca vẫn đủ cấu trúc thì chơi tiếp và báo `version-toast`; bản sau có đổi cấu trúc ca thì `save.migrate` hủy ca và hoàn giá vốn đã trừ (`report.shiftDropped`, hộp thoại `save-notice`) — không bỏ ca im lặng. E2E `pwa-backup` (máy chủ `bkn.localhost`, không phải localhost nên không có tải lại nền) kiểm hành vi này.
+- Cài game: `app.installMode()` → `'installed'` (đã cài/standalone) | `'prompt'` (có hộp cài của trình duyệt → `app.promptInstall()`) | `'ios'` (hướng dẫn Chia sẻ → Thêm vào Màn hình chính) | `'manual'` (menu trình duyệt).
+- Biểu tượng PNG dựng từ `icons/icon.svg` bằng `tools/make-icons.mjs` (Chromium của Playwright, kiểm tra kích thước PNG); chạy tay khi đổi hình, commit cả PNG.
+
+### 16.2 Mã sao lưu — `core/save.js`
+- Định dạng `BKN1.z.<payload>.<checksum>`: payload = base64url của JSON (UTF-8) nén bằng `lzCompress` (LZ77 kiểu khối LZ4, viết tay, đồng bộ, không cần `CompressionStream`); checksum = FNV-1a 32 bit của `SALT + 'z.' + payload` (8 ký tự hex). Save 45 KB → mã khoảng 8 KB. `readCode` nhận cả mã save thô `BKN1.<payload>.<checksum>` (`encodeSave`), bỏ khoảng trắng/xuống dòng/chữ thừa (dán từ tin nhắn, cả nội dung file sao lưu), giải nén có trần 8 MB, không bao giờ ném lỗi ra ngoài; nội dung qua `migrate` (save v1, v2 nạp được, thiếu cài đặt M3 thì lấy mặc định).
+- Lý do từ chối (câu hiển thị ở `CODE_ERRORS` của `ui/screens/settings.js`): `rong` "Chưa có mã…", `khong_phai_ma` "Đây không phải mã sao lưu…", `sai_ma` "Mã bị sai hoặc thiếu ký tự, có thể do chép chưa hết…", `hong` "Mã không đọc được…".
+- **Không xóa dữ liệu người chơi**: trước khi ghi đè (nhập mã, khôi phục bản đã cất, chơi lại từ đầu) bản hiện tại được cất bằng `archiveSave` sang khóa `<khóa save>.old.<ms>` (`bkn.save.old.<ms>`; khi `?devNow` là `bkn.save.dev.old.<ms>`), giá trị là `exportCode`. Cất lỗi (bộ nhớ đầy) → không ghi đè gì. Không có hàm xóa bản đã cất; màn Cài đặt liệt kê "Bản lưu đã cất" (`listArchives`) để khôi phục.
+- `app.replaceState(next)`: cất bản hiện tại → `next.rev = max(rev trong storage, rev hiện tại, rev của next)` rồi `writeSave` (kèm bản dự phòng) nên tab cũ tự khóa; đặt lại `app.session`; lỗi → giữ nguyên bản cũ (`loi_cat` | `loi_ghi` | `tab_khac`). Sau đó giao diện gọi `refreshMeta`, lưu, về màn mở đầu.
+- Nhắc sao lưu: `backupDue(state, now)` = đã bán ít nhất 1 ca và `now − max(backup.lastAt, backup.since) ≥ 7 ngày thật` → thẻ `backup-reminder` ở màn Chuẩn bị, bấm mở Cài đặt ở mục Sao lưu (`app.go('settings', { focus: 'backup' })`). Mã sao lưu mang sẵn mốc `backup.lastAt` của lần chép; bản đang chơi chỉ ghi `backup.lastAt` khi mã **thật sự được cất**: `navigator.clipboard.writeText` thành công, nút "Chép lại" (`execCommand('copy')`) trả true, người chơi tự chép từ ô mã (sự kiện `copy`), hoặc đã tải file. Chép tự động thất bại (vd chơi qua http trong mạng Wi-Fi, Clipboard API chỉ có ở HTTPS) mà bấm "Xong" thì không ghi mốc, thẻ nhắc vẫn còn (vòng soát lỗi M3).
+- Mã tạo từ bản game mới hơn (`readCode().warn === 'ban_moi_hon'`): bảng xem trước có cảnh báo `backup-newer` (số món/nâng cấp sẽ mất, khuyên cập nhật game trước), nút xác nhận đổi thành "Vẫn dùng bản này".
+- Bản lưu không đọc được lúc mở game: cất nguyên chuỗi sang `<khóa save>.hong.<ms>` trước lần ghi đầu (mục 12); Cài đặt ghi số bản đã cất (`broken-archives`).
+
+### 16.3 Màn Cài đặt — `ui/screens/settings.js` (+ `css/settings.css`)
+Mở từ ô Cài đặt `open-settings` trong lưới biểu tượng của màn Chuẩn bị (mục 13.2; thay các công tắc cài đặt rời trước đây, cùng testid `setting-<khóa>`). Các mục:
+- Âm thanh và rung: Âm thanh, Âm lượng (0–100%, bước 10, khóa khi tắt tiếng), Rung.
+- Hỗ trợ: Hỗ trợ tính tiền (ghi rõ: chuỗi "Quầy chuẩn" và việc Quầy không được đếm, không ghi kỷ lục), Hỗ trợ thao tác (ghi rõ: không đạt "Không tì vết", tối đa hạng Ngon).
+- Chơi: Mẹo nghề, Giảm chuyển động, Tình huống trong ca Nhiều / Vừa / Ít (`settings.incidentFrequency`, mặc định Vừa; "Ít" chỉ gồm tình huống vui — lõi tình huống đọc giá trị này).
+- Sao lưu: lần sao lưu gần nhất; "Chép mã sao lưu" (`navigator.clipboard`, không được thì hiện mã trong ô để chép tay; nút Chép lại dùng `execCommand('copy')`); "Tải file sao lưu" (Blob `.txt` gồm vài dòng hướng dẫn + mã, tên `bep-khoi-nghiep-<tên xe không dấu>-ngay-<n>-<YYYYMMDD>.txt`); "Nhập mã sao lưu" (dán mã hoặc chọn file → Xem trước bảng "Bản trong mã" / "Bản hiện tại": tên xe, ngày game, Tiền quán, chặng, số công thức, danh tiếng, Muỗng Vàng → "Dùng bản này" mới ghi đè); "Bản lưu đã cất" (Khôi phục = cùng luồng xem trước).
+- Cài game (theo `installMode`), trạng thái chơi offline (`app.pwa.offlineReady`).
+- Thông tin: phiên bản, "Giới thiệu" (game hư cấu, mọi con số là số liệu minh họa, không liên quan thương hiệu nào, dữ liệu lưu trên máy), "Chơi lại từ đầu" (hộp thoại 2 bước `reset-step1` → `reset-step2`; state mới `defaultState(seed ngẫu nhiên)` giữ cài đặt; bản cũ được cất).
+Màn mở đầu lần đầu (chưa đặt tên xe) có nút `title-import` "Đã chơi ở máy khác? Nhập mã sao lưu" (cùng hộp thoại nhập mã).
+
+### 16.4 Thêm màn mới
+Viết `src/ui/screens/<tên>.js` theo mục 13, import rồi thêm vào bảng `SCREENS` ở `src/main.js` (khóa = tên dùng trong `app.go`). Màn không nằm trong `ROOT_SCREENS` tự là màn con (Back điện thoại → Chuẩn bị, có thể tự xử lý bằng `onBack()`); `router.register(name, screen)` dùng được lúc chạy. Thêm tệp vào `PRECACHE` của `sw.js` (test `pwa.test.mjs` báo thiếu).
+
+### 16.5 Âm thanh — `ui/audio.js`
+`createAudio(getSettings, env = globalThis)` → `{ play(name) → boolean, unlock(), ready(), names }`; `SOUND_NAMES`: `click, coin` (tiền vào túi/nhận thưởng), `cash` (tiền vào két: "cạch" + "keng"), `ding` (Hoàn hảo), `bell` (chuông ra món, khách tới), `chop` (dao thái "tách"), `sizzle` (dầu "xèo"), `pour` (rót nước), `error` (lỗi), `nudge` (nhắc nhẹ), `chest` (mở rương), `paper`. Tổng hợp bằng dao động + ồn trắng qua bộ lọc (không tệp âm thanh). AudioContext chỉ tạo sau thao tác đầu tiên (`pointerdown`/`keydown`) khi đang bật tiếng; âm lượng tổng = 0,9 × `settings.volume`; tắt tiếng/âm lượng 0 → không phát; trình duyệt không hỗ trợ/chặn → im lặng, không lỗi. Gắn âm: mini-game qua `feedback(ctx, kind)` (`cut`/`chop` thái, `hit` chạm trúng, `sizzle` lúc bắt đầu Canh lửa, `pour` mỗi lần giữ Rót), quầy (`cash` khi thối đúng/nhận QR), ca bán (`nudge` khi khách sắp hết kiên nhẫn/bỏ về), Việc hôm nay (`chest` mở Rương ngày), điểm danh (`chest` ô 7). Mọi âm luôn có tín hiệu hình đi kèm.
+
+### 16.6 Kiểm chứng M3 nền tảng
+- Unit: `pwa.test.mjs` (PRECACHE ↔ cây thư mục, VERSION ↔ package.json ↔ APP_VERSION, import tương đối có trong PRECACHE, manifest + kích thước PNG, index.html gắn mọi CSS; chạy `sw.js` trong `vm` với cache/fetch giả: cài đủ tệp, không tự kích hoạt, dọn cache cũ, mất mạng vẫn trả trang và module kể cả có query, bỏ qua khác nguồn/POST; router màn con), `backup-code.test.mjs` (định dạng, nhập lại y hệt, nén < 40% save thô, nén/giải nén từng byte, dữ liệu hỏng ném lỗi, sai 1 ký tự → `sai_ma`, dán kèm chữ thừa, save v1, cất bản cũ không ghi đè, nhắc 7 ngày, cài đặt M3), `audio.test.mjs` (AudioContext giả: chỉ tạo sau thao tác, đủ âm, âm lượng, tắt tiếng, trình duyệt chặn; mọi tên âm giao diện gọi đều có).
+- E2E `pwa-backup.e2e.mjs` (vòng soát lỗi M3: thêm kịch bản "bản mới tự kích hoạt khi đóng hết tab giữa ca" ở máy chủ `bkn.localhost`; chờ cache/bản chờ bằng `pollEval`, không dùng `waitForFunction` với Promise): (5) chờ service worker → tải lại → `context.setOffline(true)` → tải lại vẫn vào màn Chuẩn bị, mở ca, có khách; bản mới (máy chủ thử thay `VERSION` của sw.js): nút Tải lại hiện ở màn Chuẩn bị, bấm thì dùng cache bản mới, tiến trình giữ; bản mới phát hành giữa ca không hiện nút, tải lại giữa ca vẫn bản cũ; sao lưu: chép mã + tải file → ngữ cảnh mới (localStorage trống) nhập mã từ màn mở đầu → mã rỗng/sai 1 ký tự/không phải mã báo lỗi thân thiện → xem trước đúng → xác nhận → dữ liệu khớp; Chơi lại từ đầu 2 bước (Thôi ở mỗi bước không đổi gì) → bản cũ còn ở `bkn.save.old.<ms>`, khôi phục được; Cài đặt ở 360×740: nhắc sao lưu sau 7 ngày, công tắc/âm lượng/tần suất lưu vào save, Giới thiệu, hướng dẫn cài, Back điện thoại, không tràn/chạm ≥ 44px/chữ ≥ 14px.
+
+## 17. Nội dung M3: tình huống trong ca, Sổ tay nghề, Sổ công thức, làm tròn tiền
+
+### 17.1 Tình huống trong ca — `core/incidents.js` + `data/incidents.js`
+- Luật (`INCIDENT_CONFIG`): từ ngày game 3, mỗi ca bốc có/không theo `settings.incidentFrequency` (Nhiều 50% / Vừa 35% / Ít 15%; mức Ít chỉ gồm tình huống vui `positive`); tối đa 1 tình huống mỗi ca; bảo hiểm: `state.incidents.since` đếm số ca (từ ngày 3) không có tình huống được xử lý, `since ≥ 3` → ca kế chắc chắn có; không lặp 5 loại gần nhất (`recent`), hết loại mới thì lấy loại lâu chưa gặp nhất. Trần thiệt hại = `min(floor500(10% doanh thu dự kiến của ca), floor500(0,5 × thu nhập tham chiếu))`; loại có lựa chọn lỗ quá trần (`maxLoss`) bị bỏ ở lúc bốc.
+- Ngẫu nhiên riêng: `seedFrom(state.seed, day, 'tinh_huong')`, trạng thái luồng lưu ở `sh.incident.rng` và dùng tiếp khi chốt chi tiết/kết quả → tải lại giữa ca không đổi tình huống; luồng khách/bếp không bị xáo trộn.
+- `sh.incident = { id, afterClips, status: 'cho'|'xong', rng, cap, guaranteed, detail, choice, result, shownAt? }`; `afterClips` = 0 với tình huống đầu ca (`when: 'mo_hang'`), còn lại bốc trong 1..N−1 (N khách của ca).
+- API: `planIncident(state, sh, ctx)` (trong `startShift`), `nextShiftFull(state, sh, ctx)`, `takeIncidentBonusInfo(state, day)` → `{customers, rep}`, `incidentDue(state, ctx)` (có tình huống chờ, không tạm dừng/nấu thử, `sh.counter` trống, `miniGameBusy(sh)` sai, đủ `afterClips` phiếu đã kẹp, điều kiện riêng của loại), `openIncident(state, ctx)` → view, `incidentView(state, ctx)` → `{ id, name, positive, when, text, note, who, status, choices: [{id, label, safe, available, cost, reason}], safeId, cap, detail }`, `resolveIncident(state, choiceId, ctx)` → `{ ok, id, choice, safe, text, effects: {money, cost, refund, rep, bonus, debt, starLoss, loss}, tipId }` | `{ ok: false, reason: 'khong_co'|'het_han'|'khong_duoc' }` (phát `incident.resolved` `{id, choice, day, safe, money, cost, rep, loss}`), `finishShiftIncidents(state, ctx)` (trong `endShift`), `takeIncidentBonus(state, day)` / `incidentBonusFor(state, day)`, `collectDebts(state, sh, ctx)` / `pendingDebts(state)`, `incidentLossCap`, `expectedRevenue`, `itemCost` (giá vốn làm tròn 500đ, có hệ số giá vốn của ngày).
+- Ba tình huống MVP:
+  - `khach_mo_hang` (vui, đầu ca): khách mở hàng 1 ly trà tắc bằng tờ 500.000đ. `thoi_het` (cần két đủ thối; đầu ca két 200.000đ nên thường bị khóa kèm lý do → dạy thẻ "Đủ tiền lẻ đầu ca"), `moi_qr` (cần QR đã mở), `tang` (an toàn: −giá vốn, ca sau +1 khách, tối đa 8; vòng soát lỗi M3: ca sau đã đủ 8 khách — `nextShiftFull` theo `customerCount` của ngày sau — thì chữ cái giá dùng `costFull` và cho ngay `bonusRep` = +2 danh tiếng thay khách thêm; nếu tới ca đó mới đủ khách, vd Chợ phiên, `startShift` đổi khách thêm thành `bonus.rep` danh tiếng; màn Chuẩn bị chỉ ghi "thêm 1 khách" khi số khách dự báo thật sự tăng — `forecastDetail`). Thẻ Mẹo nghề `no_small_change` mở ở mọi lựa chọn.
+  - `ghi_no`: khách quen (ưu tiên người không có trong ca) xin ghi nợ 20.000đ cho 2 ly trà tắc. `cho_no` (−giá vốn, +2 danh tiếng; 70% trả trong 3 ca: ngày trả bốc sẵn khi ghi sổ, tiền vào `sh.debtIn` ở đầu ca trả, tính vào lãi ca và `settleShift`; quá hạn thì ghi "chưa trả"), `tu_choi` (an toàn, không tốn gì), `tang` (−giá vốn, +5 danh tiếng). Nợ lưu ở `state.incidents.debts[]` `{id, regularId, name, amount, fromDay, dueDay, repayDay|null, status: 'cho'|'da_tra'|'quen', paidDay?}`.
+  - `doi_y`: khách vừa trả tiền (phiếu mới nhất còn `cho`, chưa nấu) muốn đổi món sang món khác trong thực đơn. `doi_mon` (an toàn: sửa dòng phiếu bếp, yêu cầu, phiếu thu; chênh dương thì thu thêm vào két/QR, chênh âm thì hoàn tiền; mở thẻ "Thu tiền rồi mới gửi bếp"), `tu_choi` (50% khách phật ý: phạt `{code: 'tu_choi_doi_mon', stars: 1, source: 'tinh_huong'}` khi nhận món; không tính là lỗi quầy/bếp, không làm mất "Không tì vết").
+- Lưu: `state.incidents = { since, recent (≤10), log (≤20, mới nhất trước), debts, bonus: {day, customers} | null, total }`; `migrateContentM3` (trong `migrate`) thêm mặc định và lọc dữ liệu hỏng cho save v1/v2 (STATE_VERSION giữ 2). `compactHistory` ghi `incidents: [{id, choice}]` và `debtIn`.
+- Giao diện: mục 13.2 (hộp thoại chặn → thời gian ca và kiên nhẫn dừng; chỉ ở tab Quầy, giữa hai khách, không chen mini-game). Tổng kết: `summarizeShift` trả thêm `incidents`, `debtIn`, `debtNotes`.
+
+### 17.2 Sổ tay nghề — `core/notebook.js`, màn `notebook`
+- `TIPS[].hint` (gợi ý cách mở thẻ), `TIP_GROUPS` (quay, bep, kho, phuc_vu), `TIP_GROUP_REWARDS[nhóm] = { gold: 20, title }` với danh hiệu mới trong `TITLES`: `thu_ngan_chu_dao` "Thu ngân chu đáo", `tay_bep_can_than` "Tay bếp cẩn thận", `giu_kho_ky_luong` "Giữ kho kỹ lưỡng", `chu_quan_tu_te` "Chủ quán tử tế".
+- API: `notebookStatus(state, ctx)` → `{ total, unlocked, claimable, groups: [{ id, name, total, unlocked, complete, claimed, canClaim, reward, title, tips: [{id, title, text, hint, unlocked}] }] }`; `notebookBadge` (số nhóm chờ nhận); `claimNotebookGroup(state, groupId, ctx)` → `{ ok, groupId, reward }` | `{ ok: false, reason: 'khong_co'|'da_nhan'|'chua_xong'|'dang_ban' }` (mỗi nhóm 1 lần, ghi `state.notebook.claimed`, phát `notebook.claimed`); `randomSeenTip(state, ctx, rand)` (giao diện truyền `rand`).
+- Màn: tiến độ chung, thẻ nổi bật, tab theo nhóm (chấm đỏ khi nhóm chờ nhận), thẻ chưa mở hiện mờ kèm gợi ý, nút nhận thưởng khi đủ nhóm.
+
+### 17.3 Sổ công thức — `core/recipe-book.js`, màn `recipe-book`
+- `recipeBook(state, ctx)` → `{ owned, total, entries }`: mọi món Chặng hiện tại (đã có, bán ở Chợ Công Thức, món sự kiện) + món bóng mờ Chặng 2 (`teaser`); mỗi món có biểu tượng, giá bán, giá vốn (`bookCost`), lãi, số lần nấu, điểm cao nhất, cấp thạo món + mốc kế (`masteryInfo`), huy hiệu "Không tì vết", nhãn nguồn (`sourceLabel`: "Có sẵn", "Chợ Công Thức", nhãn mùa sự kiện như "Tri ân 20/11 · 2026").
+- `recipeDetail(state, recipeId, ctx)`: nguyên liệu cần (không liệt kê nguyên liệu bẫy trên kệ), các bước (tên loại mini-game khi khác tên bước, bước bắt buộc/quan trọng), ghi chú món (lời dặn, phụ thu); không lộ cách thái đúng. Mở được chi tiết mọi món trừ món bóng mờ Chặng 2 (`teaser`).
+- `dialectBook(ctx)` → `[{ id, nam, bac, meaning }]`: tab "Sổ từ vùng miền", cặp từ Nam – Bắc lấy từ `SYNONYMS`.
+
+### 17.4 Làm tròn tiền
+- `money.js`: `COST_STEP = 500`, `REWARD_STEP = 1000`, `roundCost(n)` (làm tròn gần nhất bội 500đ, ≥ 0), `roundReward(n)` (làm tròn lên bội 1000đ).
+- Giá vốn mỗi lần nấu (`submitChon`, sau hệ số giá vốn của ngày/Phiếu Chợ Sớm) và phí làm lại bước (`retryStep`) làm tròn 500đ; mọi thưởng Tiền quán (`resolveReward`, `incomeMoney`) và nợ vay (`takeLoan`) làm tròn 1000đ. Nguồn số lẻ trước đây (ví "804.250đ"): giá vốn lẻ (nguyên liệu lấy thừa/lấy nhầm bẫy giá 100–500đ, ví dụ 250đ; Phiếu Chợ Sớm ×0,8) và thưởng theo hệ số thu nhập tham chiếu.
+- Test `money-rounding.test.mjs`: dữ liệu tiền đều là bội 500/1000đ; mô phỏng 3 hạt giống × 7 ngày thật × 3 ca (người chơi ẩu, có tình huống, quà, việc, vay) → ví luôn là bội 500đ.
+- Save cũ v1/v2 có ví lẻ: `migrate` làm tròn lên bội 500đ một lần (mục 12; test `review-m3-fixes.test.mjs`).
+
+### 17.5 Kiểm chứng M3 nội dung
+- Unit: `incidents.test.mjs` (xác suất theo mức, mức Ít chỉ tình huống vui, bảo hiểm 3 ca, không lặp 5 loại, trần thiệt hại, không bật khi quầy bận/đang mini-game, hiệu ứng từng lựa chọn, nợ trả/quá hạn, khách thêm ca sau, tất định theo hạt giống, di trú save cũ), `notebook-recipe-book.test.mjs` (nhận thưởng nhóm đúng 1 lần, dữ liệu Sổ công thức và Sổ từ vùng miền), `money-rounding.test.mjs`.
+- `tests/helpers/perfect-player.mjs`: `handleIncident(state, ctx, choose)` và tùy chọn `incident` của `playShift` (mặc định chọn lựa chọn an toàn). `tests/e2e/helpers.mjs`: `resolveIncidentIfShown(g, {choice})` được gọi trong các vòng chờ khách/phục vụ nên e2e cũ chạy được cả khi có tình huống.
+- E2E `incident-notebook.e2e.mjs`: (1) 390×844, hạt giống 6: tình huống ghi nợ bật giữa hai khách, thời gian ca đứng yên khi hộp thoại mở, cho nợ → kết quả trong Tổng kết, Sổ tay nghề nhận thưởng nhóm một lần, Sổ công thức và chi tiết món; (2) 360×740, hạt giống 3: khách mở hàng đầu ca, mời QR, kiểm tra không tràn khung ở màn Chuẩn bị, hộp thoại, Sổ tay nghề, Sổ công thức. (3) 390×844, hạt giống 25: "Khách đổi ý" ngay sau khách thứ nhất → "Đổi món": dây phiếu chung và thẻ phiếu trong Bếp đổi sang món mới (trước đây dây phiếu vẫn hiện món cũ vì khóa vẽ lại chỉ gồm trạng thái phiếu), tiền chênh vào sổ, yêu cầu thật của khách đổi theo, nấu món mới → khách từ 4 sao.
+
+## 18. Ráp nối M1 + M2 + M3 và kiểm chứng toàn bộ
+
+### 18.1 Hành trình dài — `tests/e2e/hanh-trinh.mjs` (chạy tay, không nằm trong `npm run e2e`)
+`node tests/e2e/hanh-trinh.mjs` (tùy chọn `SHOT_DIR=<thư mục>` lưu ảnh `NN-ten.png` 390×844 @2x + `journey-report.json`, `SEED=6`), khoảng 10–15 phút, thoát mã 1 nếu có lỗi console/trang, thao tác kẹt hoặc không đủ điều kiện lên chặng. Chromium 390×844 cảm ứng, đồng hồ giả từ 05/10/2026 07:30, máy chủ tĩnh riêng phục vụ `bus.js` kèm sổ đăng ký bus trên `globalThis` (chỉ trong phiên thử, để đếm bộ nghe).
+1. Save mới (seed 6): màn mở đầu → đặt tên xe → bảng điểm danh "Tuần Khai Trương" → Chuẩn bị → service worker điều khiển trang.
+2. Ngày 1: ca đầu qua giao diện (chụp từng khâu Order / Đọc lại / Thanh toán / Tính tiền / Phiếu thu, dây phiếu, kệ chọn, Thớt, đủ 6 mini-game, ra món, phiếu chấm, Tổng kết).
+3. Ngày 2: tải lại trang sau khách thứ 2 → vào thẳng màn ca bán, số khách đã phục vụ và giờ ca giữ nguyên, chơi tiếp tới Tổng kết.
+4. Ngày 3: Cài đặt (tình huống "Nhiều", âm lượng 60% lưu vào save) → Chợ Công Thức mua Bánh tráng trộn → nhận thưởng chuỗi → **mất mạng**, tải lại, chơi trọn ca offline; gặp tình huống "Khách đổi ý" → chọn "Đổi món" (dây phiếu đổi theo) → Tổng kết có thẻ tình huống.
+5. Rút ngắn bằng lõi: người chơi hoàn hảo (`tests/helpers/perfect-player.mjs`, `attachMeta`, 3 ca/ngày thật từ 06/10) chơi tiếp tới sát điều kiện (dừng trước khi đủ; kiểm tra mua món thứ hai + 1 ca nữa thì đủ), ghi save vào khóa thật (`rev` lớn hơn để tab cũ không ghi đè), đồng hồ sang 10/10.
+6. Ngày thật mới: điểm danh → Hộp thư (nhận tất cả) → Việc hôm nay (nhận việc, Rương) → Chợ Công Thức mua Cà phê sữa đá → Sổ công thức (chi tiết món, Sổ từ vùng miền) → Sổ tay nghề (nhận thưởng nhóm nếu đủ) → Cài đặt (chép mã sao lưu) → chơi thật thêm ít nhất 1 ca. Hộp mời "Quán cóc vỉa hè – sắp khai trương" có thể bật ngay khi quay về màn Chuẩn bị sau khi nhận thư/việc (danh tiếng từ thư "Việc chưa nhận") hoặc sau ca → màn `stage-up` (`data-eligible="true"`).
+7. Đồng hồ sang 13/11/2026: thẻ Tri ân 20/11 "Đang diễn ra" → màn sự kiện.
+Mỗi màn chính soát chữ lỗi (`undefined`, `NaN`, `{biến}` chưa điền), chữ < 13px, vùng chạm < 44px, tràn ngang.
+
+Kết quả lần chạy ngày 30/09/2026 (12,5 phút, thoát mã 0): 4 ca chơi thật qua giao diện (ngày game 1, 2, 3 và 7; 20 khách, mỗi khách 4–5 sao; ca ngày 3 chơi khi mất mạng) + 3 ca rút ngắn bằng lõi (ngày 4–6). Đủ điều kiện lên Chặng 2 ở ngày game 7 ngay sau khi nhận Hộp thư (danh tiếng 129 → 154), mua đủ 2 món Chợ Công Thức (Bánh tráng trộn ngày 3, Cà phê sữa đá ngày 7), gặp 2 tình huống (Khách đổi ý → Đổi món, dây phiếu đổi theo; Khách mở hàng → Tặng), tải lại giữa ca giữ nguyên 2 khách đã phục vụ. 0 lỗi console/trang, 0 thao tác kẹt; không có chữ lỗi, chữ < 13px, vùng chạm < 44px hay tràn ngang ở 12 màn đã soát. Đo ở màn Chuẩn bị (sau khi dọn rác) trước ca 1 → sau ca 3 → cuối hành trình: bộ nghe bus 3 → 3 → 3, `window` 18 → 18 → 18, `document` 3 → 3 → 3, vòng rAF 1 → 1 → 1, heap JS 3,4 → 5,1 → 5,7 MB (tăng theo lịch sử ca/đánh giá trong save và ElementHandle Playwright đang giữ).
+
+### 18.2 Hiệu năng thô (30/09/2026, Chromium headless, máy chủ tĩnh cục bộ HTTP/1.1)
+- Dung lượng lúc mở game: 90 module JS 818 KB + 5 tệp CSS 118 KB chưa nén (95 yêu cầu, độ sâu import tĩnh 13 tầng); nén gzip còn khoảng 343 KB truyền. **Vượt ngân sách "JS + CSS dưới khoảng 250 KB chưa nén"** của đặc tả (mục 13): phần lớn là dữ liệu lời thoại, hình SVG vẽ tay (`art.js` 45 KB), chú thích tiếng Việt; không có bước build nên không rút gọn. Ưu tiên nếu cần giảm: tách `art.js`/`dialogue.js` nạp sau, bỏ chú thích khi phát hành bằng công cụ ngoài game.
+- Tải lần đầu tới màn mở đầu (không service worker, tắt bộ nhớ đệm): máy 0,37 s; "4G" giả lập (trễ 80 ms, 9 Mb/s) 1,9 s (gzip 1,7 s); "3G" (trễ 300 ms, 1,6 Mb/s) 7,4 s (gzip 6,2 s — nghẽn ở 6 kết nối HTTP/1.1 cho 95 yêu cầu; host HTTP/2 như GitHub Pages, Cloudflare Pages nhanh hơn). Thử `<link rel="modulepreload">` cho mọi module: chỉ bớt khoảng 5% nên không dùng.
+- Lần mở sau (service worker, mất mạng): 0,25 s tới màn mở đầu.
+- Khung hình khi chơi đủ 6 mini-game (2 khách đầu ngày 1): khoảng cách khung trung bình 16,7–17,3 ms (khoảng 60 hình/giây), p95 16,8 ms, cả khi giả lập CPU chậm ×4. Long task (2 lần đo): CPU thường 0–1 (≤ 72 ms), CPU ×4: 6–9 (dài nhất 91–94 ms), đều rơi vào lúc chuyển màn/mở phiếu; trong lúc chơi mini-game không có khung > 50 ms trừ 1 khung 67 ms lúc vừa mở bước Chọn ở CPU ×4. Số lượt gọi `requestAnimationFrame` mỗi khung: 1 ngoài mini-game (vòng lặp ca), 2 khi đang chơi (thêm `frameLoop` của mini-game; ở Canh lửa/Rót đo được 3 vì trình tự động của Playwright thăm dò bằng `polling: 'raf'` trên chính trang) → không chồng vòng rAF.
+- Rò rỉ sau 3 ca (hành trình, đo ở màn Chuẩn bị sau khi dọn rác): bộ nghe bus 3 → 3, bộ nghe `window` 18 → 18, `document` 3 → 3, vòng rAF 1 → 1, phần tử DOM của màn Chuẩn bị 214–301 (theo số thẻ hiện). Số "phần tử tách rời còn trong heap" ở hành trình tăng giảm theo số ElementHandle Playwright đang giữ (hạ về khi tải lại trang) nên được đo riêng ở e2e `stability.e2e.mjs`: chuyển qua lại 7 màn con + hộp thoại 20 vòng bằng thao tác trong trang → phần tử tách rời 11 → 11, bộ nghe bus/window/document và số phần tử màn Chuẩn bị giữ nguyên.
+
+### 18.3 Lỗi tìm thấy và đã sửa khi ráp nối
+- **Dây phiếu không đổi món sau "Khách đổi ý → Đổi món"** (`ui/components/ticket-rail.js`): khóa vẽ lại chỉ gồm id/trạng thái phiếu nên phiếu đã sửa vẫn hiện món cũ tới khi đổi trạng thái; thêm dòng phiếu (món, số lượng, ghi chú) vào khóa, cả khóa dây phiếu của `ui/screens/kitchen.js`. E2E `incident-notebook` (3).
+- **Game lùi ra khỏi trang khi chuyển màn nhanh** (`ui/app.js`, mục 13): bấm "‹ Chuẩn bị" rồi mở ngay màn con khác trong lúc `history.back()` chưa xong làm lệch sổ lịch sử; nay chờ lần lùi xong rồi mới đẩy mục mới. E2E `stability`.
+- **E2E chờ service worker không chờ gì** (`tests/e2e/pwa-backup.e2e.mjs`): `page.waitForFunction` với hàm `async` luôn "đúng" ngay (Playwright coi Promise là truthy); chuyển sang `waitController` trong `tests/e2e/helpers.mjs` (thăm dò bằng `page.evaluate`). Thực tế: sau lần mở đầu cần khoảng 0,3 s để service worker cất đủ 101 tệp; tải lại khi mất mạng trước lúc đó thì trình duyệt báo mất mạng như mọi trang web.
+- **Thông báo nhận thưởng chuỗi gộp nhiều bước quá dài** (`ui/components/chain-card.js`): nút "Nhận N bước" nối thưởng từng bước ("+5.000đ · Thẻ Mẹo nghề mới · +5.000đ · Thẻ Mẹo nghề mới · …", 7 dòng); nay cộng gộp (`mergeRewards` cộng tiền/Muỗng Vàng, đếm thẻ Mẹo nghề: "+85.000đ · 25 Muỗng Vàng · Danh hiệu … · 6 thẻ Mẹo nghề mới"). Unit `ui-rewards.test.mjs`.
+- Mở Hộp thư thì cất thông báo "Vừa có N thư mới" (bật ở màn Chuẩn bị, che đầu màn Hộp thư).
+- Tài liệu: lưới lối vào màn Chuẩn bị là 4 cột (4 + 3 ô, cả ở 360px), ô chỉ ghi tên; `SUB_SCREENS` thêm `notebook`, `recipe-book` (chỉ là danh sách tham khảo, thực tế dùng `isSubScreen`).
+
+### 18.4 Ghi nhận, chưa sửa
+- Ngày 1–2 phần lớn khách tiền mặt đưa vừa đủ: giá 10.000đ/20.000đ trùng mệnh giá, và nhánh "đưa tờ nhỏ nhất ≥ tổng" (45%, đặc tả mục 4.3) thành vừa đủ. Seed 6: ngày 1–2 chỉ 1/8 khách cần thối, nên bước 2 chuỗi "Ngày đầu ra phố" ("Thối đúng 3 lần") thường tới ngày 3–4 mới xong. Đúng đặc tả nhưng nên xem lại ở `docs/can-bang.md` (vd bỏ nhánh "tờ nhỏ nhất" khi tổng đúng bằng một mệnh giá).
+- Đủ điều kiện lên chặng có thể xảy ra ngoài ca (nhận thư/việc cộng danh tiếng): hộp mời hiện khi quay về màn Chuẩn bị, không phải lỗi.
+- GitHub Pages cần tệp rỗng `.nojekyll` ở gốc (Jekyll bỏ qua `src/ui/minigames/_util.js`); tệp ở ngoài phạm vi sửa của vòng này.
+- Tên dài trong dải "Chờ món" (ô rộng 62px) bị cắt, vd "Bạn N…" (tên đầy đủ ở `title`).
+
+### 18.5 Vòng soát lỗi M3 (tóm tắt thay đổi)
+- **Dữ liệu người chơi**: save v1/v2 ví lẻ làm tròn lên bội 500đ khi nạp (giữ bất biến ví ca); ca dở không đủ cấu trúc → hủy ca, hoàn giá vốn, báo (mục 12, 16.1); bản lưu không đọc được được cất nguyên chuỗi sang `<khóa save>.hong.<ms>` trước lần ghi đầu; bộ nhớ bị chặn/đầy → dải cảnh báo "Chưa lưu được tiến trình" + nút sao lưu (mục 12); mã từ bản mới hơn → cảnh báo phần sẽ mất (16.2); bước chuỗi vượt dữ liệu → kẹp (không còn `TypeError` nuốt mất `settleEvents`, `updateStageUp`).
+- **PWA**: tài liệu và chú thích `sw.js` nói đúng giới hạn "bản mới tự kích hoạt khi đóng hết tab"; ca ghi `appVersion`, mở lại ở bản khác thì báo và chơi tiếp; e2e mới ở máy chủ không phải localhost; hai chỗ `waitForFunction` với Promise đổi sang `pollEval`.
+- **Sao lưu**: chỉ ghi "đã sao lưu" khi mã thật sự được cất (16.2).
+- **Tình huống**: ly trà "mở hàng" khi ca sau đã đủ khách → +2 danh tiếng, chữ ghi rõ; màn Chuẩn bị không hứa khách thêm khi không thêm được (17.1).
+- **Mẹo nghề**: công tắc chỉ tắt thẻ nổi, Sổ tay nghề vẫn đầy (mục 4).
+- **Giao diện**: Tính tiền ngày 1 khách đưa vừa đủ → lời Dì Sáu "khỏi thối", khay ghi "Không cần thối tiền", khay dư thì cảnh báo đỏ "Đang thối dư"; nhãn phiếu chấm `err-tag--quay`/`err-tag--bep` (không trùng class bố cục `.counter`/`.kitchen`, chữ trắng); thẻ công thức "×2 (chạm 1 lần)" + huy hiệu ×n trên ô đã chọn và trong rổ; lời Dì Sáu ngày 1 trên Thớt đặt ngay dưới tên thớt; dòng phiếu vừa ghi tự cuộn lên trên thanh nút; kệ 12 ô gọn ở màn thấp (360×740 thấy đủ 3 hàng); lớp vỏ mini-game phin/nồi/tô (mục 6); nhãn nhát thái theo ngưỡng ("Chuẩn!", "Hơi lệch", "Lệch", "Lệch xa", không còn "px", có test quét chuỗi); Tiền quán từ 1 triệu ghi gọn "1,16tr" ở màn Chuẩn bị và viên tiền đầu màn meta; chữ trong ca tối thiểu 13px, ô tờ trong khay ≥ 44px, chữ xanh dùng `--green-ink` (#2a6e3a, ≥ 5:1); thông báo nổi trong ca không che thanh 4 khâu, gộp tiến độ Việc hôm nay, không báo tiến độ việc lúc hướng dẫn ngày 1; dây phiếu: ghi chú 1 dòng cắt "…" trong khung riêng (không lòi dấu); Tổng kết "Sao ca này" và "Sao trung bình (30 lượt gần nhất)", dưới 5 lượt ghi "tính tạm"; câu Giới thiệu viết lại.
+- **Kiểm chứng**: `tests/unit/review-m3-fixes.test.mjs` (10 test), `banned-words` thêm quét "px"; e2e `save-safety.e2e.mjs` (5 kịch bản), `review-m3-ux.e2e.mjs` (2 kịch bản: ngày 1 ở 360×740 — Tính tiền vừa đủ, dòng phiếu, kệ ×2, lời Dì Sáu trên Thớt, nhãn phiếu chấm chữ trắng, thông báo nổi không che thanh 4 khâu; chép mã thất bại không ghi mốc), `pwa-backup.e2e.mjs` thêm 1 kịch bản và cấp quyền bộ nhớ tạm cho Chromium thử nghiệm (như trang HTTPS); `hanh-trinh.mjs` soát bố cục cả các khâu trong ca bán. Các e2e so `page.$(…)` với `null` đổi sang so boolean: khi hỏng, `assert` in cả ElementHandle làm tiến trình thử ngốn bộ nhớ tới bị giết (một kịch bản từng mất tên trong báo cáo). Kết quả 30/09/2026: 271 unit test, 33 kịch bản e2e xanh, e2e khoảng 18 phút; `node tests/e2e/hanh-trinh.mjs` 12,75 phút, thoát mã 0, 0 lỗi console/trang, 0 thao tác kẹt, không còn lỗi bố cục ở 12 màn và 9 khâu trong ca bán (soát vùng chạm theo kích thước bố cục, không tính hiệu ứng thu nhỏ đang chạy; bỏ qua chữ cỡ 0 cố ý ẩn; dòng mở thẻ công thức trên Thớt nâng lên 44px).

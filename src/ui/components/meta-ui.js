@@ -2,7 +2,7 @@
 // đầu màn có nút quay lại, viên tiền/Muỗng Vàng, dòng phần thưởng, thanh tiến độ, đếm ngược, hình xe theo đồ thẩm mỹ.
 import { h, svgBox } from '../dom.js'
 import { icon, cartSvg, DI_SAU, ANH_KHOA, CO_HANH } from '../art.js'
-import { formatVND } from '../format.js'
+import { formatVND, formatMoneyShort } from '../format.js'
 
 const HOUR = 3600000
 const DAY = 24 * HOUR
@@ -56,7 +56,7 @@ export function rewardParts(reward, data, opts = {}) {
     const u = data.UNLOCKS && data.UNLOCKS[r.unlock]
     out.push({ icon: 'danh_hieu', text: 'Mở thẻ ' + (u ? `"${u.name}"` : r.unlock), kind: 'unlock' })
   }
-  if (r.tipId) out.push({ icon: 'thot', text: 'Thẻ Mẹo nghề mới', kind: 'tip' })
+  if (r.tipId) out.push({ icon: 'thot', text: r.tipCount > 1 ? `${r.tipCount} thẻ Mẹo nghề mới` : 'Thẻ Mẹo nghề mới', kind: 'tip' })
   return out
 }
 
@@ -80,8 +80,8 @@ export function spoonPill(n, testid = null, compact = false) {
 }
 
 export function moneyPill(n, testid = null, compact = false) {
-  return h('span', { class: ['pill', 'pill-money', compact ? 'compact' : ''], testid, 'aria-label': `Tiền quán ${formatVND(n)}`, title: 'Tiền quán', dataset: { amount: n } },
-    compact ? svgBox(icon('lanh_luong'), 'pill-icon') : h('span', { class: 'pill-cap' }, 'Tiền quán'), h('b', null, formatVND(n)))
+  return h('span', { class: ['pill', 'pill-money', compact ? 'compact' : ''], testid, 'aria-label': `Tiền quán ${formatVND(n)}`, title: `Tiền quán ${formatVND(n)}`, dataset: { amount: n } },
+    compact ? svgBox(icon('lanh_luong'), 'pill-icon') : h('span', { class: 'pill-cap' }, 'Tiền quán'), h('b', null, compact ? formatMoneyShort(n) : formatVND(n)))
 }
 
 /**

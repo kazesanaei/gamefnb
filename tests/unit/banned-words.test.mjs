@@ -17,7 +17,7 @@ const BANNED = [
 // Từ nội bộ không được lộ trong các file chứa chuỗi hiển thị.
 const INTERNAL = ['TNC', 'seed']
 const INTERNAL_WORDS = ['par', 'toast', 'chip', 'MV'] // so khớp nguyên từ
-const DISPLAY_FILES = ['src/data/strings.js', 'src/data/dialogue.js', 'src/data/reviews.js', 'src/data/tips.js']
+const DISPLAY_FILES = ['src/data/strings.js', 'src/data/dialogue.js', 'src/data/reviews.js', 'src/data/tips.js', 'src/data/incidents.js']
 
 const TEXT_EXT = new Set(['.js', '.mjs', '.css', '.html', '.json', '.md', '.svg', '.webmanifest', '.txt'])
 
@@ -79,4 +79,21 @@ test('từ nội bộ không lộ trong file chuỗi hiển thị', () => {
 test('bộ quét thật sự phát hiện được từ cấm', () => {
   assert.ok(normalize('Thanh toán qua MoMo').includes('momo'))
   assert.ok(!normalize('.x { cursor: grab }').includes('grab'))
+})
+
+// Vòng soát lỗi M3: chuỗi hiển thị (chuỗi có chữ tiếng Việt có dấu) không lộ đơn vị kỹ thuật như "14px".
+test('chuỗi hiển thị không có đơn vị "px"', () => {
+  const hits = []
+  const files = [...listFiles(join(ROOT, 'src', 'ui')), ...DISPLAY_FILES.map(r => join(ROOT, r))].filter(f => /\.m?js$/.test(f) && existsSync(f))
+  const viet = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i
+  for (const file of files) {
+    const raw = readFileSync(file, 'utf8')
+    const strings = raw.match(/'[^'\n]*'|"[^"\n]*"|`[^`]*`/g) || []
+    for (const s of strings) {
+      if (viet.test(s) && /(\d|\})\s*px\b/.test(s)) hits.push(`${relative(ROOT, file)}: ${s.slice(0, 60)}`)
+    }
+  }
+  assert.deepEqual(hits, [], 'Chuỗi hiển thị có "px":\n' + hits.join('\n'))
+  // bộ quét bắt được mẫu cũ
+  assert.ok(/(\d|\})\s*px\b/.test('`Lệch ${n}px`') && viet.test('Lệch'))
 })
