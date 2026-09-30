@@ -72,7 +72,7 @@ test('lùi giờ: khóa điểm danh, game vẫn chơi được', () => {
   assert.equal(claimCheckin(s, at(s, '2026-10-11T09:00'), ctx).ok, true)
 })
 
-test('Tuần Khai Trương tặng hiện vật; đã có dao thì quy đổi; hết 7 ô sang vòng thường', () => {
+test('Tuần Khai Trương tặng hiện vật; ô 5 là 2 Phiếu Chợ Sớm (không tặng dao); hết 7 ô sang vòng thường', () => {
   const ctx = makeMetaCtx()
   const s = newState(6)
   const days = ['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04']
@@ -83,16 +83,17 @@ test('Tuần Khai Trương tặng hiện vật; đã có dao thì quy đổi; h�
   assert.equal(s.items.phieu_cho_som, 1)
   assert.equal(s.goldSpoons, 20)
   assert.equal(s.items.bat_che_mua, 1)
-  // ô 5: dao thép (chưa có → nhận dao)
-  const s2 = JSON.parse(JSON.stringify(s))
-  const r5 = claimCheckin(s2, at(s2, '2026-10-05T09:00'), ctx)
-  assert.equal(r5.reward.upgrade, 'dao_thep')
-  assert.equal(s2.upgrades.dao_thep, true)
-  // ô 5 khi đã mua dao → quy đổi 2 Phiếu Chợ Sớm
-  s.upgrades.dao_thep = true
-  const r5b = claimCheckin(s, at(s, '2026-10-05T09:00'), ctx)
-  assert.equal(r5b.reward.converted, true)
-  assert.deepEqual(r5b.reward.items, { phieu_cho_som: 2 })
+  // ô 4 khi đã có Bạt che mưa → quy đổi 20.000đ
+  const s4 = newState(6)
+  for (const d of days.slice(0, 3)) claimCheckin(s4, at(s4, d + 'T09:00'), ctx)
+  s4.items.bat_che_mua = 1
+  const r4 = claimCheckin(s4, at(s4, '2026-10-04T09:00'), ctx)
+  assert.equal(r4.reward.converted, true)
+  assert.equal(r4.reward.money, 20000)
+  // ô 5: Phiếu Chợ Sớm ×2 theo đặc tả (de-xuat 9.2, can-bang 10.1), dù chưa có dao
+  const r5 = claimCheckin(s, at(s, '2026-10-05T09:00'), ctx)
+  assert.deepEqual(r5.reward, { items: { phieu_cho_som: 2 } })
+  assert.equal(s.upgrades.dao_thep, undefined, 'điểm danh không tặng Dao thép tốt')
   assert.equal(s.items.phieu_cho_som, 3)
   claimCheckin(s, at(s, '2026-10-06T09:00'), ctx)
   const w = s.wallet

@@ -9,7 +9,7 @@ import { formatVND } from './money.js'
 import { isRecentRecipe } from './stats.js'
 import { resolveReward, grantReward } from './rewards.js'
 import { pushMail } from './mail.js'
-import { addDaysKey } from './clock.js'
+import { addDaysKey, daysBetweenKeys } from './clock.js'
 
 function D(ctx) { return (ctx && ctx.data) || {} }
 function questDefs(ctx) { return D(ctx).QUESTS || [] }
@@ -38,6 +38,16 @@ export function questEligible(state, def, ctx) {
   return true
 }
 
+// Việc không đếm khi đang bật công tắc Hỗ trợ tương ứng (def.assist).
+export function questAssistBlocked(state, def) {
+  return !!(def && def.assist && state.settings && state.settings[def.assist])
+}
+
+// Món mua trong N ngày game gần nhất tính tới ngày game `atDay` (việc "Nấu n phần món vừa mua").
+function recentRecipeIds(state, days, atDay = state.day) {
+  return Object.keys(state.recipes || {}).filter(id => isRecentRecipe(state, id, days, atDay))
+}
+
 // Chỉ tiêu: cố định (base) hoặc co giãn theo số khách dự kiến của ~2 ca.
 export function questTarget(state, def, ctx) {
   const t = def.target || {}
@@ -53,7 +63,10 @@ export function questTarget(state, def, ctx) {
 }
 
 function makeEntry(state, def, ctx) {
-  return { id: def.id, group: def.group, target: questTarget(state, def, ctx), progress: 0, claimed: false }
+  const e = { id: def.id, group: def.group, target: questTarget(state, def, ctx), progress: 0, claimed: false }
+  // chốt danh sách món hợp lệ lúc bốc: chơi thêm ca (món hết "mới") vẫn đếm được, việc không bao giờ kẹt
+  if (def.cond && def.cond.recentRecipeDays) e.recipeIds = recentRecipeIds(state, def.cond.recentRecipeDays)
+  return e
 }
 
 // Bốc bộ nhiệm vụ của dayKey (tất định theo seed + ngày). exclude: id không được bốc (hôm qua).
@@ -64,7 +77,9 @@ export function rollDailyQuests(state, dayKey, ctx, exclude = []) {
   for (const g of qcfg(ctx).groups) {
     const inGroup = defs.filter(d => d.group === g)
     const eligible = inGroup.filter(d => questEligible(state, d, ctx))
-    let pool = eligible.filter(d => !exclude.includes(d.id))
+    // ưu tiên việc đếm được với công tắc Hỗ trợ đang bật (vd Hỗ trợ thao tác: không có món Tuyệt hảo)
+    let pool = eligible.filter(d => !exclude.includes(d.id) && !questAssistBlocked(state, d))
+    if (!pool.length) pool = eligible.filter(d => !exclude.includes(d.id))
     if (!pool.length) pool = eligible
     if (!pool.length) pool = inGroup
     const d = pick(holder, pool)
@@ -87,13 +102,18 @@ export function ensureDaily(state, nowInfo, ctx) {
   const MQ = D(ctx).MAIL_QUEST || {}
   if (d.dayKey) {
     const expires = addDaysKey(key, QC.forgottenMailDays || 7)
+    // "hôm qua" chỉ khi đúng là hôm qua; vắng nhiều ngày thì ghi rõ ngày (vd "ngày 01/10")
+    const when = daysBetweenKeys(d.dayKey, key) === 1 ? 'hôm qua' : `ngày ${d.dayKey.slice(8, 10)}/${d.dayKey.slice(5, 7)}`
+    const When = when.charAt(0).toLocaleUpperCase('vi-VN') + when.slice(1)
+    const day = when === 'hôm qua' ? when : `${d.dayKey.slice(8, 10)}/${d.dayKey.slice(5, 7)}`   // sau chữ "ngày"
+    const fill = t => String(t || '').replace(/\{when\}/g, when).replace(/\{When\}/g, When).replace(/\{day\}/g, day)
     for (const q of d.quests) {
       if (!questDone(q) || q.claimed) continue
       const def = questDef(ctx, q.id)
       const id = `nv:${d.dayKey}:${q.id}`
       const r = pushMail(state, {
-        id, kind: 'nhiem_vu', title: MQ.title || 'Việc hôm qua chưa nhận thưởng',
-        body: String(MQ.body || '').replace('{text}', def ? questText(def, q.target) : q.id),
+        id, kind: 'nhiem_vu', title: fill(MQ.title || 'Việc {when} chưa nhận thưởng'),
+        body: fill(MQ.body).replace('{text}', def ? questText(def, q.target) : q.id),
         reward: resolveReward(state, QC.reward, ctx), expiresDay: expires
       }, nowInfo, ctx)
       if (r.ok) mailed.push(id)
@@ -101,7 +121,7 @@ export function ensureDaily(state, nowInfo, ctx) {
     if (d.quests.length && d.quests.every(questDone) && !d.chestClaimed) {
       const id = `ruong:${d.dayKey}`
       const r = pushMail(state, {
-        id, kind: 'nhiem_vu', title: MQ.chestTitle || 'Rương ngày chưa mở', body: MQ.chestBody || '',
+        id, kind: 'nhiem_vu', title: fill(MQ.chestTitle || 'Rương ngày {day} chưa mở'), body: fill(MQ.chestBody),
         reward: resolveReward(state, QC.chest, ctx), expiresDay: expires
       }, nowInfo, ctx)
       if (r.ok) mailed.push(id)
@@ -142,8 +162,9 @@ export function questList(state, ctx) {
   }
 }
 
-// Cộng tiến độ theo tín hiệu. Trả mảng thay đổi [{index, id, progress, target, done, justDone}].
-export function applyQuestSignal(state, sig, n, ctx) {
+// Cộng tiến độ theo tín hiệu. extra.recipeId: món của tín hiệu (việc có danh sách món recipeIds chỉ đếm món đó).
+// Trả mảng thay đổi [{index, id, progress, target, done, justDone}].
+export function applyQuestSignal(state, sig, n, ctx, extra = {}) {
   const d = ensure(state)
   const changes = []
   const settings = state.settings || {}
@@ -159,6 +180,11 @@ export function applyQuestSignal(state, sig, n, ctx) {
       return
     }
     if (def.signal !== sig) return
+    if (def.cond && def.cond.recentRecipeDays) {
+      // save cũ chưa chốt danh sách: tính theo ngày game lúc bốc việc
+      const ids = Array.isArray(q.recipeIds) ? q.recipeIds : recentRecipeIds(state, def.cond.recentRecipeDays, d.gameDay || state.day)
+      if (!extra || !ids.includes(extra.recipeId)) return
+    }
     q.progress = Math.min(q.target, q.progress + (Number(n) || 0))
     const done = questDone(q)
     changes.push({ index, id: q.id, progress: q.progress, target: q.target, done, justDone: done && !wasDone })
@@ -212,8 +238,10 @@ export function rerollQuest(state, key, nowInfo, ctx) {
   const cost = d.rerolls < (QC.freeRerolls ?? 1) ? 0 : (QC.rerollCost ?? 5)
   if (cost > 0 && (state.goldSpoons || 0) < cost) return { ok: false, reason: 'thieu_muong' }
   const current = d.quests.map(x => x.id)
-  const pool = questDefs(ctx).filter(x => x.group === q.group && !current.includes(x.id) &&
+  const all = questDefs(ctx).filter(x => x.group === q.group && !current.includes(x.id) &&
     !(d.prevIds || []).includes(x.id) && questEligible(state, x, ctx))
+  const counted = all.filter(x => !questAssistBlocked(state, x))
+  const pool = counted.length ? counted : all
   if (!pool.length) return { ok: false, reason: 'het_luot' }
   const holder = { rng: seedFrom(state.seed, d.dayKey, 'doi_viec', d.rerolls) }
   const def = pick(holder, pool)

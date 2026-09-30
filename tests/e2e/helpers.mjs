@@ -9,7 +9,7 @@ import { DATA } from '../../src/data/index.js'
 import { requiredIngredients } from '../../src/core/scoring.js'
 import { priceOfLines } from '../../src/core/order.js'
 import { minBillsChange, BILLS } from '../../src/core/money.js'
-import { decodeSave, SAVE_KEY } from '../../src/core/save.js'
+import { decodeSave, encodeSave, SAVE_KEY, DEV_SAVE_KEY } from '../../src/core/save.js'
 
 const require = createRequire(import.meta.url)
 
@@ -29,13 +29,15 @@ export function viewportFromEnv() {
 
 /**
  * Khởi động máy chủ (cổng 0) + Chromium + ngữ cảnh điện thoại. Thu lỗi console/pageerror/HTTP ≥ 400.
+ * clock: true → page.clock.install() (giờ thật); { time } → cài đồng hồ giả bắt đầu từ time (ms/Date/chuỗi).
+ * viewport (tùy chọn) {width, height}: ghi đè khung nhìn mặc định (vd 360×740).
  * Trả { page, context, browser, server, errors, url(pathAndQuery), shot(name), close() }.
  */
-export async function openGame({ clock = false, name = 'e2e' } = {}) {
+export async function openGame({ clock = false, name = 'e2e', viewport: vp = null } = {}) {
   const { chromium } = loadPlaywright()
   const server = await startServer(0)
   const browser = await chromium.launch()
-  const viewport = viewportFromEnv()
+  const viewport = vp || viewportFromEnv()
   const mobile = viewport.width < 600
   const context = await browser.newContext({
     viewport, hasTouch: true, isMobile: mobile, deviceScaleFactor: mobile ? 2 : 1,
@@ -46,7 +48,7 @@ export async function openGame({ clock = false, name = 'e2e' } = {}) {
   page.on('pageerror', e => errors.push('pageerror: ' + e.message))
   page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') errors.push(`console.${m.type()}: ${m.text()}`) })
   page.on('response', r => { if (r.status() >= 400) errors.push(`HTTP ${r.status()}: ${r.url()}`) })
-  if (clock) await page.clock.install()
+  if (clock) await page.clock.install(typeof clock === 'object' ? clock : undefined)
   const shotDir = process.env.SHOT_DIR ? path.join(process.env.SHOT_DIR, `${viewport.width}x${viewport.height}`) : null
   if (shotDir) mkdirSync(shotDir, { recursive: true })
   let shotNo = 0
@@ -68,9 +70,18 @@ export async function openGame({ clock = false, name = 'e2e' } = {}) {
 
 // ---------- Đọc state từ localStorage (chỉ đọc, để kiểm tra) ----------
 
+// Mở bằng ?devNow (giờ giả) thì game lưu ở khóa riêng DEV_SAVE_KEY (save thật không đổi): đọc bản đó nếu có.
 export async function readSave(page) {
-  const raw = await page.evaluate(k => localStorage.getItem(k), SAVE_KEY)
+  const raw = await page.evaluate(([k, d]) => localStorage.getItem(d) || localStorage.getItem(k), [SAVE_KEY, DEV_SAVE_KEY])
   return raw ? decodeSave(raw) : null
+}
+
+// Nạp save dựng sẵn (state thuần, mã hóa bằng encodeSave của src/core/save.js) vào localStorage TRƯỚC khi game khởi động.
+// Chỉ nạp 1 lần cho cả phiên tab: tải lại / đổi ?devNow sau đó giữ save game đã ghi.
+export async function seedSave(page, state) {
+  await page.addInitScript(([k, v]) => {
+    if (!sessionStorage.getItem('bkn.seeded')) { localStorage.setItem(k, v); sessionStorage.setItem('bkn.seeded', '1') }
+  }, [SAVE_KEY, encodeSave(state)])
 }
 
 // Chờ state lưu thỏa điều kiện (save có debounce 300 ms).
@@ -86,6 +97,18 @@ export async function waitSave(page, pred, timeout = 5000) {
 
 // ---------- Bắt đầu game ----------
 
+// Bảng điểm danh tự bật ở lần mở đầu tiên trong ngày thật (kể cả save mới): nhận ô kế tiếp rồi chờ bảng đóng.
+// Trả true nếu đã nhận. waitMs: thời gian chờ bảng hiện.
+export async function claimCheckinIfShown(g, waitMs = 1500) {
+  const { page } = g
+  const popup = await page.waitForSelector(T('checkin-popup'), { timeout: waitMs }).catch(() => null)
+  if (!popup) return false
+  await g.shot('diem-danh')
+  await page.click(T('checkin-claim'))
+  await page.waitForSelector(T('checkin-popup'), { state: 'detached', timeout: 5000 })
+  return true
+}
+
 export async function startNewGame(g, shopName = 'Xe Bánh Mì Cô Ba') {
   const { page } = g
   await page.goto(g.url('/?seed=42&test=1'))
@@ -94,9 +117,20 @@ export async function startNewGame(g, shopName = 'Xe Bánh Mì Cô Ba') {
   await page.fill(T('shop-name-input'), shopName)
   await page.click(T('start-button'))
   await page.waitForSelector(T('open-shift'))
+  // lần mở đầu tiên: bảng điểm danh "Tuần Khai Trương" hiện trước khi mở hàng
+  await claimCheckinIfShown(g, 3000)
   await g.shot('prep')
   await page.click(T('open-shift'))
   await page.waitForSelector(T('screen-service'))
+}
+
+// Mở game với save đã có (query vd '?devNow=2026-11-13T09:00'): màn mở đầu → "Vào quán" → màn Chuẩn bị.
+export async function enterPrep(g, query = '') {
+  const { page } = g
+  await page.goto(g.url('/' + query))
+  await page.waitForSelector(T('start-button'))
+  await page.tap(T('start-button'))
+  await page.waitForSelector(T('screen-prep'))
 }
 
 // Tiến thời gian game khi đang rảnh: có đồng hồ giả thì chạy nhanh, không thì chờ thật.
@@ -248,6 +282,27 @@ export async function giveChangeUi(g, total) {
   throw new Error('không thối được tiền')
 }
 
+// Chơi ca đang mở qua giao diện: phục vụ lần lượt từng khách (quầy → bếp → giao).
+// until(order, result) → true: dừng ngay sau khách đó (ca còn dở). Không có until: chơi tới màn Tổng kết.
+// Trả danh sách khách đã phục vụ [{request, total, name, ticketId, stars, customerId}].
+export async function playShiftUi(g, { useClock = false, until = null, maxCustomers = 14 } = {}) {
+  const { page } = g
+  const served = []
+  for (let guard = 0; guard < maxCustomers; guard++) {
+    const what = await waitCustomerOrEnd(g, { useClock })
+    if (what === 'summary') return served
+    const order = await serveAtCounter(g)
+    if (order.rejected) continue
+    const res = await cookAndServe(g, order.ticketId, { shots: false })
+    served.push({ ...order, ...res })
+    if (until && await until(order, res)) return served
+    // khách cuối xong thì màn Tổng kết có thể đã hiện: không bắt buộc có tab Quầy
+    await page.click(T('tab-counter'), { timeout: 2000 }).catch(() => {})
+  }
+  await page.waitForSelector(T('summary'), { timeout: 10000 })
+  return served
+}
+
 // ---------- Khâu bếp ----------
 
 // Nấu hết các dòng của phiếu (ticketId dạng 'p1') và giao. Trả số sao trên phiếu chấm.
@@ -285,8 +340,8 @@ export async function cookAndServe(g, ticketId, { shots = true } = {}) {
   return { stars, customerId: ticket.customerId }
 }
 
-// Làm mọi bước trên Thớt sơ chế theo thứ tự có thể làm.
-async function playBoard(g, recipe, { shots }) {
+// Làm mọi bước trên Thớt sơ chế theo thứ tự có thể làm (dùng cả cho Nấu thử ở Chợ Công Thức).
+export async function playBoard(g, recipe, { shots = false } = {}) {
   const { page } = g
   for (let guard = 0; guard < 20; guard++) {
     const next = await page.$('[data-testid^="board-step-"].is-available')

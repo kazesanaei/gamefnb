@@ -58,7 +58,9 @@ export function resolveReward(state, reward, ctx, opts = {}) {
   for (const k of ['upgrade', 'cosmetic', 'title', 'recipe', 'tipId', 'unlock', 'label']) if (src[k]) out[k] = src[k]
   if (reward.label && !out.label) out.label = reward.label
   if (converted) out.converted = true
-  if (opts.eventId && out.tem) out.eventId = opts.eventId
+  // Tem thuộc sự kiện nào: giữ cả khi resolve lại phần thưởng đã resolve (vd pushMail)
+  const evId = opts.eventId || reward.eventId
+  if (evId && out.tem) out.eventId = evId
   return out
 }
 

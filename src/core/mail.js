@@ -40,6 +40,14 @@ function isExpired(mail, dayKey) {
   return !!mail.expiresDay && dayKey >= mail.expiresDay
 }
 
+// Tiền quà còn được đẩy trong tháng của nowInfo (trần tiền quà lễ, mốc, đời thường, Tem dư: MAIL_CONFIG.cap).
+export function mailValueRoom(state, nowInfo, ctx) {
+  const m = ensureMail(state)
+  const cap = mcfg(ctx).cap || {}
+  const mon = m.monthly[nowInfo.dayKey.slice(0, 7)] || { value: 0 }
+  return Math.max(0, (cap.valueIncomeMul ?? 3) * refIncomeFor(ctx, state.day) - (Number(mon.value) || 0))
+}
+
 // Đẩy 1 thư. opts.compensation: quà đền bù (không tính trần).
 // → { ok: true, mail } | { ok: false, reason: 'trung_id' | 'tran' | 'khong_hop_le' }
 export function pushMail(state, mail, nowInfo, ctx, opts = {}) {

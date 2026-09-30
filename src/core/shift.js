@@ -205,7 +205,7 @@ function closeRemaining(state, ctx) {
 
 function compactHistory(s) {
   return {
-    day: s.day, served: s.served, lost: s.lost, missed: s.missed, profit: s.profit,
+    day: s.day, served: s.served, lost: s.lost, scamCaught: s.scamCaught || 0, missed: s.missed, profit: s.profit,
     cashSales: s.cashSales, qrSales: s.qrSales, tips: s.tips, cogs: s.cogs, waste: s.waste,
     refunds: s.refunds, undercharge: s.undercharge, overchange: s.overchange, fakeQrLoss: s.fakeQrLoss,
     fixedCost: s.fixedCost, drawerDiff: s.drawerDiff, avgStars: s.avgStars, reputationGain: s.reputationGain,

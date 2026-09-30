@@ -3,11 +3,13 @@
 //
 // Tín hiệu: served, five_star, change_correct, change_wrong, change_optimal, readback_clean, qr_ok,
 // fake_detected, perfect_step, perfect_thai, perfect_lua, dish_good, dish_excellent, dish_clean,
-// dish_new_recipe (n = số phần), shift_no_loss, revenue (n = doanh thu ca).
+// dish_new_recipe (n = số phần), dish_portions (mọi món, n = số phần, kèm recipeId), good_rating (khách từ 4 sao:
+// tín hiệu thay thế cho five_star khi bật Hỗ trợ thao tác), shift_no_loss (không tính khách dùng ảnh chuyển khoản
+// giả đã bị bắt), revenue (n = doanh thu ca).
 
-export const SIGNALS = Object.freeze(['served', 'five_star', 'change_correct', 'change_wrong', 'change_optimal',
+export const SIGNALS = Object.freeze(['served', 'five_star', 'good_rating', 'change_correct', 'change_wrong', 'change_optimal',
   'readback_clean', 'qr_ok', 'fake_detected', 'perfect_step', 'perfect_thai', 'perfect_lua', 'dish_good',
-  'dish_excellent', 'dish_clean', 'dish_new_recipe', 'shift_no_loss', 'revenue'])
+  'dish_excellent', 'dish_clean', 'dish_new_recipe', 'dish_portions', 'shift_no_loss', 'revenue'])
 
 const GOOD = ['ngon', 'tuyet_hao']
 // mã lỗi nguyên liệu trong DishResult.errors (qua ING_ERROR_REVIEW của scoring.js)
@@ -37,10 +39,10 @@ function prog(state) {
   return p
 }
 
-// Món mua trong `days` ngày game gần nhất (boughtDay > 0).
-export function isRecentRecipe(state, recipeId, days = 3) {
+// Món mua trong `days` ngày game gần nhất tính tới ngày game `atDay` (mặc định ngày hiện tại; boughtDay > 0).
+export function isRecentRecipe(state, recipeId, days = 3, atDay = state.day) {
   const p = state.recipes && state.recipes[recipeId]
-  return !!p && p.boughtDay > 0 && state.day - p.boughtDay >= 0 && state.day - p.boughtDay < days
+  return !!p && p.boughtDay > 0 && atDay - p.boughtDay >= 0 && atDay - p.boughtDay < days
 }
 
 // Trả mảng [{sig, n, recipeId?}] cho một sự kiện miền. Cập nhật stats/track/kỷ lục.
@@ -109,10 +111,12 @@ export function signalsFor(state, type, payload = {}) {
       if (p.grade === 'tuyet_hao') { out.push({ sig: 'dish_excellent', n: 1, recipeId: rid }); bump(state, 'excellentDishes') }
       if (ingErrors === 0 && p.grade !== 'hong') out.push({ sig: 'dish_clean', n: 1, recipeId: rid })
       if (rid && isRecentRecipe(state, rid, 3)) out.push({ sig: 'dish_new_recipe', n: Math.max(1, Number(qty) || 1), recipeId: rid })
+      if (rid) out.push({ sig: 'dish_portions', n: Math.max(1, Number(qty) || 1), recipeId: rid })
       break
     }
     case 'customer.rated': {
       out.push({ sig: 'served', n: 1 })
+      if (p.stars >= 4) out.push({ sig: 'good_rating', n: 1 })
       if (p.stars === 5) {
         out.push({ sig: 'five_star', n: 1 })
         bump(state, 'fiveStarCustomers')
@@ -121,6 +125,8 @@ export function signalsFor(state, type, payload = {}) {
       break
     }
     case 'ticket.clipped': {
+      // Hỗ trợ tính tiền: chuỗi "Quầy chuẩn" không được đếm, không ghi kỷ lục
+      if (state.settings && state.settings.assistCash) break
       const pr = prog(state)
       const streak = Number(p.counterStreak ?? (sh ? sh.counterStreak : 0)) || 0
       if (streak > (pr.records.longestStreak || 0)) pr.records.longestStreak = streak
@@ -131,8 +137,10 @@ export function signalsFor(state, type, payload = {}) {
       break
     }
     case 'shift.ended': {
-      if ((p.served || 0) > 0 && (p.lost || 0) === 0) out.push({ sig: 'shift_no_loss', n: 1 })
       const h = lastHistory(state, p.day)
+      // khách trả bằng ảnh chuyển khoản giả bị bắt (người chơi từ chối hoặc Loa chặn) là làm đúng, không tính "bỏ về"
+      const scam = Number(p.scamCaught ?? (h ? h.scamCaught : 0)) || 0
+      if ((p.served || 0) > 0 && Math.max(0, (p.lost || 0) - scam) === 0) out.push({ sig: 'shift_no_loss', n: 1 })
       const revenue = p.revenue ?? (h ? (h.cashSales || 0) + (h.qrSales || 0) : 0)
       if (revenue > 0) out.push({ sig: 'revenue', n: revenue })
       const pr = prog(state)

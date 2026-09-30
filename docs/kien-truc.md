@@ -36,16 +36,22 @@ src/ui/
   components/ hud.js toast.js modal.js progress4.js patience.js ticket-rail.js cash-drawer.js numpad.js
   screens/    title.js prep.js service.js counter.js kitchen.js summary.js
   minigames/  index.js chon.js cha.js thai.js cham.js lua.js rot.js
-tests/unit/*.test.mjs      node:test (integration-shift.test.mjs: DATA thật, 3 ca liên tiếp, người chơi hoàn hảo/ẩu)
-tests/e2e/*.e2e.mjs        Playwright (Chromium ở /opt/pw-browsers): one-shift, reload
-tests/e2e/helpers.mjs      nạp Playwright, ngữ cảnh 390×844 cảm ứng, người chơi tự động qua data-testid
+tests/unit/*.test.mjs      node:test (integration-shift.test.mjs: DATA thật, 3 ca liên tiếp, người chơi hoàn hảo/ẩu;
+                           integration-meta.test.mjs: 5 ngày thật × 3 ca kèm toàn bộ hệ thống meta M2 và người chơi
+                           trung bình, mục 15.10; review-m2-fixes.test.mjs: hồi quy vòng soát lỗi M2, mục 15.11)
+tests/e2e/*.e2e.mjs        Playwright (Chromium ở /opt/pw-browsers): one-shift, reload, kitchen-back (M1);
+                           m2-meta, m2-ui, checkin-quests, shop, event-2011, review-m2 (M2, mục 15.10–15.11)
+tests/e2e/helpers.mjs      nạp Playwright, ngữ cảnh 390×844 cảm ứng (openGame({clock, viewport}): clock true | {time} cài đồng hồ giả),
+                           người chơi tự động qua data-testid (playBoard dùng cả cho Nấu thử; playShiftUi chơi cả ca),
+                           seedSave (nạp save dựng sẵn bằng encodeSave vào khóa thật), enterPrep, claimCheckinIfShown,
+                           readSave/waitSave (đọc DEV_SAVE_KEY khi đã mở bằng ?devNow, không thì SAVE_KEY)
 tests/helpers/static-server.mjs  perfect-player.mjs
 docs/                      tài liệu
 package.json
 ```
 
 M2 (lõi + dữ liệu, đã có — chi tiết mục 15): `core/meta.js stats.js rewards.js checkin.js quests.js mail.js chains.js shop.js events.js progression.js`, `data/checkin.js quests.js mail.js chains.js shop.js events.js day-events.js progression.js`, test `tests/unit/meta-*.test.mjs` (tiện ích `tests/helpers/meta-helpers.mjs`).
-M2 giao diện (đã có — mục 13.1): `css/meta.css`, `ui/screens/shop.js tasting.js quests.js mailbox.js event.js stage-up.js`, `ui/components/meta-ui.js chain-card.js checkin-popup.js`; e2e `tests/e2e/m2-meta.e2e.mjs`.
+M2 giao diện (đã có — mục 13.1): `css/meta.css`, `ui/screens/shop.js tasting.js quests.js mailbox.js event.js stage-up.js`, `ui/components/meta-ui.js chain-card.js checkin-popup.js`; e2e `tests/e2e/m2-meta.e2e.mjs` (điểm danh qua 04:00, sự kiện → Chè bưởi → hết mùa vẫn giữ, Shop, Việc hôm nay), `tests/e2e/m2-ui.e2e.mjs` (Nấu thử, sự kiện ngày + Phiếu Chợ Sớm, soát bố cục 360×740), `tests/e2e/checkin-quests.e2e.mjs`, `tests/e2e/shop.e2e.mjs`, `tests/e2e/event-2011.e2e.mjs` (luồng đầy đủ qua giao diện thật, mục 15.10).
 (M3 thêm: `core/incidents.js`, `data/incidents.js`, các màn `recipe-book.js notebook.js settings.js`, `manifest.webmanifest`, `sw.js`.)
 
 ## 3. package.json
@@ -101,7 +107,8 @@ E2E nạp Playwright bằng `createRequire`, thử `require('playwright')` rồi
   },
   history: [],             // tối đa 60 bản tổng kết ca (xem economy.summarizeShift)
   shift: null,             // ca đang chơi (mục 7) hoặc null
-  clock: { maxSeen: 0 }
+  clock: { maxSeen: 0 },
+  rev: 0                   // số hiệu bản ghi: tăng mỗi lần lưu (writeSave); tab cũ thấy bản lưu có rev lớn hơn thì không ghi đè
   // M2 thêm (defaultMeta() trong state.js, mô tả ở mục 15): items, cosmetics, titles, unlocks, prep, checkin, daily,
   // mail, chains, shop, eventRecipes, tasting, events, realDays, progression, track; stats có thêm các khóa M2.
 }
@@ -335,7 +342,7 @@ Cấu trúc `state.shift`:
             cogs: 0, waste: 0, refunds: 0, tips: 0, fakeQrLoss: 0 },
   served: [id], lost: [id], missed: 0,
   scoreSheets: [ScoreSheet],                   // phiếu chấm từng khách
-  counterStreak: 0,                            // chuỗi "Quầy chuẩn"
+  counterStreak: 0,                            // chuỗi "Quầy chuẩn" (luôn 0 khi bật Hỗ trợ tính tiền)
   nextTicketNo: 1
 }
 ```
@@ -498,6 +505,8 @@ export function customerStars(customer, dishes, recipes, opts?) → { stars, bas
    // base = hạng của Q trung bình có trọng số theo giá; có món Hỏng → base ≤ 2
    // sao = kẹp(làm_tròn_xuống(base − Σ phạt quầy − phạt chờ), 1, 5); khách khó tính: có lỗi → −1 thêm; khách tutorial không bị phạt
 export function tipFor(stars, flawlessAny, persona, balance?) → đồng   // 5 sao: 5.000đ; có món Không tì vết hoặc khách khó tính: 10.000đ
+   // M2 (kitchen.finalizeCustomer): đang trong chuỗi "Quầy chuẩn" (sh.counterStreak ≥ 5) → 10.000đ; không áp khi bật Hỗ trợ tính tiền
+   //   (lúc đó clipTicket giữ counterStreak = 0). Trong mùa sự kiện: + EVENTS[id].festiveRep danh tiếng mỗi phần món lễ đạt Ngon trở lên.
 // bổ sung: requiredIngredients(recipe, notes) → {required, main, side, optional, removed, decoys} ; noteObjects ; gradeOf(q, thresholds) ; ING_ERROR_REVIEW
 export function averageRating(ratings) → số (đệm 4 sao khi < 5 đánh giá)
 export function customerMultiplier(avg) → 1,15 | 1,0 | 0,85 | 0,7
@@ -533,16 +542,23 @@ export function encodeSave(state) → 'BKN1.' + base64url(UTF-8 JSON) + '.' + fn
 export function decodeSave(str) → object thô (CHƯA migrate) | null            // sai checksum → null
 export function migrate(raw, data?) → state               // gộp với defaultState(), kẹp giá trị, bỏ id công thức/nâng cấp không còn trong data; giữ ca đang dở nếu đủ cấu trúc
    // version 1 → 2: migrateMeta(raw, s, data) thêm/kẹp các trường meta M2; save v1 được mail.seenVersion = '0.1.0' (nhận thư phiên bản mới)
-export function saveTo(storage, state, { backup }?) → boolean ; loadFrom(storage, data?) → state|null   // storage có getItem/setItem; thử bản chính rồi bản dự phòng; tự migrate
+export function saveTo(storage, state, { backup, keys, guard }?) → boolean ; loadFrom(storage, data?, { keys }?) → state|null   // storage có getItem/setItem; thử bản chính rồi bản dự phòng; tự migrate
+export function writeSave(storage, state, { backup, keys, guard, lastCode }?) → { ok: true, code } | { ok: false, reason: 'tab_khac'|'loi_ghi' }
+   // mỗi lần ghi state.rev += 1; guard: bản trong storage có rev > state.rev (tab khác đã ghi) → KHÔNG ghi ('tab_khac')
+export function storedRev(storage, { keys }?) → số | null
+export const DEV_SAVE_KEY = 'bkn.save.dev', DEV_BACKUP_KEY = 'bkn.bak.dev', DEV_KEYS = { save, backup }   // khóa riêng khi mở bằng ?devNow
 export function exportCode(state) → chuỗi ; importCode(str, data?) → state|null  // mã sao lưu (M3)
 ```
-UI gọi `saveTo(localStorage, state)` có debounce 300 ms, sau mỗi hành động quan trọng, khi `visibilitychange`/`pagehide`, và cuối ca (kèm ghi bản dự phòng). Tải lại giữa ca: khôi phục `state.shift`; nếu đang ở giữa một mini-game thì bước đó chơi lại từ đầu (cùng tham số).
+UI gọi `writeSave(localStorage, state, { guard: true, lastCode, keys })` có debounce 300 ms, sau mỗi hành động quan trọng, khi `visibilitychange`/`pagehide`, và cuối ca (kèm ghi bản dự phòng). Tải lại giữa ca: khôi phục `state.shift`; nếu đang ở giữa một mini-game thì bước đó chơi lại từ đầu (cùng tham số).
+
+**Một tab chơi tại một thời điểm** (`app.js`): tab nào mở game cũng lưu ngay lúc khởi động (rev tăng). Tab cũ nhận sự kiện `storage` của khóa save (hoặc bị `writeSave` từ chối vì rev nhỏ hơn) thì tự khóa: `app.locked = true`, không lưu nữa (kể cả `pagehide`), vòng lặp ca dừng, lớp phủ `tab-lock` "Game đang mở ở tab khác" với nút `tab-lock-reload` "Chơi ở tab này" (tải lại bản mới nhất). Nhờ vậy tab cũ không ghi đè quà, ca, món đã mua ở tab mới, cũng không dùng để lùi một ca hỏng.
 
 ## 13. Giao diện — quy ước `src/ui`
 
 - `dom.js`: `h(tag, props, ...children)` tạo phần tử (props hỗ trợ `class`, `style`, `dataset`, `on*`), `clear(el)`, `$(sel, root)`.
-- `main.js` (M2): `?devNow=YYYY-MM-DDTHH:mm` (giờ Việt Nam, hoặc `?devNow=YYYY-MM-DD` = 12:00; chỉ localhost/127.0.0.1, `clock.parseDevNow`) ghi đè đồng hồ, `app.now()` chạy tiếp từ mốc đó; gắn `attachMeta(app.bus, () => app.state, app.ctx)` một lần và gọi `refreshMeta` khi mở game. `app.ctx` có thêm `now()`.
-- `app.js`: `createApp({ root, storage, now, screens })` → `app = { state, data /*mọi export từ src/data*/, bus, ctx /*{emit, data}*/, save(), go(screenName, params), toast(text, opts), modal(opts) → Promise, vibrate(ms), sound(name), now() }`.
+- `main.js` (M2): `?devNow=YYYY-MM-DDTHH:mm` (giờ Việt Nam, hoặc `?devNow=YYYY-MM-DD` = 12:00; chỉ localhost/127.0.0.1, `clock.parseDevNow`) ghi đè đồng hồ, `app.now()` chạy tiếp từ mốc đó. Giờ giả ghi mốc tương lai vào save (`clock.maxSeen`, ngày điểm danh, Việc hôm nay…) nên khi có `devNow` game **lưu ở khóa riêng** `DEV_KEYS` (lần đầu chép từ save thật; save thật không bao giờ bị ghi) và hiện dải `devnow-banner` "Giờ giả DD/MM HH:mm · bản lưu riêng" trên cùng (màn chơi lùi xuống 24px). Gắn `attachMeta(app.bus, () => app.state, app.ctx)` một lần và gọi `refreshMeta` khi mở game. `app.ctx` có thêm `now()`.
+- `app.js`: `createApp({ root, storage, now, screens, saveKeys?, devBanner? })` → `app = { state, data /*mọi export từ src/data*/, bus, ctx /*{emit, data}*/, save(), go(screenName, params), toast(text, opts), modal(opts) → Promise, vibrate(ms), sound(name), now(), locked }`.
+  Nút Back của điện thoại (history API): `app.go` tới màn con (`SUB_SCREENS`: shop, tasting, quests, mailbox, event, stage-up, service, summary) đẩy 1 mục lịch sử; về màn gốc (prep, title) bằng nút trong game thì bỏ mục đó (`history.back()` có cờ bỏ qua). `popstate`: đang mở hộp thoại đóng được thì đóng; màn có `onBack()` tự xử lý (Nấu thử: hỏi như nút "‹ Về Chợ", phiên được giữ; ca bán: ở lại, báo "phục vụ hết khách rồi mới rời xe"); còn lại về `prep`. Ở màn gốc Back rời trang như thường.
   Thực tế thêm: `saveNow({backup}?)`, `modalOpen()`, `modalBlocking()` (hộp thoại chặn → tạm dừng thời gian ca), `settings()`, `applySettings()`, `router`, `switchTab(name)` (khi đang ở màn ca bán). `toast(text, {duration, kind:'info'|'good'|'bad'|'tip', title, icon, testid})` không chặn thao tác, tối đa 2 cái thường; thẻ Mẹo nghề (`kind:'tip'`) hiện gọn (tiêu đề + tối đa 2 dòng, chỉ che dải khách), mỗi lần 1 thẻ, thẻ sau xếp hàng (tối đa 2 thẻ chờ); thẻ trigger `shift_end` không nổi mà hiện trong mục "Mẹo của Dì Sáu" ở Tổng kết. `modal({title, text, icon, body, render(close), actions:[{label, value, testid, kind}], dismissible, testid, blocking = true})`.
   Tham số URL: `?seed=N` chỉ có tác dụng khi chưa có save; `?test=1` (chỉ trên localhost/127.0.0.1) bật `settings.assistMotion` cho kiểm thử tự động.
 - `screens/counter.js`: `mountCounter(root, app, { switchTab })` → `{ el, update, onShow, onHide, unmount }`. Nút hành động mỗi khâu (Đọc lại đơn/Chốt order, Đưa tiền thối, QR, Kẹp phiếu bếp) nằm trong thanh `.act-bar` dính đáy panel; sang khâu mới panel tự cuộn để thấy phần thao tác. Phiếu chấm có 5 hàng: Order, Báo tổng (`bao_du`, `bao_thieu`), Thối tiền (`thoi_thieu`, `thoi_du`, `qr_gia`), Bếp, Thời gian chờ. `screens/kitchen.js`: `mountKitchen(root, app)` → `{ unmount, update, onShow, onHide, selectTicket(ticketId) }`; nút "‹ Phiếu" (và chạm phiếu trên dây chung) đưa về dây phiếu ở cả bước chọn lẫn Thớt, rổ đang chọn được giữ; ô "Đang làm" trên dây phiếu có "Bỏ món" + "Làm tiếp"; trên Thớt thẻ công thức thu gọn (chỉ ghi chú đỏ, nguyên liệu và các bước gập lại); màn `service` nạp bếp bằng `import()` động, gọi `update(dt)` mỗi khung hình và `onShow/onHide` khi đổi tab (rời tab giữa mini-game → bước đó chơi lại từ đầu).
@@ -571,13 +587,13 @@ Mini-game chỉ đo thao tác và gọi hàm chấm trong `core/minigame-scoring
 
 ### 13.1 Giao diện M2
 
-- `app.nowInfo()` = `makeNowInfo(app.state, app.now())` (cập nhật `clock.maxSeen`); `app.session` (không lưu): `checkinShownDay`, `mailToastIds`, `pendingMail` (thư mới lúc mở game, vd thư chào mừng), `rewindNoted`.
+- `app.nowInfo()` = `makeNowInfo(app.state, app.now())` (cập nhật `clock.maxSeen`); `app.session` (không lưu): `checkinShownDay`, `mailToastIds`, `pendingMail` (thư mới lúc mở game, vd thư chào mừng).
 - Màn mới (router): `shop` (params `{tab: 'recipes'|'upgrades'|'spoons'}`), `tasting` (`{recipeId}`), `quests`, `mailbox`, `event` (`{eventId}`), `stage-up`. Mỗi màn có đầu màn `screenHead` (nút `meta-back` ≥ 44px về `prep`, viên Tiền quán + Muỗng Vàng) dính trên cùng.
-- `prep`: vào màn gọi `refreshMeta`; lưới lối vào 4 ô (Chợ Công Thức, Việc hôm nay, Điểm danh, Hộp thư) có chấm đỏ; thẻ sự kiện có thời hạn; thẻ sự kiện ngày + lựa chọn (vd Căng bạt); Phiếu Chợ Sớm; thẻ chuỗi ("Dì Sáu dặn", gộp nút nhận nhiều bước); thẻ "Giấc mơ tiếp theo" hoặc thẻ lên chặng. Lần đầu trong ngày thật (không tính ca hướng dẫn đầu tiên của save mới) tự mở bảng điểm danh; lần đầu đủ điều kiện lên chặng mở hộp thoại mời xem màn `stage-up`. Giờ máy bị lùi: dòng nhắc `rewind-note`, nút nhận quà theo ngày khóa. Kiểm tra mỗi 30 giây, qua mốc 04:00 thì làm mới. Nâng cấp chuyển sang tab Nâng cấp của Chợ Công Thức. Xuất `dayEffectLines(effects, data, state?)`, `forecastCustomers(state, ctx, info)`, `isFirstTutorial(state)`.
-- `service`: thông báo nổi không chặn thao tác cho `quest.progress` ("Việc hôm nay: 4/5 · Thối đúng 5 lần liên tiếp", mỗi việc tối đa 1 lần/4 giây, xong việc và đứt chuỗi luôn báo), `chain.step`, `tem.gained`; đầu ca báo sự kiện ngày và Phiếu Chợ Sớm đang áp dụng.
-- `summary`: mục "Việc và chuỗi nhiệm vụ" (tiến độ việc, bước chuỗi, Tem hôm nay) và thẻ báo trước sự kiện ngày mai (`dayEventInfo(state, state.day)`); dự báo khách ngày mai đã tính sự kiện.
-- Nấu thử: `mountKitchen(root, app, { tasting: { onDone(dish) } })` chạy trên app "hộp cát" (`tastingSandbox`, bus riêng): giới hạn thời gian bước × `TASTING_PAR_MUL` (4) và ẩn thanh thời gian, không nút "‹ Phiếu"/"Bỏ món", nhãn "Nấu thử"; Ra món → `finishTasting` → màn kết quả (Mua món / Về Chợ Công Thức). Thoát giữa chừng giữ phiên nấu thử (`state.tasting`) để làm tiếp.
-- Hình xe: `cartSvg({ name, umbrellaColor, umbrellaAlt, pattern: 'soc', sign: 'vien'|'den', decor: 'chau_hoa' })`; `cartOptions(state, data)` / `cartView(state, data)` (meta-ui.js) đọc `cosmetics.equipped` (dù mặc định: "Dù cũ của Dì Sáu" màu gạch phai). Màn mở đầu và Góc Muỗng Vàng vẽ theo đồ đang dùng. `art.js` thêm icon `phieu_cho_som bat_che_mua troi_mua nang_nong lanh_luong cho_phien thu ruong lich phan_trang danh_hieu mon_goi_cuon mon_bun_thit_nuong mon_che_ba_mau` và mặt `CO_HANH`.
+- `prep`: vào màn gọi `refreshMeta`; lần mở đầu tiên (ngày 1, chưa bán ca nào, `isFirstVisit`) lời hướng dẫn của Dì Sáu (`prep-talk`) và thẻ "Dì Sáu dặn: Phục vụ khách đầu tiên" lên ngay dưới đầu màn, chưa hiện "Giấc mơ tiếp theo" (mở dần); lời Dì Sáu các ngày sau theo sự kiện ngày (`DIALOGUE.diSau.dayEvent[id]`, `prepTalk`); lưới lối vào 4 ô (Chợ Công Thức, Việc hôm nay, Điểm danh, Hộp thư) có chấm đỏ; thẻ sự kiện có thời hạn; thẻ sự kiện ngày + lựa chọn (vd Căng bạt); Phiếu Chợ Sớm; thẻ chuỗi ("Dì Sáu dặn", gộp nút nhận nhiều bước); thẻ "Giấc mơ tiếp theo" hoặc thẻ lên chặng. Lần mở đầu tiên trong ngày thật tự mở bảng điểm danh, kể cả lần đầu mở game với save mới (ô 1 "Tuần Khai Trương" hiện ngay sau khi đặt tên xe; `app.session.checkinShownDay` giữ không bật lại trong ngày); lần đầu đủ điều kiện lên chặng mở hộp thoại mời xem màn `stage-up`. Thư mới lúc vào màn: thông báo nổi `mail-toast` (thư chào mừng; 1 thư thì ghi tiêu đề; nhiều thư thì ghi số thư) — hiện SAU khi bảng điểm danh đóng, không chồng lên bảng. Việc sự kiện hôm trước tự nhận: `event-auto-toast`. Thẻ sự kiện (`event-card`, `data-dot`) có chấm đỏ `event-card-dot`, dòng `event-pending` và nút "Nhận quà sự kiện" khi `eventsOverview().pending > 0` (điểm danh sự kiện, việc sự kiện xong chưa nhận, bước chuỗi sự kiện chờ nhận — cả trong ân hạn). Dòng hiệu ứng sự kiện ngày và Dự báo dùng `dayEventEffects(info)` (đã chọn Căng bạt / có Bạt che mưa → hiệu ứng của lựa chọn). Giờ máy bị lùi: dòng nhắc `rewind-note` (chỉ dòng này, không bật thêm thông báo nổi), nút nhận quà theo ngày khóa. Kiểm tra mỗi 30 giây, qua mốc 04:00 thì làm mới. Nâng cấp chuyển sang tab Nâng cấp của Chợ Công Thức. Xuất `dayEffectLines(effects, data, state?)`, `forecastCustomers(state, ctx, info)`.
+- `service`: thông báo nổi không chặn thao tác cho `event.quest` (`event-quest-toast`, việc sự kiện), `quest.progress` ("Việc hôm nay: 4/5 · Thối đúng 5 lần liên tiếp", mỗi việc tối đa 1 lần/4 giây, xong việc và đứt chuỗi luôn báo), `chain.progress` ("Dì Sáu dặn · 2/3 · Ghi phiếu đúng…", mỗi chuỗi tối đa 1 lần/4 giây; tiêu đề theo `NPCS[npc].verb`: "Cô Hạnh nhờ"), `chain.step` (chuỗi sự kiện: "Nhận thưởng ở màn sự kiện", chuỗi thường: "ở màn Chuẩn bị"), `tem.gained`; đầu ca báo sự kiện ngày và Phiếu Chợ Sớm đang áp dụng.
+- `summary`: dòng khách bỏ về không tính khách dùng ảnh chuyển khoản giả bị bắt (ghi riêng "Bắt được ảnh chuyển khoản giả"); mục "Việc và chuỗi nhiệm vụ" (tiến độ việc, bước chuỗi — chuỗi sự kiện nhận ở màn sự kiện, Tem hôm nay) và thẻ báo trước sự kiện ngày mai (`dayEventInfo(state, state.day)`); dự báo khách ngày mai đã tính sự kiện.
+- Nấu thử: `mountKitchen(root, app, { tasting: { onDone(dish) } })` chạy trên app "hộp cát" (`tastingSandbox`, bus riêng): mini-game nhận `ctx.untimed` (bước không tự kết thúc, bước Chọn không bị tính quá giờ, Chà không trừ điểm chậm) và `ctx.guide` (ô cần lấy ở bước Chọn nhấp nháy ngay: "tay chỉ"); par × `TASTING_PAR_MUL` (4), ẩn thanh thời gian, không dòng đầu Thớt ("‹ Phiếu") và nút "Bỏ món" — màn Nấu thử có đầu riêng: nút "‹ Về Chợ", nhãn "Nấu thử" + tên món, dòng "Không tính giờ · Có gợi ý · Miễn phí · Không tính thạo món"; Ra món → `finishTasting` → màn kết quả (Mua món / Về Chợ Công Thức). Thoát giữa chừng giữ phiên nấu thử (`state.tasting`) để làm tiếp.
+- Hình xe: `cartSvg({ name, umbrellaColor, umbrellaAlt, pattern: 'soc', sign: 'vien'|'den', decor: 'chau_hoa' })` (tên xe cắt ở 22 ký tự, cỡ chữ giảm theo độ dài 13 → 9 và ép khít `textLength` trong biển trắng, không tràn ra thân xe); `cartOptions(state, data)` / `cartView(state, data)` (meta-ui.js) đọc `cosmetics.equipped` (dù mặc định: "Dù cũ của Dì Sáu" màu gạch phai). Màn mở đầu và Góc Muỗng Vàng vẽ theo đồ đang dùng. `art.js` thêm icon `phieu_cho_som bat_che_mua troi_mua nang_nong lanh_luong cho_phien thu ruong lich phan_trang danh_hieu mon_goi_cuon mon_bun_thit_nuong mon_che_ba_mau` và mặt `CO_HANH`.
 
 ## 14. data-testid bắt buộc (cho e2e)
 
@@ -595,22 +611,23 @@ Mini-game chỉ đo thao tác và gọi hàm chấm trong `core/minigame-scoring
 - M2:
   - Chuẩn bị: `open-shop`, `open-quests`, `open-checkin`, `open-mail` (mỗi ô có `data-dot` = số chấm đỏ), `prep-spoons`, `chain-card` (chuỗi chính; chuỗi khác `chain-card-<chainId>`), `chain-claim-<chainId>` (gộp) / `chain-claim-<chainId>-<bước>`, `dream-card`, `stage-up-card`, `event-card` (`data-phase`), `open-event`, `day-event-card`, `day-event-choice-<choiceId>`, `coupon-card`, `use-coupon`, `rewind-note`, `stage-up-modal`, `stage-up-open`, `stage-up-later`, `mail-toast`.
   - Điểm danh: `checkin-popup`, `checkin-claim`, `checkin-close`, `checkin-slot-<i>` (`data-claimed`), `checkin-note`.
-  - Chợ Công Thức: `screen-shop`, `shop-tab-recipes`, `shop-tab-upgrades`, `shop-tab-spoons`, `shop-item-<recipeId>` (class `is-owned`), `shop-buy-<recipeId>`, `shop-trial-<recipeId>`, `shop-teaser-<id>`, `shop-event-<recipeId>`, `upgrade-<id>`, `upgrade-buy-<id>`, `parasol-<id>` (nút mua/dùng; `mac_dinh` = dù cũ), `parasol-card-<id>`, `parasol-preview-<id>`, `deco-use-<id>`, `cart-view` (`data-umbrella`), `bag`; xác nhận mua dùng `confirm-ok`/`confirm-cancel`.
+  - Chợ Công Thức: `screen-shop`, `shop-tab-recipes`, `shop-tab-upgrades`, `shop-tab-spoons`, `shop-item-<recipeId>` (class `is-owned`), `shop-buy-<recipeId>`, `shop-trial-<recipeId>`, `shop-teaser-<id>`, `shop-event-<recipeId>`, `upgrade-<id>`, `upgrade-buy-<id>`, `parasol-<id>` (nút mua/dùng; `mac_dinh` = dù cũ), `parasol-card-<id>`, `parasol-preview-<id>` (chạm để xem thử màu trên hình xe; đang xem thử hiện `parasol-previewing`), `deco-use-<id>`, `cart-view` (`data-umbrella`), `bag`; xác nhận mua dùng `confirm-ok`/`confirm-cancel`.
   - Nấu thử: `screen-tasting`, `tasting-label`, `tasting-exit`, `tasting-result` (`data-grade`), `tasting-buy`, `tasting-back` (bếp dùng lại testid của mục Bếp).
   - Việc hôm nay: `screen-quests`, `quest-<i>` (`data-id`, `data-progress`, `data-target`), `quest-claim-<i>`, `quest-reroll-<i>`, `daily-chest` (nút), `daily-chest-card`.
   - Hộp thư: `screen-mail`, `mail-item-<id>` (`data-kind`), `mail-claim-<id>`, `mail-claim-all`, `mail-list`.
   - Sự kiện: `screen-event`, `event-tem` (`data-amount`), `event-recipe-<recipeId>`, `event-checkin-claim`, `event-quest-<id>`, `event-quest-claim-<id>`, `event-chain-step`, `event-exchange-<id>`, `event-exchange-item-<id>`.
   - Lên chặng: `screen-stage-up` (`data-eligible`), `stage-up-locked`, `stage-conditions`, `stage-cond-<id>`, `post-goals`.
-  - Chung: `meta-back`, `meta-wallet`, `meta-spoons`. Trong ca: `quest-toast`, `chain-toast`, `tem-toast`, `day-event-toast`. Tổng kết: `summary-quests`, `summary-chain`, `summary-event-chain`, `summary-event`, `summary-day-event`.
+  - Chung: `meta-back`, `meta-wallet`, `meta-spoons`. Trong ca: `quest-toast`, `chain-toast`, `tem-toast`, `day-event-toast`, `event-quest-toast`. Tổng kết: `summary-quests`, `summary-chain`, `summary-event-chain`, `summary-event`, `summary-day-event`.
+  - Vòng soát lỗi M2: `tab-lock`, `tab-lock-reload` (tab cũ tự khóa), `devnow-banner` (giờ giả), `prep-talk`, `event-card-dot`, `event-pending`, `event-auto-toast`, `event-grace-chain` (màn sự kiện, ân hạn), `chain-assist-<chainId>` (bước chuỗi đếm mức thay thế khi bật Hỗ trợ thao tác), `shop-trial-note-<recipeId>` (đang nấu thử dở món khác).
 
 ## 15. Hệ thống meta M2 (lõi + dữ liệu)
 
 Nguyên tắc chung:
 - Lõi thuần như mục 1: không DOM, không đọc đồng hồ, không `Math.random`. Ngẫu nhiên qua `rng.js` với hạt giống `seedFrom(state.seed, …)` nên tải lại trang không đổi kết quả. Dữ liệu đọc qua `ctx.data` (trừ `events.js` có bảng `EVENTS` mặc định cho `isEventActive(eventId, nowMs)`).
 - **Thời gian**: mọi hàm theo ngày thật nhận `nowInfo = clock.makeNowInfo(state, deviceNow)` = `{ now, trusted: max(giờ máy, state.clock.maxSeen), rewind, dayKey: dayKeyVN(trusted) }`. Ngày đổi lúc 04:00 giờ Việt Nam. `rewind = true` (giờ máy lùi > 10 phút) → **khóa nhận quà theo ngày** (điểm danh thường/sự kiện, Rương ngày, quà lễ trong Hộp thư), không đẩy quà lễ/quà đời thường mới; game vẫn chơi được. Chuỗi hiển thị nhắc nhẹ: `STRINGS.meta.rewindLocked`. Sự kiện hết hạn theo `trusted`.
-- **Nhận thưởng** (nhiệm vụ, Rương, chuỗi, thư có quà) bị từ chối khi đang trong ca (`reason: 'dang_ban'`) để giữ bất biến ví của ca. Điểm danh không bị chặn.
+- **Nhận thưởng** (nhiệm vụ, Rương, chuỗi kể cả chuỗi sự kiện, thư có quà) bị từ chối khi đang trong ca (`reason: 'dang_ban'`) để giữ bất biến ví của ca. Không bị chặn: điểm danh, việc sự kiện, điểm danh sự kiện, Quầy đổi Tem (chỉ trao Tem, Muỗng Vàng, đồ thẩm mỹ). Mua món/nâng cấp và nấu thử cũng bị chặn trong ca.
 - Mã lý do chung (`reason`) → câu hiển thị ở `STRINGS.reasons`: `da_nhan, lui_gio, dang_ban, thieu_tien, thieu_muong, thieu_tem, chua_mo, chua_xong, da_co, het_luot, het_han, khong_co, da_nau_thu, het_su_kien` (thêm `trung_id`, `tran` của Hộp thư).
-- **Phần thưởng (Reward)** — lược đồ chung ở `src/data/checkin.js`: `{ money, incomeMul, gold, rep, items{id:n}, upgrade, fallback, cosmetic, title, recipe, tem, tipId, unlock, label }`. `incomeMul` là bội "thu nhập tham chiếu một ca" (`BALANCE.refIncomeTable`, `state.refIncomeFor(ctx, day)`: 20k ngày 1–2, 35k 3–4, 65k 5–6, 85k 7–8, 100k từ 9), quy ra tiền lúc trao, làm tròn lên bội 1.000đ. Nâng cấp/hiện vật vĩnh viễn đã có → dùng `fallback` (quy đổi, `converted: true`).
+- **Phần thưởng (Reward)** — lược đồ chung ở `src/data/checkin.js`: `{ money, incomeMul, gold, rep, items{id:n}, upgrade, fallback, cosmetic, title, recipe, tem, tipId, unlock, label }`. `incomeMul` là bội "thu nhập tham chiếu một ca" (`BALANCE.refIncomeTable`, `refIncomeFor(ctx, day)` của `state.js`: 20k ngày 1–2, 35k 3–4, 65k 5–6, 85k 7–8, 100k từ 9), quy ra tiền lúc trao, làm tròn lên bội 1.000đ. Nâng cấp/hiện vật vĩnh viễn đã có → dùng `fallback` (quy đổi, `converted: true`).
 
 ### 15.1 State thêm ở version 2 (`defaultMeta()`)
 ```js
@@ -619,7 +636,8 @@ cosmetics: { owned: [id], equipped: { du, bien, trang_tri } },   // du = màu d�
 titles: [id], unlocks: [id],                            // 'chu_xe_moi_toanh', 'chu_xe_dau_hem' ; 'the_quan_coc'
 prep: { day, coupon, dayEventChoice },                  // lựa chọn ở màn Chuẩn bị cho ca state.day
 checkin: { round /*1 = Tuần Khai Trương*/, next /*0..6*/, lastDay /*dayKey*/, total },
-daily: { dayKey, gameDay, quests: [{ id, group, target, progress, claimed }], prevIds, rerolls, chestClaimed },
+daily: { dayKey, gameDay, quests: [{ id, group, target, progress, claimed, recipeIds? }], prevIds, rerolls, chestClaimed },
+                                                        // recipeIds: món hợp lệ chốt lúc bốc (việc "Nấu n phần món vừa mua")
 mail: { list: [Mail], pushed: [id], monthly: { 'YYYY-MM': { count, everyday, value } }, seenVersion, pendingReviews: [] },
 chains: { [chainId]: { step, progress, done, claimable: [stepIndex], since } },
 shop: { tried: [recipeId] },                            // đã nấu thử miễn phí
@@ -638,23 +656,25 @@ track: { rbCustomer, rbFirst }                          // lần đọc lại đ
 ```js
 export function attachMeta(bus, getState, ctx) → detach      // bus.on('*'); ctx.now() (tùy chọn) → nowInfo cho phần theo ngày thật
 export function handleMetaEvent(state, type, payload, ctx, nowInfo?) → signals   // thuần, dùng trong test
-export function refreshMeta(state, nowInfo, ctx) → { questsRolled, newMail: [id], chains, stageUp }
+export function refreshMeta(state, nowInfo, ctx) → { questsRolled, newMail: [id mọi thư mới đẩy trong lần gọi], chains, stageUp, eventQuestsAuto: [{eventId, tem, dayKey}] }
    // gọi khi mở game / vào màn Chuẩn bị; tự gọi khi 'shift.started': ghi ngày thật, đổi nhiệm vụ (quên nhận → Hộp thư),
-   // đẩy thư đến hạn, nhiệm vụ sự kiện, Tem dư, chuỗi, lên chặng. Chơi qua mốc 04:00 giữa ca: tiến độ tự sang bộ nhiệm vụ ngày mới.
+   // đẩy thư đến hạn, nhiệm vụ sự kiện (việc hôm trước xong chưa nhận → tự cộng Tem), chuỗi, rồi mới tất toán Tem dư
+   // (Tem thưởng chuỗi sự kiện chưa nhận được cộng vào phần dư trước khi đổi), lên chặng.
+   // Chơi qua mốc 04:00 giữa ca: tiến độ tự sang bộ Việc hôm nay và việc sự kiện của ngày mới (ngày mới tính là đã chơi trong mùa).
 // stats.js
 export const SIGNALS ; export function signalsFor(state, type, payload) → [{ sig, n, recipeId? }]
 export function isRecentRecipe(state, recipeId, days = 3) ; export function lastHistory(state, day?)
 ```
 Tín hiệu dịch từ sự kiện miền (payload M1 giữ nguyên; thông tin thêm đọc từ state lúc phát: `shift.counter.changeAttempts/changeDue`, `shift.cook.result`, `shift.counterStreak`, `history[last]`):
-`served` (customer.rated) · `five_star` · `change_correct` / `change_wrong` (lần đưa đầu, cần thối > 0) · `change_optimal` · `readback_clean` (lần đọc lại đầu của khách không lỗi) · `qr_ok` · `fake_detected` (tự từ chối ảnh giả hoặc Loa chặn) · `perfect_step` / `perfect_thai` / `perfect_lua` (≥ 90, không Tự làm) · `dish_good` / `dish_excellent` / `dish_clean` (không lỗi nguyên liệu) · `dish_new_recipe` (món mua trong 3 ngày game, n = số phần) · `shift_no_loss` · `revenue` (n = doanh thu ca). Kỷ lục ca (`progression.records`) cập nhật ở `ticket.clipped` và `shift.ended`.
-Sự kiện meta phát ra (UI dùng để thông báo; meta bỏ qua): `quest.progress {index,id,progress,target,done,justDone}` · `quest.claimed` · `quest.chest` · `quest.rerolled` · `chain.progress` · `chain.step {chainId, stepIndex, done}` · `chain.claimed` · `mail.new {id, kind}` · `mail.claimed` · `checkin.claimed` · `tem.gained {eventId, n, today, cap}` · `stage.ready {chang}` · `recipe.gained {recipeId}` · `upgrade.gained {upgradeId}` · `recipe.tasted` · `cosmetic.bought`.
+`served` (customer.rated) · `five_star` · `good_rating` (khách từ 4 sao: tín hiệu thay thế cho `five_star` khi bật Hỗ trợ thao tác) · `change_correct` / `change_wrong` (lần đưa đầu, cần thối > 0) · `change_optimal` · `readback_clean` (lần đọc lại đầu của khách không lỗi) · `qr_ok` · `fake_detected` (tự từ chối ảnh giả hoặc Loa chặn) · `perfect_step` / `perfect_thai` / `perfect_lua` (≥ 90, không Tự làm) · `dish_good` / `dish_excellent` / `dish_clean` (không lỗi nguyên liệu) · `dish_new_recipe` (món mua trong 3 ngày game, n = số phần) · `dish_portions` (mọi món, n = số phần, kèm `recipeId`) · `shift_no_loss` (không tính khách dùng ảnh chuyển khoản giả bị bắt: `summary.scamCaught`, lưu cả trong `history[]`) · `revenue` (n = doanh thu ca). `handleMetaEvent` chuyển `recipeId` của tín hiệu cho `applyQuestSignal(state, sig, n, ctx, { recipeId })`. Kỷ lục ca (`progression.records`) cập nhật ở `ticket.clipped` (không ghi khi bật Hỗ trợ tính tiền) và `shift.ended`.
+Sự kiện meta phát ra (UI dùng để thông báo; meta bỏ qua): `quest.progress {index,id,progress,target,done,justDone}` · `event.quest {eventId,id,progress,target,done,justDone}` · `quest.claimed` · `quest.chest` · `quest.rerolled` · `chain.progress` · `chain.step {chainId, stepIndex, done}` · `chain.claimed` · `mail.new {id, kind}` · `mail.claimed` · `checkin.claimed` · `tem.gained {eventId, n, today, cap}` · `stage.ready {chang}` · `recipe.gained {recipeId}` · `upgrade.gained {upgradeId}` · `recipe.tasted` · `cosmetic.bought`.
 
 ### 15.3 Điểm danh — `checkin.js` (dữ liệu `CHECKIN`)
 ```js
 export function checkinStatus(state, nowInfo, ctx) → { round, roundName, next, slots: [{ index, reward, claimed, isNext }], canClaim, reason: null|'da_nhan'|'lui_gio', dayKey }
 export function claimCheckin(state, nowInfo, ctx) → { ok, index, round, reward } | { ok: false, reason }
 ```
-7 ô tích lũy, mỗi dayKey 1 ô, lỡ ngày không reset. Vòng 1 "Tuần Khai Trương": 10 Muỗng Vàng + viền biển xe · Phiếu Chợ Sớm · 10 Muỗng Vàng · Bạt che mưa · Dao thép tốt (đã có dao → 2 Phiếu Chợ Sớm) · 15 Muỗng Vàng · Rương Khai Trương (20 Muỗng Vàng + 100.000đ + danh hiệu). Vòng sau: 0,3 · Phiếu Chợ Sớm · 10 Muỗng Vàng · 0,4 · Phiếu Chợ Sớm ×2 · 15 Muỗng Vàng · 30 Muỗng Vàng + 0,5 (số lẻ là bội thu nhập tham chiếu).
+7 ô tích lũy, mỗi dayKey 1 ô, lỡ ngày không reset. Vòng 1 "Tuần Khai Trương" (theo de-xuat 9.2, can-bang 10.1): 10 Muỗng Vàng + viền biển xe · Phiếu Chợ Sớm · 10 Muỗng Vàng · Bạt che mưa (đã có → 20.000đ) · Phiếu Chợ Sớm ×2 · 15 Muỗng Vàng · Rương Khai Trương (20 Muỗng Vàng + 100.000đ + danh hiệu). Vòng sau: 0,3 · Phiếu Chợ Sớm · 10 Muỗng Vàng · 0,4 · Phiếu Chợ Sớm ×2 · 15 Muỗng Vàng · 30 Muỗng Vàng + 0,5 (số lẻ là bội thu nhập tham chiếu).
 
 ### 15.4 Việc hôm nay — `quests.js` (dữ liệu `QUESTS` 12 việc, `QUEST_GROUPS`, `QUEST_CONFIG`)
 ```js
@@ -665,7 +685,7 @@ export function questList(state, ctx) → { dayKey, quests: [{ index, id, group,
 export function applyQuestSignal(state, sig, n, ctx) → changes
 export function claimQuest(state, indexOrId, nowInfo, ctx) ; claimDailyChest(state, nowInfo, ctx) ; rerollQuest(state, indexOrId, nowInfo, ctx)
 ```
-Điều kiện (`cond`): `fromDayKey` (vd `qrFromDay`, `leaveFromDay`), `recentRecipeDays`. Chỉ tiêu `{ base }` hoặc `{ perCustomer, min, max, round }` × số khách dự kiến × 2 ca. `breakOn` cho việc "liên tiếp"; `assist`: không đếm khi bật Hỗ trợ tính tiền/thao tác. Thưởng mỗi việc 0,2 + 5 danh tiếng; Rương ngày (đủ 3 việc, khóa khi lùi giờ) 0,2 + 5 Muỗng Vàng. Đổi việc: 1 lần miễn phí/ngày, sau đó 5 Muỗng Vàng. Việc xong chưa nhận (và Rương chưa mở) lúc đổi ngày → thư `nv:<dayKey>:<id>` / `ruong:<dayKey>` hạn 7 ngày. Không có việc "tiêu tiền".
+Điều kiện (`cond`): `fromDayKey` (vd `qrFromDay`, `leaveFromDay`), `recentRecipeDays`. Chỉ tiêu `{ base }` hoặc `{ perCustomer, min, max, round }` × số khách dự kiến × 2 ca. `breakOn` cho việc "liên tiếp"; `assist`: không đếm khi bật Hỗ trợ tính tiền/thao tác (`questAssistBlocked`), và lúc bốc/đổi việc ưu tiên việc còn đếm được trong nhóm (bật Hỗ trợ thao tác thì không bốc "Tuyệt hảo", "Hoàn hảo ở bước Thái/Canh lửa"). "Nấu n phần món vừa mua" đếm tín hiệu `dish_portions` của các món chốt lúc bốc (`entry.recipeIds`; save cũ: tính theo `daily.gameDay`), nên chơi thêm ca trong ngày vẫn xong được. Thưởng mỗi việc 0,2 + 5 danh tiếng; Rương ngày (đủ 3 việc, khóa khi lùi giờ) 0,2 + 5 Muỗng Vàng. Đổi việc: 1 lần miễn phí/ngày, sau đó 5 Muỗng Vàng. Việc xong chưa nhận (và Rương chưa mở) lúc đổi ngày → thư `nv:<dayKey>:<id>` / `ruong:<dayKey>` hạn 7 ngày (loại thư "Việc chưa nhận"; lời thư ghi "Hôm qua…" khi cách 1 ngày, còn lại "Ngày 01/10…", mẫu `{when}`/`{When}`/`{day}` ở `MAIL_QUEST`, vd "Rương ngày hôm qua chưa mở", "Rương ngày 01/10 chưa mở"). Không có việc "tiêu tiền".
 
 ### 15.5 Hộp thư — `mail.js` (dữ liệu `MAIL_CONFIG, MAIL_WELCOME, MAIL_VERSIONS, MAIL_HOLIDAYS, MAIL_EVERYDAY, MAIL_LATE_REVIEW, MAIL_QUEST`)
 ```js
@@ -675,7 +695,7 @@ export function mailList(state, nowInfo) → [Mail + { hasReward, expired, daysL
 export function claimMail(state, id, nowInfo, ctx) ; claimAllMail(state, nowInfo, ctx) → { ok, count, rewards, skipped } ; markMailRead(state, id)
 export function purgeExpired(state, nowInfo) ; queueLateReviews(state, list, gameDay, nowInfo) ; compareVersion(a, b) ; ensureMail(state)
 ```
-Mỗi id đẩy đúng 1 lần (`mail.pushed`, nhớ 1.000 id). Hạn 30 ngày (quà lễ 14, nhiệm vụ 7). Tối đa 100 thư: đầy thì bỏ thư cũ nhất đã nhận. Trần (ngoài quà đền bù/`compensation`): tối đa 2 quà lễ/mốc mỗi tháng, quà đời thường tối đa 2/tháng, tổng tiền quà lễ + đời thường ≤ 3 lần thu nhập tham chiếu mỗi tháng. Quà lễ đẩy từ 04:00 ngày lễ trong `pushDays` ngày (20/10, 20/11, Tết Đinh Mùi 06/02/2027). Quà đời thường: từ ngày thật thứ 3, 10%/ngày (seed + dayKey), cần ≥ 5 đánh giá và sao TB ≥ 3,8, 0,3–0,6. Review muộn: `history[].lateReviews` → thư `review:<ngày game>:<customerId>` vào ngày thật hôm sau. Save mới không nhận thư phiên bản; save v1 nhận thư `phien_ban_0_2_0`.
+Mỗi id đẩy đúng 1 lần (`mail.pushed`, nhớ 1.000 id). Hạn 30 ngày (quà lễ 14, nhiệm vụ 7). Tối đa 100 thư: đầy thì bỏ thư cũ nhất đã nhận. Trần (ngoài quà đền bù/`compensation`): tối đa 2 quà lễ/mốc mỗi tháng, quà đời thường tối đa 2/tháng, tổng tiền quà lễ + mốc + đời thường + Tem dư sự kiện (`valueKinds` có `su_kien`) ≤ 3 lần thu nhập tham chiếu mỗi tháng; `mailValueRoom(state, nowInfo, ctx)` trả phần còn lại. `resolveReward` giữ `eventId` của phần thưởng Tem khi resolve lại (thư mang Tem). Quà lễ đẩy từ 04:00 ngày lễ trong `pushDays` ngày (20/10, 20/11, Tết Đinh Mùi 06/02/2027). Quà đời thường: từ ngày thật thứ 3, 10%/ngày (seed + dayKey), cần ≥ 5 đánh giá và sao TB ≥ 3,8, 0,3–0,6. Review muộn: `history[].lateReviews` → thư `review:<ngày game>:<customerId>` vào ngày thật hôm sau. Save mới không nhận thư phiên bản; save v1 nhận thư `phien_ban_0_2_0`.
 
 ### 15.6 Chuỗi nhiệm vụ — `chains.js` (dữ liệu `CHAINS`, `NPCS`, `CHAIN_WHERE`; chuỗi sự kiện ở `EVENTS[id].chain`)
 ```js
@@ -686,7 +706,7 @@ export function claimChainReward(state, chainId, stepIndex = null, nowInfo, ctx)
 export function chainStatus(state, nowInfo, ctx) → [{ id, name, npc, npcName, main, eventId, unlocked, done, step, total, text, where, progress, target, isCheck, gateLocked, claimable: [{ stepIndex, reward }] }]
 export function chainForcesFakeQr(state, ctx) → boolean
 ```
-Luôn đúng 1 bước đang làm; bước đếm (`signal`, `target`) chỉ đếm từ lúc hiện ra; bước `check` (`reputation`, `avgRating`, `ownsShopRecipe`, `upgrade`) xét trạng thái hiện tại. Xong bước → thưởng vào `claimable` (nhận ở màn Chuẩn bị), bước kế hiện ra ngay. "Ngày đầu ra phố" (Dì Sáu, 7 bước, mỗi bước kèm thẻ Mẹo nghề qua `tipId`; xong → danh hiệu "Chủ xe đầu hẻm", 20 Muỗng Vàng, `unlocks: 'the_quan_coc'`). "Làm quen QR" (Anh Khoa, từ `qrFromDay`): 3 QR đúng → phát hiện 1 ảnh giả (`forceFakeQr`: mỗi ca sau đó `startShift` ép 1 khách QR giả cho tới khi bắt được; Loa chặn cũng tính) → mua Loa báo tiền.
+Luôn đúng 1 bước đang làm; bước đếm (`signal`, `target`) chỉ đếm từ lúc hiện ra; bước có `assist` + `assistSignal` đếm tín hiệu thay thế khi bật công tắc Hỗ trợ đó (`stepSignal`; Hỗ trợ thao tác trần món ở Ngon nên C1 bước 6 và chuỗi sự kiện bước 4–5 đếm `dish_good` / `good_rating`, thẻ hiện `assistText`) để chuỗi không bao giờ kẹt; bước `check` (`reputation`, `avgRating`, `ownsShopRecipe`, `upgrade`) xét trạng thái hiện tại. Xong bước → thưởng vào `claimable` (chuỗi thường nhận ở màn Chuẩn bị; chuỗi sự kiện nhận ở màn sự kiện, cả trong 3 ngày ân hạn), bước kế hiện ra ngay. Hết ân hạn mà còn bước chưa nhận: Tem của bước cộng vào Tem dư của sự kiện (đổi ra tiền cùng lúc tất toán), phần còn lại (công thức) gửi thư `chuoi:<chainId>:<k>` (đền bù). `chainStatus` có thêm `npcVerb` (`NPCS[npc].verb`: "Dì Sáu dặn", "Cô Hạnh nhờ") và `assistText`. "Ngày đầu ra phố" (Dì Sáu, 7 bước, mỗi bước kèm thẻ Mẹo nghề qua `tipId`; bước 7 "Đạt 150 danh tiếng và sao trung bình từ 3,8", cùng ngưỡng với điều kiện lên Chặng 2; xong → danh hiệu "Chủ xe đầu hẻm", 20 Muỗng Vàng, `unlocks: 'the_quan_coc'`). Chuỗi sự kiện: bước có cổng `gates[k]` chưa mở thì tín hiệu không đếm (tiến độ giữ 0), thẻ ghi "Mở hàng một ca hôm nay để mở bước này" hoặc "Bước này mở vào ngày chơi kế tiếp trong mùa sự kiện". "Làm quen QR" (Anh Khoa, từ `qrFromDay`): 3 QR đúng → phát hiện 1 ảnh giả (`forceFakeQr`: mỗi ca sau đó `startShift` ép 1 khách QR giả cho tới khi bắt được; Loa chặn cũng tính) → mua Loa báo tiền.
 
 ### 15.7 Chợ Công Thức — `shop.js` (dữ liệu `SHOP`, `ITEMS`, `COSMETICS`, `TITLES`, `UNLOCKS`)
 ```js
@@ -698,7 +718,7 @@ export function buyShopUpgrade(state, upgradeId, ctx)   // economy.buyUpgrade
 export function buyUmbrella(state, id, ctx) ; equipCosmetic(state, id, ctx, slot?)             // 30 Muỗng Vàng/màu, chỉ thẩm mỹ
 export function canTaste(state, recipeId, ctx) ; startTasting(state, recipeId, ctx) ; tastingSandbox(state, ctx) → { state, ctx } ; finishTasting(state, ctx) → { ok, result }
 ```
-Nấu thử: `state.tasting.shift` là một ca giả 1 phiếu `thu1`; giao diện gọi thẳng các hàm bếp (`startCook(sandbox, 'thu1', 0, quietCtx)`, `submitChon`, `submitStep`, `finishDish`…) trên `tastingSandbox` — ví, thạo món, Mẹo nghề, nhiệm vụ, `state.shift` không đổi, không có sự kiện lên bus. Miễn phí 1 lần mỗi món chưa có (`shop.tried`).
+Nấu thử: đang có phiên dở của món khác thì `canTaste`/`startTasting` trả `dang_nau_thu` (ra món đó trước; mỗi món chỉ 1 lần miễn phí), `shopCatalog().recipes[].tastingOther`. `state.tasting.shift` là một ca giả 1 phiếu `thu1`; giao diện gọi thẳng các hàm bếp (`startCook(sandbox, 'thu1', 0, quietCtx)`, `submitChon`, `submitStep`, `finishDish`…) trên `tastingSandbox` — ví, thạo món, Mẹo nghề, nhiệm vụ, `state.shift` không đổi, không có sự kiện lên bus. Miễn phí 1 lần mỗi món chưa có (`shop.tried`).
 
 ### 15.8 Sự kiện — `events.js` (dữ liệu `EVENTS`, `DAY_EVENTS`, `DAY_EVENT_CONFIG`)
 Sự kiện có thời hạn (thuần dữ liệu; thêm Giáng sinh/Tết = thêm một mục `EVENTS` + món `source: 'event'`):
@@ -710,12 +730,16 @@ export function markEventDay(state, nowInfo, ctx) ; awardDishTem(state, recipeId
 export function ensureEventQuests(state, nowInfo, ctx) ; applyEventQuestSignal(...) ; eventQuestList(state, eventId, nowInfo, ctx) ; claimEventQuest(state, eventId, questId, nowInfo, ctx)
 export function eventCheckinStatus(state, eventId, nowInfo, ctx) ; claimEventCheckin(state, eventId, nowInfo, ctx)
 export function exchangeList(state, eventId, ctx) ; exchangeTem(state, eventId, itemId, nowInfo, ctx) ; settleEvents(state, nowInfo, ctx) → [mailId]
+export function leftoverMoney(ev, tem, ctx, day) → đồng ; eventPending(state, ev, phase, nowInfo, ctx) → số mục chờ nhận (eventsOverview().pending)
+// ensureEventQuests(state, nowInfo, ctx) → [{eventId, tem, dayKey}]: sang ngày mới, việc sự kiện hôm trước xong chưa nhận tự cộng Tem
+// applyEventQuestSignal phát 'event.quest'; việc có assist + assistSignal (ev_nam_sao) đếm khách từ 4 sao khi bật Hỗ trợ thao tác
 ```
-"Tri ân 20/11" (`tri_an_20_11`, 12/11/2026 04:00 → 22/11/2026 04:00, thẻ "Sắp diễn ra" từ 09/11, Tem "Phấn Trắng"): món Ngon trở lên +1 Tem (món lễ +2 thêm), trần 30/ngày; 3 nhiệm vụ sự kiện/ngày × 10 Tem; điểm danh sự kiện 7 ô × 15 Tem; chuỗi 5 bước (20+25+30+35+40 = 150 Tem), bước cuối tặng công thức `che_buoi` (cổng `gates [1,1,2,2,3]` ngày thật đã chơi → chơi 3 ngày bất kỳ là đủ; còn ít ngày thì gộp bước); Quầy đổi: trang trí 150/200/250 Tem, 50 Tem → 10 Muỗng Vàng (tối đa 5 lần), đổi được cả 3 ngày ân hạn; hết ân hạn Tem dư tự đổi 100 Tem = 1 lần thu nhập tham chiếu, gửi qua Hộp thư. Trong mùa món lễ đã sở hữu được gọi ×2 (`mods.recipeWeight`), giá không đổi; sau mùa giữ món vĩnh viễn (`state.eventRecipes`).
+"Tri ân 20/11" (`tri_an_20_11`, 12/11/2026 04:00 → 22/11/2026 04:00, thẻ "Sắp diễn ra" từ 09/11, Tem "Phấn Trắng"): món Ngon trở lên +1 Tem (món lễ +2 thêm), trần 30/ngày; 3 nhiệm vụ sự kiện/ngày × 10 Tem; điểm danh sự kiện 7 ô × 15 Tem; chuỗi 5 bước (20+25+30+35+40 = 150 Tem), bước cuối tặng công thức `che_buoi` (cổng `gates [1,1,2,2,3]` ngày thật đã chơi → chơi 3 ngày bất kỳ là đủ; còn ít ngày thì gộp bước); Quầy đổi: trang trí 150/200/250 Tem, 50 Tem → 10 Muỗng Vàng (tối đa 5 lần), đổi được cả 3 ngày ân hạn; hết ân hạn Tem dư tự đổi với tỉ lệ thấp: 100 Tem = 0,2 thu nhập tham chiếu, tối đa 1 lần thu nhập tham chiếu mỗi sự kiện (`leftover { per: 100, incomeMul: 0.2, maxIncomeMul: 1 }`), gửi thư `tem_du:<eventId>` loại `su_kien` tính vào trần tiền quà tháng (còn ít chỗ thì đổi ít lại, hết chỗ thì thư chỉ báo). Trong mùa món lễ đã sở hữu được gọi ×2 (`mods.recipeWeight`), giá không đổi, mỗi phần món lễ đạt Ngon trở lên +1 danh tiếng (`festiveRep`, cộng trong `finalizeCustomer` theo `sh.mods.events`); sau mùa giữ món vĩnh viễn (`state.eventRecipes`).
 
 Sự kiện ngày (từ ngày game 3, 30%/ngày, `seedFrom(seed, day, 'su_kien_ngay')`; báo trước ở Tổng kết bằng `dayEventInfo(state, state.day, ctx)` sau `endShift`):
 ```js
 export function rollDayEvent(state, day, ctx) → id | null ; dayEventInfo(state, day, ctx) → { id, name, desc, icon, effects, choice: { id, label, desc, cost, free, chosen } | null } | null
+export function dayEventEffects(info, ctx) → effects   // đã chọn / tự áp lựa chọn (Căng bạt) → hiệu ứng của lựa chọn (thẻ, Dự báo, Tổng kết)
 export function setDayEventChoice(state, choiceId | null, ctx) ; setMarketCoupon(state, on)      // lựa chọn ở màn Chuẩn bị; tiền/phiếu trừ lúc mở ca
 export function prepareShiftMods(state, ctx, nowMs?) → mods ; applyCustomerMods(n, mods, ctx) → số khách
 // mods = { customerMul, extraCustomers, patienceMul, tipMul, recipeWeight, noteBoost, noteBoostRate, cogsMul, dayEvent: { id, choice } | null, events: [eventId], prepCost }
@@ -728,4 +752,34 @@ export function checkStageUp(state, ctx) → { chang, name, screenTitle, eligibl
 export function updateStageUp(state, ctx) → boolean (vừa đủ lần đầu; phát 'stage.ready') ; markStageUpSeen(state)
 export function postGoals(state, ctx) → { flawless, mastery, recipes: [{ id, name, flawless, level, mastered }], records: { bestProfit, mostFiveStars, longestStreak } }
 ```
-Điều kiện Chặng 2: 150 danh tiếng · sao TB ≥ 3,8 · 3 công thức · 2 món thạo cấp 2 · xong "Ngày đầu ra phố" · 500.000đ và không nợ Dì Sáu (Chè bưởi không bắt buộc). Đủ → màn "Quán cóc vỉa hè – sắp khai trương" nút khóa "Sắp có ở bản sau", vẫn chơi tiếp Chặng 1 (`state.chang` giữ 1). Thẻ "Giấc mơ tiếp theo" dùng `conditions[].label/progress/hint` (vd "Nấu thêm 3 lần Ngon món Trà tắc").
+Điều kiện Chặng 2 (đúng `docs/de-xuat-thiet-ke.md` mục 8, 14.1 và `docs/can-bang.md` mục 13): **150 danh tiếng** · sao TB ≥ 3,8 · 3 công thức · 2 món thạo cấp 2 · xong "Ngày đầu ra phố" · 500.000đ và không nợ Dì Sáu (Chè bưởi không bắt buộc nhưng được tính là 1 công thức). Luật chỉnh ở can-bang mục 13 xét người chơi TRUNG BÌNH: mô phỏng người chơi trung bình (quầy đúng, bếp 40% Tuyệt hảo / 45% Ngon / 10% Được / 5% Kém; seed 42, 7, 2024) tới 150 danh tiếng ở ca 8–9 và đủ mọi điều kiện ở ca 9, không sớm hơn ca 8 nên giữ 150. Người chơi hoàn hảo 3 ca/ngày thật đủ điều kiện sớm hơn (ngày thật 2–3), điều này chấp nhận được. Đủ → màn "Quán cóc vỉa hè – sắp khai trương" nút khóa "Sắp có ở bản sau", vẫn chơi tiếp Chặng 1 (`state.chang` giữ 1). Thẻ "Giấc mơ tiếp theo" dùng `conditions[].label/progress/hint` (vd "Nấu thêm 3 lần Ngon món Trà tắc").
+
+### 15.10 Kiểm chứng M2 (mô phỏng và e2e)
+
+**Mô phỏng** `tests/unit/integration-meta.test.mjs` (DATA thật, `attachMeta` trên bus thật, đồng hồ giả): người chơi hoàn hảo (`tests/helpers/perfect-player.mjs`) chơi 5 ngày thật × 3 ca (08:00, 12:00, 17:30 giờ Việt Nam), seed 42, 7, 2024 từ 05/10/2026, thêm một lượt trong mùa "Tri ân 20/11" (17–21/11, có quà lễ 20/11 bằng tiền). Mỗi ngày: `refreshMeta`, điểm danh, nhận thư. Giữa các ca: nấu thử rồi mua Bánh tráng trộn (từ ngày game 2), Dao thép tốt, Cà phê sữa đá (từ ngày game 4), đủ điều kiện lên chặng rồi mới mua Loa báo tiền; dùng Phiếu Chợ Sớm, chọn Căng bạt khi mưa; nhận Việc hôm nay, Rương ngày, thưởng chuỗi, Hộp thư (trong mùa sự kiện thêm việc sự kiện, điểm danh sự kiện, Quầy đổi Tem). Kiểm tra:
+- Người chơi hoàn hảo đủ điều kiện lên Chặng 2 trong ngày thật 2–6 (kết quả: ngày thật 2–3, ca 6–7); `stage.ready` phát đúng 1 lần. Người chơi trung bình (`simulateAverage`): đạt 150 danh tiếng không sớm hơn ca 8 (ca 8–9) và đủ điều kiện trước ca 15 (ca 9).
+- Thưởng ngoài bán hàng ≤ 35% Tiền quán nhận mỗi ngày thật, tính theo tiền thật và cả khi quy đổi hiện vật (Phiếu Chợ Sớm = phần giá vốn tiết kiệm được, Bạt che mưa = 20.000đ, nâng cấp = giá bán). Kết quả: cao nhất 25,2% ở ngày thật 7 của lượt sự kiện (Rương Khai Trương), 24,9% (quy đổi 26,5%) ở ngày thật 2 (thưởng chuỗi bước 4–6); ngày có quà lễ 20/11 là 18,3%; ngày tất toán Tem dư 25/11 là 21,2% (thư Tem dư 100.000đ = trần 1 thu nhập tham chiếu; trước khi sửa là 835.000đ, khoảng 59%). Lượt sự kiện chạy tới 26/11 (qua ân hạn).
+- Bất biến ví từng ca (ví sau ca − ví đầu ca = lãi − trả nợ; tiền căng bạt trừ trước khi ghi ví đầu ca) và từng ngày (ví cuối − ví đầu = lãi − trả nợ + thưởng − tiền mua − tiền chuẩn bị); tiền thưởng vào ví đúng bằng phần thưởng.
+- Không có số NaN/Infinity trong state; `migrate(decodeSave(encodeSave(state)))` trả lại đúng state.
+- Nấu thử không đổi ví, thạo món, Việc hôm nay, ca. Đủ 5 hệ thống chạy: điểm danh 5 ô liên tiếp, việc và Rương ngày, thư chào mừng, đổi việc miễn phí, chuỗi C1 xong, chuỗi QR qua bước bắt ảnh giả. Khách bỏ đi chỉ là khách trả bằng ảnh giả bị từ chối. Chè bưởi nhận qua chuỗi sự kiện sau 3 ngày thật chơi trong mùa, khách gọi ngay trong mùa.
+- `META_SIM_LOG=1 npm test` in số liệu từng ngày thật.
+
+Lệch so với `docs/can-bang.md`: lãi bán hàng của người chơi hoàn hảo khoảng 240–750k mỗi ngày thật (3 ca), gấp khoảng 3 lần mô hình người chơi trung bình ở mục 9. Lý do: mọi khách 5 sao có món Không tì vết được tip 10.000đ (mô hình giả định trung bình 2.200đ/khách), và sao trung bình ≥ 4,5 thêm 1 khách mỗi ca. Chưa đổi tip, cần đo người chơi thật (can-bang mục 15, chỉ số 15 và 21). Ngưỡng danh tiếng lên Chặng 2 giữ 150 theo đặc tả (mục 15.9).
+
+**E2E M2** (giao diện thật, Chromium 390×844 cảm ứng, `npm run e2e`):
+- `checkin-quests.e2e.mjs` dùng đồng hồ giả `openGame({ clock: { time } })`, seed 42. Lần đầu mở game → bảng điểm danh tự hiện → nhận ô 1. Tải lại cùng ngày → không hiện. 03:59 hôm sau chưa sang ngày; qua 04:00 khi đang ở màn Chuẩn bị (lượt kiểm tra 30 giây) → bảng hiện → nhận ô 2. Sang ngày thứ 3 rồi lùi đồng hồ máy 2 ngày → có `rewind-note`, nút nhận khóa, `checkin-note` cảnh báo; giờ đúng lại thì nhận được ô 3. Việc hôm nay có đúng 3 việc (Quầy, Bếp, Chất lượng). Chơi trọn ca ngày 1 → xong "3 món không có lỗi nguyên liệu" → bấm Nhận (+0,2 thu nhập tham chiếu, +5 danh tiếng).
+- `shop.e2e.mjs`: save ngày game 2 dựng bằng lõi rồi mã hóa bằng `encodeSave` (`seedSave`), `?devNow`. Nấu thử Bánh tráng trộn (ví, thạo món không đổi) → mua ở màn kết quả → mua Dao thép tốt → xem thử rồi mua dù đỏ bằng Muỗng Vàng, đổi qua lại với dù cũ → mở ca, khách gọi Bánh tráng trộn và được phục vụ (seed 42: khách đầu tiên).
+- `event-2011.e2e.mjs` không bật `?test=1` để người chơi tự động nấu được món Tuyệt hảo. Ngày 13/11: thẻ "Đang diễn ra", món đạt Ngon trở lên được cộng Tem, khách 5 sao làm xong bước 4 (save dựng sẵn ở gần cuối chuỗi). Bước 5 cần 3 ngày thật chơi trong mùa (`gates`) nên hôm đó còn khóa, không đếm; theo luật này không ai xong chuỗi được vào ngày thứ 2 của mùa. Ngày 14/11 (ngày chơi thứ 3) mở ca → nấu Tuyệt hảo → xong chuỗi → nhận Chè bưởi (nhãn "Tri ân 20/11 · 2026"). Ngày 25/11 đã hết mùa và hết ân hạn: không còn thẻ sự kiện, Tem dư đã tất toán, Chè bưởi vẫn trong thực đơn, khách gọi và được phục vụ (seed 31: khách đầu tiên). Save mới ngày 09/11 → thẻ "Sắp diễn ra", "Mở sau 2 ngày …".
+- `startNewGame` của các e2e M1 nhận luôn bảng điểm danh hiện ở lần mở đầu (`claimCheckinIfShown`).
+- `review-m2.e2e.mjs`: hai tab (tab cũ hiện `tab-lock`, không ghi đè thư đã nhận ở tab mới, "Chơi ở tab này" tải bản mới); `?devNow` lưu riêng (save thật không bị ghi mốc 15/11, mở lại không bị khóa lùi giờ) và nút Back ở Chợ Công Thức / Hộp thư / Việc hôm nay về màn Chuẩn bị; ân hạn 23/11: thẻ sự kiện có chấm đỏ, màn sự kiện có nút nhận bước 4–5, nhận được Chè bưởi và Tem.
+
+### 15.11 Vòng soát lỗi M2 (tóm tắt thay đổi)
+
+- Lưu: `state.rev` + `writeSave({guard})`, tab cũ tự khóa (mục 12); `?devNow` lưu ở `DEV_KEYS` (mục 13).
+- Kinh tế sự kiện: Tem dư 100 Tem = 0,2 thu nhập tham chiếu, trần 1 thu nhập tham chiếu, tính vào trần quà tháng (mục 15.5, 15.8); món lễ +1 danh tiếng/phần Ngon trở lên trong mùa.
+- Hỗ trợ: Hỗ trợ thao tác → bước chuỗi Tuyệt hảo/5 sao đếm mức thay thế, không bốc việc không đếm được; Hỗ trợ tính tiền → chuỗi "Quầy chuẩn" luôn 0 (`clipTicket`), không tip 10.000đ theo chuỗi, không ghi kỷ lục.
+- Ân hạn: chuỗi sự kiện nhận được ở màn sự kiện trong ân hạn, thẻ sự kiện có chấm đỏ; hết ân hạn Tem thưởng chưa nhận vào Tem dư, công thức qua Hộp thư (thư mới được báo).
+- Việc: "Nấu n phần món vừa mua" chốt món lúc bốc; "Không để khách nào bỏ về" không tính ảnh giả bị bắt; việc sự kiện quên nhận tự cộng Tem, ca vắt qua 04:00 đếm cho ngày mới.
+- Nấu thử: không mở phiên món khác khi đang dở (`dang_nau_thu`); không tính giờ thật sự, có gợi ý ngay.
+- Dữ liệu theo đặc tả: ô 5 Tuần Khai Trương = 2 Phiếu Chợ Sớm; ngưỡng danh tiếng 150.
+- Giao diện: Back điện thoại, điểm danh trước thông báo thư, lần mở đầu gọn (lời Dì Sáu lên trên), hiệu ứng sự kiện ngày theo lựa chọn, lời Dì Sáu theo thời tiết, thẻ chuỗi đã xong không lặp chữ, thư việc quên nhận ghi đúng ngày, biển tên xe không tràn, tên tiền sự kiện thay chữ "Tem", động từ NPC thống nhất.

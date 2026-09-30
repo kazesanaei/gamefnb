@@ -60,7 +60,8 @@ export function shopCatalog(state, ctx) {
     return {
       ...recipePreview(state, id, ctx), owned, unlocked, canAfford: state.wallet >= (r.shopPrice || 0),
       canBuy: !owned && unlocked && !state.shift && state.wallet >= (r.shopPrice || 0),
-      canTaste: !owned && !tried.includes(id) && !state.shift, tried: tried.includes(id)
+      canTaste: !owned && !tried.includes(id) && !state.shift && !(state.tasting && state.tasting.recipeId !== id),
+      tried: tried.includes(id), tastingOther: !!(state.tasting && state.tasting.recipeId !== id)
     }
   })
   const upgrades = (S.upgrades || []).map(id => upgradeOf(ctx, id)).filter(Boolean).map(u => ({
@@ -135,6 +136,8 @@ export function canTaste(state, recipeId, ctx) {
   if (state.recipes && state.recipes[recipeId]) return { ok: false, reason: 'da_co' }
   if (state.shift) return { ok: false, reason: 'dang_ban' }
   if (((state.shop && state.shop.tried) || []).includes(recipeId)) return { ok: false, reason: 'da_nau_thu' }
+  // đang nấu thử dở món khác: làm xong (Ra món) món đó trước, không cho mở phiên mới đè lên (mỗi món chỉ 1 lần)
+  if (state.tasting && state.tasting.recipeId !== recipeId) return { ok: false, reason: 'dang_nau_thu' }
   return { ok: true }
 }
 

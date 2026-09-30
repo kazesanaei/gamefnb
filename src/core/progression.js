@@ -66,7 +66,9 @@ export function checkStageUp(state, ctx) {
       default: break
     }
     if (!done && !hint) hint = fill(req.hint, {})
-    const shown = req.kind === 'wallet' ? formatVND(current) : String(current).replace('.', ',')
+    // sao trung bình luôn 1 chữ số thập phân ("5,0"), tiền theo đồng, còn lại là số đếm
+    const shown = req.kind === 'wallet' ? formatVND(current)
+      : req.kind === 'avgRating' ? current.toFixed(1).replace('.', ',') : String(current).replace('.', ',')
     const target = req.kind === 'wallet' ? formatVND(req.target) : String(req.target).replace('.', ',')
     return {
       id: req.id, kind: req.kind, label: fill(req.label, { cur: shown, target }), current, target: req.target, done,

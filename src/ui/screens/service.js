@@ -235,14 +235,51 @@ export default {
       const num = def.money ? `${formatVND(c.progress)}/${formatVND(c.target)}` : `${c.progress}/${c.target}`
       app.toast(M.questProgress.replace('{cur}/{target}', num).replace('{text}', text), { kind: 'info', testid: 'quest-toast', duration: 1800 })
     }))
+    // "Dì Sáu dặn", "Cô Hạnh nhờ": động từ theo NPC (NPCS[npc].verb)
+    const chainWho = def => {
+      const npc = app.data.NPCS && app.data.NPCS[def.npc]
+      return npc ? `${npc.name} ${npc.verb || 'dặn'}` : def.name
+    }
     offs.push(app.bus.on('chain.step', ({ chainId, stepIndex, done } = {}) => {
       const def = chainDefs(app.ctx)[chainId]
       if (!def) return
-      const who = (app.data.NPCS && app.data.NPCS[def.npc] && app.data.NPCS[def.npc].name) || def.name
-      app.toast(done ? `Xong chuỗi "${def.name}"! Nhận thưởng ở màn Chuẩn bị.` : `Xong bước ${stepIndex + 1}/${def.steps.length}. Nhận thưởng ở màn Chuẩn bị.`,
-        { kind: 'good', title: `${who} dặn`, icon: npcFace(def.npc), testid: 'chain-toast', duration: 2600 })
+      // chuỗi sự kiện nhận thưởng ở màn sự kiện (màn Chuẩn bị chỉ ghim chuỗi thường)
+      const where = def.eventId ? 'Nhận thưởng ở màn sự kiện.' : 'Nhận thưởng ở màn Chuẩn bị.'
+      app.toast(done ? `Xong chuỗi "${def.name}"! ${where}` : `Xong bước ${stepIndex + 1}/${def.steps.length}. ${where}`,
+        { kind: 'good', title: chainWho(def), icon: npcFace(def.npc), testid: 'chain-toast', duration: 2600 })
     }))
-    offs.push(app.bus.on('tem.gained', ({ eventId, n, today, cap } = {}) => {
+    // việc sự kiện hôm nay: báo tiến độ (mỗi việc tối đa 1 lần/4 giây), xong việc luôn báo
+    const lastEvQuestToast = {}
+    offs.push(app.bus.on('event.quest', ({ eventId, id, progress, target, justDone } = {}) => {
+      const ev = app.data.EVENTS && app.data.EVENTS[eventId]
+      const def = ev && (ev.quests || []).find(q => q.id === id)
+      if (!def) return
+      const text = String(def.text || '').replace('{n}', String(target))
+      if (justDone) {
+        app.toast(`Xong: ${text}. Nhận ${(def.reward && def.reward.tem) || 0} ${ev.currencyName} ở màn sự kiện.`,
+          { kind: 'good', title: 'Việc sự kiện', icon: icon('phan_trang'), testid: 'event-quest-toast', duration: 2600 })
+        lastEvQuestToast[id] = performance.now()
+        return
+      }
+      const t = performance.now()
+      if (lastEvQuestToast[id] && t - lastEvQuestToast[id] < 4000) return
+      lastEvQuestToast[id] = t
+      app.toast(`Việc sự kiện: ${progress}/${target} · ${text}`, { kind: 'info', icon: icon('phan_trang'), testid: 'event-quest-toast', duration: 1800 })
+    }))
+    // tiến độ bước chuỗi đang làm (vd "Dì Sáu dặn · 2/3 · Thối đúng 3 lần"); xong bước thì chain.step báo
+    const lastChainToast = {}
+    offs.push(app.bus.on('chain.progress', ({ chainId, stepIndex, progress, target } = {}) => {
+      if (!progress || progress >= target) return
+      const def = chainDefs(app.ctx)[chainId]
+      const st = def && def.steps[stepIndex]
+      if (!st) return
+      const t = performance.now()
+      if (lastChainToast[chainId] && t - lastChainToast[chainId] < 4000) return
+      lastChainToast[chainId] = t
+      const text = String(st.text || '').replace('{n}', String(st.target || 1))
+      app.toast(`${progress}/${target} · ${text}`, { kind: 'info', title: chainWho(def), icon: npcFace(def.npc), testid: 'chain-toast', duration: 1800 })
+    }))
+    offs.push(app.bus.on('tem.gained',({ eventId, n, today, cap } = {}) => {
       const ev = app.data.EVENTS && app.data.EVENTS[eventId]
       if (!ev || !n) return
       const full = cap && today >= cap
@@ -344,6 +381,10 @@ export default {
     paintProgress()
 
     return {
+      // nút Back của điện thoại giữa ca: ở lại quầy, không rời ca
+      onBack() {
+        app.toast('Đang bán hàng, phục vụ hết khách rồi mới rời xe nha.', { kind: 'info' })
+      },
       update(dt) {
         if (destroyed || !app.state.shift) return
         // advance() đã tự mở quầy; gọi lại cho chắc (hàm idempotent).

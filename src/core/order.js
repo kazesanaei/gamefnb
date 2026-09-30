@@ -552,7 +552,9 @@ export function clipTicket(state, ctx) {
   }
   const counterErr = customer.orderErrors.length > 0 || customer.penalties.some(p => p.source === 'quay') || !!c.changeWrongAny ||
     (customer.undercharge > 0) || (c.payMethod === 'qr' && !!c.fakeQr)
-  sh.counterStreak = counterErr ? 0 : (sh.counterStreak || 0) + 1
+  // chuỗi "Quầy chuẩn": Hỗ trợ tính tiền (hiện sẵn tổng và tiền thối) thì không được đếm
+  const assistCash = !!(state.settings && state.settings.assistCash)
+  sh.counterStreak = counterErr || assistCash ? 0 : (sh.counterStreak || 0) + 1
   customer.ticketId = ticket.id
   customer.status = 'cho_mon'
   customer.waitStart = sh.t

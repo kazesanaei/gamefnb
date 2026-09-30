@@ -10,6 +10,8 @@
 // checkin: điểm danh sự kiện (mỗi ô `tem`).
 // chain: chuỗi sự kiện; gates[k] = số ngày thật đã chơi trong mùa cần có để mở bước k (gộp bước khi còn ít ngày).
 // exchange: Quầy đổi Tem; gives là Reward, limit là số lần đổi tối đa.
+// leftover: { per, incomeMul, maxIncomeMul } Tem dư → Tiền quán sau ân hạn. festiveRep: danh tiếng thêm mỗi phần món lễ
+// đạt Ngon trở lên trong mùa. assist + assistSignal (việc/bước chuỗi): tín hiệu thay thế khi bật Hỗ trợ đó.
 
 function deepFreeze(o) {
   for (const v of Object.values(o)) if (v && typeof v === 'object') deepFreeze(v)
@@ -29,7 +31,8 @@ export const EVENTS = deepFreeze({
     quests: [
       { id: 'ev_phuc_vu', text: 'Phục vụ {n} khách', signal: 'served', target: 4, reward: { tem: 10 } },
       { id: 'ev_mon_ngon', text: 'Nấu {n} món đạt Ngon trở lên', signal: 'dish_good', target: 3, reward: { tem: 10 } },
-      { id: 'ev_nam_sao', text: 'Được {n} khách chấm 5 sao', signal: 'five_star', target: 2, reward: { tem: 10 } }
+      { id: 'ev_nam_sao', text: 'Được {n} khách chấm 5 sao', signal: 'five_star', target: 2, reward: { tem: 10 },
+        assist: 'assistMotion', assistSignal: 'good_rating', assistText: 'Đang bật Hỗ trợ thao tác nên khách chấm từ 4 sao cũng được đếm.' }
     ],
     checkin: { slots: 7, tem: 15 },
     chain: {
@@ -43,9 +46,11 @@ export const EVENTS = deepFreeze({
         { id: 'goi_qua', text: 'Gói quà cẩn thận: thối đúng {n} lần', where: 'quay',
           signal: 'change_correct', target: 3, reward: { tem: 30 } },
         { id: 'loi_cam_on', text: 'Lời cảm ơn: được {n} khách chấm 5 sao', where: 'quay',
-          signal: 'five_star', target: 3, reward: { tem: 35 } },
+          signal: 'five_star', target: 3, assist: 'assistMotion', assistSignal: 'good_rating',
+          assistText: 'Đang bật Hỗ trợ thao tác nên khách chấm từ 4 sao cũng được đếm.', reward: { tem: 35 } },
         { id: 'noi_che', text: 'Nồi chè tri ân: nấu {n} món Tuyệt hảo', where: 'bep',
-          signal: 'dish_excellent', target: 2, reward: { tem: 40, recipe: 'che_buoi' } }
+          signal: 'dish_excellent', target: 2, assist: 'assistMotion', assistSignal: 'dish_good',
+          assistText: 'Đang bật Hỗ trợ thao tác nên món đạt Ngon trở lên cũng được đếm.', reward: { tem: 40, recipe: 'che_buoi' } }
       ],
       doneText: 'Cô Hạnh: "Chè bưởi này là quà của cô. Con giữ công thức mà nấu quanh năm nhé!"'
     },
@@ -55,7 +60,10 @@ export const EVENTS = deepFreeze({
       { id: 'co_phan_trang', name: 'Dù hình hộp phấn trắng', price: 250, gives: { cosmetic: 'co_phan_trang' }, limit: 1 },
       { id: 'doi_muong_vang', name: '10 Muỗng Vàng', price: 50, gives: { gold: 10 }, limit: 5 }
     ],
-    // Tem dư sau ân hạn: 100 Tem đổi 1 lần thu nhập tham chiếu một ca (tỉ lệ thấp), gửi qua Hộp thư
-    leftover: { per: 100, incomeMul: 1 }
+    // Tem dư sau ân hạn đổi ra Tiền quán với tỉ lệ thấp: 100 Tem = 0,2 thu nhập tham chiếu một ca, tối đa 1 lần
+    // thu nhập tham chiếu mỗi sự kiện, tính vào trần quà tháng của Hộp thư (docs/can-bang.md mục 14)
+    leftover: { per: 100, incomeMul: 0.2, maxIncomeMul: 1 },
+    // mỗi phần món lễ đạt Ngon trở lên trong mùa được thêm danh tiếng (de-xuat-thiet-ke mục 7.3)
+    festiveRep: 1
   }
 })

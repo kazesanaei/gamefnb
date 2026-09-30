@@ -45,7 +45,7 @@ export default {
       h('div', { class: 'tasting-title' },
         h('span', { class: 'tasting-badge', testid: 'tasting-label' }, 'Nấu thử'),
         h('b', null, recipe.name)))
-    const note = h('p', { class: 'tasting-note' }, 'Không tính giờ · Miễn phí · Không tính thạo món')
+    const note = h('p', { class: 'tasting-note' }, 'Không tính giờ · Có gợi ý · Miễn phí · Không tính thạo món')
     const panel = h('section', { class: 'panel panel-kitchen', testid: 'panel-kitchen' })
     const el = h('section', { class: 'tasting-screen', testid: 'screen-tasting' }, head, note, h('div', { class: 'panels' }, panel))
     root.appendChild(el)
@@ -109,6 +109,8 @@ export default {
     app.saveNow()
 
     return {
+      // nút Back của điện thoại: hỏi như nút "‹ Về Chợ" (phiên nấu thử được giữ)
+      onBack() { if (kitchen) onExit(); else back() },
       update(dt) { if (kitchen && kitchen.update) kitchen.update(dt) },
       unmount() {
         destroyed = true

@@ -409,6 +409,23 @@ function safeReview(ctx, args) {
   try { return String(fn(args) || '') } catch { return '' }
 }
 
+// M2: trong mùa sự kiện (sh.mods.events), mỗi phần món lễ đạt Ngon trở lên được thêm danh tiếng (EVENTS[id].festiveRep).
+function festiveReputation(sh, dishes, ctx) {
+  const ids = (sh.mods && sh.mods.events) || []
+  const E = (ctx.data && ctx.data.EVENTS) || {}
+  let rep = 0
+  for (const id of ids) {
+    const ev = E[id]
+    if (!ev || !ev.festiveRep) continue
+    for (const d of dishes || []) {
+      if (d && (ev.recipes || []).includes(d.recipeId) && (d.grade === 'ngon' || d.grade === 'tuyet_hao')) {
+        rep += ev.festiveRep * Math.max(1, Number(d.qty) || 1)
+      }
+    }
+  }
+  return rep
+}
+
 // Chốt sao, tip, review, danh tiếng; khách rời đi. Trả ScoreSheet.
 function finalizeCustomer(state, customer, ctx) {
   const sh = state.shift
@@ -418,12 +435,15 @@ function finalizeCustomer(state, customer, ctx) {
   const flawlessAny = (customer.dishes || []).some(d => d && d.flawless)
   const B = { tipFiveStar: cfg(ctx, 'tipFiveStar'), tipBonus: cfg(ctx, 'tipBonus') }
   let tip = tipFor(res.stars, flawlessAny, persona, B)
-  if (tip > 0 && (sh.counterStreak || 0) >= 5) tip = Math.max(tip, B.tipBonus)
+  // M2: đang trong chuỗi "Quầy chuẩn" (≥ 5 khách liên tiếp không lỗi quầy) → tip 10.000đ; không áp khi bật Hỗ trợ tính tiền
+  const assistCash = !!(state.settings && state.settings.assistCash)
+  if (tip > 0 && !assistCash && (sh.counterStreak || 0) >= 5) tip = Math.max(tip, B.tipBonus)
   // M2: Ngày lãnh lương (sh.mods.tipMul), tip vẫn là bội 5.000đ
   if (tip > 0 && sh.mods && sh.mods.tipMul > 0 && sh.mods.tipMul !== 1) tip = Math.max(5000, Math.round((tip * sh.mods.tipMul) / 5000) * 5000)
   const repTable = cfg(ctx, 'reputationByStars') || {}
   let rep = Number(repTable[res.stars]) || 0
   if (flawlessAny) rep += 1
+  rep += festiveReputation(sh, customer.dishes, ctx)
   const counterErrors = [...new Set(res.penalties.filter(p => p.source === 'quay' && p.code !== 'kho_tinh').map(p => p.code))]
   for (const e of customer.orderErrors || []) if (!counterErrors.includes(e.type)) counterErrors.push(e.type)
   // lỗi quầy 0 sao (không trừ sao, không vào review) để phiếu chấm và Tổng kết ghi đúng nguồn lỗi

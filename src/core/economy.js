@@ -61,6 +61,8 @@ export function summarizeShift(state, data = null) {
   return {
     day: sh.day,
     served: sh.served.length, lost: sh.lost.length, missed: sh.missed || 0,
+    // khách trả bằng ảnh chuyển khoản giả bị bắt (từ chối đúng hoặc Loa chặn): nằm trong lost nhưng là làm đúng
+    scamCaught: sh.lost.filter(id => sh.customers[id] && sh.customers[id].lostReason === 'qr_gia').length,
     cashSales: L.cash, qrSales: L.qr, sales: L.sales, listValue: L.listValue,
     tips: L.tips, cogs: L.cogs, waste: L.waste, refunds: L.refunds,
     undercharge: L.undercharge, overchange: L.overchange, rounding: L.rounding || 0, fakeQrLoss: L.fakeQrLoss,

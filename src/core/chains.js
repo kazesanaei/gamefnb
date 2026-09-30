@@ -7,7 +7,7 @@
 import { cfg, emit } from './state.js'
 import { averageRating } from './scoring.js'
 import { grantReward, resolveReward } from './rewards.js'
-import { eventWindow, eventPhase, isEventActive, eventState } from './events.js'
+import { eventWindow, eventPhase, isEventActive, eventState, leftoverMoney } from './events.js'
 import { pushMail } from './mail.js'
 import { addDaysKey, daysBetweenKeys } from './clock.js'
 
@@ -98,14 +98,32 @@ export function refreshChains(state, nowInfo, ctx) {
         changes.push({ chainId: def.id, stepIndex: cs.step - 1 })
       }
     }
-    // chuỗi sự kiện đã kết thúc hẳn: thưởng chưa nhận vào Hộp thư
+    // chuỗi sự kiện đã kết thúc hẳn (hết ân hạn): thưởng chưa nhận không mất. Tem của bước cộng vào phần Tem dư
+    // (tất toán ngay sau đó, đổi ra Tiền quán); phần còn lại (vd công thức) gửi qua Hộp thư.
     if (def.eventId && nowInfo && cs.claimable.length) {
       const ev = D(ctx).EVENTS[def.eventId]
       if (ev && eventPhase(ev, nowInfo.trusted) === 'da_ket_thuc') {
+        const es = eventState(state, def.eventId)
         for (const k of cs.claimable) {
           const st = def.steps[k]
+          const rw = resolveReward(state, st.reward || {}, ctx)
+          const tem = rw.tem || 0
+          delete rw.tem
+          delete rw.eventId
+          let note = ''
+          if (tem > 0 && !es.settled) {
+            es.tem += tem
+            es.temTotal = (es.temTotal || 0) + tem
+            if (state.stats) state.stats.temEarned = (state.stats.temEarned || 0) + tem
+            note = ` ${tem} ${ev.currencyName} của bước này được cộng vào phần ${ev.currencyName} dư để đổi ra Tiền quán.`
+          } else if (tem > 0) {
+            const money = leftoverMoney(ev, tem, ctx, state.day)
+            if (money > 0) rw.money = (rw.money || 0) + money
+            note = ` ${tem} ${ev.currencyName} của bước này đã đổi ra Tiền quán.`
+          }
+          if (!Object.keys(rw).some(x => x !== 'label' && x !== 'converted')) continue
           pushMail(state, { id: `chuoi:${def.id}:${k}`, kind: 'su_kien', title: `${def.name}: thưởng bước ${k + 1}`,
-            body: 'Phần thưởng chuỗi sự kiện chưa nhận được gửi qua hộp thư.', reward: resolveReward(state, st.reward || {}, ctx, { eventId: def.eventId }),
+            body: 'Phần thưởng chuỗi sự kiện chưa nhận được gửi qua hộp thư.' + note, reward: rw,
             expiresDay: addDaysKey(nowInfo.dayKey, 30) }, nowInfo, ctx, { compensation: true })
         }
         cs.claimable = []
@@ -113,6 +131,13 @@ export function refreshChains(state, nowInfo, ctx) {
     }
   }
   return changes
+}
+
+// Tín hiệu bước đang đếm: bật Hỗ trợ (st.assist) thì đếm tín hiệu thay thế (st.assistSignal), vì Hỗ trợ thao tác
+// trần món ở hạng Ngon (không có Tuyệt hảo, khách tối đa 4 sao) và chuỗi không được kẹt.
+export function stepSignal(state, st) {
+  if (!st) return null
+  return st.assistSignal && st.assist && state.settings && state.settings[st.assist] ? st.assistSignal : st.signal
 }
 
 // Cộng tiến độ theo tín hiệu cho bước đang làm của mọi chuỗi đã mở.
@@ -125,7 +150,7 @@ export function applyChainSignal(state, sig, n, nowInfo, ctx) {
     if (!cs) cs = initChain(state, def, nowInfo)
     if (cs.done) continue
     const st = def.steps[cs.step]
-    if (!st || st.signal !== sig) continue
+    if (!st || stepSignal(state, st) !== sig) continue
     if (!stepGateOpen(state, def, cs.step, nowInfo, ctx)) continue
     cs.progress = Math.min(st.target || 1, cs.progress + (Number(n) || 0))
     changes.push({ chainId: def.id, stepIndex: cs.step, progress: cs.progress, target: st.target || 1 })
@@ -176,6 +201,8 @@ export function chainStatus(state, nowInfo, ctx) {
     const st = def.steps[k] || null
     out.push({
       id: def.id, name: def.name, npc: def.npc, npcName: (NP[def.npc] && NP[def.npc].name) || '',
+      npcVerb: (NP[def.npc] && NP[def.npc].verb) || 'dặn',
+      assistText: st && !(cs && cs.done) && stepSignal(state, st) !== st.signal ? st.assistText || '' : '',
       main: !!def.main, eventId: def.eventId || null, unlocked,
       done: !!(cs && cs.done), step: k, total: def.steps.length,
       text: st ? stepText(st) : (def.doneText || ''), where: st ? st.where : null,

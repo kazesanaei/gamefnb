@@ -1,6 +1,7 @@
 // CHON — chọn nguyên liệu: chạm ô trên kệ để bỏ vào rổ, chạm lại để lấy ra, bấm "Xong".
 // Không tự kết thúc; quá 2,5 × par thì các ô cần lấy nhấp nháy (và tính thêm 1 lần nhầm = −15).
 // Hỗ trợ thao tác: gợi ý sớm hơn (1,5 × par, không phạt), không gợi ý ngay từ đầu.
+// Nấu thử (ctx.untimed, ctx.guide): gợi ý ngay từ đầu, không bao giờ tính quá giờ.
 // ctx.initial = {picked, mistakes} để khôi phục rổ đang chọn dở; handle.snapshot() trả rổ hiện tại.
 // Thiếu nguyên liệu chính: báo chung + khóa 1,5 giây, không cho qua.
 import { h, svgBox } from '../dom.js'
@@ -15,8 +16,9 @@ function mount(stage, step, ctx = {}) {
   const notes = ctx.notes || []
   const req = requiredIngredients(recipe, notes)
   const shelf = (ctx.shelf && ctx.shelf.length ? ctx.shelf : recipe.shelf) || []
-  const limit = stepLimitSec(step.par, false)
-  const hintAt = ctx.assist ? 1.5 * Math.max(1, Number(step.par) || 1) : limit
+  // Nấu thử (ctx.untimed/ctx.guide): không phạt quá giờ, ô cần lấy nhấp nháy ngay ("tay chỉ")
+  const limit = ctx.untimed ? Infinity : stepLimitSec(step.par, false)
+  const hintAt = ctx.guide ? 0 : ctx.assist ? 1.5 * Math.max(1, Number(step.par) || 1) : limit
   const clock = createClock()
   const out = settleOnce()
   const init = ctx.initial || {}

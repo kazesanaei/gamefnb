@@ -132,6 +132,7 @@ export function defaultState(seed = 0, data = null) {
     history: [],
     shift: null,
     clock: { maxSeen: 0 },
+    rev: 0,                  // số hiệu bản ghi, tăng mỗi lần lưu (chống tab cũ ghi đè bản mới hơn)
     ...defaultMeta()
   }
 }

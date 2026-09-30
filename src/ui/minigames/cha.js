@@ -31,7 +31,7 @@ export function layoutSpots(n, cx, cy, r, minGap, rand = Math.random) {
 function mount(stage, step, ctx = {}) {
   const params = step.params || {}
   const mul = ctx.zoneMul || 1
-  const limit = stepLimitSec(step.par, ctx.assist)
+  const limit = ctx.untimed ? Infinity : stepLimitSec(step.par, ctx.assist)   // Nấu thử: không giới hạn
   const clock = createClock()
   const out = settleOnce()
   const rand = ctx.rand || Math.random
@@ -152,11 +152,11 @@ function mount(stage, step, ctx = {}) {
     cleanup()
     let score, details
     if (isStrokes) {
-      score = scoreCha({ reversals: rev.count, strokes, elapsed, par: step.par })
+      score = scoreCha({ reversals: rev.count, strokes, elapsed, par: ctx.untimed ? Infinity : step.par })
       details = { reversals: rev.count, strokes, elapsed }
     } else {
       const cl = spots.map(s => Math.round(s.clean * 1000) / 1000)
-      score = scoreCha({ spots: cl, elapsed, par: step.par })
+      score = scoreCha({ spots: cl, elapsed, par: ctx.untimed ? Infinity : step.par })
       details = { spots: cl, elapsed }
     }
     out.settle({ score, details })

@@ -6,8 +6,9 @@ import { masteryLevel } from '../../core/mastery.js'
 import { formatVND, formatStars, starString, signedVND } from '../format.js'
 import { questList, questDef } from '../../core/quests.js'
 import { chainStatus } from '../../core/chains.js'
-import { dayEventInfo, eventsOverview } from '../../core/events.js'
+import { dayEventInfo, dayEventEffects, eventsOverview } from '../../core/events.js'
 import { progressBar } from '../components/meta-ui.js'
+import { chainTitle } from '../components/chain-card.js'
 import { dayEffectLines, forecastCustomers } from './prep.js'
 
 export default {
@@ -36,7 +37,10 @@ export default {
 
     el.appendChild(h('header', { class: 'sum-head' },
       h('h1', null, `${SM.title} · Ngày ${sum.day}`),
-      h('p', { class: 'muted' }, `${SM.served}: ${n(sum.served)} · ${SM.lost}: ${n(sum.lost)}` + (n(sum.missed) ? ` · ${SM.missed}: ${n(sum.missed)}` : ''))))
+      // khách trả bằng ảnh chuyển khoản giả bị bắt là làm đúng: tách khỏi số khách bỏ về
+      h('p', { class: 'muted' }, `${SM.served}: ${n(sum.served)} · ${SM.lost}: ${Math.max(0, n(sum.lost) - n(sum.scamCaught))}` +
+        (n(sum.scamCaught) ? ` · Bắt được ảnh chuyển khoản giả: ${n(sum.scamCaught)}` : '') +
+        (n(sum.missed) ? ` · ${SM.missed}: ${n(sum.missed)}` : ''))))
     el.appendChild(h('div', { class: 'npc-talk' }, svgBox(good ? DI_SAU.tu_hao : DI_SAU.tiec, 'npc-face'),
       h('div', { class: 'bubble npc-bubble' }, h('b', null, 'Dì Sáu'), h('p', null, talk))))
 
@@ -148,7 +152,7 @@ export default {
     // Ngày mai: sự kiện ngày báo trước (tính theo ngày game kế tiếp)
     const tomorrow = dayEventInfo(state, state.day, app.ctx)
     if (tomorrow) {
-      const lines = dayEffectLines(tomorrow.effects, app.data, state)
+      const lines = dayEffectLines(dayEventEffects(tomorrow, app.ctx), app.data, state)
       el.appendChild(h('section', { class: 'card day-event-card is-tomorrow', testid: 'summary-day-event', dataset: { event: tomorrow.id } },
         h('div', { class: 'day-ev-head' }, svgBox(icon(tomorrow.icon || tomorrow.id), 'day-ev-icon'),
           h('div', null, h('small', { class: 'muted' }, 'Báo trước'), h('b', { class: 'day-ev-name' }, S.meta.tomorrowEvent.replace('{name}', tomorrow.name)))),
@@ -205,8 +209,10 @@ function metaProgress(app, el) {
   if (nowInfo) {
     const chains = chainStatus(state, nowInfo, app.ctx).filter(c => !c.done || c.claimable.length)
     for (const c of chains) {
+      // chuỗi sự kiện nhận ở màn sự kiện; chuỗi thường ở màn Chuẩn bị
+      const where = c.eventId ? 'nhận thưởng ở màn sự kiện' : 'nhận thưởng ở màn Chuẩn bị'
       rows.push(h('div', { class: 'sum-meta-block', testid: c.eventId ? 'summary-event-chain' : 'summary-chain' },
-        h('h3', null, `${c.npcName ? c.npcName + ' dặn' : c.name}: ${c.claimable.length ? `xong ${c.claimable.length} bước, nhận thưởng ở màn Chuẩn bị` : `bước ${c.step + 1}/${c.total}`}`),
+        h('h3', null, `${chainTitle(c)}: ${c.claimable.length ? `xong ${c.claimable.length} bước, ${where}` : `bước ${c.step + 1}/${c.total}`}`),
         c.done ? null : h('p', { class: 'small' }, c.text + (c.isCheck || c.gateLocked ? '' : ` (${c.progress}/${c.target})`))))
     }
     for (const ev of eventsOverview(state, nowInfo, app.ctx).filter(e => e.phase === 'dang_dien_ra')) {

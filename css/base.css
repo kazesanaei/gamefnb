@@ -178,3 +178,22 @@ code { font-family: ui-monospace, Menlo, Consolas, monospace; background: var(--
   animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important;
 }
 .reduce-motion .glow { box-shadow: 0 0 0 4px var(--yellow) !important; }
+
+/* Xem trước bằng giờ giả (?devNow, chỉ máy cục bộ): dải nhắc trên cùng, màn chơi lùi xuống. */
+.dev-banner {
+  position: absolute; top: 0; left: 0; right: 0; height: 24px; z-index: 60;
+  font-size: 14px; line-height: 24px; font-weight: 700; text-align: center;
+  background: #3b2a1f; color: #ffe9a8; padding: 0 8px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;
+}
+.app-frame.is-dev-now > .screen, .app-frame.is-dev-now > .overlay-root { top: 24px; }
+
+/* Game mở ở tab khác: tab cũ tự dừng, không ghi đè bản lưu mới hơn. */
+.tab-lock {
+  position: absolute; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center;
+  padding: var(--gutter); background: rgba(59, 42, 31, 0.72);
+}
+.tab-lock-card {
+  width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 12px;
+  background: var(--paper); border-radius: var(--radius); padding: 20px var(--gutter); box-shadow: var(--shadow);
+}

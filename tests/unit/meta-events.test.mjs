@@ -150,14 +150,26 @@ test('bắt đầu muộn: ngày cuối mùa vẫn làm được mọi bước (
   for (let i = 0; i < 3; i++) handleMetaEvent(s, 'customer.rated', rated, ctx, ni)
   for (let i = 0; i < 2; i++) handleMetaEvent(s, 'dish.done', exc, ctx, ni)
   assert.equal(s.chains[CH].done, true)
-  // hết mùa mà chưa nhận: trong ân hạn vẫn nhận; hết ân hạn thì thưởng vào Hộp thư (có công thức)
+  // hết mùa mà chưa nhận: trong ân hạn vẫn nhận (Tem vào sự kiện, đổi được ở Quầy đổi)
   const grace = at(s, '2026-11-23T09:00')
+  const temDish = s.events[EV].tem           // Tem từ món Tuyệt hảo trong ca
   assert.equal(claimChainReward(s, CH, 0, grace, ctx).ok, true)
-  refreshMeta(s, at(s, '2026-11-26T09:00'), ctx)
+  assert.equal(s.events[EV].tem - temDish, 20)
+  // hết ân hạn: Tem của các bước chưa nhận cộng vào phần Tem dư rồi đổi chung ra Tiền quán; công thức qua Hộp thư
+  const res = refreshMeta(s, at(s, '2026-11-26T09:00'), ctx)
   assert.deepEqual(s.chains[CH].claimable, [])
   const m = s.mail.list.find(x => x.id === `chuoi:${CH}:4`)
   assert.ok(m)
   assert.equal(m.reward.recipe, 'che_buoi')
+  assert.equal(m.reward.tem, undefined, 'thư sau khi tất toán không mang Tem (sẽ mất)')
+  for (const k of [1, 2, 3]) assert.equal(s.mail.list.find(x => x.id === `chuoi:${CH}:${k}`), undefined, 'bước chỉ có Tem không cần thư')
+  const du = s.mail.list.find(x => x.id === `tem_du:${EV}`)
+  assert.ok(du, 'Tem dư (gồm Tem thưởng chuỗi chưa nhận) được đổi ra tiền')
+  // việc sự kiện ngày 21/11 đã xong mà chưa nhận: tự cộng 30 Tem trước khi tất toán (lỡ ngày không mất gì)
+  assert.deepEqual(res.eventQuestsAuto, [{ eventId: EV, tem: 30, dayKey: '2026-11-21' }])
+  // (Tem từ món + 30 Tem việc sự kiện + 20 + 130 Tem thưởng chuỗi) ÷ 100 × 0,2 × 20.000đ, làm tròn xuống bội 1.000đ
+  assert.equal(du.reward.money, Math.floor((temDish + 30 + 150) / 100 * 4000 / 1000) * 1000)
+  assert.ok(res.newMail.includes(`chuoi:${CH}:4`) && res.newMail.includes(`tem_du:${EV}`), 'thư mới được báo')
 })
 
 test('nhiệm vụ sự kiện (10 Tem), điểm danh sự kiện (15 Tem/ô), Quầy đổi Tem, Tem dư đổi ra Tiền quán sau ân hạn', () => {
@@ -198,7 +210,8 @@ test('nhiệm vụ sự kiện (10 Tem), điểm danh sự kiện (15 Tem/ô), Q
   assert.deepEqual(ids, [`tem_du:${EV}`])
   assert.equal(s.events[EV].tem, 0)
   const m = s.mail.list.find(x => x.id === `tem_du:${EV}`)
-  assert.equal(m.reward.money, 50000)     // 250 Tem ÷ 100 × 20.000đ (ngày game 1)
+  assert.equal(m.reward.money, 10000)     // 250 Tem ÷ 100 × 0,2 × 20.000đ (ngày game 1), tỉ lệ thấp
+  assert.equal(m.kind, 'su_kien')
   assert.deepEqual(settleEvents(s, at(s, '2026-11-26T09:00'), ctx), [])
   assert.equal(exchangeTem(s, EV, 'chau_hoa_tri_an', at(s, '2026-11-26T09:00'), ctx).reason, 'het_su_kien')
 })

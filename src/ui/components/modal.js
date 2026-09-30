@@ -2,7 +2,7 @@
 import { h, svgBox } from '../dom.js'
 
 /**
- * createModalHost(host) → { open(opts) → Promise, isOpen() }
+ * createModalHost(host) → { open(opts) → Promise, isOpen(), isBlocking(), isDismissible(), closeActive(value) }
  * opts: {
  *   title, text, icon (SVG), body (Node),
  *   actions: [{ label, value, testid, kind: 'primary'|'ghost'|'danger', disabled }],
@@ -47,7 +47,7 @@ export function createModalHost(host) {
     layer.appendChild(card)
     if (opts.dismissible) layer.addEventListener('click', e => { if (e.target === layer) close(null) })
     host.appendChild(layer)
-    active = { close, blocking: opts.blocking !== false }
+    active = { close, blocking: opts.blocking !== false, dismissible: !!opts.dismissible }
     requestAnimationFrame(() => layer.classList.add('show'))
     const focusable = card.querySelector('button, input')
     if (focusable) setTimeout(() => focusable.focus({ preventScroll: true }), 30)
@@ -62,6 +62,7 @@ export function createModalHost(host) {
     },
     isOpen() { return !!active },
     isBlocking() { return !!active && active.blocking },
+    isDismissible() { return !!active && active.dismissible },
     closeActive(value) { if (active) active.close(value) }
   }
 }

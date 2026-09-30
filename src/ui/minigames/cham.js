@@ -17,7 +17,7 @@ function mount(stage, step, ctx = {}) {
   const params = step.params || {}
   const mode = params.mode || 'exact'
   const mul = ctx.zoneMul || 1
-  const limit = stepLimitSec(step.par, ctx.assist)
+  const limit = ctx.untimed ? Infinity : stepLimitSec(step.par, ctx.assist)   // Nấu thử: không giới hạn
   const clock = createClock()
   const out = settleOnce()
   stage.classList.add('mg-cham', 'is-' + mode)

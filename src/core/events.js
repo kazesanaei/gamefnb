@@ -6,7 +6,7 @@ import { seedFrom, nextFloat, weightedPick } from './rng.js'
 import { cfg, emit } from './state.js'
 import { vnDayStartMs, addDaysKey } from './clock.js'
 import { defaultEventState, grantReward, incomeMoney } from './rewards.js'
-import { pushMail } from './mail.js'
+import { pushMail, mailValueRoom } from './mail.js'
 import { spend } from './economy.js'
 
 const DAY_MS = 24 * 3600 * 1000
@@ -79,6 +79,7 @@ export function eventsOverview(state, nowInfo, ctx) {
     const temToday = es && es.temDay === nowInfo.dayKey ? es.temToday : 0
     out.push({
       id: ev.id, name: ev.name, label: ev.label, desc: ev.desc, phase,
+      pending: eventPending(state, ev, phase, nowInfo, ctx),
       fromMs: w.fromMs, toMs: w.toMs, graceEndMs: w.graceEndMs,
       msToStart: Math.max(0, w.fromMs - t), msToEnd: Math.max(0, w.toMs - t),
       currencyName: ev.currencyName, tem, temToday, dailyCap: (ev.tem && ev.tem.dailyCap) || 0,
@@ -87,6 +88,22 @@ export function eventsOverview(state, nowInfo, ctx) {
     })
   }
   return out
+}
+
+// Số mục đang chờ nhận của một sự kiện (chấm đỏ ở thẻ sự kiện màn Chuẩn bị): điểm danh sự kiện nhận được,
+// việc sự kiện xong chưa nhận (trong mùa), bước chuỗi sự kiện xong chưa nhận (trong mùa và ân hạn).
+export function eventPending(state, ev, phase, nowInfo, ctx) {
+  const es = state.events && state.events[ev.id]
+  let n = 0
+  if (phase === 'dang_dien_ra') {
+    if (ev.checkin && eventCheckinStatus(state, ev.id, nowInfo, ctx).canClaim) n += 1
+    if (es && es.quests && es.quests.dayKey === nowInfo.dayKey) n += es.quests.list.filter(q => !q.claimed && q.progress >= q.target).length
+  }
+  if (phase === 'dang_dien_ra' || phase === 'an_han') {
+    const cs = ev.chain && state.chains && state.chains[ev.chain.id]
+    if (cs && Array.isArray(cs.claimable)) n += cs.claimable.length
+  }
+  return n
 }
 
 // Ghi nhận ngày thật đã chơi trong mùa (gọi khi mở ca).
@@ -123,13 +140,34 @@ export function awardDishTem(state, recipeId, grade, nowInfo, ctx) {
 
 // ---------- Nhiệm vụ sự kiện (mỗi ngày thật, cố định theo dữ liệu) ----------
 
+// Việc sự kiện của ngày thật hôm nay. Sang ngày mới: việc hôm trước đã xong mà chưa nhận được tự cộng Tem
+// (lỡ ngày không mất gì, kể cả ngày cuối mùa). Trả [{eventId, tem, dayKey}] các lần tự nhận để giao diện báo.
 export function ensureEventQuests(state, nowInfo, ctx) {
   const E = eventsOf(ctx)
+  const auto = []
+  for (const [id, es] of Object.entries(state.events || {})) {
+    const ev = E[id]
+    if (!ev || es.settled || !es.quests || !es.quests.dayKey || es.quests.dayKey === nowInfo.dayKey) continue
+    let tem = 0
+    for (const q of es.quests.list || []) {
+      if (q.claimed || !(q.progress >= q.target)) continue
+      const def = (ev.quests || []).find(x => x.id === q.id) || {}
+      q.claimed = true
+      tem += grantReward(state, def.reward || {}, ctx, { eventId: id }).tem || 0
+    }
+    if (tem > 0) auto.push({ eventId: id, tem, dayKey: es.quests.dayKey })
+  }
   for (const id of activeEventIds(nowInfo.trusted, ctx)) {
     const es = eventState(state, id)
     if (es.quests.dayKey === nowInfo.dayKey) continue
     es.quests = { dayKey: nowInfo.dayKey, list: (E[id].quests || []).map(q => ({ id: q.id, target: q.target, progress: 0, claimed: false })) }
   }
+  return auto
+}
+
+// Tín hiệu mà việc sự kiện đang đếm: bật Hỗ trợ (def.assist) thì đếm tín hiệu thay thế (def.assistSignal).
+function questSignalOf(state, def) {
+  return def.assistSignal && def.assist && state.settings && state.settings[def.assist] ? def.assistSignal : def.signal
 }
 
 export function applyEventQuestSignal(state, sig, n, nowInfo, ctx) {
@@ -140,9 +178,12 @@ export function applyEventQuestSignal(state, sig, n, nowInfo, ctx) {
     if (es.quests.dayKey !== nowInfo.dayKey) continue
     for (const q of es.quests.list) {
       const def = (E[id].quests || []).find(x => x.id === q.id)
-      if (!def || def.signal !== sig || q.claimed || q.progress >= q.target) continue
+      if (!def || questSignalOf(state, def) !== sig || q.claimed || q.progress >= q.target) continue
       q.progress = Math.min(q.target, q.progress + (Number(n) || 0))
-      changes.push({ eventId: id, id: q.id, progress: q.progress, target: q.target })
+      const done = q.progress >= q.target
+      const c = { eventId: id, id: q.id, progress: q.progress, target: q.target, done, justDone: done }
+      changes.push(c)
+      emit(ctx, 'event.quest', c)
     }
   }
   return changes
@@ -154,8 +195,9 @@ export function eventQuestList(state, eventId, nowInfo, ctx) {
   if (!ev || !es || es.quests.dayKey !== nowInfo.dayKey) return []
   return es.quests.list.map(q => {
     const def = (ev.quests || []).find(x => x.id === q.id) || {}
+    const alt = questSignalOf(state, def) !== def.signal
     return { id: q.id, text: String(def.text || '').replace('{n}', String(q.target)), progress: q.progress, target: q.target,
-      done: q.progress >= q.target, claimed: q.claimed, reward: def.reward || {} }
+      done: q.progress >= q.target, claimed: q.claimed, reward: def.reward || {}, assistText: alt ? def.assistText || '' : '' }
   })
 }
 
@@ -230,7 +272,17 @@ export function exchangeTem(state, eventId, itemId, nowInfo, ctx) {
   return { ok: true, reward, tem: es.tem }
 }
 
-// Hết ân hạn: Tem dư tự đổi ra Tiền quán (tỉ lệ thấp) và gửi qua Hộp thư. Trả mảng id thư.
+// Tiền đổi từ `tem` Tem dư (tỉ lệ thấp, leftover { per, incomeMul, maxIncomeMul }) theo ngày game `day`.
+export function leftoverMoney(ev, tem, ctx, day) {
+  const L = ev.leftover || { per: 100, incomeMul: 0.2, maxIncomeMul: 1 }
+  const unit = incomeMoney(ctx, L.incomeMul ?? 0.2, day)
+  let money = Math.floor(((Number(tem) || 0) / (L.per || 100)) * unit / 1000) * 1000
+  if (L.maxIncomeMul) money = Math.min(money, incomeMoney(ctx, L.maxIncomeMul, day))
+  return Math.max(0, money)
+}
+
+// Hết ân hạn: Tem dư tự đổi ra Tiền quán (tỉ lệ thấp, có trần mỗi sự kiện) và gửi qua Hộp thư. Thư tính vào trần
+// tiền quà của tháng (không phải quà đền bù): còn ít chỗ thì đổi ít lại. Trả mảng id thư.
 export function settleEvents(state, nowInfo, ctx) {
   const E = eventsOf(ctx)
   const out = []
@@ -240,17 +292,19 @@ export function settleEvents(state, nowInfo, ctx) {
     if (eventPhase(ev, nowInfo.trusted) !== 'da_ket_thuc') continue
     es.settled = true
     if (es.tem > 0) {
-      const L = ev.leftover || { per: 100, incomeMul: 1 }
-      const money = Math.floor((es.tem / (L.per || 100)) * incomeMoney(ctx, L.incomeMul || 1, state.day) / 1000) * 1000
       const tem = es.tem
       es.tem = 0
-      if (money > 0) {
-        const r = pushMail(state, {
-          id: `tem_du:${id}`, kind: 'su_kien', title: `${ev.name}: đổi ${ev.currencyName} dư`,
-          body: `Còn ${tem} ${ev.currencyName} chưa dùng, quán đổi ra Tiền quán cho bạn.`, reward: { money }
-        }, nowInfo, ctx, { compensation: true })
-        if (r.ok) out.push(r.mail.id)
-      }
+      const full = leftoverMoney(ev, tem, ctx, state.day)
+      const money = Math.min(full, Math.floor(mailValueRoom(state, nowInfo, ctx) / 1000) * 1000)
+      if (full <= 0) continue
+      const r = pushMail(state, {
+        id: `tem_du:${id}`, kind: 'su_kien', title: `${ev.name}: đổi ${ev.currencyName} dư`,
+        body: money > 0
+          ? `Còn ${tem} ${ev.currencyName} chưa dùng, quán đổi ra Tiền quán cho bạn.`
+          : `Còn ${tem} ${ev.currencyName} chưa dùng, nhưng quà tháng này đã đủ nên không đổi thêm được.`,
+        reward: money > 0 ? { money } : {}
+      }, nowInfo, ctx)
+      if (r.ok) out.push(r.mail.id)
     }
   }
   return out
@@ -282,6 +336,14 @@ export function dayEventInfo(state, day, ctx) {
     choice = { id: ev.choice.id, label: ev.choice.label, desc: ev.choice.desc, cost: free ? 0 : (ev.choice.cost || 0), free, chosen }
   }
   return { id, name: ev.name, desc: ev.desc, icon: ev.icon, effects: ev.effects, choice }
+}
+
+// Hiệu ứng thật của sự kiện ngày: đã chọn (hoặc tự áp nhờ hiện vật) lựa chọn như Căng bạt thì dùng hiệu ứng của lựa chọn.
+export function dayEventEffects(info, ctx) {
+  if (!info) return {}
+  const def = D(ctx).DAY_EVENTS && D(ctx).DAY_EVENTS[info.id]
+  if (info.choice && (info.choice.chosen || info.choice.free) && def && def.choice && def.choice.effects) return def.choice.effects
+  return info.effects || {}
 }
 
 function ensurePrep(state) {

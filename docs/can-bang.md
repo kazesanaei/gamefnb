@@ -187,7 +187,7 @@ Nhớ rằng thời gian chờ gồm cả lúc phiếu nằm trên dây chờ b�
 | Danh tiếng mỗi khách | 5 sao +3 · 4 sao +2 · 3 sao +1 · ≤2 sao 0 · Không tì vết +1 · trả lại tiền thối dư +1 · khách quen "như mọi khi" đúng +1 |
 | Thối thiếu / dư | Thiếu: 90% bị phát hiện · Dư: 50% khách trả lại |
 
-> **Cần thống nhất với code**: hàm `tipFor(stars, flawlessAny, persona)` chưa có tham số chuỗi "Quầy chuẩn". Khi làm M2, thêm tham số (ví dụ `counterStreak`) và cập nhật `docs/kien-truc.md`.
+> **Đã làm ở M2**: tip 10.000đ theo chuỗi "Quầy chuẩn" nằm ở `finalizeCustomer` (`src/core/kitchen.js`): khách 5 sao khi `counterStreak ≥ 5` được 10.000đ. Bật Hỗ trợ tính tiền thì chuỗi không được đếm (luôn 0), không có tip theo chuỗi và không ghi kỷ lục "Chuỗi Quầy chuẩn dài nhất" (`docs/kien-truc.md` mục 10).
 
 **Phân bố sao giả định cho người chơi trung bình (4,2 sao)**: 5 sao 40% · 4 sao 45% · 3 sao 10% · 2 sao 5%. Tip trung bình khoảng 5.500đ mỗi khách 5 sao, tức khoảng 2.200đ mỗi khách phục vụ. Danh tiếng trung bình khoảng 2,2 mỗi khách.
 
@@ -314,6 +314,8 @@ Tổng chi nếu mua hết ở Chặng 1: 2 món 450k + 5 nâng cấp 830k = 1,2
 
 Nếu đo thấy người chơi trung bình đủ điều kiện trước ca 8 thì tăng ngưỡng danh tiếng lên 200; nếu sau ca 20 thì giảm xuống 120 hoặc tăng danh tiếng từ nhiệm vụ.
 
+Số đo mô phỏng (M2, `tests/unit/integration-meta.test.mjs`, người chơi trung bình: quầy đúng, bếp 40% Tuyệt hảo / 45% Ngon / 10% Được / 5% Kém, 3 ca ngày thật 1 và 4 ca các ngày sau; seed 42, 7, 2024): 150 danh tiếng ở ca 8–9, đủ mọi điều kiện ở ca 9. Không sớm hơn ca 8 nên **giữ 150** (test khóa luật này). Người chơi hoàn hảo 3 ca/ngày thật đủ điều kiện ở ngày thật 2–3 (ca 6–7).
+
 ---
 
 ## 14. Sự kiện Tri ân 20/11 (MVP, M2)
@@ -324,8 +326,10 @@ Nếu đo thấy người chơi trung bình đủ điều kiện trước ca 8 t
 | Chuỗi | 3 bước, tối đa 1 bước mỗi ngày thật; gộp bước nếu còn ít ngày |
 | Thưởng chuỗi | Bước 1: 10 Muỗng Vàng · Bước 2: +10 danh tiếng · Bước 3: công thức Chè bưởi |
 | Trong mùa | Chè bưởi được gọi ×2; mỗi phần Ngon trở lên +1 danh tiếng; giá không đổi (15.000đ) |
+| Tem (bản M2 đã làm) | Món Ngon trở lên +1 (món lễ +2 thêm), trần 30/ngày; việc sự kiện 3 × 10; điểm danh sự kiện 7 × 15; chuỗi 5 bước 150 Tem (bước cuối tặng Chè bưởi); Quầy đổi 150/200/250 Tem, 50 Tem → 10 Muỗng Vàng (tối đa 5 lần) |
+| Tem dư sau 3 ngày ân hạn | 100 Tem = 0,2 TNC, **tối đa 1 TNC mỗi sự kiện**, gửi qua Hộp thư, tính vào trần tiền quà tháng (3 TNC). Mô phỏng người chơi hoàn hảo giữ 835 Tem: thư 100.000đ (trước khi chỉnh: 835.000đ ≈ 59% thưởng ngày 25/11) |
 | Quà lễ 20/11 | 20 Muỗng Vàng + 0,5 TNC |
-| Kiểm tra | Chè bưởi 370đ/giây ≤ 550đ/giây (trần); tỉ lệ thưởng ngày có quà lễ vẫn ≤ 35% |
+| Kiểm tra | Chè bưởi 370đ/giây ≤ 550đ/giây (trần); tỉ lệ thưởng ngày có quà lễ vẫn ≤ 35% (mô phỏng: 18,3%); ngày tất toán Tem dư 25/11 vẫn ≤ 35% (mô phỏng: 21,2%) |
 
 ---
 
@@ -366,3 +370,6 @@ Nếu đo thấy người chơi trung bình đủ điều kiện trước ca 8 t
 | Ngày | Người sửa | Thay đổi | Lý do (số liệu đo được) |
 |---|---|---|---|
 | 29/09/2026 | — | Tạo bảng số ban đầu | Tính tay theo mô hình ở mục 9; chưa có số đo |
+| 30/09/2026 | — | Tem dư: 100 Tem = 1 TNC → 100 Tem = 0,2 TNC, trần 1 TNC/sự kiện, tính vào trần quà tháng (mục 14) | Mô phỏng người chơi hoàn hảo giữ 835 Tem cả mùa (MVP chưa có món thứ hai để tiêu): thư 835.000đ, thưởng ngày 25/11 ≈ 59% > trần 35%. Sau khi chỉnh: 100.000đ, 21,2% |
+| 30/09/2026 | — | Giữ ngưỡng 150 danh tiếng lên Chặng 2 (mục 13) | Người chơi trung bình tới 150 ở ca 8–9, không sớm hơn ca 8 nên không nâng lên 200 |
+| 30/09/2026 | — | Ô 5 Tuần Khai Trương giữ đúng bảng: Phiếu Chợ Sớm ×2 (mục 10.1) | Bản code trước tặng Dao thép tốt (150.000đ), gấp khoảng 10 lần mức cân bằng của ô này |

@@ -3,6 +3,8 @@
 // Bước dạng đạt mức { check }: kiểm tra trạng thái hiện tại:
 //   { reputation, avgRating, ownsShopRecipe: true, upgrade: id }.
 // forceFakeQr: khi tới bước này, ca kế tiếp chắc chắn có 1 khách trả bằng ảnh chuyển khoản giả.
+// assist + assistSignal: khi bật công tắc Hỗ trợ đó (món bị trần ở hạng Ngon nên không có Tuyệt hảo, khách tối đa 4 sao)
+//   bước đếm tín hiệu thay thế để chuỗi không bao giờ kẹt; assistText hiện trên thẻ chuỗi.
 // Phần thưởng theo lược đồ Reward (src/data/checkin.js); tipId là thẻ Mẹo nghề mở kèm.
 // Chuỗi của sự kiện có thời hạn khai báo trong src/data/events.js (trường chain).
 
@@ -26,12 +28,15 @@ export const CHAINS = deepFreeze({
       { id: 'mua_cong_thuc', text: 'Mua công thức đầu tiên ở Chợ Công Thức', where: 'shop',
         check: { ownsShopRecipe: true }, reward: { money: 30000, tipId: 'dinh_luong_chuan' } },
       { id: 'tuyet_hao', text: 'Nấu {n} món Tuyệt hảo', where: 'bep',
-        signal: 'dish_excellent', target: 3, reward: { money: 30000, gold: 5, tipId: 'nem_tu_it' } },
+        signal: 'dish_excellent', target: 3, assist: 'assistMotion', assistSignal: 'dish_good',
+        assistText: 'Đang bật Hỗ trợ thao tác nên món đạt Ngon trở lên cũng được đếm.',
+        reward: { money: 30000, gold: 5, tipId: 'nem_tu_it' } },
+      // cùng ngưỡng danh tiếng với điều kiện lên Chặng 2 (src/data/progression.js) để bước cuối xong cùng lúc
       { id: 'danh_tieng', text: 'Đạt 150 danh tiếng và sao trung bình từ 3,8', where: 'chung',
         check: { reputation: 150, avgRating: 3.8 },
         reward: { gold: 20, title: 'chu_xe_dau_hem', unlock: 'the_quan_coc', tipId: 'ty_le_gia_von' } }
     ],
-    doneText: 'Hoàn thành chuỗi: danh hiệu "Chủ xe đầu hẻm", mở thẻ "Quán cóc vỉa hè – sắp khai trương".'
+    doneText: 'Dì Sáu: "Giỏi lắm con! Từ nay con là Chủ xe đầu hẻm rồi, mình tính chuyện dọn ra vỉa hè thôi."'
   },
   lam_quen_qr: {
     id: 'lam_quen_qr', name: 'Làm quen QR', npc: 'anh_khoa', main: false, fromDayKey: 'qrFromDay',
@@ -47,10 +52,11 @@ export const CHAINS = deepFreeze({
   }
 })
 
+// verb: động từ ghép với tên trên thẻ chuỗi, thông báo trong ca và Tổng kết ("Dì Sáu dặn", "Cô Hạnh nhờ").
 export const NPCS = deepFreeze({
-  di_sau: { name: 'Dì Sáu' },
-  anh_khoa: { name: 'Anh Khoa' },
-  co_giao: { name: 'Cô Hạnh' }
+  di_sau: { name: 'Dì Sáu', verb: 'dặn' },
+  anh_khoa: { name: 'Anh Khoa', verb: 'dặn' },
+  co_giao: { name: 'Cô Hạnh', verb: 'nhờ' }
 })
 
 export const CHAIN_WHERE = deepFreeze({ quay: 'Làm ở Quầy', bep: 'Làm ở Bếp', shop: 'Làm ở Chợ Công Thức', chung: 'Cứ bán tốt là đạt' })

@@ -4,6 +4,16 @@ import { defaultState, defaultStats, defaultSettings, defaultMeta, newRecipeProg
 
 export const SAVE_KEY = 'bkn.save'
 export const BACKUP_KEY = 'bkn.bak'
+// Khóa riêng khi xem trước bằng ?devNow (giờ giả): không bao giờ ghi đè save thật.
+export const DEV_SAVE_KEY = 'bkn.save.dev'
+export const DEV_BACKUP_KEY = 'bkn.bak.dev'
+export const DEV_KEYS = Object.freeze({ save: DEV_SAVE_KEY, backup: DEV_BACKUP_KEY })
+const MAIN_KEYS = Object.freeze({ save: SAVE_KEY, backup: BACKUP_KEY })
+
+function keysOf(opts) {
+  const k = opts && opts.keys
+  return k && typeof k.save === 'string' && typeof k.backup === 'string' ? k : MAIN_KEYS
+}
 const PREFIX = 'BKN1'
 const SALT = 'bep-khoi-nghiep:v1:muong-vang'
 
@@ -83,10 +93,12 @@ export function migrateMeta(raw, s, data = null) {
   const d = isObj(raw.daily) ? raw.daily : {}
   s.daily = {
     dayKey: dayKeyOr(d.dayKey), gameDay: int(d.gameDay, 0, 0),
-    quests: Array.isArray(d.quests) ? d.quests.filter(q => isObj(q) && typeof q.id === 'string').slice(0, 3).map(q => ({
-      id: q.id, group: typeof q.group === 'string' ? q.group : '', target: int(q.target, 1, 1),
-      progress: int(q.progress, 0, 0), claimed: q.claimed === true
-    })) : [],
+    quests: Array.isArray(d.quests) ? d.quests.filter(q => isObj(q) && typeof q.id === 'string').slice(0, 3).map(q => {
+      const e = { id: q.id, group: typeof q.group === 'string' ? q.group : '', target: int(q.target, 1, 1),
+        progress: int(q.progress, 0, 0), claimed: q.claimed === true }
+      if (Array.isArray(q.recipeIds)) e.recipeIds = strArr(q.recipeIds)
+      return e
+    }) : [],
     prevIds: strArr(d.prevIds, 3), rerolls: int(d.rerolls, 0, 0), chestClaimed: d.chestClaimed === true
   }
   if (data && data.QUESTS) s.daily.quests = s.daily.quests.filter(q => data.QUESTS.some(x => x.id === q.id))
@@ -199,6 +211,8 @@ export function migrate(raw, data = null) {
   s.settings = settings
   s.loan = isObj(raw.loan) && num(raw.loan.remaining, 0) > 0 ? { ...raw.loan, remaining: int(raw.loan.remaining, 0, 0) } : null
   s.clock = { maxSeen: num(raw.clock && raw.clock.maxSeen, 0, 0) }
+  // số hiệu bản ghi: tăng mỗi lần lưu, để tab cũ không ghi đè bản mới hơn (writeSave)
+  s.rev = int(raw.rev, 0, 0)
   // ca đang dở: giữ nguyên nếu đủ cấu trúc
   const sh = raw.shift
   s.shift = isObj(sh) && isObj(sh.customers) && Array.isArray(sh.plan) && Array.isArray(sh.queue) &&
@@ -207,21 +221,52 @@ export function migrate(raw, data = null) {
   return s
 }
 
-// storage có getItem/setItem. opts.backup: ghi thêm bản dự phòng (cuối ca).
-export function saveTo(storage, state, opts = {}) {
+// Số hiệu bản ghi (state.rev) của save đang nằm trong storage; null nếu không có hoặc hỏng.
+export function storedRev(storage, opts = {}) {
+  let raw = null
+  try { raw = storage.getItem(keysOf(opts).save) } catch { raw = null }
+  if (!raw) return null
+  const obj = decodeSave(raw)
+  return obj ? int(obj.rev, 0, 0) : null
+}
+
+// Ghi save. opts: { backup (ghi thêm bản dự phòng), keys ({save, backup}, mặc định SAVE_KEY/BACKUP_KEY),
+//   guard (kiểm tra tab khác đã ghi bản mới hơn), lastCode (chuỗi save mà phiên này ghi/nạp gần nhất:
+//   storage còn đúng chuỗi đó thì khỏi giải mã) }.
+// Mỗi lần ghi tăng state.rev. guard: bản trong storage có rev lớn hơn state.rev → KHÔNG ghi.
+// → { ok: true, code } | { ok: false, reason: 'tab_khac' | 'loi_ghi' }
+export function writeSave(storage, state, opts = {}) {
+  const keys = keysOf(opts)
+  if (opts.guard) {
+    let cur = null
+    try { cur = storage.getItem(keys.save) } catch { cur = null }
+    if (cur && cur !== opts.lastCode) {
+      const obj = decodeSave(cur)
+      if (obj && int(obj.rev, 0, 0) > int(state.rev, 0, 0)) return { ok: false, reason: 'tab_khac' }
+    }
+  }
+  const prevRev = state.rev
+  state.rev = int(state.rev, 0, 0) + 1
   const code = encodeSave(state)
   try {
-    storage.setItem(SAVE_KEY, code)
-    if (opts.backup) storage.setItem(BACKUP_KEY, code)
-    return true
+    storage.setItem(keys.save, code)
+    if (opts.backup) storage.setItem(keys.backup, code)
+    return { ok: true, code }
   } catch {
-    return false
+    state.rev = prevRev
+    return { ok: false, reason: 'loi_ghi' }
   }
 }
 
-// Thử bản chính rồi bản dự phòng; trả state đã migrate hoặc null.
-export function loadFrom(storage, data = null) {
-  for (const key of [SAVE_KEY, BACKUP_KEY]) {
+// storage có getItem/setItem. opts.backup: ghi thêm bản dự phòng (cuối ca); opts.keys, opts.guard như writeSave.
+export function saveTo(storage, state, opts = {}) {
+  return writeSave(storage, state, opts).ok
+}
+
+// Thử bản chính rồi bản dự phòng; trả state đã migrate hoặc null. opts.keys: khóa lưu (vd DEV_KEYS).
+export function loadFrom(storage, data = null, opts = {}) {
+  const keys = keysOf(opts)
+  for (const key of [keys.save, keys.backup]) {
     let raw = null
     try { raw = storage.getItem(key) } catch { raw = null }
     if (!raw) continue

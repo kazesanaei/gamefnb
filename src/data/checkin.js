@@ -22,8 +22,8 @@ export const CHECKIN = deepFreeze({
       { items: { phieu_cho_som: 1 } },
       { gold: 10 },
       { items: { bat_che_mua: 1 }, fallback: { money: 20000 } },
-      // Dao thép tốt; đã có dao thì quy đổi thành 2 Phiếu Chợ Sớm (đúng giá trị ô 5 trong bảng cân bằng)
-      { upgrade: 'dao_thep', fallback: { items: { phieu_cho_som: 2 } } },
+      // Phiếu Chợ Sớm ×2 (de-xuat-thiet-ke mục 9.2, can-bang mục 10.1)
+      { items: { phieu_cho_som: 2 } },
       { gold: 15 },
       { gold: 20, money: 100000, title: 'chu_xe_moi_toanh', label: 'Rương Khai Trương' }
     ]

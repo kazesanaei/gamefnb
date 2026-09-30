@@ -16,6 +16,18 @@ function svg(body, vb = '0 0 64 64', extra = '') {
 }
 
 // Chữ trong hình (không viền).
+// Chữ trên biển xe: luôn nằm gọn trong bề rộng maxW (biển trắng rộng 116): cỡ chữ giảm theo độ dài (13 → 9),
+// tên vẫn dài hơn thì ép khít bằng textLength (không tràn ra thân xe).
+function signText(x, y, s, maxW, fill) {
+  const str = String(s)
+  const perChar = 0.62                           // bề rộng ước lượng mỗi ký tự / cỡ chữ (chữ đậm)
+  const size = Math.max(9, Math.min(13, Math.floor(maxW / (perChar * Math.max(1, str.length)))))
+  const fit = str.length * perChar * size > maxW
+  return `<text x="${x}" y="${y}" font-family="${FONT}" font-size="${size}" font-weight="800" ` +
+    `text-anchor="middle" fill="${fill}" stroke="none"` +
+    (fit ? ` textLength="${maxW}" lengthAdjust="spacingAndGlyphs"` : '') + `>${escapeXml(str)}</text>`
+}
+
 function txt(x, y, s, size, fill, weight = 800) {
   return `<text x="${x}" y="${y}" font-family="${FONT}" font-size="${size}" font-weight="${weight}" ` +
     `text-anchor="middle" fill="${fill}" stroke="none">${escapeXml(s)}</text>`
@@ -748,8 +760,7 @@ function potDecor() {
  */
 export function cartSvg({ name = '', umbrellaColor = '#d6362b', umbrellaAlt = '#ffffff', pattern = null, sign = null, decor = null } = {}) {
   const raw = String(name || 'Bếp Khởi Nghiệp').trim() || 'Bếp Khởi Nghiệp'
-  const label = raw.length > 20 ? raw.slice(0, 19) + '…' : raw
-  const size = label.length > 14 ? 11 : 13
+  const label = raw.length > 22 ? raw.slice(0, 21) + '…' : raw
   return svg(
     `<rect x="117" y="56" width="6" height="40" fill="#8a8f99"/>` +
     umbrella(umbrellaColor, umbrellaAlt, pattern) +
@@ -764,7 +775,7 @@ export function cartSvg({ name = '', umbrellaColor = '#d6362b', umbrellaAlt = '#
     `<rect x="40" y="98" width="160" height="42" rx="6" fill="#2f7fc1"/>` +
     `<rect x="62" y="104" width="116" height="28" rx="5" fill="#fff8e6"/>` +
     signDecor(sign) +
-    txt(120, 123, label, size, '#b8342a') +
+    signText(120, 123, label, 106, '#b8342a') +
     `<path d="M200 104 L230 90" stroke-width="5"/>` +
     `<circle cx="72" cy="146" r="14" fill="#3a3a3a"/><circle cx="72" cy="146" r="5" fill="#c9ccd1"/>` +
     `<circle cx="168" cy="146" r="14" fill="#3a3a3a"/><circle cx="168" cy="146" r="5" fill="#c9ccd1"/>` +

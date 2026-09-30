@@ -294,7 +294,7 @@ export const STRINGS = deepFreeze({
     dang_ban: 'Đang trong ca, đóng ca rồi nhận nha',
     thieu_tien: 'Tiền quán chưa đủ',
     thieu_muong: 'Chưa đủ Muỗng Vàng',
-    thieu_tem: 'Chưa đủ Tem',
+    thieu_tem: 'Chưa đủ để đổi',
     chua_mo: 'Chưa mở',
     chua_xong: 'Chưa xong',
     da_co: 'Đã có rồi',
@@ -302,6 +302,7 @@ export const STRINGS = deepFreeze({
     het_han: 'Đã hết hạn',
     khong_co: 'Không tìm thấy',
     da_nau_thu: 'Món này đã nấu thử rồi',
+    dang_nau_thu: 'Đang nấu thử dở món khác, ra món đó trước đã',
     het_su_kien: 'Sự kiện đã kết thúc'
   }
 })

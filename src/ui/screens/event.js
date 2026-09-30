@@ -8,7 +8,10 @@ import {
 } from '../../core/events.js'
 import { chainStatus } from '../../core/chains.js'
 import { screenHead, rewardChips, rewardLine, reasonText, progressBar, durationText, rewindNote } from '../components/meta-ui.js'
-import { chainCard } from '../components/chain-card.js'
+import { chainCard, chainTitle } from '../components/chain-card.js'
+
+// Chữ ngắn cho nút điểm danh sự kiện khi chưa nhận được (câu dài nằm ở dòng nhắc lùi giờ).
+const CK_SHORT = { da_nhan: 'Đã nhận', lui_gio: 'Tạm khóa', het_luot: 'Đã nhận đủ' }
 
 export function phaseText(app, ev, nowInfo = null) {
   const S = app.data.STRINGS.meta
@@ -48,6 +51,10 @@ export default {
       }
       const def = app.data.EVENTS[ev.id]
       const cur = ev.currencyName
+      // lý do từ chối nói đúng tên tiền của sự kiện (vd "Chưa đủ Phấn Trắng")
+      const why = reason => reason === 'thieu_tem' ? `Chưa đủ ${cur}` : reasonText(app, reason)
+      const chain = def.chain ? chainStatus(state, nowInfo, app.ctx).find(c => c.eventId === ev.id) : null
+      const chainClaimRecipe = !!(chain && chain.claimable.some(k => k.reward && k.reward.recipe))
       el.appendChild(screenHead(app, { title: ev.name, sub: phaseText(app, ev, nowInfo), icon: 'phan_trang', backLabel: '‹ Chuẩn bị' }))
       const rw = rewindNote(app, nowInfo)
       if (rw) el.appendChild(rw)
@@ -63,16 +70,17 @@ export default {
           return h('div', { class: ['ev-recipe', r.owned ? 'is-owned' : ''], testid: 'event-recipe-' + r.id },
             svgBox(icon(rec ? rec.icon : r.id), 'ev-recipe-icon'),
             h('div', null, h('b', null, rec ? rec.name : r.id),
-              h('small', null, r.owned ? `Đã có · ${label}` : ev.phase === 'an_han'
-                ? 'Mùa sự kiện đã qua. Món sẽ quay lại ở đợt "Món trở lại".'
-                : 'Nhận miễn phí qua chuỗi sự kiện, chỉ cần chơi 3 ngày bất kỳ')))
+              h('small', null, r.owned ? `Đã có · ${label}`
+                : chainClaimRecipe ? 'Đã xong chuỗi sự kiện: bấm nhận công thức ở mục chuỗi bên dưới.'
+                  : ev.phase === 'an_han' ? 'Mùa sự kiện đã qua. Món sẽ quay lại ở đợt "Món trở lại".'
+                    : 'Nhận miễn phí qua chuỗi sự kiện, chỉ cần chơi 3 ngày bất kỳ')))
         })),
         ev.phase !== 'sap_dien_ra' ? h('div', { class: 'ev-tem', testid: 'event-tem', dataset: { amount: ev.tem } },
           svgBox(icon('phan_trang'), 'ev-tem-icon'),
           h('div', null, h('b', null, `${ev.tem} ${cur}`),
             h('small', null, ev.phase === 'dang_dien_ra'
               ? `Hôm nay từ món ăn: ${ev.temToday}/${ev.dailyCap}. Món đạt Ngon trở lên +1, món lễ thêm +2.`
-              : 'Đổi nốt trước khi hết ân hạn. Tem dư sẽ tự đổi ra Tiền quán qua Hộp thư.'))) : null))
+              : `Đổi nốt trước khi hết ân hạn. ${cur} còn dư sẽ tự đổi ra Tiền quán (tỉ lệ thấp) qua Hộp thư.`))) : null))
 
       if (ev.phase === 'sap_dien_ra') {
         body.appendChild(h('p', { class: 'meta-hint' }, `Sự kiện mở lúc 04:00 ngày ${def.from.split('-').reverse().join('/')}. Trong mùa, món đạt Ngon trở lên được thưởng ${cur}; món lễ được khách gọi nhiều gấp đôi, giá bán không đổi.`))
@@ -93,10 +101,10 @@ export default {
               disabled: !ck.canClaim,
               onclick: () => {
                 const r = claimEventCheckin(app.state, ev.id, app.nowInfo(), app.ctx)
-                if (!r.ok) { app.toast(reasonText(app, r.reason), { kind: 'bad' }); return }
+                if (!r.ok) { app.toast(why(r.reason), { kind: 'bad' }); return }
                 done('Nhận: ' + rewardLine(r.reward, app.data, { currency: cur }))
               }
-            }, ck.canClaim ? 'Nhận' : reasonText(app, ck.reason)))))
+            }, ck.canClaim ? 'Nhận' : CK_SHORT[ck.reason] || why(ck.reason)))))
 
         // Việc sự kiện hôm nay
         const qs = eventQuestList(state, ev.id, nowInfo, app.ctx)
@@ -105,31 +113,33 @@ export default {
             h('h2', { class: 'card-title' }, 'Việc sự kiện hôm nay'),
             h('ul', { class: 'ev-quests' }, qs.map(q => h('li', { class: ['ev-quest', q.done ? 'is-done' : ''], testid: 'event-quest-' + q.id },
               h('div', { class: 'ev-quest-main' }, h('span', null, q.text),
-                h('div', { class: 'quest-prog' }, progressBar(q.progress, q.target), h('span', { class: 'quest-num' }, `${q.progress}/${q.target}`))),
+                h('div', { class: 'quest-prog' }, progressBar(q.progress, q.target), h('span', { class: 'quest-num' }, `${q.progress}/${q.target}`)),
+                q.assistText ? h('small', { class: 'ev-assist' }, q.assistText) : null),
               h('button', {
                 class: ['btn', 'btn-small', q.done && !q.claimed ? 'btn-primary' : 'btn-ghost'], type: 'button', testid: 'event-quest-claim-' + q.id,
                 disabled: !q.done || q.claimed,
                 onclick: () => {
                   const r = claimEventQuest(app.state, ev.id, q.id, app.nowInfo(), app.ctx)
-                  if (!r.ok) { app.toast(reasonText(app, r.reason), { kind: 'bad' }); return }
+                  if (!r.ok) { app.toast(why(r.reason), { kind: 'bad' }); return }
                   done('Nhận: ' + rewardLine(r.reward, app.data, { currency: cur }))
                 }
               }, q.claimed ? 'Đã nhận' : `+${(q.reward && q.reward.tem) || 0}`))))))
         }
 
-        // Chuỗi sự kiện
-        const chain = chainStatus(state, nowInfo, app.ctx).find(c => c.eventId === ev.id)
-        if (chain && def.chain) {
-          const cs = (state.chains || {})[chain.id]
-          const stepNo = cs ? cs.step : 0
-          body.appendChild(h('h2', { class: 'meta-section' }, `Chuỗi "${def.chain.name}"`))
-          body.appendChild(chainCard(app, chain, { title: `${chain.npcName} nhờ`, stepTestid: 'event-chain-step', onChange: () => render() }))
-          body.appendChild(h('ol', { class: 'ev-steps' }, def.chain.steps.map((st, i) =>
-            h('li', { class: [i < stepNo ? 'is-done' : '', i === stepNo && !(cs && cs.done) ? 'is-current' : ''] },
-              h('span', { class: 'ev-step-no' }, i < stepNo ? '✓' : String(i + 1)),
-              h('span', null, String(st.text || '').replace('{n}', String(st.target || 1))),
-              rewardChips({ tem: (st.reward && st.reward.tem) || 0, recipe: st.reward && st.reward.recipe }, app.data, { compact: true, currency: cur })))))
-        }
+      }
+
+      // Chuỗi sự kiện: trong mùa; và trong ân hạn khi còn bước đã xong chưa nhận (lõi cho nhận tới hết ân hạn)
+      if (chain && def.chain && (ev.phase === 'dang_dien_ra' || (ev.phase === 'an_han' && chain.claimable.length))) {
+        const cs = (state.chains || {})[chain.id]
+        const stepNo = cs ? cs.step : 0
+        body.appendChild(h('h2', { class: 'meta-section' }, `Chuỗi "${def.chain.name}"`))
+        if (ev.phase === 'an_han') body.appendChild(h('p', { class: 'meta-hint ev-grace-note', testid: 'event-grace-chain' }, `Thưởng chuỗi đã xong vẫn nhận được tới hết ân hạn. Sau đó công thức gửi qua Hộp thư, ${cur} cộng vào phần dư.`))
+        body.appendChild(chainCard(app, chain, { title: chainTitle(chain), stepTestid: 'event-chain-step', onChange: () => render() }))
+        body.appendChild(h('ol', { class: 'ev-steps' }, def.chain.steps.map((st, i) =>
+          h('li', { class: [i < stepNo ? 'is-done' : '', i === stepNo && !(cs && cs.done) ? 'is-current' : ''] },
+            h('span', { class: 'ev-step-no' }, i < stepNo ? '✓' : String(i + 1)),
+            h('span', null, String(st.text || '').replace('{n}', String(st.target || 1))),
+            rewardChips({ tem: (st.reward && st.reward.tem) || 0, recipe: st.reward && st.reward.recipe }, app.data, { compact: true, currency: cur })))))
       }
 
       // Quầy đổi Tem (trong mùa và ân hạn)
@@ -152,7 +162,7 @@ export default {
                 })
                 if (!ok) return
                 const r = exchangeTem(app.state, ev.id, x.id, app.nowInfo(), app.ctx)
-                if (!r.ok) { app.toast(reasonText(app, r.reason), { kind: 'bad' }); return }
+                if (!r.ok) { app.toast(why(r.reason), { kind: 'bad' }); return }
                 done('Đã đổi: ' + rewardLine(r.reward, app.data))
               }
             }, owned ? 'Đã có' : `${x.price} ${cur}`))

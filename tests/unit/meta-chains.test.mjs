@@ -9,9 +9,11 @@ import { buyUpgrade } from '../../src/core/economy.js'
 import { startShift, advance, isShiftOver, endShift } from '../../src/core/shift.js'
 import { confirmQr } from '../../src/core/order.js'
 import { counterStep, cookTicket } from '../helpers/perfect-player.mjs'
-import { makeMetaCtx, newState, at } from '../helpers/meta-helpers.mjs'
+import { makeMetaCtx, newState, at, DATA } from '../helpers/meta-helpers.mjs'
 
 const C1 = 'ngay_dau_ra_pho'
+// ngưỡng danh tiếng của bước cuối C1 (đọc từ dữ liệu, trùng điều kiện lên Chặng 2)
+const REP = DATA.CHAINS[C1].steps[6].check.reputation
 const QR = 'lam_quen_qr'
 
 function ev(s, ctx, ni, type, payload = {}, n = 1) {
@@ -87,12 +89,12 @@ test('C1: bước "đạt mức" kiểm tra trạng thái hiện tại; hoàn th
   assert.equal(s.chains[C1].step, 5, 'bước mua công thức xong ngay vì đã có món Shop')
   ev(s, ctx, ni, 'dish.done', { recipeId: 'banh_mi_op_la', grade: 'tuyet_hao', q: 95, flawless: true, errors: [] }, 3)
   assert.equal(s.chains[C1].step, 6)
-  // bước 7: 150 danh tiếng và sao trung bình ≥ 3,8
-  s.reputation = 149
+  // bước 7: đủ danh tiếng (REP) và sao trung bình ≥ 3,8
+  s.reputation = REP - 1
   s.ratings = [5, 5, 5, 5, 5, 5]
   ev(s, ctx, ni, 'shift.ended', { day: 2, profit: 0, served: 0, lost: 0 })
   assert.equal(s.chains[C1].done, false)
-  s.reputation = 150
+  s.reputation = REP
   s.ratings = [3, 3, 3, 3, 3, 3]
   ev(s, ctx, ni, 'shift.ended', { day: 2, profit: 0, served: 0, lost: 0 })
   assert.equal(s.chains[C1].done, false)

@@ -340,7 +340,7 @@ export function mountKitchen(root, app, opts = {}) {
     const cook = sh.cook
     const recipe = recipeOf(cook.recipeId)
     if (!recipe) { main.appendChild(h('div', { class: 'k-empty' }, 'Không tìm thấy công thức.')); return }
-    main.appendChild(boardHeader(cook))
+    if (!tasting) main.appendChild(boardHeader(cook))
     main.appendChild(recipeCard(cook))
     const stage = h('div', { class: 'mg-stage' })
     main.appendChild(h('div', { class: 'k-chon-wrap' }, stage))
@@ -385,16 +385,16 @@ export function mountKitchen(root, app, opts = {}) {
   }
 
   // ----- Thớt sơ chế -----
+  // (Nấu thử không có dòng đầu này: màn Nấu thử đã có nhãn "Nấu thử" + tên món và nút về Chợ.)
   function boardHeader(cook) {
     const sh = SH()
     const t = sh.tickets.find(x => x.id === cook.ticketId)
     const recipe = recipeOf(cook.recipeId)
     return h('div', { class: 'k-board-head' },
-      tasting ? h('span', { class: 'k-tag k-tag-tasting' }, 'Nấu thử')
-        : h('button', { class: 'btn btn-ghost k-back', type: 'button', 'data-testid': 'kitchen-back', 'aria-label': 'Về dây phiếu', onclick: () => { ui.showRail = true; render() } }, '‹ Phiếu'),
+      h('button', { class: 'btn btn-ghost k-back', type: 'button', 'data-testid': 'kitchen-back', 'aria-label': 'Về dây phiếu', onclick: () => { ui.showRail = true; render() } }, '‹ Phiếu'),
       recipe ? svgBox(icon(recipe.icon || recipe.id), 'k-card-icon') : null,
-      h('span', { class: 'k-board-title' }, `${t && !tasting ? t.no + ' · ' : ''}${recipe ? recipe.name : ''}`, cook.qty > 1 ? h('span', { class: 'k-qty' }, ` ×${cook.qty}`) : null),
-      t && !tasting ? h('span', { class: 'k-wait-dot', dataset: { ticketId: t.id, wait: 'green' }, 'data-wait-dot': t.id }) : null)
+      h('span', { class: 'k-board-title' }, `${t ? t.no + ' · ' : ''}${recipe ? recipe.name : ''}`, cook.qty > 1 ? h('span', { class: 'k-qty' }, ` ×${cook.qty}`) : null),
+      t ? h('span', { class: 'k-wait-dot', dataset: { ticketId: t.id, wait: 'green' }, 'data-wait-dot': t.id }) : null)
   }
 
   function renderBoard() {
@@ -403,7 +403,7 @@ export function mountKitchen(root, app, opts = {}) {
     const ctx = cctx()
     const recipe = recipeOf(cook.recipeId) || {}
     const bs = boardSteps(S(), ctx)
-    main.appendChild(boardHeader(cook))
+    if (!tasting) main.appendChild(boardHeader(cook))
     main.appendChild(recipeCard(cook, false, true))
 
     // Nguyên liệu trên thớt, mỗi thứ kèm các bước của nó.
@@ -586,6 +586,8 @@ export function mountKitchen(root, app, opts = {}) {
       app, recipe, data: d, notes: cook.notes.slice(), qty: cook.qty,
       zoneMul: zoneMul(st, step.type, cook.recipeId, d.BALANCE, d.UPGRADES),
       assist: !!(st.settings && st.settings.assistMotion),
+      // Nấu thử: không tính giờ thật sự (không tự kết thúc bước, không phạt quá giờ) và có "tay chỉ" (gợi ý ngay)
+      untimed: !!tasting, guide: !!tasting,
       slowBurn: !!(st.upgrades && st.upgrades.chao_chong_dinh),
       rand: uiRand(hashKey([st.seed, sh.day, cook.ticketId, cook.lineIndex, step.id].join(':')))
     }

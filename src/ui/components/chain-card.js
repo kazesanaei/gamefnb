@@ -12,7 +12,7 @@ export function chainCard(app, c, opts = {}) {
   const S = app.data.STRINGS.meta
   const W = app.data.CHAIN_WHERE || {}
   const currency = c.eventId && app.data.EVENTS && app.data.EVENTS[c.eventId] ? app.data.EVENTS[c.eventId].currencyName : undefined
-  const title = opts.title || (c.npcName ? `${c.npcName} dặn` : c.name)
+  const title = opts.title || chainTitle(c)
   const claimAll = () => {
     const got = []
     for (const k of c.claimable.slice()) {
@@ -45,8 +45,11 @@ export function chainCard(app, c, opts = {}) {
         if (typeof opts.onChange === 'function') opts.onChange(r)
       }
     }, S.questClaim)))
+  // chuỗi xong: nhãn "Đã hoàn thành" tách riêng, lời nhắn cuối chuỗi hiện nguyên văn (không ghép tiền tố)
   const body = c.done
-    ? h('p', { class: 'chain-text' }, S.chainDone + (c.text ? ': ' + c.text : ''))
+    ? h('div', { class: 'chain-done' },
+      h('span', { class: 'chain-done-tag' }, '✓ ' + S.chainDone),
+      c.text ? h('p', { class: 'chain-text chain-quote' }, c.text) : null)
     : h('div', { class: 'chain-step', testid: opts.stepTestid || null, dataset: { step: c.step } },
       h('div', { class: 'chain-step-head' },
         h('span', { class: 'chain-step-no' }, S.chainStep.replace('{n}', String(c.step + 1)).replace('{total}', String(c.total))),
@@ -54,11 +57,17 @@ export function chainCard(app, c, opts = {}) {
       h('p', { class: 'chain-text' }, c.text),
       c.gateLocked ? h('p', { class: 'chain-gate small' }, gateText(app, c, S))
         : c.isCheck ? null
-          : h('div', { class: 'chain-prog' }, progressBar(c.progress, c.target, { label: c.text }), h('span', { class: 'chain-num' }, `${c.progress}/${c.target}`)))
+          : h('div', { class: 'chain-prog' }, progressBar(c.progress, c.target, { label: c.text }), h('span', { class: 'chain-num' }, `${c.progress}/${c.target}`)),
+      c.assistText ? h('p', { class: 'chain-assist small', testid: 'chain-assist-' + c.id }, c.assistText) : null)
   return h('article', { class: ['chain-card', c.done ? 'is-done' : '', c.claimable && c.claimable.length ? 'has-claim' : ''], testid: opts.testid || 'chain-card-' + c.id, dataset: { chainId: c.id } },
     h('div', { class: 'chain-head' }, svgBox(npcFace(c.npc), 'npc-face small'),
       h('div', null, h('b', { class: 'chain-title' }, title), h('small', { class: 'muted' }, c.name))),
     body, claimBtns)
+}
+
+/** Tiêu đề thẻ chuỗi theo NPC: "Dì Sáu dặn", "Anh Khoa dặn", "Cô Hạnh nhờ" (động từ ở NPCS[npc].verb). */
+export function chainTitle(c) {
+  return c.npcName ? `${c.npcName} ${c.npcVerb || 'dặn'}` : c.name
 }
 
 // Bước chuỗi sự kiện chưa mở: hôm nay chưa bán ca nào trong mùa → mở hàng là mở bước; đã bán → mai chơi tiếp.

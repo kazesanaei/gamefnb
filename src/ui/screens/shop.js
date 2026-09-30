@@ -64,6 +64,8 @@ export default {
         const status = r.owned ? h('span', { class: 'badge' }, 'Đã có trong thực đơn')
           : !r.unlocked ? h('span', { class: 'badge badge-lock' }, S.fromDay.replace('{n}', String(r.fromDay))) : null
         const trialLabel = tastingThis ? 'Nấu thử tiếp' : r.tried ? S.tasted : S.tasteFree
+        // đang nấu thử dở món khác: phải ra món đó trước (mỗi món chỉ được nấu thử miễn phí 1 lần)
+        const otherName = r.tastingOther && !r.tried && app.data.RECIPES[state.tasting.recipeId] ? app.data.RECIPES[state.tasting.recipeId].name : ''
         body.appendChild(h('article', { class: ['shop-card', r.owned ? 'is-owned' : ''], testid: 'shop-item-' + r.id },
           h('div', { class: 'shop-card-top' },
             svgBox(icon(r.icon || r.id), 'shop-dish'),
@@ -89,6 +91,7 @@ export default {
               dataset: { price: r.shopPrice },
               onclick: () => buyRecipe(r)
             }, r.unlocked ? `Mua · ${formatVND(r.shopPrice)}` : S.fromDay.replace('{n}', String(r.fromDay)))),
+          otherName && !r.owned ? h('p', { class: 'shop-lack small', testid: 'shop-trial-note-' + r.id }, `Đang nấu thử dở ${otherName}. Ra món đó trước rồi mới nấu thử món này.`) : null,
           !r.owned && r.unlocked && !r.canAfford ? h('p', { class: 'shop-lack small' }, `Còn thiếu ${formatVND(r.shopPrice - state.wallet)} Tiền quán`) : null))
       }
       // Món sự kiện đã nhận (giữ vĩnh viễn)
@@ -160,7 +163,11 @@ export default {
       const C = app.data.COSMETICS || {}
       const eq = (state.cosmetics && state.cosmetics.equipped) || {}
       const cart = cartView(state, app.data, 'cart-view shop-cart', preview !== null ? { du: preview || null } : {})
+      // đang xem thử một màu dù (chạm ô màu): nhắc rõ để không nhầm là đã đổi
+      const previewName = preview === null ? '' : preview ? ((C[preview] && C[preview].name) || '') : 'Dù cũ của Dì Sáu'
+      const previewing = preview !== null && (preview || null) !== (eq.du || null)
       body.appendChild(h('div', { class: 'spoon-top' }, cart,
+        previewing ? h('span', { class: 'spoon-preview', testid: 'parasol-previewing' }, 'Đang xem thử: ' + previewName) : null,
         h('div', { class: 'spoon-balance' }, spoonPill(state.goldSpoons || 0, 'spoon-balance'),
           h('p', { class: 'small muted' }, 'Muỗng Vàng nhận từ điểm danh, Việc hôm nay, chuỗi nhiệm vụ và Hộp thư. Màu dù chỉ để đẹp xe, không đổi cách chơi.'))))
 

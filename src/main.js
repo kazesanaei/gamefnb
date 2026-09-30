@@ -1,6 +1,6 @@
 // Khởi động game: nạp save, tạo app, router, vòng lặp.
 import { DATA } from './data/index.js'
-import { loadFrom } from './core/save.js'
+import { loadFrom, DEV_KEYS } from './core/save.js'
 import { defaultState } from './core/state.js'
 import { parseDevNow, makeNowInfo } from './core/clock.js'
 import { attachMeta, refreshMeta } from './core/meta.js'
@@ -39,6 +39,12 @@ function randomSeed() {
   }
 }
 
+// 'DD/MM HH:mm' giờ Việt Nam của mốc giờ giả.
+function devLabel(ms) {
+  const d = new Date(ms + 7 * 3600 * 1000).toISOString()
+  return `${d.slice(8, 10)}/${d.slice(5, 7)} ${d.slice(11, 16)}`
+}
+
 function boot() {
   const root = document.getElementById('app')
   const bootMsg = document.getElementById('boot')
@@ -48,11 +54,17 @@ function boot() {
   const devNow = parseDevNow(location.search, location.hostname)
   const bootAt = Date.now()
   const now = devNow !== null ? () => devNow + (Date.now() - bootAt) : () => Date.now()
-  const app = createApp({ root, storage, now, screens: { title, prep, service, summary, shop, tasting, quests, mailbox, event, 'stage-up': stageUp } })
+  // Giờ giả ghi mốc tương lai vào save (clock.maxSeen, ngày điểm danh, Việc hôm nay…): lưu ở khóa riêng để
+  // save thật không bị khóa lùi giờ khi mở lại bình thường. Lần đầu xem trước thì chép từ save thật.
+  const saveKeys = devNow !== null ? DEV_KEYS : null
+  const devBanner = devNow !== null ? `Giờ giả ${devLabel(devNow)} · bản lưu riêng` : ''
+  const app = createApp({ root, storage, now, saveKeys, devBanner,
+    screens: { title, prep, service, summary, shop, tasting, quests, mailbox, event, 'stage-up': stageUp } })
 
   const params = new URLSearchParams(location.search)
   const isLocal = ['localhost', '127.0.0.1'].includes(location.hostname)
-  let state = storage ? loadFrom(storage, DATA) : null
+  let state = storage ? loadFrom(storage, DATA, { keys: saveKeys }) : null
+  if (!state && storage && saveKeys) state = loadFrom(storage, DATA)
   if (!state) {
     // ?seed=N chỉ có tác dụng khi chưa có save.
     const raw = params.get('seed')
@@ -68,13 +80,15 @@ function boot() {
     const res = refreshMeta(state, makeNowInfo(state, app.now()), app.ctx)
     // thư mới lúc mở game (vd thư chào mừng lần đầu): màn Chuẩn bị báo nhẹ, không chặn
     app.session.pendingMail = res.newMail.slice()
+    // việc sự kiện hôm trước tự nhận lúc mở game: màn Chuẩn bị báo
+    app.session.pendingEventAuto = (res.eventQuestsAuto || []).slice()
   } catch (err) { console.error(err) }
   app.applySettings()
   app.saveNow()
 
   const loop = createLoop(app, {
     getScreen: () => app.router.current,
-    shouldAdvance: () => app.router.name === 'service' && !app.modalBlocking()
+    shouldAdvance: () => app.router.name === 'service' && !app.modalBlocking() && !app.locked
   })
   app.go(state.shift ? 'service' : 'title')
   loop.start()

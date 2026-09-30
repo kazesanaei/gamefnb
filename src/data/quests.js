@@ -4,9 +4,10 @@
 // Mỗi nhiệm vụ đếm một tín hiệu (signal) do lõi dịch từ sự kiện miền (src/core/stats.js):
 //   served, five_star, change_correct, change_wrong, change_optimal, readback_clean, qr_ok, fake_detected,
 //   perfect_step, perfect_thai, perfect_lua, dish_good, dish_excellent, dish_clean, dish_new_recipe,
-//   shift_no_loss, revenue (n = doanh thu ca).
+//   dish_portions (n = số phần, kèm recipeId), good_rating (khách từ 4 sao), shift_no_loss, revenue (n = doanh thu ca).
 // target: { base } cố định, hoặc { perCustomer, min, max, round } co giãn theo số khách dự kiến của 2 ca.
-// breakOn: tín hiệu làm đứt chuỗi (nhiệm vụ "liên tiếp"). assist: không đếm khi bật công tắc Hỗ trợ đó.
+// breakOn: tín hiệu làm đứt chuỗi (nhiệm vụ "liên tiếp"). assist: không đếm khi bật công tắc Hỗ trợ đó
+//   (và không bốc khi còn việc khác cùng nhóm).
 // cond: { fromDayKey: khóa BALANCE (ngày game tối thiểu), recentRecipeDays: có món mua trong N ngày game gần nhất }.
 
 function deepFreeze(o) {
@@ -33,11 +34,13 @@ export const QUESTS = deepFreeze([
     target: { perCustomer: 0.375, min: 3, max: 6 } },
   { id: 'lua_hoan_hao', group: 'bep', text: '{n} lần Hoàn hảo ở bước Canh lửa', signal: 'perfect_lua',
     target: { base: 3 }, assist: 'assistMotion' },
-  { id: 'mon_vua_mua', group: 'bep', text: 'Nấu {n} phần món vừa mua', signal: 'dish_new_recipe',
+  // món hợp lệ chốt lúc bốc việc (entry.recipeIds) nên chơi thêm ca trong ngày vẫn đếm dù món hết "mới"
+  { id: 'mon_vua_mua', group: 'bep', text: 'Nấu {n} phần món vừa mua', signal: 'dish_portions',
     target: { base: 2 }, cond: { recentRecipeDays: 3 } },
   // Chất lượng / Kinh doanh
+  // Hỗ trợ thao tác trần món ở hạng Ngon: không bốc việc này khi đang bật, bật giữa ngày thì tạm không đếm
   { id: 'tuyet_hao', group: 'chat_luong', text: 'Nấu {n} món Tuyệt hảo', signal: 'dish_excellent',
-    target: { perCustomer: 0.375, min: 3, max: 6 } },
+    target: { perCustomer: 0.375, min: 3, max: 6 }, assist: 'assistMotion' },
   { id: 'phuc_vu', group: 'chat_luong', text: 'Phục vụ {n} khách', signal: 'served',
     target: { perCustomer: 1, min: 8, max: 14 } },
   { id: 'khong_bo_ve', group: 'chat_luong', text: 'Không để khách nào bỏ về trong 1 ca', signal: 'shift_no_loss',

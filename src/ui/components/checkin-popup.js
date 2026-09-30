@@ -46,6 +46,8 @@ export function openCheckin(app, opts = {}) {
     blocking: true,
     render(close) {
       let result = null
+      const subText = () => `${S.checkin} · đã nhận ${app.state.checkin ? app.state.checkin.total || 0 : 0} ngày`
+      const sub = h('p', { class: 'muted small' }, subText())
       const grid = h('ol', { class: 'ck-grid' })
       const paint = status => {
         grid.textContent = ''
@@ -80,19 +82,21 @@ export function openCheckin(app, opts = {}) {
           const after = st.slots.map(s => ({ ...s, claimed: s.claimed || s.index === r.index, isNext: false }))
           paint({ slots: after })
           claimBtn.disabled = true
+          claimBtn.classList.add('is-done')
           claimBtn.textContent = 'Đã nhận: ' + rewardLine(r.reward, app.data)
           note.textContent = S.checkinDone
+          sub.textContent = subText()
+          closeBtn.textContent = 'Đóng'
           if (typeof opts.onClaim === 'function') opts.onClaim(r.reward)
           setTimeout(() => close(result), AUTO_CLOSE_MS)
         }
       }, st.canClaim && nextSlot ? `${S.checkinClaim}: ${S.checkinSlot.replace('{n}', String(nextSlot.index + 1))}` : st.reason === 'lui_gio' ? 'Tạm khóa' : reasonText(app, st.reason))
+      const closeBtn = h('button', { class: 'btn btn-ghost', type: 'button', testid: 'checkin-close', onclick: () => close(result) }, st.canClaim ? 'Để sau' : 'Đóng')
       return h('div', { class: 'ck-body' },
         h('div', { class: 'ck-head' }, svgBox(icon('lich'), 'ck-head-icon'),
-          h('div', null, h('h2', { class: 'modal-title ck-title' }, st.roundName || S.checkin),
-            h('p', { class: 'muted small' }, `${S.checkin} · đã nhận ${app.state.checkin ? app.state.checkin.total || 0 : 0} ngày`))),
+          h('div', null, h('h2', { class: 'modal-title ck-title' }, st.roundName || S.checkin), sub)),
         grid, note,
-        h('div', { class: 'ck-actions' }, claimBtn,
-          h('button', { class: 'btn btn-ghost', type: 'button', testid: 'checkin-close', onclick: () => close(result) }, st.canClaim ? 'Để sau' : 'Đóng')))
+        h('div', { class: 'ck-actions' }, claimBtn, closeBtn))
     }
   })
 }

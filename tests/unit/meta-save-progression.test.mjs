@@ -103,8 +103,8 @@ test('lên chặng: đủ 6 điều kiện mới đủ; thiếu thì có gợi �
   assert.match(byId('thao_mon').hint, /Nấu thêm 5 lần Ngon món/)
   assert.match(byId('chuoi_chinh').hint, /bước 1/)
   assert.match(byId('tien').hint, /300\.000đ/)
-  // đủ điều kiện
-  s.reputation = 150
+  // đủ điều kiện (ngưỡng danh tiếng đọc từ dữ liệu)
+  s.reputation = DATA.STAGE_UP[2].requirements.find(q => q.kind === 'reputation').target
   s.ratings = [4, 4, 4, 4, 4, 3]
   s.recipes.banh_trang_tron = { cooks: 0, goodCooks: 0, excellent: 0, flawless: 0, best: 0, boughtDay: 2 }
   s.recipes.banh_mi_op_la.goodCooks = 5

@@ -508,6 +508,13 @@ export const DIALOGUE = deepFreeze({
       'Hôm nay trời đẹp, chắc đông khách à.',
       'Tiền lẻ đủ chưa con? Thiếu tiền lẻ là kẹt liền đó.'
     ],
+    // câu mở ca theo sự kiện ngày (màn Chuẩn bị): không nói "trời đẹp" khi trời mưa
+    dayEvent: {
+      troi_mua: ['Mưa lâm râm vầy khách thưa, nhưng ai ghé cũng chịu chờ hơn đó con.', 'Trời mưa nhớ căng bạt cho khách đứng đỡ ướt nha con.'],
+      nang_nong: ['Nắng vầy ai đi ngang cũng khát, pha sẵn trà tắc cho kịp nha con.', 'Trời oi quá, khách hay dặn ít đường, nghe kỹ nha con.'],
+      lanh_luong: ['Bữa nay đầu tháng lãnh lương, khách vui là tip mạnh tay lắm đó.', 'Lãnh lương rồi, khách hào phóng, mình phục vụ cho chu đáo nha con.'],
+      cho_phien: ['Chợ phiên đông nghẹt, ca này dài hơn, giữ sức nha con.', 'Hẻm họp chợ, khách tới liên tục, đọc lại order cho kỹ nghen.']
+    },
     praise: ['Trời đất, khéo tay dữ vậy con!', 'Món này dì chấm mười điểm!', 'Làm vầy khách nhớ tới hoài.'],
     worry: ['Coi chừng lửa đó con!', 'Khách chờ lâu rồi, nhanh tay lên con.', 'Đọc kỹ phiếu trước khi làm nha.'],
     regret: ['Hơi tiếc ha, lần sau mình làm kỹ hơn.', 'Không sao, té đâu đứng dậy đó.', 'Hỏng thì làm lại, đừng giao món dở cho khách.'],

@@ -1,7 +1,7 @@
 // Màn Chuẩn bị ca: thông tin ngày, Muỗng Vàng, lối vào Chợ Công Thức / Việc hôm nay / Điểm danh / Hộp thư (chấm đỏ),
 // sự kiện ngày và lựa chọn, Phiếu Chợ Sớm, thẻ sự kiện có thời hạn, chuỗi "Dì Sáu dặn", "Giấc mơ tiếp theo",
 // thực đơn, dự báo khách, Mẹo nghề, mượn Dì Sáu, cài đặt, nút "Mở hàng" luôn nhìn thấy.
-// Vào màn: cập nhật meta theo ngày thật; lần đầu trong ngày thật → bảng điểm danh (trừ ca hướng dẫn đầu tiên).
+// Vào màn: cập nhật meta theo ngày thật; lần đầu trong ngày thật (kể cả lần mở game đầu tiên) → bảng điểm danh.
 import { h, svgBox } from '../dom.js'
 import { DI_SAU, icon } from '../art.js'
 import { startShift, customerCount } from '../../core/shift.js'
@@ -15,7 +15,7 @@ import { questList } from '../../core/quests.js'
 import { mailBadge } from '../../core/mail.js'
 import { chainStatus } from '../../core/chains.js'
 import { shopCatalog } from '../../core/shop.js'
-import { eventsOverview, dayEventInfo, setDayEventChoice, setMarketCoupon, applyCustomerMods } from '../../core/events.js'
+import { eventsOverview, dayEventInfo, dayEventEffects, setDayEventChoice, setMarketCoupon, applyCustomerMods } from '../../core/events.js'
 import { checkStageUp } from '../../core/progression.js'
 import { formatVND, formatStars } from '../format.js'
 import { spoonPill, reasonText, progressBar, redDot, rewindNote, durationText } from '../components/meta-ui.js'
@@ -25,11 +25,6 @@ import { phaseText } from './event.js'
 
 function pickRandom(arr) {
   return arr.length ? arr[Math.floor(Math.random() * arr.length)] : null
-}
-
-// Ca hướng dẫn đầu tiên của save mới: không bật bảng điểm danh chen vào (hiện sau ca đầu).
-export function isFirstTutorial(state) {
-  return state.day === 1 && !(state.history && state.history.length)
 }
 
 // Hiệu ứng của sự kiện ngày thành các dòng ngắn cho người chơi.
@@ -49,12 +44,26 @@ export function dayEffectLines(effects, data, state = null) {
   return out
 }
 
-// Số khách dự báo sau sự kiện ngày (không trừ tiền, không dùng phiếu).
+// Số khách dự báo sau sự kiện ngày (không trừ tiền, không dùng phiếu). Đã chọn Căng bạt (hoặc tự căng nhờ Bạt che mưa)
+// thì dùng hiệu ứng của lựa chọn, giống dòng hiệu ứng trên thẻ (dayEventEffects).
 export function forecastCustomers(state, ctx, info) {
   const n = customerCount(state, ctx, state.day)
   if (!info) return n
-  const eff = info.choice && info.choice.chosen ? ((ctx.data.DAY_EVENTS[info.id].choice || {}).effects || info.effects) : info.effects
+  const eff = dayEventEffects(info, ctx)
   return applyCustomerMods(n, { customerMul: eff.customerMul ?? 1, extraCustomers: eff.extraCustomers || 0 }, ctx)
+}
+
+// Lời Dì Sáu lúc chuẩn bị ca: ngày 1 là lời hướng dẫn; có sự kiện ngày thì nói theo sự kiện (không nói "trời đẹp"
+// khi trời mưa); còn lại bốc câu thường.
+export function prepTalk(state, D, dayEv) {
+  if (state.day === 1) return D.diSau.tutorial.order
+  const byEvent = dayEv && D.diSau.dayEvent && D.diSau.dayEvent[dayEv.id]
+  return pickRandom(byEvent && byEvent.length ? byEvent : D.diSau.shiftStart)
+}
+
+// Lần mở đầu tiên (ngày 1, chưa bán ca nào): chỉ hiện điều cần cho ca đầu, lời hướng dẫn của Dì Sáu lên trên.
+export function isFirstVisit(state) {
+  return state.day === 1 && !((state.stats && state.stats.shiftsPlayed) > 0) && !(state.history && state.history.length)
 }
 
 export default {
@@ -66,7 +75,7 @@ export default {
     root.appendChild(el)
     let destroyed = false
     let lastDayKey = ''
-    const talk = app.state.day === 1 ? D.diSau.tutorial.order : pickRandom(D.diSau.shiftStart)
+    const talk = prepTalk(app.state, D, dayEventInfo(app.state, app.state.day, app.ctx))
 
     function refresh() {
       const nowInfo = app.nowInfo()
@@ -104,6 +113,21 @@ export default {
       const rw = rewindNote(app, nowInfo)
       if (rw) el.appendChild(rw)
 
+      const first = isFirstVisit(state)
+      const talkEl = h('div', { class: 'npc-talk', testid: 'prep-talk' }, svgBox(DI_SAU.vui, 'npc-face'),
+        h('div', { class: 'bubble npc-bubble' }, h('b', null, 'Dì Sáu'), h('p', null, talk)))
+      // Chuỗi nhiệm vụ (không gồm chuỗi sự kiện: nằm trong thẻ sự kiện)
+      const chains = chainStatus(state, nowInfo, app.ctx).filter(c => !c.eventId && (!c.done || c.claimable.length))
+      chains.sort((a, b) => (b.main ? 1 : 0) - (a.main ? 1 : 0))
+      const chainEls = chains.map((c, i) => chainCard(app, c, { testid: i === 0 ? 'chain-card' : 'chain-card-' + c.id, compact: true, onChange: render }))
+
+      // Lần mở đầu tiên: lời hướng dẫn của Dì Sáu và "Dì Sáu dặn: Phục vụ khách đầu tiên" lên ngay dưới đầu màn;
+      // chưa hiện "Giấc mơ tiếp theo" (mở dần sau ca đầu)
+      if (first) {
+        el.appendChild(talkEl)
+        for (const c of chainEls) el.appendChild(c)
+      }
+
       // Lối vào 4 hệ thống
       el.appendChild(navGrid(state, nowInfo))
 
@@ -115,17 +139,13 @@ export default {
       const coupons = (state.items && state.items.phieu_cho_som) || 0
       if (coupons > 0) el.appendChild(couponCard(coupons))
 
-      // Chuỗi nhiệm vụ (không gồm chuỗi sự kiện: nằm trong thẻ sự kiện)
-      const chains = chainStatus(state, nowInfo, app.ctx).filter(c => !c.eventId && (!c.done || c.claimable.length))
-      chains.sort((a, b) => (b.main ? 1 : 0) - (a.main ? 1 : 0))
-      chains.forEach((c, i) => el.appendChild(chainCard(app, c, { testid: i === 0 ? 'chain-card' : 'chain-card-' + c.id, compact: true, onChange: render })))
-
-      // Lên chặng / Giấc mơ tiếp theo
-      el.appendChild(stageCard(state))
-
-      // Lời Dì Sáu
-      el.appendChild(h('div', { class: 'npc-talk' }, svgBox(DI_SAU.vui, 'npc-face'),
-        h('div', { class: 'bubble npc-bubble' }, h('b', null, 'Dì Sáu'), h('p', null, talk))))
+      if (!first) {
+        for (const c of chainEls) el.appendChild(c)
+        // Lên chặng / Giấc mơ tiếp theo
+        el.appendChild(stageCard(state))
+        // Lời Dì Sáu
+        el.appendChild(talkEl)
+      }
 
       // Nợ và mượn Dì Sáu
       if (state.loan) {
@@ -225,22 +245,28 @@ export default {
     }
 
     // ---------- Thẻ sự kiện có thời hạn ----------
+    // pending: điểm danh sự kiện, việc sự kiện xong chưa nhận, bước chuỗi sự kiện chờ nhận (cả trong ân hạn) → chấm đỏ
     function eventCard(ev) {
       const owned = ev.recipes.filter(r => r.owned).length
-      return h('section', { class: ['event-card', 'phase-' + ev.phase], testid: 'event-card', dataset: { eventId: ev.id, phase: ev.phase } },
+      const recipeNote = owned ? ' · Đã nhận món lễ' : ev.phase === 'dang_dien_ra' ? ' · Món lễ đang chờ bạn' : ''
+      return h('section', { class: ['event-card', 'phase-' + ev.phase, ev.pending ? 'has-pending' : ''], testid: 'event-card', dataset: { eventId: ev.id, phase: ev.phase, dot: String(ev.pending || 0) } },
         h('div', { class: 'event-card-head' },
           svgBox(icon('phan_trang'), 'event-card-icon'),
           h('div', null,
             h('span', { class: 'event-phase' }, ev.phase === 'sap_dien_ra' ? M.eventSoon : ev.phase === 'dang_dien_ra' ? M.eventActive : 'Ân hạn'),
             h('b', { class: 'event-name' }, ev.name))),
         h('p', { class: 'small' }, ev.phase === 'sap_dien_ra' ? `Mở sau ${durationText(ev.msToStart)}` : ev.phase === 'dang_dien_ra' ? `Còn ${durationText(ev.msToEnd)}` : phaseText(app, ev, app.nowInfo())),
-        ev.phase !== 'sap_dien_ra' ? h('p', { class: 'small' }, `${ev.tem} ${ev.currencyName}` + (owned ? ' · Đã nhận món lễ' : ' · Món lễ đang chờ bạn')) : h('p', { class: 'small' }, ev.desc),
-        h('button', { class: 'btn btn-secondary btn-small', type: 'button', testid: 'open-event', onclick: () => go('event', { eventId: ev.id }) }, 'Xem sự kiện'))
+        ev.phase !== 'sap_dien_ra' ? h('p', { class: 'small' }, `${ev.tem} ${ev.currencyName}` + recipeNote) : h('p', { class: 'small' }, ev.desc),
+        ev.pending ? h('p', { class: 'small event-pending', testid: 'event-pending' }, ev.phase === 'an_han' ? 'Có thưởng chuỗi chờ nhận trước khi hết ân hạn' : 'Có quà sự kiện chờ nhận') : null,
+        h('button', { class: ['btn', ev.pending ? 'btn-primary' : 'btn-secondary', 'btn-small'], type: 'button', testid: 'open-event', onclick: () => go('event', { eventId: ev.id }) },
+          ev.pending ? 'Nhận quà sự kiện' : 'Xem sự kiện'),
+        ev.pending ? redDot(ev.pending, 'event-card-dot') : null)
     }
 
     // ---------- Sự kiện ngày ----------
     function dayEventCard(info) {
-      const lines = dayEffectLines(info.effects, app.data, app.state)
+      // hiệu ứng thật: đã chọn Căng bạt / có Bạt che mưa thì ghi hiệu ứng của lựa chọn (khớp thẻ Dự báo)
+      const lines = dayEffectLines(dayEventEffects(info, app.ctx), app.data, app.state)
       const c = info.choice
       let choiceEl = null
       if (c) {
@@ -323,21 +349,11 @@ export default {
     async function greet(res) {
       const state = app.state
       const nowInfo = app.nowInfo()
-      // thư mới (không chặn thao tác)
       const got = ((res && res.newMail) || []).concat(app.session.pendingMail || [])
       app.session.pendingMail = []
-      const fresh = [...new Set(got)].filter(id => !app.session.mailToastIds.includes(id))
-      if (fresh.length) {
-        app.session.mailToastIds.push(...fresh)
-        const welcome = fresh.includes('chao_mung')
-        app.toast(welcome ? 'Dì Sáu gửi thư chào mừng kèm quà, mở Hộp thư nhận nha!' : `Có ${fresh.length} thư mới trong Hộp thư`, { kind: 'info', testid: 'mail-toast' })
-      }
-      if (nowInfo.rewind && !app.session.rewindNoted) {
-        app.session.rewindNoted = true
-        app.toast(M.rewindLocked, { kind: 'info', duration: 3500 })
-      }
-      // bảng điểm danh: lần đầu trong ngày thật (bỏ qua ca hướng dẫn đầu tiên)
-      if (!isFirstTutorial(state) && app.session.checkinShownDay !== nowInfo.dayKey) {
+      // bảng điểm danh TRƯỚC: lần mở đầu tiên trong ngày thật, kể cả lần đầu mở game (ô 1 "Tuần Khai Trương");
+      // thông báo thư mới xếp sau khi bảng đóng để không chồng lên nhau
+      if (app.session.checkinShownDay !== nowInfo.dayKey) {
         const ck = checkinStatus(state, nowInfo, app.ctx)
         if (ck.canClaim) {
           app.session.checkinShownDay = nowInfo.dayKey
@@ -345,6 +361,24 @@ export default {
           if (destroyed) return
           render()
         }
+      }
+      // thư mới (không chặn thao tác)
+      const fresh = [...new Set(got)].filter(id => !app.session.mailToastIds.includes(id))
+      if (fresh.length) {
+        app.session.mailToastIds.push(...fresh)
+        const welcome = fresh.includes('chao_mung')
+        const one = fresh.length === 1 ? ((state.mail && state.mail.list) || []).find(m => m.id === fresh[0]) : null
+        const others = fresh.length - 1
+        const text = welcome ? `Dì Sáu gửi thư chào mừng kèm quà${others > 0 ? ` và ${others} thư khác` : ''}, mở Hộp thư nhận nha!`
+          : one ? `Thư mới: ${one.title}` : `Vừa có ${fresh.length} thư mới trong Hộp thư`
+        app.toast(text, { kind: 'info', title: welcome ? '' : M.mailbox, icon: icon('thu'), testid: 'mail-toast' })
+      }
+      // việc sự kiện hôm trước đã xong mà quên nhận: đã tự cộng Tem
+      const autos = ((res && res.eventQuestsAuto) || []).concat(app.session.pendingEventAuto || [])
+      app.session.pendingEventAuto = []
+      for (const a of autos) {
+        const ev = app.data.EVENTS && app.data.EVENTS[a.eventId]
+        if (ev) app.toast(`Việc sự kiện ${a.dayKey.slice(8, 10)}/${a.dayKey.slice(5, 7)} đã xong mà chưa nhận: tự cộng ${a.tem} ${ev.currencyName}.`, { kind: 'good', icon: icon('phan_trang'), testid: 'event-auto-toast' })
       }
       // lần đầu đủ điều kiện lên chặng
       const p = state.progression

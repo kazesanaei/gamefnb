@@ -16,14 +16,15 @@ export const MAIL_CONFIG = deepFreeze({
   pushedMemory: 1000,      // số id đã đẩy được nhớ để không đẩy trùng
   // Trần quà (ngoài quà đền bù): tối đa 2 quà lễ/mốc mỗi tháng, quà đời thường tối đa 2 mỗi tháng,
   // tổng tiền quà lễ + đời thường trong tháng không quá 3 lần thu nhập tham chiếu một ca.
-  cap: { countKinds: ['le', 'moc'], maxCount: 2, everydayMax: 2, valueKinds: ['le', 'moc', 'doi_thuong'], valueIncomeMul: 3 },
+  // Tiền đổi Tem dư của sự kiện (kind su_kien, không phải đền bù) cũng tính vào trần tiền của tháng.
+  cap: { countKinds: ['le', 'moc'], maxCount: 2, everydayMax: 2, valueKinds: ['le', 'moc', 'doi_thuong', 'su_kien'], valueIncomeMul: 3 },
   kinds: {
     chao_mung: 'Chào mừng',
     phien_ban: 'Phiên bản mới',
     den_bu: 'Đền bù',
     le: 'Quà lễ',
     doi_thuong: 'Quà đời thường',
-    nhiem_vu: 'Việc hôm nay',
+    nhiem_vu: 'Việc chưa nhận',
     review: 'Review muộn',
     su_kien: 'Sự kiện',
     moc: 'Quà mốc'
@@ -83,10 +84,11 @@ export const MAIL_LATE_REVIEW = deepFreeze({
   body: '{name}: "Về nhà đếm lại mới thấy thối thiếu {amount}. Lần sau quán đếm kỹ giùm nha."'
 })
 
-// Thư nhiệm vụ quên nhận và Rương ngày quên mở.
+// Thư nhiệm vụ quên nhận và Rương ngày quên mở. {when}: "hôm qua" (cách 1 ngày) hoặc "ngày 01/10";
+// {When}: như {when} nhưng viết hoa chữ đầu (đầu câu); {day}: "hôm qua" hoặc "01/10" (đặt sau chữ "ngày").
 export const MAIL_QUEST = deepFreeze({
-  title: 'Việc hôm qua chưa nhận thưởng',
-  body: 'Hôm qua con đã làm xong "{text}" mà quên nhận. Dì gửi lại qua hộp thư nè.',
-  chestTitle: 'Rương ngày chưa mở',
-  chestBody: 'Hôm qua con xong đủ 3 việc mà chưa mở Rương ngày. Dì gửi lại qua hộp thư nè.'
+  title: 'Việc {when} chưa nhận thưởng',
+  body: '{When} con đã làm xong "{text}" mà quên nhận. Dì gửi lại qua hộp thư nè.',
+  chestTitle: 'Rương ngày {day} chưa mở',
+  chestBody: '{When} con xong đủ 3 việc mà chưa mở Rương ngày. Dì gửi lại qua hộp thư nè.'
 })
