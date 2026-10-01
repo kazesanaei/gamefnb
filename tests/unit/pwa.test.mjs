@@ -38,11 +38,12 @@ function expectedFiles() {
 }
 
 // Chạy sw.js trong môi trường giả (Node vm): trả { ctx, listeners, store, calls }.
-function loadServiceWorker({ origin = 'https://bep.example', offline = { on: false } } = {}) {
+// basePath (vd '/gamefnb'): game nằm dưới đường dẫn con như GitHub Pages; tệp ngoài đường dẫn con trả 404.
+function loadServiceWorker({ origin = 'https://bep.example', offline = { on: false }, basePath = '' } = {}) {
   const listeners = {}
   const store = new Map()              // tên cache → Map(url → { body, type })
   const calls = { fetch: [], skipWaiting: 0, claim: 0 }
-  const base = origin + '/sw.js'
+  const base = origin + basePath + '/sw.js'
   const urlOf = r => new URL(typeof r === 'string' ? r : r.url, base)
   const makeResponse = (body, status = 200) => {
     const res = new Response(body, { status, headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
@@ -54,7 +55,9 @@ function loadServiceWorker({ origin = 'https://bep.example', offline = { on: fal
     calls.fetch.push(u.pathname + u.search)
     if (offline.on) throw new TypeError('Mất mạng')
     if (u.origin !== origin) return makeResponse('ngoài', 200)
-    const rel = u.pathname === '/' ? 'index.html' : decodeURIComponent(u.pathname.slice(1))
+    if (!u.pathname.startsWith(basePath + '/')) return makeResponse('Không tìm thấy', 404)
+    const sub = u.pathname.slice(basePath.length)
+    const rel = sub === '/' ? 'index.html' : decodeURIComponent(sub.slice(1))
     const file = path.join(ROOT, rel)
     if (!existsSync(file) || !statSync(file).isFile()) return makeResponse('Không tìm thấy', 404)
     return makeResponse(readFileSync(file))
@@ -98,7 +101,7 @@ function loadServiceWorker({ origin = 'https://bep.example', offline = { on: fal
   }
   const ctx = vm.createContext({ self, caches, fetch: fakeFetch, Request: SwRequest, Response, URL, Promise, console })
   vm.runInContext(read('sw.js'), ctx, { filename: 'sw.js' })
-  return { ctx, listeners, store, calls, offline, origin }
+  return { ctx, listeners, store, calls, offline, origin: origin + basePath }
 }
 
 // Gửi một sự kiện có waitUntil/respondWith; trả { handled, response, waits }.
@@ -132,6 +135,16 @@ test('PRECACHE của sw.js khớp đúng cây thư mục thật (thiếu hay th�
   for (const f of list) assert.ok(!f.startsWith('/') && !f.startsWith('.'), 'đường dẫn phải tương đối: ' + f)
   // biểu tượng bắt buộc
   for (const f of ['icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png']) assert.ok(list.includes(f), f)
+})
+
+test('GitHub Pages: có tệp rỗng .nojekyll ở gốc (giữ tệp tên bắt đầu bằng "_"), không cần nằm trong PRECACHE', () => {
+  // Jekyll của GitHub Pages bỏ qua tệp/thư mục bắt đầu bằng "_" (vd src/ui/minigames/_util.js) → thiếu .nojekyll là hỏng game.
+  const file = path.join(ROOT, '.nojekyll')
+  assert.ok(existsSync(file), 'thiếu tệp .nojekyll ở gốc repo')
+  assert.equal(statSync(file).size, 0, '.nojekyll phải là tệp rỗng')
+  assert.ok(expectedFiles().some(f => f.split('/').some(part => part.startsWith('_'))), 'game có tệp tên bắt đầu bằng "_"')
+  const list = precacheOf(loadServiceWorker())
+  assert.equal(list.includes('.nojekyll'), false, '.nojekyll không phải tệp của game, không đưa vào PRECACHE')
 })
 
 test('VERSION của sw.js và APP_VERSION trùng "version" trong package.json', () => {
@@ -264,6 +277,33 @@ test('service worker: mất mạng vẫn mở trang và tải module (cache trư
   assert.deepEqual(pngSize(Buffer.from(await icon.response.arrayBuffer())), { width: 192, height: 192 })
   // không phải ở máy cục bộ: không tải lại nền → không gọi mạng lần nào
   assert.equal(sw.calls.fetch.length, before, 'cache-first: có tệp trong cache thì không gọi mạng')
+})
+
+test('service worker dưới đường dẫn con /gamefnb/ (GitHub Pages): cài đủ tệp trong /gamefnb/, mất mạng vẫn mở trang', async () => {
+  const sw = loadServiceWorker({ origin: 'https://kazesanaei.github.io', basePath: '/gamefnb' })
+  assert.equal(vm.runInContext('INDEX_URL', sw.ctx), 'https://kazesanaei.github.io/gamefnb/index.html')
+  const list = precacheOf(sw)
+  await dispatch(sw, 'install')
+  await dispatch(sw, 'activate')
+  const cache = sw.store.get('bkn-' + JSON.parse(read('package.json')).version)
+  assert.equal(cache.size, list.length)
+  for (const k of cache.keys()) assert.ok(k.startsWith('https://kazesanaei.github.io/gamefnb/'), 'cất ngoài đường dẫn con: ' + k)
+  assert.ok(sw.calls.fetch.every(p => p.startsWith('/gamefnb/')), 'tải tệp ngoài đường dẫn con: ' + sw.calls.fetch.filter(p => !p.startsWith('/gamefnb/')).join(', '))
+  sw.offline.on = true
+  for (const p of ['/gamefnb/', '/gamefnb/?seed=42', '/gamefnb/index.html']) {
+    const nav = await dispatch(sw, 'fetch', fetchEvent(sw, p.slice('/gamefnb'.length), { mode: 'navigate' }))
+    assert.equal(nav.response.status, 200, p)
+    assert.match(await nav.response.text(), /<title>Bếp Khởi Nghiệp<\/title>/)
+  }
+  const util = await dispatch(sw, 'fetch', fetchEvent(sw, '/src/ui/minigames/_util.js'))
+  assert.equal(util.response.status, 200)
+  // tệp của game tải lúc chạy (chưa có trong cache) cũng được cất theo đường dẫn con
+  sw.offline.on = false
+  const fresh = loadServiceWorker({ origin: 'https://kazesanaei.github.io', basePath: '/gamefnb' })
+  const r = await dispatch(fresh, 'fetch', fetchEvent(fresh, '/css/kitchen.css'))
+  assert.equal(r.response.status, 200)
+  const c2 = fresh.store.get('bkn-' + JSON.parse(read('package.json')).version)
+  assert.ok(c2 && c2.has('https://kazesanaei.github.io/gamefnb/css/kitchen.css'), 'tệp của game dưới /gamefnb/ phải được cất')
 })
 
 test('service worker: bỏ qua yêu cầu khác nguồn và không phải GET; tệp lạ lấy từ mạng', async () => {

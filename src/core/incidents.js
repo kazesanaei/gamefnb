@@ -18,6 +18,7 @@
 //   `needs`, lựa chọn có `outcomes` (tiền bán, tiền thưởng, tiền mất, tiền chi, giá vốn, danh tiếng, hàng hiếm, mảnh
 //   công thức, ngân sách chờ món), trần tự tính (maxLoss/maxGain/maxFine), kết quả bốc 1 lần lúc mở tình huống.
 import { seedFrom, nextFloat, nextInt, pick, weightedPick, chance } from './rng.js'
+import { clearLineMistakes } from './kitchen.js'
 import { cfg, emit, unlockTip, refIncomeFor, defaultIncidents, defaultEventDay, eventFrequency } from './state.js'
 import { formatVND, canMakeChange, minBillsChange, addBills, composeGreedy, drawerTotal, roundCost, COST_STEP, REWARD_STEP } from './money.js'
 import { orderableRecipes, lineKey, customerCount, MAX_CUSTOMERS } from './customer.js'
@@ -653,6 +654,9 @@ const KINDS = {
       const t = sh.tickets.find(x => x.id === det.ticketId)
       const newLine = { recipeId: det.toId, qty: det.qty, notes: [] }
       t.lines[det.lineIndex] = { ...newLine, notes: [] }
+      // dòng đã sang món khác: lần chọn nhầm của món cũ (ghi lúc bỏ món, kitchen ticket.chonMistakes) không mang sang
+      // (cả phiếu về 0 thì bỏ trường, như khi chốt bước Chọn)
+      clearLineMistakes(t, det.lineIndex)
       // yêu cầu thật đổi theo (khách đã đổi ý): món làm ra so với món mới
       const j = (cust.request || []).findIndex(l => lineKey(l) === lineKey({ recipeId: det.fromId, notes: det.notes }) && Number(l.qty) === Number(det.qty))
       if (j >= 0) cust.request[j] = { ...newLine, notes: [] }

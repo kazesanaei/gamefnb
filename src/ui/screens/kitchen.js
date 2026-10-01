@@ -381,7 +381,8 @@ export function mountKitchen(root, app, opts = {}) {
     for (let i = shelf.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [shelf[i], shelf[j]] = [shelf[j], shelf[i]] }
     // ngày 1: lời Dì Sáu nằm ngay trong rổ (đỡ tốn chỗ trên màn dọc)
     const tut = tutorialLine('chon')
-    // rổ đang chọn dở (lưu trong state: về dây phiếu, đổi tab hay tải lại trang đều giữ, kể cả lần chọn nhầm)
+    // rổ đang chọn dở (lưu trong state: về dây phiếu, đổi tab hay tải lại trang đều giữ, kể cả lần chọn nhầm); mở lại
+    // dòng từng bỏ món giữa bước Chọn: rổ trống nhưng mang số lần nhầm cũ (startCook lấy từ ticket.chonMistakes, mục 25)
     const draft = chonDraft(S(), cctx())
     // M4: nguyên liệu hiếm trên kệ hiện "còn n" (số phần trong kho hàng hiếm; nấu thử không trừ kho nên không hiện)
     const INGS = D().INGREDIENTS || {}
@@ -651,7 +652,8 @@ export function mountKitchen(root, app, opts = {}) {
     const recipe = recipeOf(cook.recipeId)
     const notes = noteLabels(recipe, cook.notes)
     const stage = h('div', { class: 'mg-stage' })
-    const wrap = h('div', { class: 'k-stage-wrap' },
+    // data-type: loại mini-game (CSS gọn đầu sân khấu riêng cho bước Chà ở màn thấp — css/kitchen.css)
+    const wrap = h('div', { class: 'k-stage-wrap', dataset: { type: step.type } },
       h('div', { class: 'k-stage-bar' },
         h('span', { class: 'k-stage-dish' }, recipe ? recipe.name : ''),
         method ? h('span', { class: 'k-stage-method' }, (D().METHOD_LABELS || {})[method] || method) : null,
@@ -816,7 +818,8 @@ export function mountKitchen(root, app, opts = {}) {
       if (!ok || destroyed) return
     }
     stopPlay()
-    // bỏ món: phiên nấu (kèm rổ dở cook.chonDraft) bị xóa
+    // bỏ món: phiên nấu (kèm rổ dở cook.chonDraft) bị xóa; số lần chọn nhầm của dòng (giữa bước Chọn hay đã chốt, bỏ trên
+    // Thớt) được ghi lại vào phiếu (ticket.chonMistakes) nên mở lại dòng này không về 0
     const r = abandonDish(S(), cctx())
     if (!r.ok) return
     save()

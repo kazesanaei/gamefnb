@@ -152,22 +152,79 @@ export function startCook(state, ticketId, lineIndex, ctx) {
   const line = ticket.lines[lineIndex]
   if (!line || ticket.done[lineIndex]) return null
   ticket.status = 'dang_lam'
+  // lần chọn nhầm đã mắc ở dòng này trước khi bỏ món (mục 25): phiên mới bắt đầu từ đó (rổ trống), không về 0
+  const carried = lineChonMistakes(ticket, lineIndex)
   sh.cook = {
     ticketId, lineIndex, recipeId: line.recipeId, qty: line.qty || 1, notes: (line.notes || []).slice(),
-    phase: 'chon', picked: [], chonScore: null, chonMistakes: 0,
+    phase: 'chon', picked: [], chonScore: null, chonMistakes: carried,
     steps: {}, activeStepId: null, retriesLeft: 1,
     board: null, cost: { cogs: 0, waste: 0 }, retryPending: null, result: null,
     remake: !!ticket.remake
   }
+  if (carried > 0) sh.cook.chonDraft = { picked: [], mistakes: carried }
   emit(ctx, 'cook.started', { ticketId, lineIndex, recipeId: line.recipeId })
   return sh.cook
+}
+
+// ---------- Lần chọn nhầm theo dòng phiếu (ticket.chonMistakes, mục 25) ----------
+// Bỏ món giữa bước Chọn xóa phiên nấu (kèm rổ dở), nhưng số lần chọn nhầm đã mắc (cả phạt quá giờ) được ghi vào phiếu:
+// ticket.chonMistakes[lineIndex] = số nguyên 0..CHON_DRAFT_MISTAKES_MAX, chỉ tăng. Mở lại đúng dòng đó → phiên nấu mới
+// bắt đầu với số lần nhầm cũ (cook.chonMistakes + rổ dở trống mang lần nhầm) → bỏ món rồi mở lại không né được phạt.
+// Chốt bước Chọn thành công thì dòng đó về 0 (lần nhầm đã vào điểm lượt đó); bỏ món trên Thớt sau đó thì ghi lại số lần
+// nhầm của lượt đã chốt (mở lại phải chọn lại, vẫn mang lần nhầm). Phiếu làm lại (remake) là phiếu mới: không mang lần nhầm
+// của phiếu cũ. Mảng dài đúng bằng ticket.lines; chỉ có trường này khi từng bỏ món có lần nhầm.
+
+// Số lần nhầm hợp lệ: số → số nguyên 0..CHON_DRAFT_MISTAKES_MAX (âm → 0; quá lớn, kể cả Infinity của save sửa tay, → trần);
+// còn lại (chuỗi, null, NaN…) → 0.
+function cleanMistakes(v) {
+  return typeof v === 'number' && !Number.isNaN(v) ? Math.min(CHON_DRAFT_MISTAKES_MAX, Math.max(0, Math.floor(v))) : 0
+}
+
+// Chuẩn hóa ticket.chonMistakes cho phiếu có `lineCount` dòng: mảng đúng `lineCount` phần tử số nguyên 0..99 (thừa thì
+// cắt, thiếu thì thêm 0, hỏng thì 0). Không phải mảng → null (bỏ trường).
+export function normalizeLineMistakes(value, lineCount) {
+  if (!Array.isArray(value)) return null
+  const n = Math.max(0, Math.floor(Number(lineCount) || 0))
+  const out = []
+  for (let i = 0; i < n; i++) out.push(cleanMistakes(value[i]))
+  return out
+}
+
+// Số lần chọn nhầm đã ghi cho dòng `lineIndex` của phiếu (0 nếu chưa có).
+export function lineChonMistakes(ticket, lineIndex) {
+  return ticket && Array.isArray(ticket.chonMistakes) ? cleanMistakes(ticket.chonMistakes[lineIndex]) : 0
+}
+
+// Ghi số lần nhầm của dòng: mode 'max' (bỏ món: chỉ tăng) hoặc 'clear' (chốt bước Chọn: về 0; cả phiếu về 0 thì bỏ trường).
+function recordLineMistakes(ticket, lineIndex, n, mode) {
+  if (!ticket || !Array.isArray(ticket.lines) || !(lineIndex >= 0 && lineIndex < ticket.lines.length)) return
+  if (mode === 'clear') {
+    if (!Array.isArray(ticket.chonMistakes)) return
+    const arr = normalizeLineMistakes(ticket.chonMistakes, ticket.lines.length)
+    arr[lineIndex] = 0
+    if (arr.every(x => x === 0)) delete ticket.chonMistakes
+    else ticket.chonMistakes = arr
+    return
+  }
+  const next = cleanMistakes(n)
+  if (next <= lineChonMistakes(ticket, lineIndex)) return
+  const arr = normalizeLineMistakes(ticket.chonMistakes, ticket.lines.length) || ticket.lines.map(() => 0)
+  arr[lineIndex] = next
+  ticket.chonMistakes = arr
+}
+
+// Xóa lần nhầm đã ghi của một dòng phiếu (dòng đổi sang món khác, vd tình huống "Khách đổi ý"): dòng đó về 0, cả phiếu về 0
+// thì bỏ trường (như khi chốt bước Chọn).
+export function clearLineMistakes(ticket, lineIndex) {
+  recordLineMistakes(ticket, lineIndex, 0, 'clear')
 }
 
 // ---------- Rổ đang chọn dở của bước Chọn (cook.chonDraft) ----------
 // Rổ dở lưu trong phiên nấu (state.shift.cook.chonDraft = {picked, mistakes, overtime?}, JSON thuần) mỗi lần người chơi
 // thêm/bớt nguyên liệu (và lúc vừa quá giờ), để tải lại trang giữa bước Chọn vẫn còn rổ. Phiên nấu thử dùng chung
 // (state.tasting.shift.cook). Rổ dở mất theo phiên nấu: submitChon thành công thì xóa; bỏ món (abandonDish) và món khác
-// (startCook) là phiên mới.
+// (startCook) là phiên mới — nhưng số lần nhầm của dòng đang chọn được ghi vào phiếu (ticket.chonMistakes, mục 25) nên
+// mở lại đúng dòng đó vẫn còn lần nhầm (rổ trống).
 
 // Trần số lần chọn nhầm lưu trong rổ dở (7 lần nhầm đã về 0 điểm).
 export const CHON_DRAFT_MISTAKES_MAX = 99
@@ -273,8 +330,11 @@ export function submitChon(state, picked, mistakes, ctx) {
   spend(state, waste, 'waste')
   cook.cost = { cogs, waste }
   cook.picked = uniq
-  cook.chonMistakes = Math.max(0, Number(mistakes) || 0, savedMistakes)
+  // cook.chonMistakes lúc này là lần nhầm mang sang từ lần bỏ món trước (startCook, mục 25): không thấp hơn được
+  cook.chonMistakes = Math.max(0, Number(mistakes) || 0, savedMistakes, cleanMistakes(cook.chonMistakes))
   delete cook.chonDraft
+  // lần nhầm đã vào điểm bước Chọn: phiếu không cần giữ cho dòng này nữa
+  recordLineMistakes(findTicket(sh, cook.ticketId), cook.lineIndex, 0, 'clear')
   const chon = scoreChon({ required: req.required, optional: req.optional, decoys: req.decoys, picked: uniq, mistakes: cook.chonMistakes })
   cook.chonScore = chon.score
   const labels = cfg(ctx, 'stepLabels')
@@ -460,7 +520,9 @@ export function finishDish(state, ctx) {
   return dish
 }
 
-// Bỏ món: giá vốn đã trừ chuyển sang hao hụt; phiếu quay lại dây.
+// Bỏ món: giá vốn đã trừ chuyển sang hao hụt; phiếu quay lại dây. Bỏ giữa bước Chọn: rổ dở mất theo phiên nấu, số lần
+// chọn nhầm (kể cả phạt quá giờ) ghi vào phiếu theo dòng (ticket.chonMistakes, chỉ tăng) để mở lại không về 0. Bỏ trên Thớt
+// (đã chốt bước Chọn): ghi số lần nhầm đã tính lúc chốt (cook.chonMistakes), cũng chỉ tăng.
 export function abandonDish(state, ctx) {
   const sh = state.shift
   const cook = sh && sh.cook
@@ -469,6 +531,15 @@ export function abandonDish(state, ctx) {
   sh.ledger.cogs -= moved
   sh.ledger.waste += moved
   const ticket = findTicket(sh, cook.ticketId)
+  if (cook.phase === 'chon') {
+    const d = isPlainObject(cook.chonDraft) ? normalizeChonDraft(cook.chonDraft) : null
+    const n = Math.max(cleanMistakes(cook.chonMistakes), d ? d.mistakes + (d.overtime ? 1 : 0) : 0)
+    recordLineMistakes(ticket, cook.lineIndex, n, 'max')
+  } else if (cook.chonScore !== null && cook.chonScore !== undefined) {
+    // bỏ món trên Thớt (đã chốt bước Chọn): mở lại dòng này là chọn lại từ đầu (rổ trống, mua lại nguyên liệu) nhưng vẫn
+    // mang số lần nhầm đã tính ở lượt chốt (cả phạt quá giờ) → chốt rồi bỏ món cũng không né được phạt bước Chọn
+    recordLineMistakes(ticket, cook.lineIndex, cleanMistakes(cook.chonMistakes), 'max')
+  }
   if (ticket && !ticket.done.some(Boolean)) ticket.status = 'cho'
   sh.cook = null
   emit(ctx, 'dish.abandoned', { ticketId: cook.ticketId, lineIndex: cook.lineIndex, recipeId: cook.recipeId, waste: moved })

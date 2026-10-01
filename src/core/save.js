@@ -4,7 +4,7 @@ import {
   defaultState, defaultStats, defaultSettings, defaultMeta, newRecipeProgress, STATE_VERSION, INCIDENT_FREQUENCIES,
   defaultIncidents, defaultNotebook, defaultRare
 } from './state.js'
-import { normalizeChonDraft } from './kitchen.js'
+import { normalizeChonDraft, normalizeLineMistakes } from './kitchen.js'
 
 export const SAVE_KEY = 'bkn.save'
 export const BACKUP_KEY = 'bkn.bak'
@@ -310,13 +310,34 @@ export function migrate(raw, data = null, report = null) {
   migrateMeta(raw, s, data)
   migrateContentM3(raw, s, data)
   migrateContentM4(raw, s, data)
-  // rổ đang chọn dở của bước Chọn: ca thật và phiên nấu thử
-  if (isObj(s.shift)) s.shift = migrateCookDraft(s.shift, data)
+  // rổ đang chọn dở của bước Chọn và lần chọn nhầm theo dòng phiếu: ca thật và phiên nấu thử
+  if (isObj(s.shift)) s.shift = migrateLineMistakes(migrateCookDraft(s.shift, data))
   if (isObj(s.tasting) && isObj(s.tasting.shift)) {
-    const tsh = migrateCookDraft(s.tasting.shift, data)
+    const tsh = migrateLineMistakes(migrateCookDraft(s.tasting.shift, data))
     if (tsh !== s.tasting.shift) s.tasting = { ...s.tasting, shift: tsh }
   }
   return s
+}
+
+// Lần chọn nhầm theo dòng phiếu (ticket.chonMistakes, kitchen.abandonDish — mục 25) của các phiếu trên dây ca `sh`:
+// mảng dài đúng số dòng phiếu, mỗi phần tử số nguyên 0..99 (không phải số → 0, âm → 0, lẻ → làm tròn xuống, thừa dòng thì
+// cắt, thiếu thì thêm 0); không phải mảng (hay phiếu không có mảng dòng) → bỏ trường. Save cũ không có trường này và dữ
+// liệu hợp lệ giữ nguyên (lưu rồi tải lại không đổi). Không sửa object đầu vào: có thay đổi thì trả bản sao nông của ca
+// (mảng phiếu mới, chỉ sao phiếu bị sửa), không thì trả chính `sh`.
+export function migrateLineMistakes(sh) {
+  if (!isObj(sh) || !Array.isArray(sh.tickets)) return sh
+  let changed = false
+  const tickets = sh.tickets.map(t => {
+    if (!isObj(t) || !('chonMistakes' in t)) return t
+    const next = Array.isArray(t.lines) ? normalizeLineMistakes(t.chonMistakes, t.lines.length) : null
+    if (next && JSON.stringify(next) === JSON.stringify(t.chonMistakes)) return t
+    changed = true
+    const t2 = { ...t }
+    if (next) t2.chonMistakes = next
+    else delete t2.chonMistakes
+    return t2
+  })
+  return changed ? { ...sh, tickets } : sh
 }
 
 // Rổ đang chọn dở (cook.chonDraft = {picked, mistakes, overtime?}, kitchen.saveChonDraft) của ca `sh`: picked chỉ giữ id

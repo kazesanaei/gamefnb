@@ -335,7 +335,13 @@
 .mg-chon.is-locked .chon-shelf { opacity: .5; filter: grayscale(.6); }
 
 /* CHA */
+/* Thớt chà: cha.js đặt kích thước (inline) vừa chỗ còn lại của sân khấu trên Thớt (đo lúc mount + ResizeObserver) để mọi
+   vết bẩn / cả thớt lắc nằm trọn phía trên thanh chân dính, không phải cuộn; vùng chơi không ép cao tối thiểu 240px.
+   Cỡ dưới đây chỉ là cỡ mặc định khi sân khấu chưa đo được. */
+.k-layer[data-kind="stage"] .mg-cha .mg-area { min-height: 0; }
 .cha-pad { position: relative; width: 100%; max-width: 360px; height: 280px; border-radius: 50%; background: radial-gradient(circle at 50% 45%, #fff 0 55%, #e6f1f7 56% 100%); box-shadow: inset 0 0 0 4px #cfe3ee; }
+/* thớt dẹt (màn thấp, cha.js bật is-flat): bo tròn hai đầu, đĩa trắng theo elip */
+.cha-pad.is-flat { border-radius: 999px; background: radial-gradient(ellipse at 50% 45%, #fff 0 55%, #e6f1f7 56% 100%); }
 .is-strokes .cha-pad { border-radius: var(--k-radius); background: #f7ead3; box-shadow: inset 0 0 0 4px #e3cda6; }
 .cha-food { position: absolute; left: 50%; top: 50%; width: 200px; height: 200px; transform: translate(calc(-50% + var(--dx, 0px)), -50%); transition: filter .3s; pointer-events: none; }
 .is-strokes .cha-food { transition: transform .08s linear; }
@@ -487,10 +493,13 @@
   .cham-bottle-icon { width: 44px; height: 44px; }
 }
 /* màn thấp (≤ 760px, vd 360×740 trong ca thật): phần trang trí của cảnh thu nhỏ một chút để chỉ báo cần nhìn (kim lửa, vạch
-   rót) nằm trên thanh chân dính, không phải cuộn. Không đổi cách chơi: thớt thái, chỗ chà, chảo đập trứng giữ nguyên kích
-   thước (tọa độ chạm); kim lửa, vạch rót tính theo tỉ lệ nên thu nhỏ hình không đổi điểm. */
+   rót) nằm trên thanh chân dính, không phải cuộn. Không đổi cách chơi: thớt thái, chảo đập trứng giữ nguyên kích thước
+   (tọa độ chạm); kim lửa, vạch rót tính theo tỉ lệ nên thu nhỏ hình không đổi điểm; thớt chà co giãn đều (cha.js: vết theo
+   tọa độ chuẩn hóa, vùng chạm và quãng vuốt theo tỉ lệ, vùng chạm mỗi vết ≥ 44px). */
 @media (max-height: 760px) {
   .k-layer[data-kind="stage"] .mg-stage { padding-top: 8px; }
+  /* chân bước Chà chỉ có thanh tiến độ (không nút) nên không cần cao 44px: nhường chỗ cho thớt chà */
+  .k-layer[data-kind="stage"] .mg-cha .mg-foot { min-height: 0; padding-top: 4px; padding-bottom: 6px; }
   .k-layer[data-kind="stage"] .cham-hand { display: none; }
   .k-layer[data-kind="stage"] .lua-pan { transform: scale(.8); margin: -20px 0; }
   .k-layer[data-kind="stage"] .lua-pan.is-phin { margin: -15px 0 14px; }
@@ -503,6 +512,15 @@
    cắt chỉ tính theo hoành độ nên không đổi điểm); nút chạm nhanh nhỏ lại (chạm chỗ nào trên nút cũng tính). */
 @media (max-height: 700px) {
   .k-stage-bar { padding-top: 4px; }
+  /* bước Chà (ca đông khách, phiếu có ghi chú): tên món và ghi chú chung một dòng, chữ nhỏ hơn, dài thì cắt "…" (tên món
+     nhường trước — phiếu trên dây và đầu sân khấu vẫn ghi món, bước) → thớt chà có thêm ~25px, vừa khung không phải cuộn */
+  .k-stage-wrap[data-type="cha"] .k-stage-bar { flex-wrap: nowrap; gap: 8px; font-size: 13px; line-height: 1.3; white-space: nowrap; }
+  .k-stage-wrap[data-type="cha"] .k-stage-bar > * { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .k-stage-wrap[data-type="cha"] .k-stage-dish { flex-shrink: 1000; min-width: 3em; }
+  .k-stage-wrap[data-type="cha"] .k-stage-method { flex-shrink: 0; }
+  .k-stage-wrap[data-type="cha"] .k-stage-bar .k-notes { display: block; margin-top: 0; }
+  .k-stage-wrap[data-type="cha"] .k-stage-bar .k-note { display: inline; font-size: 13px; }
+  .k-stage-wrap[data-type="cha"] .k-stage-bar .k-note + .k-note { margin-left: 4px; }
   .k-layer[data-kind="stage"] .mg-stage { padding-top: 6px; gap: 6px; }
   .k-layer[data-kind="stage"] .mg-head { gap: 8px; }
   .k-layer[data-kind="stage"] .mg-head-icon { width: 32px; height: 32px; flex-basis: 32px; }

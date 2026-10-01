@@ -31,11 +31,13 @@ export function viewportFromEnv() {
  * Khởi động máy chủ (cổng 0) + Chromium + ngữ cảnh điện thoại. Thu lỗi console/pageerror/HTTP ≥ 400.
  * clock: true → page.clock.install() (giờ thật); { time } → cài đồng hồ giả bắt đầu từ time (ms/Date/chuỗi).
  * viewport (tùy chọn) {width, height}: ghi đè khung nhìn mặc định (vd 360×740).
+ * basePath (tùy chọn, vd '/gamefnb'): phục vụ game dưới đường dẫn con như GitHub Pages; url() tự thêm đường dẫn con.
+ * onResponse (tùy chọn): chuyển cho máy chủ tĩnh, gọi với { method, url, status } sau mỗi yêu cầu.
  * Trả { page, context, browser, server, errors, url(pathAndQuery), shot(name), close() }.
  */
-export async function openGame({ clock = false, name = 'e2e', viewport: vp = null } = {}) {
+export async function openGame({ clock = false, name = 'e2e', viewport: vp = null, basePath = '', onResponse = null } = {}) {
   const { chromium } = loadPlaywright()
-  const server = await startServer(0)
+  const server = await startServer(0, '127.0.0.1', { basePath, onResponse })
   const browser = await chromium.launch()
   const viewport = vp || viewportFromEnv()
   const mobile = viewport.width < 600

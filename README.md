@@ -94,23 +94,41 @@ Mở qua địa chỉ IP vẫn chơi đầy đủ, nhưng các tham số kiểm 
 
 ## Triển khai miễn phí lên Internet
 
-Game là một trang web tĩnh: **không có bước build, không cần máy chủ riêng**. Bạn chỉ cần đưa nguyên thư mục dự án lên một dịch vụ lưu trữ trang tĩnh. Mọi đường dẫn trong game là đường dẫn tương đối nên chạy được cả khi trang nằm trong thư mục con.
+Game là một trang web tĩnh: **không có bước build, không cần máy chủ riêng**. Bạn chỉ cần đưa nguyên thư mục dự án lên một dịch vụ lưu trữ trang tĩnh. Mọi đường dẫn trong game là đường dẫn tương đối nên chạy được cả khi trang nằm trong thư mục con (như `https://<tài-khoản>.github.io/<tên-kho>/`); e2e `tests/e2e/subpath.e2e.mjs` kiểm điều này.
+
+**Hướng dẫn từng bước cho người không chuyên lập trình** (link riêng tư claude.ai để thử nhanh, GitHub Pages, Cloudflare Pages / Netlify, cài vào màn hình chính điện thoại, chơi offline, chuyển dữ liệu giữa các máy): [`docs/huong-dan-trien-khai.md`](docs/huong-dan-trien-khai.md).
+
+Lưu ý chung:
+- Mỗi địa chỉ trang là một bản lưu riêng: link claude.ai, link GitHub Pages, link Cloudflare / Netlify và `localhost` không dùng chung tiến trình. Chuyển tiến trình bằng mã sao lưu (Cài đặt → "Chép mã sao lưu", nơi mới → "Nhập mã sao lưu").
+- Link claude.ai cần đăng nhập claude.ai; chơi offline và cài vào màn hình chính có thể không chạy trong khung đó.
 
 ### GitHub Pages
 
-1. Đưa mã nguồn lên một kho (repository) trên GitHub. Với tài khoản miễn phí, kho cần để chế độ công khai (Public).
-2. **Bắt buộc:** tạo một tệp rỗng tên **`.nojekyll`** ở thư mục gốc của kho (cùng chỗ với `index.html`) rồi đưa lên. GitHub Pages mặc định bỏ qua các tệp có tên bắt đầu bằng dấu gạch dưới, trong khi game có tệp `src/ui/minigames/_util.js`; thiếu `.nojekyll` thì các mini-game không chạy. Cách tạo nhanh trên GitHub: **Add file → Create new file**, đặt tên `.nojekyll`, để trống nội dung, bấm **Commit changes**.
-3. Vào **Settings → Pages** của kho.
-4. Ở mục **Build and deployment**, phần **Source** chọn **Deploy from a branch**.
-5. Phần **Branch** chọn nhánh chứa game (ví dụ `main`) và thư mục **`/ (root)`** (thư mục gốc), rồi bấm **Save**.
-6. Chờ 1–2 phút. Địa chỉ game có dạng `https://<tên-tài-khoản>.github.io/<tên-kho>/`.
+Kho của dự án: `kazesanaei/gamefnb`, nhánh game `claude/fb-business-game-qswti6`. Link sau khi bật: **https://kazesanaei.github.io/gamefnb/**
+
+1. **Kho phải ở chế độ Public** nếu dùng gói GitHub miễn phí (Free). Chuyển ở **Settings → General → Danger Zone → Change repository visibility → Change visibility → Change to public**, rồi xác nhận theo hộp thoại. **Cảnh báo:** toàn bộ mã nguồn, lịch sử thay đổi và mọi tài liệu trong `docs/` sẽ công khai. Muốn giữ kho riêng tư thì dùng GitHub Pro (trả phí; trang game vẫn công khai) hoặc Cloudflare Pages / Netlify bên dưới.
+2. Tệp rỗng **`.nojekyll`** đã có ở thư mục gốc, **đừng xóa**: GitHub Pages (Jekyll) mặc định bỏ qua các tệp có tên bắt đầu bằng dấu gạch dưới, trong khi game có tệp `src/ui/minigames/_util.js`; thiếu `.nojekyll` thì các mini-game không chạy.
+3. Vào **Settings → Pages** của kho (menu trái, mục **Code and automation**).
+4. Ở khung **Build and deployment**, phần **Source** chọn **Deploy from a branch**.
+5. Phần **Branch** chọn nhánh **`claude/fb-business-game-qswti6`** và thư mục **`/ (root)`**, rồi bấm **Save**.
+6. Chờ 1–3 phút, tới khi Settings → Pages hiện "Your site is live at https://kazesanaei.github.io/gamefnb/". Mỗi lần nhánh đó được push thêm thay đổi, Pages tự cập nhật; trong game, thẻ "Có bản mới" hiện ở màn Chuẩn bị.
+
+Thử trên máy tính đúng như khi chạy dưới thư mục con của GitHub Pages: `node tests/helpers/static-server.mjs 8080 /gamefnb` rồi mở **http://localhost:8080/gamefnb/**.
 
 ### Cloudflare Pages
 
 1. Đăng nhập Cloudflare, vào **Workers & Pages → Create → Pages**.
-2. Chọn **Connect to Git** và chọn kho GitHub của game (hoặc chọn **Upload assets** rồi kéo thả cả thư mục game).
+2. Chọn **Connect to Git** và chọn kho GitHub của game (hoặc tải thẳng: **Upload assets** rồi kéo thả thư mục game; cách này không cần kho công khai).
 3. Cấu hình: **Framework preset** chọn **None**; **Build command** để trống (nếu ô này bắt buộc, ghi `exit 0`); **Build output directory** là thư mục gốc (`/`).
 4. Bấm **Save and Deploy**. Địa chỉ có dạng `https://<tên-dự-án>.pages.dev`.
+
+### Netlify
+
+1. Đăng nhập Netlify, chọn **Add new site → Deploy manually**.
+2. Kéo thả thư mục game vào ô tải lên (không cần lệnh build, không cần kho công khai). Địa chỉ có dạng `https://<tên-dự-án>.netlify.app`.
+3. Cập nhật: thẻ **Deploys** → kéo thả thư mục bản mới.
+
+Khi tải thẳng thư mục (Cloudflare Upload assets, Netlify Deploy manually), game chỉ cần `index.html`, `manifest.webmanifest`, `sw.js` và ba thư mục `css/`, `src/`, `icons/`.
 
 ### Vercel
 
@@ -153,7 +171,7 @@ npm run e2e
 ```
 
 - Cần thư viện **Playwright** và trình duyệt **Chromium**. Nếu máy chưa có, cài một lần: `npm install --no-save playwright` rồi `npx playwright install chromium`.
-- Toàn bộ e2e (33 kịch bản) mất khoảng 18 phút.
+- Toàn bộ e2e (khoảng 60 kịch bản) mất khoảng 18 phút.
 - Đặt biến `SHOT_DIR=<thư mục>` để lưu ảnh chụp màn hình trong lúc chạy; `E2E_VIEWPORT=1280x800` để chạy ở khung máy tính.
 
 ---
@@ -177,6 +195,7 @@ tests/fixtures/     dữ liệu mẫu cho test (bản lưu thật của bản 0.
 tools/              dựng biểu tượng, tìm seed cho kiểm thử giao diện
 docs/               tài liệu thiết kế, kiến trúc, cân bằng
 package.json        các lệnh npm (serve, test, e2e)
+.nojekyll           tệp rỗng, bắt buộc cho GitHub Pages (đừng xóa)
 ```
 
 M3 thêm `manifest.webmanifest` (khai báo ứng dụng), `sw.js` (service worker để chơi offline), `icons/` (bộ biểu tượng) và `tools/make-icons.mjs` (dựng biểu tượng PNG). M4 thêm `src/core/rare.js`, `src/data/rare.js`, màn "Lựa hàng" `src/ui/screens/market.js` và `tools/tim-seed.mjs` (tìm seed cho e2e: `node tools/tim-seed.mjs`).

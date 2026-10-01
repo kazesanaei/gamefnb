@@ -23,6 +23,7 @@ Thiết kế gameplay chi tiết: `docs/de-xuat-thiet-ke.md` (bản gốc tham k
 index.html                 trang game (có khối <noscript>/thông báo file:// viết bằng HTML + script thường; gắn manifest, biểu tượng)
 manifest.webmanifest       PWA (M3): tên, màu, biểu tượng 192/512 + maskable, standalone, dọc
 sw.js                      service worker (M3): PRECACHE toàn bộ tệp, cache-first, VERSION = package.json (mục 16)
+.nojekyll                  tệp rỗng cho GitHub Pages (không chạy Jekyll, giữ tệp tên bắt đầu bằng "_"; ngoài PRECACHE, mục 27)
 icons/                     icon.svg (gốc) + icon-192.png, icon-512.png, apple-touch-icon.png (dựng bằng tools/make-icons.mjs)
 tools/make-icons.mjs       dựng PNG từ icon.svg bằng Chromium (Playwright); chạy tay `npm run icons`, PNG được commit
 css/base.css               biến màu, font hệ thống, reset, bố cục khung điện thoại
@@ -60,7 +61,8 @@ tests/e2e/helpers.mjs      nạp Playwright, ngữ cảnh 390×844 cảm ứng (
                            waitController (chờ service worker kích hoạt, đã cất đủ tệp), pollEval(page, fn, arg, {timeout, label})
                            (thăm dò page.evaluate tới khi truthy — thay page.waitForFunction với hàm trả Promise)
 tests/helpers/static-server.mjs  perfect-player.mjs (M3: playShift(state, ctx, { incident: chọn }) và handleIncident
-                           xử lý tình huống trong ca như giao diện ở tab Quầy)
+                           xử lý tình huống trong ca như giao diện ở tab Quầy); static-server: startServer(port, host,
+                           { basePath, onResponse }) — basePath vd '/gamefnb' phục vụ gốc repo dưới đường dẫn con (mục 27)
 docs/                      tài liệu
 package.json
 ```
@@ -72,6 +74,7 @@ Vòng soát lỗi M3 (mục 18.5): test `tests/unit/review-m3-fixes.test.mjs`, e
 M3 nội dung (đã có — mục 17): `core/incidents.js notebook.js recipe-book.js`, `data/incidents.js`, `ui/screens/notebook.js recipe-book.js` (đăng ký trong `SCREENS` của `src/main.js`, có trong PRECACHE của `sw.js`); màn Chuẩn bị gọn (lưới 7 ô lối vào); test `tests/unit/incidents.test.mjs notebook-recipe-book.test.mjs money-rounding.test.mjs`, e2e `tests/e2e/incident-notebook.e2e.mjs`.
 M4 (bản 0.4.0 — mục 19–22): `core/rare.js`, `data/rare.js`, `ui/screens/market.js` (màn "Lựa hàng", có trong `SCREENS` và PRECACHE), sổ tiền sự kiện trong `core/economy.js`, 8 sự kiện ngày và 8 tình huống mới trong dữ liệu; `tools/tim-seed.mjs` (tìm seed cho e2e, ngoài `src/` nên không vào PRECACHE); test `tests/unit/m4-tip.test.mjs m4-frequency.test.mjs m4-events.test.mjs m4-incidents.test.mjs m4-rare.test.mjs m4-save.test.mjs review-m4-fixes.test.mjs`; `tests/fixtures/save-v2.mjs` (save thật của bản 0.3.0 đang dở ca, dùng cho `m4-save`); e2e `tests/e2e/m4-rare.e2e.mjs`, `tests/e2e/m4-tip-events.e2e.mjs` với hàm dựng save dùng chung `tests/helpers/m4-saves.mjs` (mục 23).
 Sửa 2 lỗi tồn đọng sau M4 (mục 24): test `tests/unit/fix-chon-draft.test.mjs`, e2e `tests/e2e/fix-leftovers.e2e.mjs`.
+Triển khai dưới đường dẫn con / GitHub Pages (mục 27): `.nojekyll`, e2e `tests/e2e/subpath.e2e.mjs`, hướng dẫn cho người dùng `docs/huong-dan-trien-khai.md`.
 
 ## 3. package.json
 
@@ -513,7 +516,8 @@ Kiên nhẫn: khách xếp hàng mất kiên nhẫn theo `1/patienceSec` mỗi g
 ## 9. Khâu bếp — `src/core/kitchen.js`
 
 ```js
-Ticket = { id, no /*#001*/, customerId, lines: [ {recipeId, qty, notes} ], createdAt, status: 'cho'|'dang_lam'|'xong', done: [DishResult|null] }
+Ticket = { id, no /*#001*/, customerId, lines: [ {recipeId, qty, notes} ], createdAt, status: 'cho'|'dang_lam'|'xong', done: [DishResult|null],
+  chonMistakes?: [n] }   // mục 25: lần chọn nhầm theo dòng (dài bằng lines, số nguyên 0..99, chỉ tăng), ghi khi bỏ món giữa bước Chọn
 
 CookSession = { ticketId, lineIndex, recipeId, qty, notes,
   phase: 'chon'|'thot'|'xong',
@@ -530,13 +534,19 @@ export function effectiveSteps(recipe, notes, picked = null, qty = 1) → steps[
    // áp removes/patch; bỏ bước của nguyên liệu bị loại, nguyên liệu tùy chọn không được dặn, hoặc (khi có picked) không được chọn;
    // nhân n/N/cuts/strokes/targets × qty; par × (1 + 0,4(qty − 1)); lọc `after` theo bước còn lại
 export function startCook(state, ticketId, lineIndex, ctx) → CookSession | null   // null khi đang nấu dở món khác / dòng đã xong; trừ giá vốn khi chốt bước chọn
+   // (mục 25) dòng có ticket.chonMistakes[lineIndex] = n > 0: cook.chonMistakes = n, cook.chonDraft = {picked: [], mistakes: n} (rổ trống, mang lần nhầm)
 export function submitChon(state, picked, mistakes, ctx) → { ok, blockedMissingMain, missing?, score, errors, cost }   // thiếu nguyên liệu chính → ok:false, không trừ tiền
-   // (mục 24) số lần nhầm tính = max(mistakes, cook.chonDraft.mistakes + (overtime ? 1 : 0)); thành công thì xóa cook.chonDraft
+   // (mục 24) số lần nhầm tính = max(mistakes, cook.chonDraft.mistakes + (overtime ? 1 : 0), cook.chonMistakes mang sang — mục 25);
+   //   thành công thì xóa cook.chonDraft và đưa ticket.chonMistakes[lineIndex] về 0 (cả phiếu về 0 thì bỏ trường)
 // Rổ đang chọn dở (mục 24): lưu mỗi lần thêm/bớt nguyên liệu, tải lại trang giữa bước Chọn vẫn còn rổ và lần nhầm
 export const CHON_DRAFT_MISTAKES_MAX = 99
 export function normalizeChonDraft(draft, shelf?) → { picked, mistakes, overtime? }   // id a-z0-9_ không trùng (chỉ ô trên kệ nếu biết), lần nhầm số nguyên 0..99, overtime chỉ có khi === true
 export function chonDraft(state, ctx) → { picked, mistakes, overtime? } | null           // null khi không ở bước Chọn / chưa có rổ dở
 export function saveChonDraft(state, { picked, mistakes, overtime? }, ctx) → { ok, picked, mistakes, overtime?, raised } | { ok: false, reason }   // lần nhầm chỉ tăng, quá giờ đã bật thì giữ; raised: vừa tăng / vừa quá giờ
+// Lần chọn nhầm theo dòng phiếu (mục 25): bỏ món giữa bước Chọn không xóa được lần nhầm
+export function normalizeLineMistakes(value, lineCount) → [n × lineCount] | null   // số hữu hạn → số nguyên 0..99, còn lại → 0; thừa cắt, thiếu thêm 0; không phải mảng → null
+export function lineChonMistakes(ticket, lineIndex) → n                            // 0 khi chưa có / hỏng
+export function clearLineMistakes(ticket, lineIndex)                              // dòng đổi món ("Khách đổi ý"): dòng về 0, cả phiếu về 0 thì bỏ trường
 export function availableSteps(state) → [stepId]                 // chưa làm, đủ ràng buộc after
 export function submitStep(state, stepId, { score, method, tag?, details? }, ctx) → { ok, score, grade, methodWrong, tag } | { ok:false, reason: 'chua_mo'|'khong_hop_le' }
    // lưu điểm (đã trừ −15 nếu method sai); details.value > 1,0 (lua) → tag 'chay'; details.level > 1,02 (rot) → 'tran'; emit step.done
@@ -544,6 +554,8 @@ export function autoStep(state, stepId, ctx) → { ok, score, grade } | { ok:fal
 export function retryStep(state, stepId, ctx) → { ok, cost, step } | { ok:false, reason }   // 1 lượt/món, trừ retryCost vào ledger.waste; điểm mới tối đa 85
 export function finishDish(state, ctx) → DishResult               // "Ra món": bước chưa làm = 0 điểm; tính Q (scoring.js); ghi vào ticket.done; cook.phase = 'xong'
 export function abandonDish(state, ctx) → { ok, waste }           // bỏ món: giá vốn đã trừ → ledger.waste; phiếu quay lại dây
+   // (mục 25) bỏ giữa bước Chọn: ticket.chonMistakes[lineIndex] = max(cũ, cook.chonMistakes, chonDraft.mistakes + (overtime ? 1 : 0)) (trần 99);
+   //   rổ dở vẫn mất theo phiên nấu; bỏ trên Thớt (đã chốt bước Chọn): ghi max(cũ, cook.chonMistakes) — mở lại phải chọn lại, vẫn mang lần nhầm
 export function serveTicket(state, ticketId, ctx) → ScoreSheet    // khi mọi dòng xong: chấm sao khách, tip, review, danh tiếng; khách 'roi_di'
    // ScoreSheet = {customerId, name, final, tutorial, stars, base, cap, penalties, counterErrors, kitchenErrors, tip, reputation, review, dishes, waitRatio, apologyBonus, complaint}
    // counterErrors có thêm mã 0 sao 'bao_thieu' (báo tổng thiếu), 'thoi_du' (thối dư, kể cả khi khách trả lại), 'qr_gia' (xác nhận ảnh giả):
@@ -688,6 +700,9 @@ export function migrateRare(raw, s, data?) → s   // M4 bước 6: state.rare (
 export function migrateCookDraft(sh, data?) → sh | bản sao nông   // mục 24: cook.chonDraft của ca thật và phiên nấu thử (migrate gọi cuối cùng):
    //   picked chỉ giữ id có trên kệ của món, mistakes số nguyên 0..99; phiên nấu đã qua bước Chọn / rổ sai kiểu → bỏ rổ;
    //   save cũ không có trường này và rổ hợp lệ giữ nguyên; không sửa object đầu vào
+export function migrateLineMistakes(sh) → sh | bản sao nông   // mục 25: ticket.chonMistakes của ca thật và phiên nấu thử (gọi sau migrateCookDraft):
+   //   normalizeLineMistakes theo số dòng phiếu (không phải số → 0, âm → 0, thừa dòng cắt); không phải mảng → bỏ trường;
+   //   save cũ không có trường này và dữ liệu hợp lệ giữ nguyên (lưu rồi tải lại không đổi); không sửa object đầu vào
 // Vòng soát lỗi M3: bản lưu không đọc được (sai checksum, định dạng lạ, save chương trình khác) không bị ghi đè im lặng
 export function unreadableSaves(storage, data?, { keys }?) → [{ key, raw }]      // khóa save/dự phòng có chuỗi không nạp được (trùng thì 1)
 export function archiveUnreadable(storage, ms, data?, { keys }?) → { ok, archived: [khóa] } | { ok: false, reason: 'loi_ghi', archived }
@@ -730,7 +745,7 @@ export default {
 }
 // index.js: export const MINIGAMES = { chon, cha, thai, cham, lua, rot }; export function playStep(stage, step, ctx); export function hintFor(step, data)
 ```
-Handle có thể có thêm `snapshot()` (chon: `{picked, mistakes, overtime?}`); ctx của chon nhận `initial: {picked, mistakes, overtime?}` để khôi phục rổ (và phạt quá giờ đã mắc) khi người chơi về dây phiếu/đổi tab/tải lại trang rồi quay lại, và `onChange(snapshot)` sau mỗi lần chạm ô kệ và lúc vừa quá giờ (bếp lưu `kitchen.saveChonDraft`, màn `market` lưu `rare.saveStallDraft` — chỉ lấy `picked`, `mistakes`). Sân khấu bước trên Thớt (lớp phủ `.k-layer[data-kind="stage"]`) cuộn dọc khi cao hơn panel, thanh chân `.mg-foot` (Xong, Rót, Nhấc…) dính đáy ngay trên thanh tab Quầy/Bếp; mở bước thì bếp cuộn sẵn vừa đủ để vết bẩn (Chà) / chai (Nêm) nằm trọn phía trên thanh chân (mục 24). Bếp chặn "click ma": click của lần chạm bắt đầu trước khi lớp phủ đổi (đóng/mở ở pointerdown) bị bỏ (mục 24). Hỗ trợ thao tác ở bước chọn **không** gợi ý ngay: ô cần lấy chỉ nhấp nháy sau 1,5 × par (thường là 2,5 × par, kèm phạt). Rót (rot) rời tab khi đang giữ: chỉ tạm dừng, lượt đó rót tiếp được, không bật "Xong", không tự kết thúc.
+Handle có thể có thêm `snapshot()` (chon: `{picked, mistakes, overtime?}`); ctx của chon nhận `initial: {picked, mistakes, overtime?}` để khôi phục rổ (và phạt quá giờ đã mắc) khi người chơi về dây phiếu/đổi tab/tải lại trang rồi quay lại, và `onChange(snapshot)` sau mỗi lần chạm ô kệ và lúc vừa quá giờ (bếp lưu `kitchen.saveChonDraft`, màn `market` lưu `rare.saveStallDraft` — chỉ lấy `picked`, `mistakes`). Sân khấu bước trên Thớt (lớp phủ `.k-layer[data-kind="stage"]`) cuộn dọc khi cao hơn panel, thanh chân `.mg-foot` (Xong, Rót, Nhấc…) dính đáy ngay trên thanh tab Quầy/Bếp; mở bước thì bếp cuộn sẵn vừa đủ để chai (Nêm) nằm trọn phía trên thanh chân (mục 24); thớt chà (Chà) tự co vừa chỗ còn lại của sân khấu nên mọi vết bẩn / cả thớt lắc nằm trọn phía trên thanh chân không phải cuộn (mục 26; cuộn sẵn chỉ còn là dự phòng). Bếp chặn "click ma": click của lần chạm bắt đầu trước khi lớp phủ đổi (đóng/mở ở pointerdown) bị bỏ (mục 24). Hỗ trợ thao tác ở bước chọn **không** gợi ý ngay: ô cần lấy chỉ nhấp nháy sau 1,5 × par (thường là 2,5 × par, kèm phạt). Rót (rot) rời tab khi đang giữ: chỉ tạm dừng, lượt đó rót tiếp được, không bật "Xong", không tự kết thúc.
 `details` theo loại (bếp chuyển thẳng vào `submitStep`): chon `{picked, mistakes, tapMistakes, overtime, elapsed}`; cha `{spots[] | reversals, strokes, elapsed}`; thai `{cuts[], extra, guides, elapsed}`; cham `{mode, taps, n, distances | taps, N, T | counts, targets, elapsed}`; lua `{value, zone, shown, elapsed}`; rot `{level, pours, zone, shown, elapsed}`. `rand` là bộ ngẫu nhiên tất định theo seed:ngày:phiếu:dòng:bước nên chơi lại một bước giữ nguyên vạch/vết.
 Mini-game chỉ đo thao tác và gọi hàm chấm trong `core/minigame-scoring.js`; không tự sửa state. Màn `kitchen` nhận `result` rồi gọi `submitStep`. Thời gian đo bằng `performance.now()`. Mỗi bước tự kết thúc ở 2,5 × par (trừ `chon`). Thẻ gợi ý 0,8 s trước bước, chạm để bỏ qua, tự ẩn sau 3 lần nấu món đó.
 
@@ -1024,7 +1039,7 @@ Viết `src/ui/screens/<tên>.js` theo mục 13, import rồi thêm vào bảng 
 - Ba tình huống MVP:
   - `khach_mo_hang` (vui, đầu ca): khách mở hàng 1 ly trà tắc bằng tờ 500.000đ. `thoi_het` (cần két đủ thối; đầu ca két 200.000đ nên thường bị khóa kèm lý do → dạy thẻ "Đủ tiền lẻ đầu ca"), `moi_qr` (cần QR đã mở), `tang` (an toàn: −giá vốn, ca sau +1 khách, tối đa 8; vòng soát lỗi M3: ca sau đã đủ 8 khách — `nextShiftFull` theo `customerCount` của ngày sau — thì chữ cái giá dùng `costFull` và cho ngay `bonusRep` = +2 danh tiếng thay khách thêm; nếu tới ca đó mới đủ khách, vd Chợ phiên, `startShift` đổi khách thêm thành `bonus.rep` danh tiếng; màn Chuẩn bị chỉ ghi "thêm 1 khách" khi số khách dự báo thật sự tăng — `forecastDetail`). Thẻ Mẹo nghề `no_small_change` mở ở mọi lựa chọn.
   - `ghi_no`: khách quen (ưu tiên người không có trong ca) xin ghi nợ 20.000đ cho 2 ly trà tắc. `cho_no` (−giá vốn, +2 danh tiếng; 70% trả trong 3 ca: ngày trả bốc sẵn khi ghi sổ, tiền vào `sh.debtIn` ở đầu ca trả, tính vào lãi ca và `settleShift`; quá hạn thì ghi "chưa trả"), `tu_choi` (an toàn, không tốn gì), `tang` (−giá vốn, +5 danh tiếng). Nợ lưu ở `state.incidents.debts[]` `{id, regularId, name, amount, fromDay, dueDay, repayDay|null, status: 'cho'|'da_tra'|'quen', paidDay?}`.
-  - `doi_y`: khách vừa trả tiền (phiếu mới nhất còn `cho`, chưa nấu) muốn đổi món sang món khác trong thực đơn. `doi_mon` (an toàn: sửa dòng phiếu bếp, yêu cầu, phiếu thu; chênh dương thì thu thêm vào két/QR, chênh âm thì hoàn tiền; mở thẻ "Thu tiền rồi mới gửi bếp"), `tu_choi` (50% khách phật ý: phạt `{code: 'tu_choi_doi_mon', stars: 1, source: 'tinh_huong'}` khi nhận món; không tính là lỗi quầy/bếp, không làm mất "Không tì vết").
+  - `doi_y`: khách vừa trả tiền (phiếu mới nhất còn `cho`, chưa nấu) muốn đổi món sang món khác trong thực đơn. `doi_mon` (an toàn: sửa dòng phiếu bếp (lần chọn nhầm của dòng đó, `ticket.chonMistakes`, về 0 — mục 25), yêu cầu, phiếu thu; chênh dương thì thu thêm vào két/QR, chênh âm thì hoàn tiền; mở thẻ "Thu tiền rồi mới gửi bếp"), `tu_choi` (50% khách phật ý: phạt `{code: 'tu_choi_doi_mon', stars: 1, source: 'tinh_huong'}` khi nhận món; không tính là lỗi quầy/bếp, không làm mất "Không tì vết").
 - Lưu: `state.incidents = { since, recent (≤10), log (≤20, mới nhất trước), debts, bonus: {day, customers} | null, total }`; `migrateContentM3` (trong `migrate`) thêm mặc định và lọc dữ liệu hỏng cho save v1/v2 (STATE_VERSION giữ 2). `compactHistory` ghi `incidents: [{id, choice}]` và `debtIn`.
 - Giao diện: mục 13.2 (hộp thoại chặn → thời gian ca và kiên nhẫn dừng; chỉ ở tab Quầy, giữa hai khách, không chen mini-game). Tổng kết: `summarizeShift` trả thêm `incidents`, `debtIn`, `debtNotes`.
 
@@ -1082,7 +1097,7 @@ Kết quả lần chạy ngày 30/09/2026 (12,5 phút, thoát mã 0): 4 ca chơi
 ### 18.4 Ghi nhận, chưa sửa
 - Ngày 1–2 phần lớn khách tiền mặt đưa vừa đủ: giá 10.000đ/20.000đ trùng mệnh giá, và nhánh "đưa tờ nhỏ nhất ≥ tổng" (45%, đặc tả mục 4.3) thành vừa đủ. Seed 6: ngày 1–2 chỉ 1/8 khách cần thối, nên bước 2 chuỗi "Ngày đầu ra phố" ("Thối đúng 3 lần") thường tới ngày 3–4 mới xong. Đúng đặc tả nhưng nên xem lại ở `docs/can-bang.md` (vd bỏ nhánh "tờ nhỏ nhất" khi tổng đúng bằng một mệnh giá).
 - Đủ điều kiện lên chặng có thể xảy ra ngoài ca (nhận thư/việc cộng danh tiếng): hộp mời hiện khi quay về màn Chuẩn bị, không phải lỗi.
-- GitHub Pages cần tệp rỗng `.nojekyll` ở gốc (Jekyll bỏ qua `src/ui/minigames/_util.js`); tệp ở ngoài phạm vi sửa của vòng này.
+- GitHub Pages cần tệp rỗng `.nojekyll` ở gốc (Jekyll bỏ qua `src/ui/minigames/_util.js`); tệp ở ngoài phạm vi sửa của vòng này. (Đã thêm ở mục 27.)
 - Tên dài trong dải "Chờ món" (ô rộng 62px) bị cắt, vd "Bạn N…" (tên đầy đủ ở `title`).
 
 ### 18.5 Vòng soát lỗi M3 (tóm tắt thay đổi)
@@ -1282,7 +1297,8 @@ lỗi ở Thái, Rót, Nhấc của Lửa). Sửa ở `css/kitchen.css`:
   kim), chảo `scale(.7)`; cảnh rót `scale(.6)`; lọ gia vị và ly cạnh nhau; nút chạm nhanh 160px; thớt thái thấp 210px (vạch và
   nguyên liệu dời lên; nhát cắt chỉ tính theo hoành độ). Không đổi cách chơi: kích thước thớt thái (bề ngang), chỗ chà, chảo
   đập trứng giữ nguyên (tọa độ chạm); kim lửa và vạch rót tính theo tỉ lệ. Chỗ chà/thớt cao vẫn có thể phải cuộn ở 360×600
-  (vết bẩn của bước Chà: bếp tự cuộn sẵn khi mở bước, xem vòng kiểm chứng bên dưới).
+  (vết bẩn của bước Chà: bếp tự cuộn sẵn khi mở bước, xem vòng kiểm chứng bên dưới). Đã thay ở mục 26: thớt chà co theo
+  chỗ còn lại (vết theo tọa độ chuẩn hóa, vùng chạm và quãng vuốt theo tỉ lệ), không phải cuộn.
 
 **Lỗi 2 — rổ đang chọn dở ở bước Chọn mất khi tải lại trang** (trước chỉ giữ trong bộ nhớ giao diện `ui.chonDraft`; tải lại
 là rổ trống và số lần chọn nhầm về 0 → chọn nhầm rồi tải lại để được 100 điểm). Sửa:
@@ -1324,5 +1340,132 @@ này, đều qua sau khi sửa):
   thì bếp cuộn sẵn sân khấu vừa đủ (`revealTargets`: mép dưới mục tiêu thấp nhất + 4px lên trên thanh chân, không đẩy mục tiêu
   cao nhất khuất đầu sân khấu). Chỉ cuộn — vị trí, kích thước mục tiêu, chỗ chà giữ nguyên; đầu sân khấu (tên bước, hướng dẫn,
   thanh giờ) có thể khuất một phần. E2E (g1) Nêm 3 khách chờ, (g2) rửa dưa leo, gọt xoài ở 360×600 (chà bằng kéo tại chỗ, ≥ 90
-  điểm).
-- Không sửa (đúng yêu cầu): bỏ món ở bước Chọn xóa rổ dở kèm lần nhầm (yêu cầu ghi rõ xóa rổ dở khi bỏ món; bản gốc cũng vậy).
+  điểm). Bước Chà: đã thay ở mục 26 (thớt co vừa khung, không phải cuộn; `revealTargets` chỉ còn là dự phòng khi chỗ còn lại
+  thấp hơn sàn).
+- Không sửa ở vòng này (đúng yêu cầu lúc đó): bỏ món ở bước Chọn xóa rổ dở kèm lần nhầm (bản gốc cũng vậy). Đã sửa ở mục 25:
+  rổ vẫn xóa, lần nhầm giữ theo dòng phiếu.
+
+## 25. Giữ số lần chọn nhầm theo dòng phiếu khi bỏ món (01/10/2026)
+
+**Lỗi**: bấm "Bỏ món" ở bước Chọn nguyên liệu (`abandonDish`) xóa phiên nấu kèm rổ dở và số lần chọn nhầm; mở lại đúng dòng
+phiếu đó là phiên mới 0 lần nhầm → chọn nhầm, bỏ món, mở lại để được 100 điểm (né phạt −15 mỗi lần nhầm, cả phạt quá giờ).
+Tái hiện trước khi sửa (ca thật, ?devNow, 360×640): chọn nhầm 1 lần → ‹ Phiếu → Bỏ món → mở lại → `cook.chonMistakes` 0,
+bước Chọn 100 điểm; bỏ món rồi F5 cũng vậy.
+
+**Sửa** (lõi, không đổi cách chơi khác):
+- `core/kitchen.js`: phiếu có thêm `chonMistakes?: [n]` (dài bằng `lines`, số nguyên 0..`CHON_DRAFT_MISTAKES_MAX`, JSON thuần).
+  `abandonDish` khi phiên nấu đang ở bước Chọn ghi `max(cũ, cook.chonMistakes, chonDraft.mistakes + (overtime ? 1 : 0))` cho
+  dòng đó (chỉ tăng; bỏ món không lần nhầm thì không thêm trường); rổ (`picked`) vẫn xóa như cũ. `startCook` cùng dòng khởi
+  tạo `cook.chonMistakes` từ giá trị đó và rổ dở trống mang lần nhầm (`chonDraft = {picked: [], mistakes}`) → giao diện truyền
+  `initial.mistakes` cho plugin Chọn qua `chonDraft(state)` như khi tải lại trang (không đổi `ui/minigames/chon.js`).
+  `submitChon` lấy max như cũ, thêm `cook.chonMistakes` mang sang; thành công thì dòng đó về 0 (cả phiếu về 0 thì bỏ trường).
+  Lượt mở lại là lượt mới ở kệ: đếm giờ lại từ đầu (phạt quá giờ lượt trước đã thành 1 lần nhầm; quá giờ lần nữa phạt thêm).
+  Bỏ món trên Thớt (đã chốt bước Chọn, vòng kiểm chứng bên dưới): ghi lại `cook.chonMistakes` của lượt đã chốt (chỉ tăng) →
+  mở lại phải chọn lại (mua lại nguyên liệu) và vẫn mang lần nhầm. Phiếu làm lại theo khiếu nại (`remake`) là phiếu mới: không
+  mang lần nhầm cũ. Nấu thử: phiếu nằm ở `state.tasting.shift`, không đụng phiếu ca thật.
+- `core/incidents.js` ("Khách đổi ý" → Đổi món): dòng đổi sang món khác thì lần nhầm của món cũ ở dòng đó về 0
+  (`kitchen.clearLineMistakes`: cả phiếu về 0 thì bỏ trường, như khi chốt bước Chọn).
+- `core/save.js`: `migrateLineMistakes` (mục 12) làm sạch `ticket.chonMistakes` của ca thật và phiên nấu thử (không phải
+  số → 0, âm → 0, lẻ → làm tròn xuống, > 99 → 99, thừa dòng cắt, thiếu thêm 0, không phải mảng → bỏ); save cũ không có
+  trường này nạp như cũ; dữ liệu hợp lệ lưu rồi tải lại không đổi. Không tăng `STATE_VERSION` (trường tùy chọn).
+- `ui/screens/kitchen.js`: chỉ cập nhật chú thích (đường `chonDraft` → `initial` đã có từ mục 24).
+
+**Kiểm chứng**: `tests/unit/fix-chon-line-mistakes.test.mjs` (13 test: lưu theo dòng và 85 điểm khi mở lại; phiếu 2 dòng giữ
+riêng; chỉ tăng, trần 99; quá giờ +1; không lần nhầm không thêm trường; bỏ món trên Thớt ghi lần nhầm đã chốt; remake không mang; nấu thử tách biệt;
+"Khách đổi ý" đổi món về 0, từ chối giữ; chuẩn hóa; migrate làm sạch, không sửa đầu vào; round-trip ca thật + nấu thử, F5
+sau bỏ món; save v2 nạp và chơi tiếp). Chạy trên mã trước khi sửa: 11/12 trượt (test còn lại kiểm "không thêm trường khi
+không cần"). `tests/unit/fix-chon-draft.test.mjs`: sửa có chủ ý một khẳng định cũ ghi đúng hành vi lỗi ("quay lại món cũ sau
+khi bỏ: không mang lần nhầm cũ" → nay `{picked: [], mistakes: 1}`). E2E `tests/e2e/fix-line-mistakes.e2e.mjs` (ca thật,
+?devNow, chạm cảm ứng): (a) 360×640 chọn nhầm → Bỏ món → mở lại: rổ trống, save mang 1 lần nhầm → Xong → nhãn nổi và save
+85 điểm, phiếu không giữ nữa; (b) 390×844 bỏ món rồi F5 ngay → vẫn 85; (c) 360×600 quá giờ → Bỏ món → mở lại → 85. Trên mã
+trước khi sửa: 3/3 trượt.
+
+**Vòng kiểm chứng độc lập** (tái hiện từng phát hiện; sửa cái đúng và trong phạm vi, kèm test hồi quy):
+- **Chốt bước Chọn rồi Bỏ món trên Thớt vẫn né được phạt** (cùng bản chất với lỗi gốc, có từ trước): `submitChon` đưa dòng về
+  0, bỏ món trên Thớt không ghi → mở lại chọn lại được 100 (cái giá chỉ là mua lại nguyên liệu). Sửa: `abandonDish` ở phase
+  `thot` (đã có `chonScore`) ghi `cook.chonMistakes` của lượt đã chốt vào `ticket.chonMistakes[lineIndex]` (chỉ tăng; không nhầm
+  thì không thêm trường). Unit "bỏ món trên Thớt … ghi lại lần nhầm" (55 → bỏ → mở lại 55, quá giờ 70 → 70, tải lại giữ); E2E
+  (d) 360×640 nhầm → Xong 85 → Bỏ món trên Thớt → mở lại → 85 (trước: 100).
+- **"Khách đổi ý" để lại `[0]`/`[0, 0]`**: nay gọi `kitchen.clearLineMistakes` (cả phiếu về 0 thì bỏ trường, như khi chốt).
+  `cleanMistakes(Infinity)` (save sửa tay có `1e400`) → 99 (trần) thay vì 0.
+- Không sửa (ngoài phạm vi, sửa sẽ đổi cách chơi): đồng hồ bước Chọn đếm lại từ 0 mỗi lần plugin được mount (‹ Phiếu → Làm
+  tiếp, F5, mở lại sau khi bỏ món) — `createClock` không lưu thời gian đã trôi, nên về dây phiếu ngay trước giới hạn thì không bị
+  phạt quá giờ (phạt đã mắc vẫn giữ); nên làm riêng (lưu `elapsed` vào rổ dở, truyền qua `initial`). Màn Chọn không hiện con
+  số lần nhầm mang sang: màn này vốn không có bộ đếm lần nhầm, hiện bộ đếm (kể cả chỉ sau khi tải lại / mở lại) sẽ cho người
+  chơi biết ngay lần chạm nào là nhầm — đổi cách chơi; Dì Sáu vẫn nhắc "Chọn nguyên liệu còn chạm nhầm" sau khi ra món.
+
+## 26. Bước Chà vừa khung ở màn thấp (01/10/2026)
+
+**Lỗi**: thớt chà (`ui/minigames/cha.js`) cao cố định ~250–280px, vết bẩn đặt theo px lúc mount → ở 360×600 và 360×640 (đặc
+biệt ca đông 3 khách chờ, dải phố cao) 1–4 vết nằm dưới thanh chân dính `.mg-foot`, phải cuộn sân khấu mới thấy, mà vuốt trên
+thớt (`touch-action: none`) thì không cuộn được; thớt lắc/xé bị thanh chân che nửa dưới. Mục 24 chỉ cuộn sẵn khi mở bước.
+
+**Sửa** (không đổi cách chơi / chấm điểm; mini-game khác giữ nguyên):
+- Đơn vị chuẩn: thớt chuẩn `PAD_W × PAD_H` = 360 × 280 (bằng thớt cũ); thớt thật = khung chuẩn × tỉ lệ k (px / đơn vị).
+  `room()` đo chỗ còn lại của sân khấu = chiều cao sân khấu − đầu − chân − khoảng cách − đệm, lúc mount (chân đã có dòng chữ giữ
+  chỗ) và mỗi lần `ResizeObserver` báo sân khấu / đầu / chân đổi cỡ (khách mới làm dải phố cao lên, xoay máy, thanh địa chỉ).
+  Sân khấu chưa hiện → `null` (thớt chuẩn); đã hiện mà hết chỗ (h ≤ 0, vd xoay ngang) → thớt cỡ sàn (không phải thớt to nhất).
+- Vết bẩn (`params.spots`): `fitSpotsBox(availW, availH) → {k, wr, hr}` — đủ cao thì thớt chuẩn thu theo bề ngang như cũ; thấp
+  thì k theo chiều cao còn lại, sàn `MIN_SCALE` = 44 / (2 × 40) = 0,55 (vùng chạm mỗi vết ≥ 44px), khung rộng ra theo bề ngang
+  còn trống và dẹt lại, thấp nhất `PAD_MIN_HR` = 80 đơn vị (một hàng vết, 44px); thớt dẹt bo tròn hai đầu (`.is-flat`). Vết lưu
+  theo tọa độ chuẩn hóa `{nx, ny}` 0..1 (`spotLayout`: khung chuẩn rải như cũ — elip 98 × 78,4, cách 64; khung dẹt elip dẹt,
+  rộng ra giữ diện tích), đặt bằng `left/top` %, cỡ vết 60·k px. `rubSpots`: vùng chạm (30 + 10)·k, độ sạch tăng `seg / k /
+  need` (quãng vuốt cần `SPOT_NEED_PX`·k px) → cùng đường vuốt theo tỉ lệ sạch như nhau ở mọi cỡ thớt; đổi cỡ giữa chừng giữ
+  độ sạch và vị trí tương đối.
+- Lắc / trộn / bóp / xé (`params.strokes`): `fitStrokesHeight` — cao vừa chỗ còn lại, không quá thớt chuẩn theo bề ngang, không
+  dưới `STROKE_MIN_H` = 56px (cách chơi chỉ đếm đổi chiều theo bề ngang; vẫn rộng hơn vùng chạm 44px).
+- CSS (`css/kitchen.css`): `.k-layer[data-kind="stage"] .mg-cha .mg-area { min-height: 0 }`; `@media (max-height: 760px)` chân
+  bước Chà (chỉ thanh tiến độ, không nút) không ép cao 44px; `@media (max-height: 700px)` đầu sân khấu bước Chà một dòng
+  (`.k-stage-wrap[data-type="cha"]` — `kitchen.startStep` gắn `data-type` = loại bước): tên món và ghi chú chung dòng, chữ 13px,
+  dài thì cắt "…" (tên món nhường trước, tối thiểu 3em; phiếu trên dây và đầu sân khấu vẫn ghi món, bước) — thớt có thêm ~27px.
+- `revealTargets` (mục 24) chỉ còn là dự phòng khi chỗ còn lại thấp hơn sàn.
+
+**Giới hạn**: chỗ còn lại thấp hơn sàn (44px một hàng vết, 56px thớt lắc) thì sân khấu vẫn cuộn như trước. Trong mọi khung
+được kiểm (kể cả 360×600, 3 khách chờ, phiếu 3 món + 2 ghi chú) không gặp; xoay ngang 640×360 panel Bếp gần 0px (có từ trước,
+ngoài phạm vi) — thớt về cỡ sàn.
+
+**Kiểm chứng**: `tests/unit/cha-fit.test.mjs` (9 test: sàn tỉ lệ, vùng chạm ≥ 44px; đủ chỗ thì như cũ, thiếu chỗ thì vừa khung;
+chưa đo → thớt chuẩn, hết chỗ → thớt sàn; đổi cỡ giữa chừng; vết trong khung, không chồng, kể cả thớt dẹt / một hàng; bố trí ở
+thớt chuẩn giống bản gốc; cùng đường vuốt cùng độ sạch và điểm ở mọi k; vuốt ngoài vùng chạm; thớt lắc vừa chỗ, sàn 56px).
+E2E `tests/e2e/fix-leftovers.e2e.mjs` (h): 9 ca vết bẩn + 8 ca lắc/xé/trộn ở 360×600, 360×640, 390×844 — gồm ca đông 3 khách
+với ghi chú (Tây Ninh + Thêm trứng cút / Không rau răm, Bánh tráng trộn + Không rau răm, Trà tắc mật ong + Không đá) và phiếu 3
+món + 2 ghi chú: sân khấu không cuộn, thớt và mọi vết trọn giữa đầu sân khấu và thanh chân, tâm từng vết trúng thớt, vùng chạm
+≥ 44px, chà / vuốt bằng cảm ứng thật → điểm cao (lắc 100); đồng hồ trang đóng băng trong lúc vuốt (chạm qua CDP chậm hơn
+ngón tay thật khi máy bận — điểm chỉ đo độ sạch / số lượt, không phải tốc độ bộ test). (g2) đổi khẳng định cũ "cần cuộn" thành
+"không phải cuộn". Các ca ghi chú / phiếu 3 món đều trượt trên mã trước vòng kiểm chứng (tràn 14–45px, thớt khuất dưới
+thanh chân). Ma trận đo độc lập (Chromium cảm ứng ở khung điện thoại, chuột ở 1280×800; đồng hồ đóng băng lúc
+vuốt): mọi bước Chà của mọi món × 7 khung × 1/3 khách (252 ca), 108 ca một ghi chú ở 360×600 / 360×640 có 3 khách, 64 ca phiếu
+3 món + 2 ghi chú ở 360×600 / 360×640 — đều không tràn (thừa 0px), thớt và vết trọn khung, vùng chạm ≥ 44px, 100 điểm; thớt thấp
+nhất 60px (vết) và 78px (lắc), trên sàn. Ca đông có cả khách xếp hàng không làm dải phố cao thêm.
+
+## 27. Chạy dưới đường dẫn con — GitHub Pages (01/10/2026)
+
+**Mục tiêu**: chơi được ở `https://kazesanaei.github.io/gamefnb/` (GitHub Pages của kho dự án nằm dưới đường dẫn con
+`/gamefnb/`, không ở gốc tên miền). Hướng dẫn cho người dùng (link claude.ai, bật Pages, cài vào màn hình chính, dữ liệu theo
+từng trình duyệt, Cloudflare Pages / Netlify): `docs/huong-dan-trien-khai.md`; tóm tắt ở README mục "Triển khai".
+
+- `.nojekyll` (tệp rỗng ở gốc): GitHub Pages mặc định chạy Jekyll, bỏ qua tệp/thư mục bắt đầu bằng `_` →
+  `src/ui/minigames/_util.js` 404, mọi mini-game hỏng. Không phải tệp của game nên không vào PRECACHE (`pwa.test.mjs` chỉ
+  đối chiếu `src/`, `css/`, `icons/`; test mới kiểm tệp có, rỗng, không nằm trong PRECACHE).
+- Soát đường dẫn: game không có đường dẫn tuyệt đối `/…` — `index.html` (manifest, biểu tượng, CSS, `src/main.js`), manifest
+  (`id`/`start_url`/`scope` `./`, biểu tượng tương đối), `main.js` đăng ký `./sw.js` (scope = thư mục trang), `sw.js` (PRECACHE
+  tương đối, `INDEX_URL = new URL('index.html', self.location)`, `isGameFile` so theo scope), CSS bếp nạp động bằng
+  `new URL('../../../css/kitchen.css', import.meta.url)`. Không phải sửa code game.
+- `tests/helpers/static-server.mjs`: `startServer(port = 0, host = '127.0.0.1', { basePath = '', onResponse = null })`.
+  `basePath` '' giữ hành vi cũ; `'/gamefnb'` (chuẩn hóa bằng `normalizeBasePath`) phục vụ gốc repo dưới `/gamefnb/` như GitHub
+  Pages: `/gamefnb` (thiếu `/` cuối) → 301 sang `/gamefnb/` giữ query, ngoài `/gamefnb/` → 404 (đường dẫn tuyệt đối trong game
+  lộ ra ngay). `url` trả về đã gồm đường dẫn con; `onResponse({method, url, status})` gọi sau mỗi yêu cầu. Chạy tay:
+  `node tests/helpers/static-server.mjs 8080 /gamefnb` → `http://localhost:8080/gamefnb/`. `openGame` (e2e helpers) nhận thêm
+  `basePath`, `onResponse`.
+- Kiểm chứng: unit `core-static-server.test.mjs` (+2: đường dẫn con — 301 giữ query, theo chuyển hướng ra trang, MIME, tệp `_`,
+  ngoài đường dẫn con 404, HEAD; không truyền `basePath` thì như cũ), `pwa.test.mjs` (+2: `.nojekyll`; chạy `sw.js` trong vm ở
+  `https://kazesanaei.github.io/gamefnb/sw.js` — cài đủ PRECACHE, mọi khóa cache và mọi lần tải nằm dưới `/gamefnb/`, mất mạng
+  vẫn trả trang cho `/gamefnb/`, `/gamefnb/?seed=…`, `/gamefnb/index.html`, tệp tải lúc chạy được cất theo đường dẫn con).
+  E2E `tests/e2e/subpath.e2e.mjs` (Chromium 390×844 cảm ứng, localStorage trống, máy chủ chỉ phục vụ `/gamefnb/`): vào
+  `/gamefnb?seed=42&test=1` → chuyển sang `/gamefnb/` → manifest (`start_url`, `scope` = `/gamefnb/`, biểu tượng 200), mọi
+  `link`/`script` dưới `/gamefnb/` → đặt tên xe → mở hàng → phục vụ 1 khách qua 4 khâu (≥ 4 sao, save ghi đã phục vụ) → service
+  worker kích hoạt, `scope`/`scriptURL`/controller ở `/gamefnb/`, cache `bkn-<VERSION>` chỉ chứa URL dưới `/gamefnb/` (có
+  `_util.js`, `kitchen.css`) → chơi hết ca → ngày 2 → `context.setOffline(true)` → tải lại vẫn vào màn mở đầu, Chuẩn bị (Ngày 2),
+  mở ca, có khách. Không yêu cầu nào trượt khỏi `/gamefnb/`, không HTTP ≥ 400 (soát ở máy chủ qua `onResponse`, nên tính
+  cả yêu cầu do service worker gửi), không lỗi console. Thử phá có chủ ý (bản sao trong thư mục tạm): đổi `href="css/base.css"` thành `/css/base.css` →
+  trượt "tài nguyên ngoài đường dẫn con"; đăng ký `'/sw.js'` → trượt "service worker chưa kích hoạt".

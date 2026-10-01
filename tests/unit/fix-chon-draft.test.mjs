@@ -133,10 +133,11 @@ test('bỏ món / sang món khác: rổ dở mất theo phiên nấu, món mới
   assert.ok(c2)
   assert.equal('chonDraft' in c2, false)
   assert.equal(chonDraft(state, ctx), null, 'món khác: rổ trống')
-  // quay lại món cũ sau khi bỏ: cũng rổ trống, không mang lần nhầm cũ
+  // quay lại món cũ sau khi bỏ: rổ trống nhưng lần nhầm của dòng đó vẫn còn (mục 25, ticket.chonMistakes);
+  // chi tiết ở tests/unit/fix-chon-line-mistakes.test.mjs
   abandonDish(state, ctx)
   startCook(state, 'p1', 0, ctx)
-  assert.equal(chonDraft(state, ctx), null)
+  assert.deepEqual(chonDraft(state, ctx), { picked: [], mistakes: 1 })
 })
 
 test('save v3 có rổ dở (ca thật và nấu thử) lưu rồi tải lại giống hệt', () => {

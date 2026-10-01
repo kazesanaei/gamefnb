@@ -14,7 +14,15 @@
 //      chạm thẻ gợi ý đúng chỗ nút Xong sắp hiện không chốt bước Nêm 0 điểm; chạm bảng công bố món không giao nhầm phiếu.
 //  (f) Quá giờ bước Chọn rồi đổi tab, tải lại trang: phạt quá giờ vẫn tính (cờ overtime trong rổ dở) → 85 điểm.
 //  (g) Màn thấp: ca đông 3 khách chờ (360×600) chai Nêm trọn phía trên thanh chân; bước Chà (rửa dưa leo, gọt xoài) ở
-//      360×600 mọi vết bẩn trọn phía trên thanh chân — sân khấu tự cuộn vừa đủ khi mở bước.
+//      360×600 mọi vết bẩn trọn phía trên thanh chân, không phải cuộn.
+//  (h) Bước Chà vừa khung: thớt chà co theo chỗ còn lại của sân khấu (vết theo tọa độ chuẩn hóa, vùng chạm ≥ 44px) — ở
+//      360×600 (3 khách chờ, kể cả ghi chú "Thêm trứng cút" làm đầu sân khấu cao thêm), 360×640, 390×844: sân khấu không
+//      cuộn, mọi vết trọn trong khung giữa đầu sân khấu và thanh chân, elementFromPoint tại tâm từng vết trúng thớt; chà
+//      sạch hết bằng cảm ứng thật (touchStart/Move/End) → điểm cao. Bước lắc/xé (xé khô mực, bóp muối) cũng nằm trọn trên
+//      thanh chân, vuốt cảm ứng đủ lượt → 100 điểm. (Trước đây ở 360×600 có 3 khách chờ, 1–3 vết nằm dưới thanh chân dính,
+//      thớt lắc bị thanh chân che nửa dưới.) Thêm các ca đông khách có ghi chú / phiếu 3 món (Tây Ninh + Thêm trứng cút, Không
+//      rau răm; Trà tắc mật ong + Không đá…): đầu sân khấu bước Chà gọn một dòng ở màn ≤ 700px, sàn thớt lắc 56px, sàn
+//      thớt vết 44px → vẫn trọn khung, không cuộn.
 // Save dựng bằng lõi thật: 4 ca người chơi hoàn hảo (seed 3, mức tần suất Ít), mở ca ngày 5, khách đầu gọi đúng món cần thử,
 // phiếu đã kẹp lên dây; (a) nấu sẵn bằng lõi tới khi bước Nêm mở.
 import test from 'node:test'
@@ -39,19 +47,24 @@ const OPEN_URL = '/?devNow=2026-09-30T09:02'
 // Ca thật đang dở: khách đầu gọi `line`, phiếu đã kẹp. stopAt (tùy chọn): nấu sẵn dòng 0 bằng lõi (chọn đủ, các bước 100 điểm)
 // tới khi bước stopAt mở ('all': làm hết các bước, chỉ còn Ra món). tickets: số phiếu trên dây (khách sau gọi Trà tắc —
 // ca đông, dải phố cao). cooks: số lần đã nấu món (< 3 thì thẻ gợi ý hiện trước mỗi bước). Trả { state, ticket }.
+// line.extra (tùy chọn): id các món thêm vào cùng phiếu đầu (phiếu nhiều dòng, dây phiếu cao hơn).
 function shiftSave(line, stopAt = null, { tickets = 1, cooks = null } = {}) {
   const { state } = playedSave(SEED, 4, { name: 'Xe Sửa Lỗi', freq: 'it' })
   const R = DATA.RECIPES[line.recipeId]
+  const extra = line.extra || []
   if (!state.recipes[line.recipeId]) state.recipes[line.recipeId] = newRecipeProgress(0)
   if (cooks !== null) state.recipes[line.recipeId].cooks = cooks
-  for (const ing of Object.keys(R.rare || {})) state.rare.stock[ing] = Math.max(Number(state.rare.stock[ing]) || 0, 4)
+  for (const rid of [line.recipeId, ...extra]) {
+    if (!state.recipes[rid]) state.recipes[rid] = newRecipeProgress(0)
+    for (const ing of Object.keys(DATA.RECIPES[rid].rare || {})) state.rare.stock[ing] = Math.max(Number(state.rare.stock[ing]) || 0, 4)
+  }
   const ctx = makeMetaCtx({ at: SHIFT_AT, attach: true })
   ctx.setState(state)
   refreshMeta(state, makeNowInfo(state, ctx.clock.t), ctx)
   const sh = startShift(state, ctx)
   for (let i = 0; i < tickets; i++) {
     sh.customers[sh.plan[i].customerId].request = i === 0
-      ? [{ recipeId: line.recipeId, qty: 1, notes: (line.notes || []).slice() }]
+      ? [{ recipeId: line.recipeId, qty: 1, notes: (line.notes || []).slice() }, ...extra.map(rid => ({ recipeId: rid, qty: 1, notes: [] }))]
       : [{ recipeId: 'tra_tac', qty: 1, notes: [] }]
   }
   for (let guard = 0; sh.tickets.length < tickets; guard++) {
@@ -541,7 +554,7 @@ for (const c of [
         }
       })
       await g.shot('cha')
-      assert.ok(m.over > 0, 'màn thấp: sân khấu cao hơn panel (cần cuộn)')
+      assert.ok(m.over <= 1, `thớt chà vừa chỗ còn lại: sân khấu không phải cuộn (thừa ${m.over}px)`)
       assert.ok(m.spots.length >= 3)
       for (const sp of m.spots) {
         assert.ok(sp.top >= m.stageTop - 0.5 && sp.bottom <= m.footTop + 0.5, `${sp.id} trọn phía trên thanh chân (${sp.top}–${sp.bottom}, thanh chân ${m.footTop})`)
@@ -559,6 +572,163 @@ for (const c of [
       }
       const s = await waitSave(page, st => st.shift.cook && st.shift.cook.steps[c.stepId])
       assert.ok(s.shift.cook.steps[c.stepId].score >= 90, `chà sạch mọi vết: ${s.shift.cook.steps[c.stepId].score} điểm`)
+      assert.deepEqual(errors, [], 'có lỗi console/trang')
+    } finally {
+      await g.close()
+    }
+  })
+}
+
+// ---------- (h) Bước Chà vừa khung ở màn thấp ----------
+
+// Vuốt cảm ứng thật qua CDP (touchStart → touchMove… → touchEnd): Chromium sinh pointer events loại touch như ngón tay.
+// Mỗi điểm cách nhau ~1 khung hình để pointermove không bị gộp mất các lần đổi chiều.
+async function touchSwipe(page, cdp, points) {
+  const [first, ...rest] = points
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: first.x, y: first.y }] })
+  for (const p of rest) {
+    await page.waitForTimeout(12)
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: p.x, y: p.y }] })
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+}
+
+// Đóng băng đồng hồ trang trong lúc vuốt: mỗi sự kiện chạm qua CDP chậm hơn ngón tay thật (nhất là khi máy chạy bận) nên
+// điểm chỉ phản ánh độ sạch / số lượt, không phụ thuộc tốc độ của bộ test (phạt chậm > 2 × par không phải điều cần đo ở đây).
+async function freezePageClock(page) {
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 60)
+}
+
+// Đo sân khấu Chà: tràn cuộn, đầu sân khấu, thanh chân, thanh tab, thớt và từng vết (elementFromPoint tại tâm).
+async function measureCha(page) {
+  return page.evaluate(() => {
+    const st = document.querySelector('[data-testid="minigame-stage"][data-type="cha"]')
+    const pad = st.querySelector('[data-testid="cha-area"]')
+    const rect = e => { const r = e.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height } }
+    const hitsPad = (x, y) => { const at = document.elementFromPoint(x, y); return !!(at && (at === pad || pad.contains(at))) }
+    const p = rect(pad)
+    return {
+      vw: innerWidth, vh: innerHeight, over: st.scrollHeight - st.clientHeight, scrollTop: st.scrollTop,
+      head: rect(st.querySelector('.mg-head')), foot: rect(st.querySelector('.mg-foot')),
+      tab: rect(document.querySelector('.tabbar')), pad: p,
+      padHits: [[0.5, 0.5], [0.2, 0.5], [0.8, 0.5], [0.5, 0.2], [0.5, 0.8]].map(([fx, fy]) => hitsPad(p.left + p.width * fx, p.top + p.height * fy)),
+      spots: [...st.querySelectorAll('.cha-spot')].map(e => {
+        const r = rect(e)
+        const x = r.left + r.width / 2
+        const y = r.top + r.height / 2
+        return { id: e.dataset.testid, x, y, size: r.width, top: r.top, bottom: r.bottom, left: r.left, right: r.right, hit: hitsPad(x, y) }
+      })
+    }
+  })
+}
+
+// Kiểm tra chung: không cuộn, thớt và mọi vết nằm trọn giữa đầu sân khấu và thanh chân, trong khung nhìn, trên thanh tab.
+function assertChaFits(m, label) {
+  assert.ok(m.over <= 1 && m.scrollTop === 0, `${label}: sân khấu không phải cuộn (thừa ${m.over}px, đã cuộn ${m.scrollTop})`)
+  assert.ok(m.foot.bottom <= m.tab.top + 0.5, `${label}: thanh chân trên thanh tab`)
+  assert.ok(m.pad.top >= m.head.bottom - 0.5 && m.pad.bottom <= m.foot.top + 0.5, `${label}: thớt trọn giữa đầu sân khấu và thanh chân (${m.pad.top}–${m.pad.bottom}, chân ${m.foot.top})`)
+  assert.ok(m.pad.left >= 0 && m.pad.right <= m.vw + 0.5, `${label}: thớt không lòi ra mép`)
+  for (const sp of m.spots) {
+    assert.ok(sp.top >= m.head.bottom - 0.5 && sp.bottom <= m.foot.top + 0.5, `${label}: ${sp.id} trọn phía trên thanh chân (${sp.top}–${sp.bottom}, chân ${m.foot.top})`)
+    assert.ok(sp.left >= 0 && sp.right <= m.vw + 0.5 && sp.bottom <= m.vh, `${label}: ${sp.id} trong khung nhìn`)
+    assert.ok(sp.hit, `${label}: tâm ${sp.id} trúng thớt (bấm được)`)
+    // vùng chạm = bán kính vết + 10 (theo tỉ lệ) → đường kính = 4/3 cỡ vết, tối thiểu 44px
+    assert.ok(sp.size * 4 / 3 >= 44 - 0.5, `${label}: ${sp.id} vùng chạm ${(sp.size * 4 / 3).toFixed(1)}px ≥ 44px`)
+  }
+}
+
+const CHA_FIT_CASES = [
+  { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_mi_op_la', stepId: 'rua_dua' },
+  { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_trang_tron', stepId: 'got_xoai' },
+  { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_trang_tron', stepId: 'boc_trung_cut', notes: ['them_trung_cut'] },
+  { vp: { width: 360, height: 640 }, tickets: 3, recipeId: 'che_buoi', stepId: 'got_vo' },
+  { vp: { width: 360, height: 640 }, tickets: 1, recipeId: 'banh_trang_tron', stepId: 'got_xoai' },
+  { vp: { width: 390, height: 844 }, tickets: 3, recipeId: 'banh_mi_op_la', stepId: 'rua_dua' },
+  // ca đông + phiếu có ghi chú (dây phiếu và đầu sân khấu cao hơn): trước vòng kiểm chứng thớt chạm sàn 48px, sân khấu tràn
+  // 14–18px phải tự cuộn, vùng chạm vài vết bị thanh chân che một phần
+  { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_trang_tron_tay_ninh', stepId: 'got_xoai', notes: ['them_trung_cut'] },
+  { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_trang_tron_tay_ninh', stepId: 'boc_trung_cut', notes: ['khong_rau_ram'] },
+  { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_trang_tron_tay_ninh', stepId: 'boc_trung_cut', notes: ['khong_rau_ram', 'them_trung_cut'], extra: ['banh_mi_trung_ga_ta', 'tra_tac_mat_ong'] }
+]
+
+for (const c of CHA_FIT_CASES) {
+  const label = `${c.vp.width}×${c.vp.height} ${c.tickets} phiếu ${c.recipeId}.${c.stepId}${c.notes ? ' (' + c.notes.join(',') + ')' : ''}${c.extra ? ' + ' + c.extra.join(',') : ''}`
+  test(`(h) bước Chà vừa khung ${label}: mọi vết trong khung, không cuộn, chà sạch bằng cảm ứng → điểm cao`, { timeout: 240000 }, async () => {
+    const g = await openGame({ clock: true, name: `cha-vua-${c.vp.width}x${c.vp.height}-${c.recipeId}-${c.stepId}-${c.tickets}${c.notes ? '-' + c.notes.length + 'gc' : ''}${c.extra ? '-' + (c.extra.length + 1) + 'mon' : ''}`, viewport: c.vp })
+    const { page, errors } = g
+    try {
+      const { state } = shiftSave({ recipeId: c.recipeId, notes: c.notes || [], extra: c.extra }, c.stepId, { tickets: c.tickets, cooks: 5 })
+      const n = state.shift.cook.board.find(s => s.id === c.stepId).params.spots
+      await openShiftKitchen(g, state)
+      await page.waitForSelector(T('board'))
+      await openBoardStep(page, c.stepId)
+      await page.waitForSelector(`${T('minigame-stage')}[data-type="cha"] ${T('cha-area')}`)
+      const m = await measureCha(page)
+      await g.shot('cha-vua-khung')
+      assert.equal(m.spots.length, n, 'đủ số vết')
+      assertChaFits(m, label)
+      // chà từng vết bằng ngón tay: qua lại ngang tâm vết, biên độ 0,4 cỡ vết (trong vùng chạm)
+      const cdp = await page.context().newCDPSession(page)
+      await freezePageClock(page)
+      for (const sp of m.spots) {
+        const a = sp.size * 0.4
+        const pts = [{ x: sp.x - a, y: sp.y }]
+        for (let k = 0; k < 6; k++) pts.push({ x: sp.x, y: sp.y }, { x: sp.x + a, y: sp.y }, { x: sp.x, y: sp.y }, { x: sp.x - a, y: sp.y })
+        await touchSwipe(page, cdp, pts)
+      }
+      await page.clock.resume()
+      const s = await waitSave(page, st => st.shift.cook && st.shift.cook.steps[c.stepId])
+      const done = s.shift.cook.steps[c.stepId]
+      assert.ok(done.score >= 90, `chà sạch mọi vết bằng cảm ứng: ${done.score} điểm`)
+      assert.deepEqual(errors, [], 'có lỗi console/trang')
+    } finally {
+      await g.close()
+    }
+  })
+}
+
+for (const c of [
+  { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_trang_tron_tay_ninh', stepId: 'xe_kho_muc' },
+  { vp: { width: 360, height: 640 }, tickets: 3, recipeId: 'che_buoi', stepId: 'bop_muoi' },
+  // ca đông + phiếu có ghi chú: trước vòng kiểm chứng thớt lắc kẹt ở sàn 96px, khuất 13–43px dưới thanh chân
+  { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_trang_tron_tay_ninh', stepId: 'xe_kho_muc', notes: ['them_trung_cut'] },
+  { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_trang_tron_tay_ninh', stepId: 'tron', notes: ['khong_rau_ram'] },
+  { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_trang_tron', stepId: 'tron', notes: ['khong_rau_ram'] },
+  { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'tra_tac_mat_ong', stepId: 'lac', notes: ['khong_da'] },
+  { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_trang_tron_tay_ninh', stepId: 'xe_kho_muc', notes: ['khong_rau_ram', 'them_trung_cut'], extra: ['banh_mi_trung_ga_ta', 'tra_tac_mat_ong'] },
+  { vp: { width: 360, height: 640 }, tickets: 3, recipeId: 'banh_trang_tron_tay_ninh', stepId: 'tron', notes: ['khong_rau_ram', 'them_trung_cut'], extra: ['banh_mi_trung_ga_ta', 'tra_tac_mat_ong'] }
+]) {
+  const label = `${c.vp.width}×${c.vp.height} ${c.tickets} phiếu ${c.recipeId}.${c.stepId}${c.notes ? ' (' + c.notes.join(',') + ')' : ''}${c.extra ? ' + ' + c.extra.join(',') : ''}`
+  test(`(h) bước lắc/xé vừa khung ${label}: thớt trọn phía trên thanh chân, vuốt cảm ứng đủ lượt → 100 điểm`, { timeout: 240000 }, async () => {
+    const g = await openGame({ clock: true, name: `cha-lac-${c.vp.width}x${c.vp.height}-${c.recipeId}-${c.stepId}${c.notes ? '-' + c.notes.length + 'gc' : ''}${c.extra ? '-' + (c.extra.length + 1) + 'mon' : ''}`, viewport: c.vp })
+    const { page, errors } = g
+    try {
+      const { state } = shiftSave({ recipeId: c.recipeId, notes: c.notes || [], extra: c.extra }, c.stepId, { tickets: c.tickets, cooks: 5 })
+      const strokes = state.shift.cook.board.find(s => s.id === c.stepId).params.strokes
+      await openShiftKitchen(g, state)
+      await page.waitForSelector(T('board'))
+      await openBoardStep(page, c.stepId)
+      await page.waitForSelector(`${T('minigame-stage')}[data-type="cha"] ${T('cha-area')}`)
+      const m = await measureCha(page)
+      await g.shot('cha-lac-vua-khung')
+      assert.equal(m.spots.length, 0)
+      assertChaFits(m, label)
+      assert.ok(m.padHits.every(Boolean), `${label}: giữa và bốn phía thớt đều chạm được`)
+      // vuốt qua lại ngang giữa thớt (± 70px, quá ngưỡng đổi chiều 22px) đủ số lượt
+      const cdp = await page.context().newCDPSession(page)
+      const cx = m.pad.left + m.pad.width / 2
+      const cy = m.pad.top + m.pad.height / 2
+      const pts = [{ x: cx, y: cy }]
+      for (let k = 0; k <= strokes + 1; k++) {
+        const to = k % 2 ? -70 : 70
+        for (let i = 1; i <= 4; i++) pts.push({ x: cx + (to * i) / 4, y: cy })
+        for (let i = 3; i >= 0; i--) pts.push({ x: cx + (to * i) / 4, y: cy })
+      }
+      await freezePageClock(page)
+      await touchSwipe(page, cdp, pts)
+      await page.clock.resume()
+      const s = await waitSave(page, st => st.shift.cook && st.shift.cook.steps[c.stepId])
+      assert.equal(s.shift.cook.steps[c.stepId].score, 100)
       assert.deepEqual(errors, [], 'có lỗi console/trang')
     } finally {
       await g.close()
