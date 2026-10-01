@@ -188,11 +188,17 @@
 .k-layer[hidden] { display: none; }
 .k-layer[data-kind="stage"] { align-items: stretch; background: var(--k-bg); }
 .k-layer[data-kind="reveal"] { align-items: center; background: rgba(59, 42, 31, .6); }
+/* bảng chọn / hỏi lại nằm trong panel Bếp (đã ở trên thanh tab, thanh tab lo vùng an toàn; màn Nấu thử tự chừa vùng an
+   toàn ở đáy màn): không cộng vùng an toàn lần nữa. Panel thấp hơn bảng (màn thấp) thì bảng cuộn trong khung panel,
+   không bị cắt mất đầu. */
+.k-layer:is([data-kind="sheet"], [data-kind="prompt"], [data-kind="confirm"]) { padding-top: 8px; }
 .k-sheet {
-  width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 10px;
-  padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--k-paper);
+  width: 100%; max-width: 480px; max-height: 100%; overflow-y: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 16px; background: var(--k-paper);
   border-radius: 18px 18px 0 0; box-shadow: var(--k-shadow); animation: k-up .18s var(--ease, ease-out);
 }
+.k-sheet > * { flex-shrink: 0; }
 .k-sheet-title { margin: 0; font-size: 18px; }
 .k-sheet p { margin: 0; }
 .k-methods { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }

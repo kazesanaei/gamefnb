@@ -1,6 +1,6 @@
 // Panel Quầy: Order → Thanh toán → Tính tiền (→ kẹp phiếu, khách sang Làm đồ).
 // Vẽ lại toàn bộ panel khi state quầy đổi; trạng thái giao diện tạm (bảng trượt, số đang gõ) giữ ở `ui`.
-import { h, svgBox, flash } from '../dom.js'
+import { h, svgBox, flash, createPortal } from '../dom.js'
 import { face, icon, fakeQrSvg, DI_SAU } from '../art.js'
 import {
   addLine, updateLine, removeLine, readback, confirmOrder, reportTotal, priceOfLines, unitPriceOf,
@@ -35,6 +35,9 @@ export function mountCounter(root, app, opts = {}) {
   let ui = freshUi(null)
   let sig = ''
   let destroyed = false
+  // Bảng chọn món gắn ở lớp nổi gốc của app, KHÔNG nằm trong panel Quầy (vùng cuộn): iOS Safari cắt lớp phủ nằm trong
+  // vùng cuộn theo khung panel nên thanh tab Quầy/Bếp che mất nút "Thêm vào phiếu" (lỗi trên iPhone thật).
+  const sheetPortal = createPortal(app.overlay || root)
 
   function freshUi(customerId) {
     return { customerId, sheet: null, talk: [], digits: '', readback: null, noChangeKey: '', assistFilled: false, lastAdded: null, stageKey: null }
@@ -80,7 +83,7 @@ export function mountCounter(root, app, opts = {}) {
     const scroll = el.scrollTop
     el.textContent = ''
     el.dataset.stage = c ? c.stage : ''
-    if (!s) return
+    if (!s) { sheetPortal.set(null); return }
     if (!c || !customer) {
       el.appendChild(renderIdle(s))
     } else {
@@ -88,8 +91,9 @@ export function mountCounter(root, app, opts = {}) {
       if (c.stage === 'order') el.appendChild(renderOrder(customer, c))
       else if (c.stage === 'thanh_toan') el.appendChild(renderPayment(customer, c))
       else if (c.stage === 'tinh_tien') el.appendChild(renderCashier(customer, c))
-      if (customer.tutorial) applyGlow(c)
     }
+    paintSheet(c, customer)
+    if (c && customer && customer.tutorial) applyGlow(c)
     el.scrollTop = scroll
     sig = stateSig()
     ui.lastAdded = null
@@ -99,6 +103,20 @@ export function mountCounter(root, app, opts = {}) {
       ui.stageKey = stageKey
       if (c) revealStage(c.stage)
     }
+  }
+
+  // Bảng chọn món (chỉ ở khâu Order): vẽ lại cùng panel. Bảng đang mở mà vẽ lại (khách mới xếp hàng, đổi số lượng…)
+  // thì không chạy lại hiệu ứng trượt lên và giữ chỗ đang cuộn trong thân bảng.
+  function paintSheet(c, customer) {
+    if (!ui.sheet || !c || !customer || c.stage !== 'order') { ui.sheet = null; sheetPortal.set(null); return }
+    const prev = sheetPortal.node()
+    const prevBody = prev && prev.querySelector('.sheet-body')
+    const top = prevBody ? prevBody.scrollTop : 0
+    const node = renderSheet(c)
+    if (prev) node.classList.add('is-steady')
+    sheetPortal.set(node)
+    const body = node.querySelector('.sheet-body')
+    if (body && top) body.scrollTop = top
   }
 
   function revealStage(stage) {
@@ -246,7 +264,6 @@ export function mountCounter(root, app, opts = {}) {
           rerender()
         }
       }, 'Chốt order')))
-    if (ui.sheet) body.appendChild(renderSheet(c))
     return body
   }
 
@@ -307,18 +324,20 @@ export function mountCounter(root, app, opts = {}) {
           svgBox(icon(r.icon || r.id), 'dish-icon'),
           h('div', null, h('b', { class: 'sheet-title' }, r.name), h('div', { class: 'muted' }, formatVND(unit) + ' / phần')),
           h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Đóng', testid: 'sheet-close', onclick: close }, '✕')),
-        h('div', { class: 'qty-row' },
-          h('span', null, S.labels.qty),
-          h('button', { class: 'qty-btn', type: 'button', testid: 'qty-minus', disabled: sheet.qty <= 1, onclick: () => setQty(sheet.qty - 1), 'aria-label': 'Bớt' }, '−'),
-          h('b', { class: 'qty-value', testid: 'qty-value' }, String(sheet.qty)),
-          h('button', { class: 'qty-btn', type: 'button', testid: 'qty-plus', disabled: sheet.qty >= qtyMax, onclick: () => setQty(sheet.qty + 1), 'aria-label': 'Thêm' }, '+'),
-          r && r.source === 'hiem' ? h('small', { class: 'sheet-rare muted' }, `★ còn ${rareMax} phần`) : null),
-        notes.length ? h('div', { class: 'note-block' },
-          h('div', { class: 'note-title' }, S.labels.notes),
-          h('div', { class: 'note-chips' }, notes.map(n => h('button', {
-            class: ['note-chip', sheet.notes.includes(n.id) ? 'on' : ''], type: 'button', testid: 'note-chip-' + n.id,
-            'aria-pressed': sheet.notes.includes(n.id) ? 'true' : 'false', onclick: () => toggle(n)
-          }, n.label, n.surcharge ? h('small', null, ' +' + formatVND(n.surcharge)) : null)))) : null,
+        // thân bảng cuộn được khi khung nhìn thấp; đầu bảng và hàng nút luôn thấy
+        h('div', { class: 'sheet-body' },
+          h('div', { class: 'qty-row' },
+            h('span', null, S.labels.qty),
+            h('button', { class: 'qty-btn', type: 'button', testid: 'qty-minus', disabled: sheet.qty <= 1, onclick: () => setQty(sheet.qty - 1), 'aria-label': 'Bớt' }, '−'),
+            h('b', { class: 'qty-value', testid: 'qty-value' }, String(sheet.qty)),
+            h('button', { class: 'qty-btn', type: 'button', testid: 'qty-plus', disabled: sheet.qty >= qtyMax, onclick: () => setQty(sheet.qty + 1), 'aria-label': 'Thêm' }, '+'),
+            r && r.source === 'hiem' ? h('small', { class: 'sheet-rare muted' }, `★ còn ${rareMax} phần`) : null),
+          notes.length ? h('div', { class: 'note-block' },
+            h('div', { class: 'note-title' }, S.labels.notes),
+            h('div', { class: 'note-chips' }, notes.map(n => h('button', {
+              class: ['note-chip', sheet.notes.includes(n.id) ? 'on' : ''], type: 'button', testid: 'note-chip-' + n.id,
+              'aria-pressed': sheet.notes.includes(n.id) ? 'true' : 'false', onclick: () => toggle(n)
+            }, n.label, n.surcharge ? h('small', null, ' +' + formatVND(n.surcharge)) : null)))) : null),
         h('div', { class: 'sheet-actions' },
           editing ? h('button', {
             class: 'btn btn-danger', type: 'button', testid: 'remove-line',
@@ -657,7 +676,9 @@ export function mountCounter(root, app, opts = {}) {
   function applyGlow(c) {
     const step = tutorialStep(c)
     if (!step) return
-    const target = el.querySelector(`[data-testid="${step}"]`)
+    const sel = `[data-testid="${step}"]`
+    const sheetNode = sheetPortal.node()
+    const target = (sheetNode && sheetNode.querySelector(sel)) || el.querySelector(sel)
     if (target) target.classList.add('glow')
   }
 
@@ -677,7 +698,7 @@ export function mountCounter(root, app, opts = {}) {
     },
     onShow() { render() },
     onHide() { if (ui.sheet) { ui.sheet = null; render() } },
-    unmount() { destroyed = true; el.remove() }
+    unmount() { destroyed = true; sheetPortal.set(null); el.remove() }
   }
 }
 

@@ -66,6 +66,24 @@ export function replace(el, ...children) {
   return el
 }
 
+/**
+ * Chỗ gắn một lớp phủ (bảng trượt, hộp tự vẽ) ra NGOÀI vùng cuộn của màn, thường là lớp nổi gốc của app (app.overlay
+ * trong #app): iOS Safari cắt mọi phần tử con của vùng cuộn — kể cả position: fixed — theo khung vùng cuộn, nên lớp phủ
+ * nằm trong panel cuộn bị thanh tab che mất phần dưới. → { set(node | null) → node, node() → node đang gắn }.
+ * set(node) gỡ lớp cũ (nếu khác) rồi gắn node mới vào host; set(null) chỉ gỡ.
+ */
+export function createPortal(host) {
+  let current = null
+  function set(node) {
+    if (node === current) return current
+    if (current) current.remove()
+    current = node || null
+    if (current && host) host.appendChild(current)
+    return current
+  }
+  return { set, node: () => current }
+}
+
 /** Gắn tạm class (vd hiệu ứng rung) rồi gỡ. */
 export function flash(el, cls, ms = 400) {
   if (!el) return

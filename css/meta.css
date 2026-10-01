@@ -156,7 +156,7 @@
 .stage-card.is-ready { background: linear-gradient(135deg, #fff1c8 0%, #fffaf0 70%); border-color: var(--yellow); }
 
 /* ---------- Khung các màn M2 ---------- */
-.meta-screen { display: flex; flex-direction: column; min-height: 100%; padding: 0 0 24px; }
+.meta-screen { display: flex; flex-direction: column; min-height: 100%; padding: 0 0 calc(24px + var(--safe-bottom)); }
 .meta-head {
   position: sticky; top: 0; z-index: 10; display: flex; flex-direction: column; gap: 6px;
   padding: 8px var(--gutter) 10px; background: var(--bg); border-bottom: 1px solid var(--line);
@@ -254,7 +254,8 @@
 .bag-icon svg { width: 100%; height: 100%; }
 
 /* ---------- Nấu thử ---------- */
-.tasting-screen { position: absolute; inset: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+/* màn Nấu thử không có thanh tab: tự chừa vùng an toàn ở đáy (thanh Home iPhone) cho thanh nút của bếp */
+.tasting-screen { position: absolute; inset: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); padding-bottom: var(--safe-bottom); }
 .tasting-head { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: #2f5a3a; color: #fff8e0; }
 .tasting-head .meta-back { color: #fff8e0; border-color: rgba(255, 248, 224, .45); }
 .tasting-title { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; font-size: 17px; line-height: 1.2; }
