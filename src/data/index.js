@@ -20,6 +20,7 @@ import { DAY_EVENTS, DAY_EVENT_CONFIG } from './day-events.js'
 import { STAGE_UP, POST_GOALS } from './progression.js'
 import { INCIDENTS, INCIDENT_CONFIG } from './incidents.js'
 import { RARE_CONFIG, STALLS, STRANGERS } from './rare.js'
+import { TOURS, TOUR_SCREENS, HOW_TO_PLAY } from './tours.js'
 
 export const DATA = Object.freeze({
   BALANCE, INGREDIENTS, RECIPES, METHOD_LABELS, MINIGAME_TYPES,
@@ -35,7 +36,9 @@ export const DATA = Object.freeze({
   // M3: tình huống trong ca, thưởng đủ nhóm Sổ tay nghề
   INCIDENTS, INCIDENT_CONFIG, TIP_GROUP_REWARDS,
   // M4: nguyên liệu và công thức hiếm (phiên hàng, khách lạ)
-  RARE_CONFIG, STALLS, STRANGERS
+  RARE_CONFIG, STALLS, STRANGERS,
+  // 0.4.1: hướng dẫn lần đầu (tour) và trang Cách chơi
+  TOURS, TOUR_SCREENS, HOW_TO_PLAY
 })
 
 export {
@@ -47,5 +50,6 @@ export {
   CHAINS, NPCS, CHAIN_WHERE, SHOP, ITEMS, COSMETICS, TITLES, UNLOCKS,
   EVENTS, DAY_EVENTS, DAY_EVENT_CONFIG, STAGE_UP, POST_GOALS,
   INCIDENTS, INCIDENT_CONFIG, TIP_GROUP_REWARDS,
-  RARE_CONFIG, STALLS, STRANGERS
+  RARE_CONFIG, STALLS, STRANGERS,
+  TOURS, TOUR_SCREENS, HOW_TO_PLAY
 }

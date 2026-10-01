@@ -34,6 +34,7 @@ import { notebookBadge, randomSeenTip } from '../../core/notebook.js'
 import { incidentBonusFor, pendingDebts } from '../../core/incidents.js'
 import { stallStatus, rareOverview, rarePortions, rareConfig } from '../../core/rare.js'
 import { starText } from './market.js'
+import { helpButton } from '../components/help.js'
 
 function pickRandom(arr) {
   return arr.length ? arr[Math.floor(Math.random() * arr.length)] : null
@@ -209,15 +210,16 @@ export default {
       const dayEv = dayEventInfo(state, state.day, app.ctx)
       const forecast = forecastCustomers(state, app.ctx, dayEv)
 
-      // Đầu màn: tên xe, Muỗng Vàng, ngày, Tiền quán / danh tiếng / sao
+      // Đầu màn: tên xe, Muỗng Vàng, nút "?" — hàng này dính đầu màn khi cuộn (tour tự cuộn xuống tới Mở hàng vẫn thấy "?")
+      el.appendChild(h('div', { class: 'prep-toprow' },
+        h('div', { class: 'prep-shop' }, state.shopName),
+        h('div', { class: 'prep-topend' }, spoonPill(state.goldSpoons || 0, 'prep-spoons'), helpButton(app))))
+      // ngày, Tiền quán / danh tiếng / sao
       el.appendChild(h('header', { class: 'prep-head' },
-        h('div', { class: 'prep-toprow' },
-          h('div', { class: 'prep-shop' }, state.shopName),
-          spoonPill(state.goldSpoons || 0, 'prep-spoons')),
         h('div', { class: 'prep-dayrow' },
           h('h1', { class: 'prep-day', testid: 'prep-day' }, `Ngày ${state.day}`),
           h('div', { class: 'prep-sub' }, S.screens.prep + ' · ' + S.chang[state.chang || 1])),
-        h('div', { class: 'prep-stats' },
+        h('div', { class: 'prep-stats', testid: 'prep-stats' },
           // từ 1 triệu ghi gọn "1,16tr" (không ngắt dòng giữa con số), số đầy đủ ở title/aria-label
           stat(S.labels.wallet, formatMoneyShort(state.wallet), 'prep-wallet', { title: formatVND(state.wallet), amount: state.wallet }),
           stat(S.labels.reputation, String(state.reputation)),

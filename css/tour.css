@@ -1,0 +1,94 @@
+/* Hướng dẫn lần đầu (tour), nút "?" và bảng Hướng dẫn / Cách chơi (bản 0.4.1). */
+
+/* ---------- Nút "?" ---------- */
+.help-btn {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: var(--tap); height: var(--tap); min-width: var(--tap); min-height: var(--tap); padding: 0;
+  border: 2px solid var(--line); border-radius: 50%; background: var(--paper); color: var(--brick);
+  font-size: 21px; font-weight: 900; line-height: 1; box-shadow: 0 2px 0 rgba(59, 42, 31, 0.12);
+  touch-action: manipulation; user-select: none;
+}
+.help-btn:active { transform: scale(.96); box-shadow: none; }
+.help-btn:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+/* HUD ca bán (nền gạch): nút trong suốt viền trắng; lề âm để HUD không cao thêm (vùng chạm vẫn 44px) */
+.hud .help-btn { margin: -6px -4px -6px 0; background: rgba(255, 255, 255, .16); border-color: rgba(255, 255, 255, .8); color: #fff; box-shadow: none; }
+/* màn Chuẩn bị: "?" sau viên Muỗng Vàng; màn hẹp bỏ chữ "Muỗng Vàng" (còn hình + số, nhãn đọc màn hình giữ đủ) để tên
+   xe còn chỗ */
+.prep-topend { display: flex; align-items: center; gap: 8px; flex: none; }
+@media (max-width: 360px) { .prep-topend .pill-cap { display: none; } }
+/* đầu màn con: "?" ở cuối hàng tiêu đề */
+.meta-title-text { flex: 1; min-width: 0; }
+.meta-title-row .meta-help { margin-left: auto; align-self: flex-start; }
+/* Tổng kết: tiêu đề và "?" cùng hàng */
+.sum-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.sum-head-row h1 { min-width: 0; }
+/* Hàng đầu màn Chuẩn bị (tên xe, Muỗng Vàng, "?") và Tổng kết (tiêu đề, "?") dính đầu màn khi cuộn: nút "?" luôn bấm được,
+   kể cả sau khi tour tự cuộn xuống tới Mở hàng / Ngày mai (như đầu màn con .meta-head). Bù phần đệm trên của màn (16px) để
+   nằm sát mép trên; chừa vùng an toàn trên (tai thỏ khi chạy toàn màn hình). */
+.prep-screen > .prep-toprow, .summary-screen > .sum-head-row {
+  position: sticky; top: 0; z-index: 6; margin: -16px calc(-1 * var(--gutter)) -4px;
+  padding: calc(8px + var(--safe-top)) var(--gutter) 8px; background: var(--bg);
+  box-shadow: 0 1px 0 rgba(59, 42, 31, .08);
+}
+.summary-screen > .sum-head-row { align-items: center; }
+
+/* ---------- Lớp phủ tour ---------- */
+/* Gắn ở lớp nổi gốc (.overlay-root): ngoài mọi vùng cuộn, trên thanh tab, trên hộp thoại. Phần đệm = vùng an toàn
+   (JS đọc lại để bong bóng không lọt vào tai thỏ / thanh Home). */
+.tour-layer {
+  position: absolute; inset: 0; z-index: 80; overflow: hidden;
+  padding: var(--safe-top) 0 var(--safe-bottom); touch-action: none;
+}
+.tour-shade { position: absolute; inset: 0; background: rgba(28, 18, 10, .62); }
+.tour-hole {
+  position: absolute; border-radius: 12px; pointer-events: none;
+  box-shadow: 0 0 0 3px var(--yellow), 0 0 0 4px rgba(255, 255, 255, .7), 0 0 0 200vmax rgba(28, 18, 10, .62);
+  transition: left .25s var(--ease), top .25s var(--ease), width .25s var(--ease), height .25s var(--ease);
+}
+.tour-bubble {
+  position: absolute; left: 8px; top: 8px; max-width: calc(100% - 16px);
+  background: var(--paper); border: 2px solid var(--yellow); border-radius: 16px; box-shadow: var(--shadow);
+  transition: left .25s var(--ease), top .25s var(--ease);
+}
+.tour-inner {
+  display: flex; flex-direction: column; gap: 8px; padding: 12px 12px 10px;
+  overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; border-radius: 14px;
+}
+.tour-head { display: flex; align-items: center; gap: 10px; }
+.tour-face { width: 44px; height: 44px; flex: none; display: inline-block; line-height: 0; }
+.tour-face svg { width: 100%; height: 100%; }
+.tour-heading { display: flex; flex-direction: column; min-width: 0; }
+.tour-count { font-size: 14px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tour-title { font-size: 17px; font-weight: 800; color: var(--brick-dark); line-height: 1.25; }
+.tour-text { font-size: 15px; line-height: 1.45; }
+.tour-actions { display: flex; gap: 8px; }
+.tour-actions .btn { flex: 1 1 auto; }
+.tour-actions .tour-skip { white-space: nowrap; }
+.tour-actions .tour-next { min-width: 88px; }
+/* mũi nhọn chỉ vào vùng sáng (ô vuông xoay 45°, chỉ hiện hai cạnh viền) */
+.tour-arrow {
+  position: absolute; width: 16px; height: 16px; background: var(--paper);
+  border: 2px solid var(--yellow); transform: rotate(45deg);
+}
+.tour-arrow[data-side="bottom"] { top: -9px; border-right: 0; border-bottom: 0; }
+.tour-arrow[data-side="top"] { bottom: -9px; border-left: 0; border-top: 0; }
+/* thông báo nổi không chồng lên tour (lọt vào vùng sáng thì che mất phần tử đang chỉ): ẩn trong lúc tour hiện; thẻ Mẹo
+   nghề được giữ (đồng hồ dừng, thẻ mới chờ — toast.js hold) rồi nổi lên đủ thời gian khi tour đóng */
+.app-frame.is-touring .toast-stack { visibility: hidden; }
+
+/* ---------- Bảng Hướng dẫn, Cách chơi ---------- */
+.help-box { display: flex; flex-direction: column; gap: 12px; }
+.help-head { display: flex; align-items: center; gap: 10px; }
+.help-title { text-align: left; }
+.help-choice b { font-size: 16px; }
+.how-to-play { display: flex; flex-direction: column; gap: 10px; }
+.how-list { display: flex; flex-direction: column; gap: 8px; }
+.how-card {
+  display: flex; align-items: flex-start; gap: 10px; padding: 10px;
+  background: #fff; border: 1px solid var(--line); border-radius: 12px;
+}
+.how-icon { width: 44px; height: 44px; flex: none; display: inline-block; line-height: 0; }
+.how-icon svg { width: 100%; height: 100%; }
+.how-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.how-text b { font-size: 15px; color: var(--brick-dark); }
+.how-text p { font-size: 14px; line-height: 1.45; }

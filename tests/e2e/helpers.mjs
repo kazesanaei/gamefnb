@@ -33,9 +33,11 @@ export function viewportFromEnv() {
  * viewport (tùy chọn) {width, height}: ghi đè khung nhìn mặc định (vd 360×740).
  * basePath (tùy chọn, vd '/gamefnb'): phục vụ game dưới đường dẫn con như GitHub Pages; url() tự thêm đường dẫn con.
  * onResponse (tùy chọn): chuyển cho máy chủ tĩnh, gọi với { method, url, status } sau mỗi yêu cầu.
+ * contextOptions (tùy chọn): ghi đè tùy chọn ngữ cảnh trình duyệt (vd userAgent, deviceScaleFactor để mô phỏng iPhone).
+ * initCss (tùy chọn): CSS gắn vào mọi trang trước khi game chạy (vd mô phỏng vùng an toàn, cách iOS cắt vùng cuộn).
  * Trả { page, context, browser, server, errors, url(pathAndQuery), shot(name), close() }.
  */
-export async function openGame({ clock = false, name = 'e2e', viewport: vp = null, basePath = '', onResponse = null } = {}) {
+export async function openGame({ clock = false, name = 'e2e', viewport: vp = null, basePath = '', onResponse = null, contextOptions = null, initCss = '' } = {}) {
   const { chromium } = loadPlaywright()
   const server = await startServer(0, '127.0.0.1', { basePath, onResponse })
   const browser = await chromium.launch()
@@ -43,8 +45,14 @@ export async function openGame({ clock = false, name = 'e2e', viewport: vp = nul
   const mobile = viewport.width < 600
   const context = await browser.newContext({
     viewport, hasTouch: true, isMobile: mobile, deviceScaleFactor: mobile ? 2 : 1,
-    locale: 'vi-VN', timezoneId: 'Asia/Ho_Chi_Minh'
+    locale: 'vi-VN', timezoneId: 'Asia/Ho_Chi_Minh', ...(contextOptions || {})
   })
+  if (initCss) {
+    await context.addInitScript(css => {
+      const add = () => { const st = document.createElement('style'); st.dataset.e2e = '1'; st.textContent = css; document.head.appendChild(st) }
+      if (document.head) add(); else document.addEventListener('DOMContentLoaded', add)
+    }, initCss)
+  }
   const page = await context.newPage()
   const errors = []
   page.on('pageerror', e => errors.push('pageerror: ' + e.message))

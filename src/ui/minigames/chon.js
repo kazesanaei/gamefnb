@@ -8,6 +8,7 @@
 // không xóa được lần nhầm hay phạt quá giờ).
 // Thiếu nguyên liệu chính: báo chung + khóa 1,5 giây, không cho qua (ctx.missingText đổi câu báo, vd ở gánh hàng quê).
 // M4: ctx.stockLeft = {ingId: số phần còn trong kho hàng hiếm} → ô kệ hiện nhãn "còn n" (nguyên liệu hiếm).
+// 0.4.1: handle.hold(on) giữ đồng hồ đứng yên khi hướng dẫn lần đầu che kệ.
 import { h, svgBox } from '../dom.js'
 import { requiredIngredients } from '../../core/scoring.js'
 import { scoreChon } from '../../core/minigame-scoring.js'
@@ -173,6 +174,8 @@ function mount(stage, step, ctx = {}) {
   return {
     result: out.promise,
     snapshot,
+    // hướng dẫn lần đầu (tour) che kệ: đồng hồ bước Chọn đứng yên, không tính quá giờ trong lúc đọc
+    hold(on) { if (!out.done) clock.hold(on) },
     destroy() { cleanup(); out.settle(null) }
   }
 }

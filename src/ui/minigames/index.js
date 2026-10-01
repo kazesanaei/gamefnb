@@ -49,6 +49,8 @@ export function playStep(stage, step, ctx) {
     result: handle.result,
     // (tùy chọn) trạng thái đang dở để khôi phục, vd rổ của bước chọn
     snapshot: typeof handle.snapshot === 'function' ? () => handle.snapshot() : null,
+    // (tùy chọn) giữ đồng hồ đứng yên khi hướng dẫn lần đầu che sân khấu, vd bước chọn
+    hold: typeof handle.hold === 'function' ? on => handle.hold(on) : null,
     destroy() {
       handle.destroy()
       stage.removeEventListener('contextmenu', stop)

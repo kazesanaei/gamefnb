@@ -18,8 +18,9 @@ const BANNED = [
 const INTERNAL = ['TNC', 'seed']
 const INTERNAL_WORDS = ['par', 'toast', 'chip', 'MV'] // so khớp nguyên từ
 // M4: thêm src/data/rare.js (gánh hàng quê, khách lạ), src/data/mail.js (thư phiên bản 0.4.0 giải thích luật tip)
+// 0.4.1: thêm src/data/tours.js (lời hướng dẫn lần đầu, trang Cách chơi)
 const DISPLAY_FILES = ['src/data/strings.js', 'src/data/dialogue.js', 'src/data/reviews.js', 'src/data/tips.js', 'src/data/incidents.js', 'src/data/rare.js',
-  'src/data/mail.js']
+  'src/data/mail.js', 'src/data/tours.js']
 
 const TEXT_EXT = new Set(['.js', '.mjs', '.css', '.html', '.json', '.md', '.svg', '.webmanifest', '.txt'])
 

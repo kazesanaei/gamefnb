@@ -5,6 +5,7 @@ import {
   defaultIncidents, defaultNotebook, defaultRare
 } from './state.js'
 import { normalizeChonDraft, normalizeLineMistakes } from './kitchen.js'
+import { migrateTour } from './tour.js'
 
 export const SAVE_KEY = 'bkn.save'
 export const BACKUP_KEY = 'bkn.bak'
@@ -316,6 +317,9 @@ export function migrate(raw, data = null, report = null) {
     const tsh = migrateLineMistakes(migrateCookDraft(s.tasting.shift, data))
     if (tsh !== s.tasting.shift) s.tasting = { ...s.tasting, shift: tsh }
   }
+  // 0.4.1: hướng dẫn lần đầu (state.tour); bản cũ chưa có trường này: tour của vòng chơi chính coi như đã xem với người
+  // chơi đã bán ca (không bật hướng dẫn giữa ca của người quen tay), các tour khác vẫn tự hiện lần đầu
+  migrateTour(raw, s, data)
   return s
 }
 

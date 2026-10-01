@@ -3,6 +3,7 @@
 import { h, svgBox } from '../dom.js'
 import { icon, cartSvg, DI_SAU, ANH_KHOA, CO_HANH } from '../art.js'
 import { formatVND, formatMoneyShort } from '../format.js'
+import { helpButton } from './help.js'
 
 const HOUR = 3600000
 const DAY = 24 * HOUR
@@ -95,7 +96,8 @@ export function moneyPill(n, testid = null, compact = false) {
 
 /**
  * Đầu màn M2: nút "‹ Quay lại" (≥ 44px), tiêu đề, viên Tiền quán + Muỗng Vàng.
- * opts: { title, sub, back (tên màn, mặc định 'prep'), backLabel, onBack, icon }
+ * opts: { title, sub, back (tên màn, mặc định 'prep'), backLabel, onBack, icon, help }
+ * help (0.4.1): true → nút "?" (Hướng dẫn) cuối hàng tiêu đề — màn con có hướng dẫn lần đầu.
  */
 export function screenHead(app, opts = {}) {
   const st = app.state
@@ -111,9 +113,11 @@ export function screenHead(app, opts = {}) {
       h('div', { class: 'meta-pills' }, moneyPill(st.wallet, 'meta-wallet', true), spoonPill(st.goldSpoons || 0, 'meta-spoons', true))),
     h('div', { class: 'meta-title-row' },
       opts.icon ? svgBox(icon(opts.icon), 'meta-title-icon') : null,
-      h('div', null,
+      h('div', { class: 'meta-title-text' },
         h('h1', { class: 'meta-title' }, opts.title || ''),
-        opts.sub ? h('p', { class: 'meta-sub' }, opts.sub) : null)))
+        opts.sub ? h('p', { class: 'meta-sub' }, opts.sub) : null),
+      // nút "?" cuối hàng tiêu đề (hàng trên đã kín ở màn 320px: nút quay lại + Tiền quán + Muỗng Vàng)
+      opts.help ? helpButton(app, { className: 'meta-help' }) : null))
 }
 
 /** Thanh tiến độ cur/target (hoặc tỉ lệ 0..1 khi target = null). */

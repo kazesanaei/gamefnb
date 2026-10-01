@@ -52,7 +52,8 @@ tests/e2e/*.e2e.mjs        Playwright (Chromium ở /opt/pw-browsers): one-shift
                            save-safety, review-m3-ux (vòng soát lỗi M3: bộ nhớ bị chặn/đầy, bản lưu hỏng, mã từ bản mới
                            hơn; giao diện ngày 1 ở 360×740, chép mã thất bại, mục 18.5)
 tests/e2e/hanh-trinh.mjs   hành trình dài chạy tay `node tests/e2e/hanh-trinh.mjs` (không nằm trong `npm run e2e`, mục 18.1)
-tests/e2e/helpers.mjs      nạp Playwright, ngữ cảnh 390×844 cảm ứng (openGame({clock, viewport}): clock true | {time} cài đồng hồ giả),
+tests/e2e/helpers.mjs      nạp Playwright, ngữ cảnh 390×844 cảm ứng (openGame({clock, viewport, contextOptions, initCss}): clock true | {time} cài
+                           đồng hồ giả; contextOptions ghi đè tùy chọn ngữ cảnh (vd UA iPhone); initCss gắn CSS vào mọi trang),
                            người chơi tự động qua data-testid (playBoard dùng cả cho Nấu thử; playShiftUi chơi cả ca),
                            seedSave (nạp save dựng sẵn bằng encodeSave vào khóa thật), enterPrep, claimCheckinIfShown,
                            readSave/waitSave (đọc DEV_SAVE_KEY khi đã mở bằng ?devNow, không thì SAVE_KEY),
@@ -75,13 +76,15 @@ M3 nội dung (đã có — mục 17): `core/incidents.js notebook.js recipe-boo
 M4 (bản 0.4.0 — mục 19–22): `core/rare.js`, `data/rare.js`, `ui/screens/market.js` (màn "Lựa hàng", có trong `SCREENS` và PRECACHE), sổ tiền sự kiện trong `core/economy.js`, 8 sự kiện ngày và 8 tình huống mới trong dữ liệu; `tools/tim-seed.mjs` (tìm seed cho e2e, ngoài `src/` nên không vào PRECACHE); test `tests/unit/m4-tip.test.mjs m4-frequency.test.mjs m4-events.test.mjs m4-incidents.test.mjs m4-rare.test.mjs m4-save.test.mjs review-m4-fixes.test.mjs`; `tests/fixtures/save-v2.mjs` (save thật của bản 0.3.0 đang dở ca, dùng cho `m4-save`); e2e `tests/e2e/m4-rare.e2e.mjs`, `tests/e2e/m4-tip-events.e2e.mjs` với hàm dựng save dùng chung `tests/helpers/m4-saves.mjs` (mục 23).
 Sửa 2 lỗi tồn đọng sau M4 (mục 24): test `tests/unit/fix-chon-draft.test.mjs`, e2e `tests/e2e/fix-leftovers.e2e.mjs`.
 Triển khai dưới đường dẫn con / GitHub Pages (mục 27): `.nojekyll`, e2e `tests/e2e/subpath.e2e.mjs`, hướng dẫn cho người dùng `docs/huong-dan-trien-khai.md`.
+Sửa lớp phủ bị thanh tab che trên iPhone (bản 0.4.1, mục 28): `createPortal` trong `ui/dom.js`, lớp nổi của bếp (`.k-pop`), biến vùng an toàn `--safe-top/--safe-bottom` (`css/base.css`); e2e `tests/e2e/iphone-overlays.e2e.mjs`.
+Hướng dẫn lần đầu và nút "?" (bản 0.4.1, mục 29): `core/tour.js`, `data/tours.js` (`TOURS`, `TOUR_SCREENS`, `HOW_TO_PLAY`), `ui/components/tour.js` (lớp phủ tour, `app.tour`), `ui/components/help.js` (nút "?", bảng Hướng dẫn, Cách chơi), `css/tour.css` (gắn trong `index.html`); test `tests/unit/tour.test.mjs`, e2e `tests/e2e/tour.e2e.mjs`.
 
 ## 3. package.json
 
 ```json
 {
   "name": "bep-khoi-nghiep",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -93,7 +96,7 @@ Triển khai dưới đường dẫn con / GitHub Pages (mục 27): `.nojekyll`,
 }
 ```
 
-`version` trùng `VERSION` của `sw.js` và `APP_VERSION` của `src/ui/app.js` (có test). Đổi tệp của game khi phát hành thì tăng cả ba. Bản hiện tại **0.4.0** (M4); thư phiên bản tương ứng ở `MAIL_CONFIG.currentVersion` (mục 15.5).
+`version` trùng `VERSION` của `sw.js` và `APP_VERSION` của `src/ui/app.js` (có test). Đổi tệp của game khi phát hành thì tăng cả ba. Bản hiện tại **0.4.1** (M4 + sửa lớp phủ trên iPhone, mục 28 + hướng dẫn lần đầu và nút "?", mục 29); thư phiên bản ở `MAIL_CONFIG.currentVersion` vẫn là 0.4.0 (bản sửa lỗi không có thư riêng, mục 15.5).
 E2E nạp Playwright bằng `createRequire`, thử `require('playwright')` rồi tới `/opt/node22/lib/node_modules/playwright`. Biến `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers` đã có sẵn trong môi trường.
 
 ## 4. Cấu trúc save (state gốc)
@@ -154,7 +157,8 @@ E2E nạp Playwright bằng `createRequire`, thử `require('playwright')` rồi
     announced: {}          //   soát lỗi M4: sự kiện ngày đã chốt {ngày game: id | ''} (hôm nay khi vào màn Chuẩn bị, ngày mai lúc
                            //   mở ca); đổi mức "Tần suất sự kiện" không bốc lại; chỉ giữ 15 ngày gần nhất (events.announceDayEvent)
   },
-  notebook: { claimed: [] }  // M3 (mục 17.2): nhóm Mẹo nghề đã nhận thưởng đủ nhóm
+  notebook: { claimed: [] }, // M3 (mục 17.2): nhóm Mẹo nghề đã nhận thưởng đủ nhóm
+  tour: { seen: {}, disabled: false }  // 0.4.1 (mục 29): tour đã xem {tourId: true}; disabled = tắt "Hướng dẫn lần đầu"
   // M2 thêm (defaultMeta() trong state.js, mô tả ở mục 15): items, cosmetics, titles, unlocks, prep, checkin, daily,
   // mail, chains, shop, eventRecipes, tasting, events, realDays, progression, track; stats có thêm các khóa M2.
   // M4 bước 6 (defaultMeta().rare = state.defaultRare(), mục 21): kho nguyên liệu và công thức hiếm
@@ -723,6 +727,7 @@ UI gọi `writeSave(localStorage, state, { guard: true, lastCode, keys })` có d
   Nút Back của điện thoại (history API): `app.go` tới màn con (mọi màn trừ `title`, `prep` — `isSubScreen` của `router.js`; `SUB_SCREENS` chỉ là danh sách tham khảo: shop, tasting, quests, mailbox, event, stage-up, service, summary, settings, notebook, recipe-book) đẩy 1 mục lịch sử; về màn gốc (prep, title) bằng nút trong game thì bỏ mục đó (`history.back()` có cờ bỏ qua). `history.back()` chạy không đồng bộ: trong lúc đang lùi mà người chơi mở ngay màn con khác thì chưa đẩy mục mới, chỉ ghi lại và đẩy khi popstate của lần lùi về tới (hoặc sau 1,5 giây) — đẩy chen vào làm lệch sổ lịch sử và vài vòng sau game lùi ra khỏi trang (e2e `stability`). `popstate`: đang mở hộp thoại đóng được thì đóng; màn có `onBack()` tự xử lý (Nấu thử: hỏi như nút "‹ Về Chợ", phiên được giữ; ca bán: ở lại, báo "phục vụ hết khách rồi mới rời xe"); còn lại về `prep`. Ở màn gốc Back rời trang như thường.
   Thực tế thêm: `saveNow({backup}?)`, `modalOpen()`, `modalBlocking()` (hộp thoại chặn → tạm dừng thời gian ca), `settings()`, `applySettings()`, `router`, `switchTab(name)` (khi đang ở màn ca bán). `toast(text, {duration, kind:'info'|'good'|'bad'|'tip', title, icon, testid})` không chặn thao tác, tối đa 2 cái thường; thẻ Mẹo nghề (`kind:'tip'`) hiện gọn (tiêu đề + tối đa 2 dòng, chỉ che dải khách), mỗi lần 1 thẻ, thẻ sau xếp hàng (tối đa 2 thẻ chờ); thẻ trigger `shift_end` không nổi mà hiện trong mục "Mẹo của Dì Sáu" ở Tổng kết. `modal({title, text, icon, body, render(close), actions:[{label, value, testid, kind}], dismissible, testid, blocking = true})`.
   M3 thêm (mục 16): `version` (`APP_VERSION`), `audio`, `replaceState(next)`, `pwa`, `onPwaChange(fn)`, `setPwa(patch)`, `setUpdateReady(worker)`, `applyUpdate()`, `updateSlot()`, `installMode()`, `promptInstall()`; `sound(name)` trả boolean.
+  0.4.1 thêm (mục 29): `tour` (hướng dẫn lần đầu: `offer`, `want`, `start`, `skip`, `hold`, `onHold`, `provide`, `screenTours`…); `app.go` gọi `tour.onRoute(name)`; Back của điện thoại khi tour đang hiện = bỏ qua tour.
   Vòng soát lỗi M3: `saveProblem()`, `setSaveProblem(kind | null, { block })`, `openBackup` (main.js gắn), `toastLimit(fn | null)` (màn ca bán giới hạn chiều cao chồng thông báo tới mép trên thanh 4 khâu: thông báo không vừa xếp hàng theo thứ tự đến, thông báo thường chờ quá 3,5 giây thì bỏ vì tin đã cũ; thẻ Mẹo nghề vẫn mỗi lần 1 thẻ). Màn ca bán gộp tiến độ Việc hôm nay đến cùng lúc thành 1 thông báo và không báo tiến độ việc khi khách hướng dẫn ngày 1 còn trong ca.
   Tham số URL: `?seed=N` chỉ có tác dụng khi chưa có save; `?test=1` (chỉ trên localhost/127.0.0.1) bật `settings.assistMotion` cho kiểm thử tự động.
 - `screens/counter.js`: `mountCounter(root, app, { switchTab })` → `{ el, update, onShow, onHide, unmount }`. Nút hành động mỗi khâu (Đọc lại đơn/Chốt order, Đưa tiền thối, QR, Kẹp phiếu bếp) nằm trong thanh `.act-bar` dính đáy panel; sang khâu mới panel tự cuộn để thấy phần thao tác. Phiếu chấm có 5 hàng: Order, Báo tổng (`bao_du`, `bao_thieu`), Thối tiền (`thoi_thieu`, `thoi_du`, `qr_gia`), Bếp, Thời gian chờ. `screens/kitchen.js`: `mountKitchen(root, app)` → `{ unmount, update, onShow, onHide, selectTicket(ticketId) }`; nút "‹ Phiếu" (và chạm phiếu trên dây chung) đưa về dây phiếu ở cả bước chọn lẫn Thớt, rổ đang chọn được giữ (trong state: `cook.chonDraft`, nên tải lại trang cũng giữ, mục 24); ô "Đang làm" trên dây phiếu có "Bỏ món" + "Làm tiếp"; trên Thớt thẻ công thức thu gọn (chỉ ghi chú đỏ, nguyên liệu và các bước gập lại); màn `service` nạp bếp bằng `import()` động, gọi `update(dt)` mỗi khung hình và `onShow/onHide` khi đổi tab (rời tab giữa mini-game → bước đó chơi lại từ đầu).
@@ -752,7 +757,7 @@ Mini-game chỉ đo thao tác và gọi hàm chấm trong `core/minigame-scoring
 ### 13.1 Giao diện M2
 
 - `app.nowInfo()` = `makeNowInfo(app.state, app.now())` (cập nhật `clock.maxSeen`); `app.session` (không lưu): `checkinShownDay`, `mailToastIds`, `pendingMail` (thư mới lúc mở game, vd thư chào mừng).
-- Màn mới (router): `shop` (params `{tab: 'recipes'|'upgrades'|'spoons'}`), `tasting` (`{recipeId}`), `quests`, `mailbox`, `event` (`{eventId}`), `stage-up`. Mỗi màn có đầu màn `screenHead` (nút `meta-back` ≥ 44px về `prep`, viên Tiền quán + Muỗng Vàng) dính trên cùng.
+- Màn mới (router): `shop` (params `{tab: 'recipes'|'upgrades'|'spoons'}`), `tasting` (`{recipeId}`), `quests`, `mailbox`, `event` (`{eventId}`), `stage-up`. Mỗi màn có đầu màn `screenHead` (nút `meta-back` ≥ 44px về `prep`, viên Tiền quán + Muỗng Vàng; 0.4.1: `help: true` thêm nút "?" cuối hàng tiêu đề, mục 29) dính trên cùng.
 - `prep`: vào màn gọi `refreshMeta`; lần mở đầu tiên (ngày 1, chưa bán ca nào, `isFirstVisit`) lời hướng dẫn của Dì Sáu (`prep-talk`) và thẻ "Dì Sáu dặn: Phục vụ khách đầu tiên" lên ngay dưới đầu màn, chưa hiện "Giấc mơ tiếp theo" (mở dần); lời Dì Sáu các ngày sau theo sự kiện ngày (`DIALOGUE.diSau.dayEvent[id]`, `prepTalk`); lưới lối vào 4 ô (Chợ Công Thức, Việc hôm nay, Điểm danh, Hộp thư) có chấm đỏ; thẻ sự kiện có thời hạn; thẻ sự kiện ngày + lựa chọn (vd Căng bạt); Phiếu Chợ Sớm; thẻ chuỗi ("Dì Sáu dặn", gộp nút nhận nhiều bước); thẻ "Giấc mơ tiếp theo" hoặc thẻ lên chặng. Lần mở đầu tiên trong ngày thật tự mở bảng điểm danh, kể cả lần đầu mở game với save mới (ô 1 "Tuần Khai Trương" hiện ngay sau khi đặt tên xe; `app.session.checkinShownDay` giữ không bật lại trong ngày); lần đầu đủ điều kiện lên chặng mở hộp thoại mời xem màn `stage-up`. Thư mới lúc vào màn: thông báo nổi `mail-toast` (thư chào mừng; 1 thư thì ghi tiêu đề; nhiều thư thì ghi số thư) — hiện SAU khi bảng điểm danh đóng, không chồng lên bảng. Việc sự kiện hôm trước tự nhận: `event-auto-toast`. Thẻ sự kiện (`event-card`, `data-dot`) có chấm đỏ `event-card-dot`, dòng `event-pending` và nút "Nhận quà sự kiện" khi `eventsOverview().pending > 0` (điểm danh sự kiện, việc sự kiện xong chưa nhận, bước chuỗi sự kiện chờ nhận — cả trong ân hạn). Dòng hiệu ứng sự kiện ngày và Dự báo dùng `dayEventEffects(info)` (đã chọn Căng bạt / có Bạt che mưa → hiệu ứng của lựa chọn). Giờ máy bị lùi: dòng nhắc `rewind-note` (chỉ dòng này, không bật thêm thông báo nổi), nút nhận quà theo ngày khóa. Kiểm tra mỗi 30 giây, qua mốc 04:00 thì làm mới. Nâng cấp chuyển sang tab Nâng cấp của Chợ Công Thức. Xuất `dayEffectLines(effects, data, state?)`, `forecastCustomers(state, ctx, info)`.
 - `service`: thông báo nổi không chặn thao tác cho `event.quest` (`event-quest-toast`, việc sự kiện), `quest.progress` ("Việc hôm nay: 4/5 · Thối đúng 5 lần liên tiếp", mỗi việc tối đa 1 lần/4 giây, xong việc và đứt chuỗi luôn báo), `chain.progress` ("Dì Sáu dặn · 2/3 · Ghi phiếu đúng…", mỗi chuỗi tối đa 1 lần/4 giây; tiêu đề theo `NPCS[npc].verb`: "Cô Hạnh nhờ"), `chain.step` (chuỗi sự kiện: "Nhận thưởng ở màn sự kiện", chuỗi thường: "ở màn Chuẩn bị"), `tem.gained`; đầu ca báo sự kiện ngày và Phiếu Chợ Sớm đang áp dụng.
 - `summary`: dòng khách bỏ về không tính khách dùng ảnh chuyển khoản giả bị bắt (ghi riêng "Bắt được ảnh chuyển khoản giả"); mục "Việc và chuỗi nhiệm vụ" (tiến độ việc, bước chuỗi — chuỗi sự kiện nhận ở màn sự kiện, Tem hôm nay) và thẻ báo trước sự kiện ngày mai (`dayEventInfo(state, state.day)`); dự báo khách ngày mai đã tính sự kiện.
@@ -806,6 +811,7 @@ Mini-game chỉ đo thao tác và gọi hàm chấm trong `core/minigame-scoring
   - Màn Gánh hàng quê (`market`): `screen-market`, `market-intro` (`data-stall`), `stall-start`, `stall-locked`, `market-stage` (chứa `minigame-stage` loại chon; ô kệ `shelf-<ingId>`, `chon-done`), `market-result` (`data-score`, `data-got`, `data-fragment`), `market-got-<ingId>`, `market-fragment`, `market-tip`, `market-done`, `market-back`.
   - Ca bán: `stranger-badge` (dấu ★ trên mặt khách lạ ở hàng chờ), `score-sheet-stranger`; quầy `rare-left-<recipeId>` (menu "★ còn n", `menu-item-<id>` có `data-left`), bếp `shelf-left-<ingId>` ("còn n" trên ô kệ nguyên liệu hiếm); phàn nàn `complaint-remake-blocked` (nút `complaint-remake` bị khóa khi hết hàng hiếm).
   - Tổng kết `summary-rare`; Sổ công thức `book-recipe-<id>` có `data-status` = hiem, `book-rare-<id>` (`data-n`, `data-ready`), `book-taste-<id>`; Nấu thử món hiếm `tasting-unlocked`, `tasting-not-yet`, `tasting-retry`; Túi đồ `bag-rare-<ingId>`.
+- 0.4.1 hướng dẫn lần đầu và nút "?" (mục 29): `tour`, `tour-hole`, `tour-bubble` (`data-tour`, `data-step`, `data-target`, `data-span`, `data-side`), `tour-count`, `tour-title`, `tour-text`, `tour-skip`, `tour-next`; `help-button`, `help-sheet`, `help-replay`, `help-how`, `how-to-play`, `how-card-<id>`, `help-back`, `help-close`, `help-reset`, `help-reset-text`, `help-reset-confirm`, `help-reset-cancel`, `help-reset-done`; Cài đặt `setting-tour`; đích của tour: `hud`, `prep-stats`, `title-talk`, `qty-row`, `note-block`.
 
 ## 15. Hệ thống meta M2 (lõi + dữ liệu)
 
@@ -1011,7 +1017,7 @@ Lệch so với `docs/can-bang.md`: lãi bán hàng của người chơi hoàn h
 Mở từ ô Cài đặt `open-settings` trong lưới biểu tượng của màn Chuẩn bị (mục 13.2; thay các công tắc cài đặt rời trước đây, cùng testid `setting-<khóa>`). Các mục:
 - Âm thanh và rung: Âm thanh, Âm lượng (0–100%, bước 10, khóa khi tắt tiếng), Rung.
 - Hỗ trợ: Hỗ trợ tính tiền (ghi rõ: chuỗi "Quầy chuẩn" và việc Quầy không được đếm, không ghi kỷ lục), Hỗ trợ thao tác (ghi rõ: không đạt "Không tì vết", tối đa hạng Ngon).
-- Chơi: Mẹo nghề, Giảm chuyển động, "Tần suất sự kiện" Nhiều / Vừa / Ít (M4 đổi tên từ "Tình huống trong ca"; `settings.incidentFrequency`, mặc định Vừa; áp cho cả sự kiện ngày và tình huống trong ca; "Ít" chỉ gồm sự kiện/tình huống loại tốt, không có khoản phạt).
+- Chơi: Hướng dẫn lần đầu (0.4.1, `setting-tour`: bật/tắt tự hiện tour — `state.tour.disabled`, mục 29), Mẹo nghề, Giảm chuyển động, "Tần suất sự kiện" Nhiều / Vừa / Ít (M4 đổi tên từ "Tình huống trong ca"; `settings.incidentFrequency`, mặc định Vừa; áp cho cả sự kiện ngày và tình huống trong ca; "Ít" chỉ gồm sự kiện/tình huống loại tốt, không có khoản phạt).
 - Sao lưu: lần sao lưu gần nhất; "Chép mã sao lưu" (`navigator.clipboard`, không được thì hiện mã trong ô để chép tay; nút Chép lại dùng `execCommand('copy')`); "Tải file sao lưu" (Blob `.txt` gồm vài dòng hướng dẫn + mã, tên `bep-khoi-nghiep-<tên xe không dấu>-ngay-<n>-<YYYYMMDD>.txt`); "Nhập mã sao lưu" (dán mã hoặc chọn file → Xem trước bảng "Bản trong mã" / "Bản hiện tại": tên xe, ngày game, Tiền quán, chặng, số công thức, danh tiếng, Muỗng Vàng → "Dùng bản này" mới ghi đè); "Bản lưu đã cất" (Khôi phục = cùng luồng xem trước).
 - Cài game (theo `installMode`), trạng thái chơi offline (`app.pwa.offlineReady`).
 - Thông tin: phiên bản, "Giới thiệu" (game hư cấu, mọi con số là số liệu minh họa, không liên quan thương hiệu nào, dữ liệu lưu trên máy), "Chơi lại từ đầu" (hộp thoại 2 bước `reset-step1` → `reset-step2`; state mới `defaultState(seed ngẫu nhiên)` giữ cài đặt; bản cũ được cất).
@@ -1469,3 +1475,183 @@ từng trình duyệt, Cloudflare Pages / Netlify): `docs/huong-dan-trien-khai.m
   mở ca, có khách. Không yêu cầu nào trượt khỏi `/gamefnb/`, không HTTP ≥ 400 (soát ở máy chủ qua `onResponse`, nên tính
   cả yêu cầu do service worker gửi), không lỗi console. Thử phá có chủ ý (bản sao trong thư mục tạm): đổi `href="css/base.css"` thành `/css/base.css` →
   trượt "tài nguyên ngoài đường dẫn con"; đăng ký `'/sw.js'` → trượt "service worker chưa kích hoạt".
+
+## 28. Lớp phủ bị thanh tab che trên iPhone — bản 0.4.1 (01/10/2026)
+
+**Lỗi** (ảnh chụp người chơi thật, iPhone, Safari): ở khâu Order, chạm thẻ món mở bảng chọn món (Số lượng, Ghi chú) nhưng nút
+"Thêm vào phiếu" bị ẩn — bảng bị cắt ở mép trên thanh tab Quầy/Bếp, chỉ lộ một vệt vàng (viền sáng hướng dẫn của nút).
+Nguyên nhân: `.sheet-layer` (`position: fixed`) nằm trong panel Quầy — vùng cuộn (`.panel`, `overflow-y: auto`) — mà WebKit iOS
+cắt mọi phần tử con của vùng cuộn, kể cả phần tử fixed, theo khung vùng cuộn; panel kết thúc ở mép trên thanh tab. Chromium
+không cắt nên e2e cũ không thấy. Tái hiện trên Chromium bằng cách mô phỏng: `clip-path: inset(0)` trên `.screen, .panel,
+.k-main` (cắt cả con cháu fixed như WebKit iOS) — bản 0.4.0 trượt ở cả 9 khung (320×568 … 1280×800): tâm nút trúng `.tabbar`.
+Cùng lớp lỗi: các bảng/hộp của bếp nằm trong panel Bếp (ở 375×553 panel chỉ còn ~210px: hộp "Chiên trứng hỏng rồi!" mất nút
+"Bỏ món", "Để vậy"); hộp thoại chung không chừa vùng an toàn (thanh Home), hàng nút nằm cuối nội dung cuộn.
+
+**Sửa**:
+- Vùng an toàn: `css/base.css` đọc `env(safe-area-inset-top/bottom)` một lần vào biến `--safe-top`, `--safe-bottom`; mọi chỗ
+  (thanh tab, chân dính, bảng trượt, hộp thoại, màn Nấu thử, màn con `.meta-screen`, thanh "Trong rổ / Xong" của màn Lựa hàng)
+  dùng biến (e2e ghi đè biến để mô phỏng iPhone).
+- Khung app cao `100dvh` (khung nhìn động). Trình duyệt chưa hiểu `dvh` (iOS Safari trước 15.4): `app.js fitFrameHeight` đo
+  `innerHeight` vào `--app-h` (lớp `.is-fit-h`), đo lại khi xoay máy/đổi cỡ.
+- `ui/dom.js createPortal(host) → { set(node | null), node() }`: chỗ gắn một lớp phủ ra ngoài vùng cuộn. Bảng chọn món
+  (`counter.js paintSheet`) gắn vào lớp nổi gốc `app.overlay` (`.overlay-root` trong `#app`, z-index trên thanh tab), phủ cả thanh
+  tab; vẽ lại cùng panel (khách mới, đổi số lượng) không chạy lại hiệu ứng trượt (`.is-steady`) và giữ chỗ cuộn của thân bảng;
+  gỡ khi đóng, rời khâu Order, đổi tab, unmount. Viền sáng hướng dẫn tìm nút trong bảng trước (`applyGlow`).
+- Bảng trượt `.sheet`: cao tối đa bằng khung app trừ `--safe-top`; đầu bảng và hàng nút (`.sheet-actions`, đệm dưới
+  `14px + --safe-bottom`) cố định, thân `.sheet-body` (Số lượng, Ghi chú) cuộn được khi khung thấp.
+- Bếp (`kitchen.js`): hai lớp phủ, mỗi lúc một lớp — sân khấu mini-game (`stage`) vẫn trong panel Bếp; bảng chọn cách
+  (`sheet`), hộp bước hỏng (`prompt`), hộp xác nhận dự phòng (`confirm`), bảng công bố món (`reveal`) ở lớp nổi `.k-layer.k-pop`
+  (`data-testid="kitchen-pop"`) gắn vào `app.overlay` (Nấu thử: app hộp cát nhận `overlay` của app thật). `.k-scope` mang biến màu
+  và kiểu của bếp. Bộ chặn "click ma" (mục 24) gắn cả vào lớp nổi. `.k-sheet` cao tối đa bằng khung, cuộn bên trong, đệm dưới có
+  vùng an toàn.
+- Hộp thoại chung (`modal.js`, CSS `game.css`): lớp phủ chừa vùng an toàn trên/dưới; hộp cao tối đa bằng khung, cuộn bên trong;
+  hàng nút cuối hộp (`.modal-actions`, `.ck-actions` — kể cả hàng nút nằm cuối nội dung tùy biến) dính đáy hộp
+  (`position: sticky`) nên luôn thấy. `@media (max-height: 600px)` hộp sát mép hơn.
+- Hộp tình huống trong ca (`meta.css`, `@media (max-height: 760px)`): gọn lại (hình, tiêu đề 17px, khoảng cách, đệm lựa chọn; chữ
+  ≥ 14px, vùng chạm ≥ 44px) để cả 3 lựa chọn — cách an toàn thường nằm cuối — lọt khung không phải cuộn ở 375×553, 360×600,
+  375×635+ (kể cả có vùng an toàn); 320×568 hộp vẫn cuộn 18px, lựa chọn cuối lộ một phần.
+- Phiếu chấm (không bấm) nằm ngay trên thanh tab kể cả vùng an toàn.
+- Phiên bản 0.4.1 (`package.json`, `sw.js VERSION`, `APP_VERSION`) để người chơi PWA nhận bản mới; không thêm tệp nên PRECACHE
+  không đổi; thư phiên bản vẫn 0.4.0.
+
+**Kiểm chứng**: E2E `tests/e2e/iphone-overlays.e2e.mjs` — Chromium mô phỏng iPhone (UA iPhone, `isMobile`, `hasTouch`,
+`deviceScaleFactor` 3) ở 320×568, 375×553, 390×664, vùng an toàn đáy 34px (ghi đè `--safe-bottom`) và cách iOS cắt vùng cuộn
+(`clip-path`); mỗi nút hành động chính: nằm trọn trong khung trừ vùng an toàn, `elementFromPoint` tại tâm và 4 điểm sát mép trúng
+chính nút, chạm bằng `page.touchscreen.tap` và có tác dụng (save đổi / lớp phủ đóng / màn kế tiếp): (1) ngày 1 — bảng điểm danh,
+Mở hàng, bảng chọn món (chip ghi chú bật/tắt, +/−, "Thêm vào phiếu"), bảng sửa dòng; (2) bếp ca thật dựng sẵn — bảng chọn cách
+("Để sau"), Nhấc ngay → hộp bước hỏng không bị click ma đóng, "Làm lại", "Để vậy", hộp "Ra món luôn?", bảng công bố món trọn khung,
+phàn nàn (xin lỗi, hoàn tiền), phiếu chấm trên thanh tab; (3) tình huống trong ca (cách an toàn — cuộn trong hộp nếu cần —,
+"Bán tiếp"); (4) hộp mua ở Chợ Công Thức; (5) Cài đặt — mã sao lưu, nhập mã (xem trước, "Dùng bản này"/"Thôi"), chơi lại 2 bước,
+giới thiệu; (6) Lựa hàng; (7) thẻ sự kiện ngày có lựa chọn. Chạy bộ test này trên mã 0.4.0 thì trượt 6/7 kịch bản. Ma trận đo
+độc lập (scratchpad, không vào repo): 9 khung (320×568, 375×553, 375×635, 390×664, 390×844, 414×715, 430×932, 360×600, 1280×800) ×
+{Chromium thường, mô phỏng iOS + vùng an toàn 34px} × 7 kịch bản, 792 phép đo: chỉ còn lựa chọn thứ 3 của hộp tình huống cần cuộn
+ở 320×568 và 375×553 + vùng an toàn (+ dải "Giờ giả" 24px của chế độ xem trước). `fix-leftovers` (e3): bảng công bố món giờ ở
+giữa cả khung nên ở 360×640 nút "Giao cho khách" không còn nằm dưới bảng — chuyển phép thử sang 390×844 (nút vẫn nằm dưới bảng).
+
+## 29. Hướng dẫn lần đầu (tour) và nút "?" — bản 0.4.1 (01/10/2026)
+
+Mỗi màn, mỗi khâu có một tour ngắn (2–6 bước): lớp phủ làm tối nền, khoét sáng đúng phần tử đang nói tới, bong bóng lời Dì Sáu
+(tối đa 2 câu). Tour **tự hiện lần đầu** người chơi tới màn/khâu đó rồi ghi "đã xem"; nút "?" xem lại bất cứ lúc nào. Tour giới
+thiệu giao diện; lời nhắc tại chỗ của khách hướng dẫn ngày 1 (cô Thu, bạn Nam) và lời Dì Sáu trong khung giữ nguyên, chữ của tour
+không lặp lại các lời đó.
+
+**Dữ liệu** `src/data/tours.js` (có trong `DISPLAY_FILES` của test từ cấm):
+- `TOURS` — 23 tour `{ screen, spot?, lead?, name, auto?, requires?, veteranDay?, steps: [{ target, span?, title, text, place, when? }] }`.
+  `target`: data-testid, bộ chọn CSS, hoặc mảng lựa chọn (lấy phần tử đầu tiên đang hiện); `null` = bong bóng giữa khung; không tìm
+  thấy thì bỏ qua bước. `span`: vùng sáng phủ từ `target` tới phần tử này (một hàng ô lối vào). `requires`: phần tử phải có thì
+  tour mới TỰ hiện (ô đặt tên xe, nút bắt đầu lựa hàng). `auto: false`: chỉ chạy bằng nút "?". `when`: điều kiện thêm
+  (`TOUR_CONDITIONS` của `ui/components/tour.js`). `lead` (mục 30): tour đi trước nếu chưa xem, khi người chơi tới thẳng chỗ
+  này mà bỏ qua chỗ của tour dẫn.
+  Màn mở đầu `mo_dau`; Chuẩn bị `chuan_bi` (+ `su_kien_ngay` khi có thẻ sự kiện ngày, `hang_hiem` khi có thẻ gánh hàng quê — tự
+  hiện lần đầu thẻ xuất hiện, nối tiếp nếu cùng lúc); ca bán theo chỗ đang làm (`spot`): Quầy `quay_order`, `quay_bang_mon`,
+  `quay_thanh_toan`, `quay_tinh_tien`, `quay_qr`, `quay_phieu_thu`; Bếp `bep_day_phieu`, `bep_dong_mon` (phiếu đã mở; dẫn
+  bởi `bep_day_phieu`), `bep_chon`, `bep_thot`, `bep_ra_mon`;
+  phiếu chấm `phieu_cham`; `ca_ban` (tổng quan, chỉ bằng nút "?" khi quầy trống); Tổng kết `tong_ket`; màn con `cho_cong_thuc`,
+  `viec_hom_nay`, `hop_thu`, `lua_hang`, `so_cong_thuc`.
+- `TOUR_SCREENS`: màn → các tour tự hiện khi vào màn / xem lại bằng "?". `HOW_TO_PLAY`: 6 thẻ của trang Cách chơi (hình từ `art.js`).
+
+**Lõi** `src/core/tour.js` (thuần): `defaultTour()`, `toursEnabled`, `setToursEnabled`, `isTourSeen`, `shouldShowTour(state, id,
+data?)`, `markSeen(state, ids)`, `resetTours(state, { enable = true })`, `migrateTour(raw, s, data?)` (`save.migrate` gọi cuối;
+`STATE_VERSION` vẫn 3, trường thêm được điền khi nạp). Bản lưu cũ chưa có `tour`: xe đã có tên → `mo_dau` đã xem; đã bán ít nhất
+1 ca → tour có `veteranDay` ≤ ngày hiện tại coi như đã xem (vòng chơi chính — không bật hướng dẫn giữa ca của người đã quen tay;
+`quay_qr` từ ngày 5); tour màn con, thẻ sự kiện ngày, hàng hiếm vẫn tự hiện lần đầu. Bản lưu có `tour`: giữ tour đã xem có trong
+dữ liệu, `disabled` boolean.
+
+**Giao diện** `src/ui/components/tour.js` → `app.tour` (tạo trong `createApp`):
+- Lớp phủ `.tour-layer` gắn vào `app.overlay` (lớp nổi gốc như bảng chọn món ở mục 28; z-index 80: trên thanh tab và hộp thoại,
+  dưới lớp khóa tab). Vùng sáng `tour-hole` (box-shadow phủ tối phần còn lại), bong bóng `tour-bubble` (role dialog, aria-modal)
+  có mặt Dì Sáu, số bước, tiêu đề, lời, "Bỏ qua hướng dẫn", "Tiếp"/"Xong", mũi nhọn chỉ vào vùng sáng. Bong bóng nằm dưới hoặc trên
+  phần tử (bên đủ chỗ), kẹp trong khung trừ vùng an toàn (đệm của lớp phủ = `--safe-top/--safe-bottom`) và lề 8px; không bên nào
+  đủ chỗ thì đè một phần vùng sáng nhưng vẫn trọn trong khung; thân bong bóng cuộn nếu cao hơn khung.
+- Phần tử đích ngoài khung nhìn: cuộn các vùng cuộn chứa nó (`.screen`, `.panel`, `.k-main`, thân bảng chọn món…), chừa thanh
+  dính (`.act-bar`, `.sticky-foot`, `.k-toolbar`, `.meta-head`, `.mg-foot`), không cuộn khung app. Vùng sáng = phần nhìn thấy của
+  phần tử (cắt theo vùng cuộn) + 6px. Kiểm lại mỗi 250 ms, khi cuộn, đổi cỡ; phần tử biến mất (vẽ lại) thì tìm lại hoặc sang bước kế.
+- Bàn phím: tiêu điểm ở "Tiếp"; Tab đi vòng hai nút, → sang bước, Esc bỏ qua; phím khác không lọt xuống màn chơi. Nút Back của
+  điện thoại khi tour đang hiện (màn con, ca bán) = bỏ qua tour. Giảm chuyển động: tắt hiệu ứng trượt theo quy tắc chung.
+  Thông báo nổi ẩn khi tour hiện (`.is-touring`); thẻ Mẹo nghề được giữ (`app.toastHold` → `toast.js hold`, mục 30): đồng hồ thẻ
+  đang nổi dừng, thẻ mới chờ, tour đóng thì thẻ nổi tiếp phần thời gian còn lại (ít nhất 1,5 giây).
+- Tự hiện: `app.go` → `tour.onRoute(name)`: màn trong `TOUR_SCREENS` thì `want(ids)` chờ tới khi không còn hộp thoại (bảng điểm
+  danh, hộp lên chặng…), rồi hiện các tour chưa xem có bước hiện được; màn ca bán gọi `offer([id])` mỗi khung hình theo chỗ đang
+  làm. Xem hết hoặc bỏ qua → `markSeen` và lưu ngay; đổi màn giữa chừng → đóng, chưa tính đã xem.
+- **Kiểm thử tự động**: `navigator.webdriver` (Playwright) → không tự hiện, trừ URL có `?tour=1` trên localhost/127.0.0.1 — các
+  e2e cũ không bị tour chặn; nút "?" vẫn chạy bình thường.
+- "Giữ" màn ca bán (`hold(key, on)`, `onHold(fn)`): tour hoặc bảng Hướng dẫn đang mở → `service.js` gọi `setPaused(state, true)`:
+  giờ ca, kiên nhẫn khách đứng yên, không mở tình huống trong ca / phàn nàn, không kết ca; phiếu chấm chưa tắt; Bếp `guideHold`:
+  bước Chọn giữ đồng hồ đứng yên (`handle.hold` → `createClock().hold` ở `minigames/_util.js`, không tính quá giờ lúc đọc), bước
+  mini-game đang chơi dở thì dừng, đóng lại chơi lại từ đầu như khi đổi tab. Thả → `setPaused(false)`. Ca thật không bao giờ tự
+  dừng: bản lưu có `shift.paused` (tải lại trang giữa tour) → mở màn ca bán là chạy tiếp (tour chưa xem thì hiện lại).
+- Không chen ngang: chỉ mời tour khi không có hộp thoại và Bếp không bận (`kitchen.busy()`: mini-game, bảng chọn cách, hộp hỏi lại,
+  công bố món). Chỗ đang làm: phiếu chấm đang hiện → `score` (ưu tiên); tab Quầy `counter.tourSpot()` = `idle | order |
+  order-sheet | thanh_toan | tinh_tien | qr | receipt`; tab Bếp `kitchen.tourSpot()` = `chon | thot | ready | line | rail` (null khi
+  bận; `line` = phiếu đang mở còn dòng chưa làm). Phiếu chấm chỉ tính là `score` khi đã trượt lên xong (`sheetSettled`: hết hiệu
+  ứng, độ mờ ≥ 0,9) — trước đó các bước chỉ vào phiếu bị coi là chưa hiện.
+
+**Nút "?"** `src/ui/components/help.js`: `helpButton(app)` (44px, `aria-label` "Hướng dẫn") ở HUD ca bán (lề âm nên HUD không cao
+thêm; ≤ 380px HUD gọn lại, ≤ 340px "Ngày n" và giờ xếp 2 dòng), đầu màn Chuẩn bị (sau viên Muỗng Vàng; ≤ 360px bỏ chữ "Muỗng
+Vàng"), đầu màn Tổng kết, cuối hàng tiêu đề của màn con có tour (`screenHead(app, { help: true })`: Chợ Công Thức, Việc hôm nay,
+Hộp thư, Sổ công thức, Lựa hàng — trừ lúc đang lựa). `openHelp(app)` mở hộp thoại chung `help-sheet` (chặn thời gian ca như mọi hộp
+thoại chặn, kèm "giữ" như trên): "Xem lại hướng dẫn màn này" (ghi tên tour; khóa khi màn không có bước nào hiện được; ca bán: tour
+của khâu đang làm, quầy trống → `ca_ban`), "Cách chơi" (thẻ ngắn có hình: 4 khâu, bếp và trò nhỏ, chấm sao và tip, sự kiện, hàng
+hiếm, mẹo), "Xem lại tất cả hướng dẫn từ đầu" → xác nhận ngay trong bảng (không dùng `confirm()`) → `resetTours` (bật lại tự hiện),
+màn đang mở hướng dẫn lại.
+
+**Cài đặt**: công tắc "Hướng dẫn lần đầu" (`setting-tour`, mục Chơi) = `state.tour.disabled`. "Chơi lại từ đầu" đặt lại đã xem,
+giữ lựa chọn bật/tắt.
+
+**Kiểm chứng**: unit `tests/unit/tour.test.mjs` (đã xem, đặt lại, bật/tắt, migrate bản có/không có `tour`, save thật bản 0.3.0, lưu
+rồi tải lại giống hệt, dữ liệu 2–6 bước, lời tối đa 2 câu, trang Cách chơi có hình). E2E `tests/e2e/tour.e2e.mjs` (UA iPhone, 4 kịch
+bản): (1) 375×553 và 390×844 — save mới: tour màn mở đầu → tải lại không hiện lại; tour Chuẩn bị chờ bảng điểm danh đóng; vào ca →
+tour Order tự hiện, ca dừng (`data-t`, kiên nhẫn khách, `shift.paused`) → "Bỏ qua hướng dẫn" → ca chạy; "?" trên HUD → bảng Hướng
+dẫn (ca dừng) → xem lại tour Order đủ bước; Cách chơi; mỗi bước đo: bong bóng trọn trong khung và ngoài vùng an toàn, nút "Tiếp"
+không bị che, nút ≥ 44px, chữ ≥ 14px, vùng sáng khớp khung bao phần nhìn thấy của phần tử đích (±1,5px); (2) bàn phím, công tắc
+trong Cài đặt, xem lại tất cả (Thôi / xác nhận); (3) bước Chiên trứng đang chơi: tour Thớt chờ tới khi xong bước và hộp hỏi lại đóng;
+(4) tour bước Chọn hiện lâu hơn 2,5 × par: không bị tính quá giờ, bước Chọn vẫn 100 điểm (bỏ phần giữ đồng hồ thì kịch bản này
+trượt). Ngoài repo (scratchpad): chụp và đo cả 22 tour ở 375×553, 390×844 và 320×568 mô phỏng iOS (cắt vùng cuộn bằng
+`clip-path`, vùng an toàn trên 20px / dưới 34px).
+
+## 30. Vòng kiểm chứng độc lập tour và iPhone: 9 phát hiện đã sửa (01/10/2026)
+
+Hai lượt kiểm chứng độc lập (scratchpad `tour/verify-1`, `tour/verify-tourdoclap`) báo 9 phát hiện; cả 9 đều tái hiện được trước
+khi sửa (kịch bản đo ở `tour/after-fix/`), sửa tận gốc và có test hồi quy (chạy trên bản sao mã cũ thì trượt).
+
+1. **Tour phiếu chấm mất bước "Phiếu chấm" và "Tip"** (vẫn bị ghi đã xem → người mới không bao giờ được chỉ luật tip). Tour được
+   mời ngay khi phiếu có lớp `.show`, lúc phiếu còn trong suốt (hiệu ứng 0,22 giây); `shown()` coi độ mờ 0 là ẩn nên bỏ hai bước chỉ
+   vào phiếu. Sửa: `service.js sheetSettled()` — chỗ `score` chỉ tính khi phiếu đã hiện hẳn (không còn hiệu ứng chạy, độ mờ ≥ 0,9);
+   thêm `tour.js fadingIn()` — phần tử đang hiện dần (hiệu ứng độ mờ tới giá trị > 0) coi như đang hiện. E2E `tour` (5).
+2. **Thẻ Mẹo nghề bị tour "nuốt"**: thẻ mở bởi chính thao tác chuyển khâu (đọc lại đơn, báo tổng, thối tiền) nổi lên, khung hình
+   sau tour của khâu mới hiện và ẩn chồng thông báo, đồng hồ 3 giây của thẻ vẫn chạy → 0–51 ms nhìn thấy. Sửa: `toast.js hold(on)`
+   (`app.toastHold`, tour gọi khi bắt đầu/đóng): thẻ đang nổi dừng đồng hồ (chỉ tính lúc thật sự nổi), thẻ mới chờ trong hàng; thôi
+   giữ thì thẻ nổi tiếp phần còn lại, ít nhất `TIP_RESUME_MS` 1,5 giây. Thông báo thường không bị giữ (tin ngắn). `app.js` bỏ
+   `tour.after` cho thẻ Mẹo nghề. E2E `tour` (6): thẻ "Đọc lại order" ≥ 1 giây sau khi tour Thanh toán đóng (trước: 0 ms).
+3. **Lời tour sai luật**: `hang_hiem` bước Giỏ chợ nói "cuối mỗi ca có lượt" — đúng luật: liền 5 khách không sai ở quầy (chuỗi
+   Quầy chuẩn, `order.js COUNTER_STREAK_ROLL` = 5, nay là hằng số xuất ra) hoặc ngày Chợ phiên. `quay_order`/`ca_ban` bước Hàng
+   khách nói "vòng cạn thì khách bỏ về" từ ngày 1 — đúng luật: từ ngày 2 khách chờ lâu bị trừ sao, từ ngày 4 (`leaveFromDay`) mới
+   bỏ về. Unit `tour.test.mjs` "lời tour khớp luật": đối chiếu số trong lời với `COUNTER_STREAK_ROLL`, `DAY_EVENTS.cho_phien`,
+   `STRINGS.rare.basketHow`, `BALANCE.leaveFromDay`, `tipFiveStar`/`tipMinBill`, `ticketRailMax`.
+4. **Bước tour sai chỗ / không bao giờ tự hiện**: (a) `bep_day_phieu` bước "Làm món này" luôn bị bỏ khi tự hiện (phiếu chưa mở) →
+   tách thành tour mới `bep_dong_mon` (chỗ `line`: phiếu đã mở; bước Dòng món + Làm món này), có `lead: ['bep_day_phieu']`: chạm
+   thẳng phiếu trên dây ở đầu màn thì hai tour nối tiếp (4 bước), nút "?" khi phiếu đang mở xem lại cả hai; (b) `bep_thot` bước
+   "Chọn cách sơ chế" chỉ vào bước có chọn cách (`.k-step.has-method` — `kitchen.js` gắn lớp này cho bước có `method`; món không
+   có thì bỏ bước), bước "Trò nhỏ" nói luôn "chạm một bước để làm"; (c) `viec_hom_nay` "Nhận thưởng" / "Đổi việc" ưu tiên nút đang
+   bật; (d) `mo_dau` bước 1 viết lại, không lặp lời Dì Sáu trong khung. E2E `tour` (8): khoét sáng đúng nút `cook-line-0`,
+   `board-step-thai_dua`, `quest-claim-1`.
+5. **Kệ Chọn ở màn thấp** (có từ 0.4.0): vuốt bắt đầu trên kệ không cuộn được khung bếp (`.mg-stage` chặn mọi cử chỉ), sân khấu
+   bị ép còn ~30px nên kệ tràn ra ngoài, hàng kệ cuối luôn bị thanh "Trong rổ / Xong" che 1–10px kể cả khi cuộn hết. Sửa
+   (`kitchen.css`): `.k-chon-wrap .mg-stage { touch-action: pan-y }` (bước Chọn chỉ có chạm), `.k-chon-wrap { flex: 1 0 auto }`
+   (sân khấu không co nhỏ hơn nội dung), thanh chân phủ kín phần đệm dưới của `.k-main` (kệ không lộ ra bên dưới thanh). Màn
+   cao như cũ (390×844: kệ đủ trong khung, không cuộn).
+6. **Thớt Thái ở màn thấp** (ngoài phạm vi tour, có từ trước): thớt cao cố định 210px nên ở 375×553 + vùng an toàn nguyên liệu nằm
+   dưới thanh "Nhát / Xong", chạm vào đó không cắt được. Sửa (`kitchen.css`, chỉ sân khấu trên Thớt): vùng chơi `flex: 1 1 0`,
+   thớt cao vừa chỗ còn lại (64px – 250px; ≤ 700px cao tối đa 210px như cũ), nguyên liệu / vạch / vết cắt canh giữa thớt và thấp
+   lại theo thớt (không đổi cách chơi: nhát cắt chỉ tính theo hoành độ); đầu sân khấu bước Thái một dòng như bước Chà (mục 26).
+   E2E `iphone-overlays` (8) ở 320×568, 375×553, 390×664 + vùng an toàn 34px + cắt vùng cuộn kiểu iOS: vuốt trên ô kệ cuộn được,
+   mọi ô kệ có chỗ cuộn để nằm trọn trên thanh chân và chạm trúng, chọn bằng cảm ứng → 100 điểm; thớt, nguyên liệu, mọi vạch
+   nằm trọn giữa đầu sân khấu và thanh chân, thái bằng cảm ứng ngay trên nguyên liệu → ≥ 90 điểm.
+7. **Nút "?" của màn Chuẩn bị / Tổng kết bị cuộn khuất** sau khi tour tự cuộn xuống tới Mở hàng / Ngày mai. Sửa: hàng đầu màn (tên
+   xe, Muỗng Vàng, "?" — `prep.js`; tiêu đề, "?" — `summary.js`) tách khỏi `header` thành con trực tiếp của màn và dính đầu màn
+   (`position: sticky`, `css/tour.css`), như `.meta-head` của màn con; `tour.js bringIntoView` chừa chỗ cho hai thanh này.
+8. **Vùng an toàn trên**: `.hud`, `.meta-head`, hai hàng đầu màn trên đệm thêm `--safe-top`, chồng thông báo dời xuống theo (hiện `env(safe-area-inset-top)` = 0 vì
+   thanh trạng thái kiểu `default`; đổi sang `black-translucent` thì nút "?" không nằm dưới tai thỏ). E2E `tour` (7) ở 375×553
+   mô phỏng tai thỏ 47px: "?" ở HUD, Tổng kết và Chuẩn bị cuộn tới đáy, Việc hôm nay đều nằm dưới vùng an toàn và chạm trúng.
+
+Phiên bản vẫn 0.4.1 (chưa phát hành); không thêm tệp nên PRECACHE không đổi.

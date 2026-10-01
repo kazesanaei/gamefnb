@@ -326,13 +326,13 @@ export function mountCounter(root, app, opts = {}) {
           h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Đóng', testid: 'sheet-close', onclick: close }, '✕')),
         // thân bảng cuộn được khi khung nhìn thấp; đầu bảng và hàng nút luôn thấy
         h('div', { class: 'sheet-body' },
-          h('div', { class: 'qty-row' },
+          h('div', { class: 'qty-row', testid: 'qty-row' },
             h('span', null, S.labels.qty),
             h('button', { class: 'qty-btn', type: 'button', testid: 'qty-minus', disabled: sheet.qty <= 1, onclick: () => setQty(sheet.qty - 1), 'aria-label': 'Bớt' }, '−'),
             h('b', { class: 'qty-value', testid: 'qty-value' }, String(sheet.qty)),
             h('button', { class: 'qty-btn', type: 'button', testid: 'qty-plus', disabled: sheet.qty >= qtyMax, onclick: () => setQty(sheet.qty + 1), 'aria-label': 'Thêm' }, '+'),
             r && r.source === 'hiem' ? h('small', { class: 'sheet-rare muted' }, `★ còn ${rareMax} phần`) : null),
-          notes.length ? h('div', { class: 'note-block' },
+          notes.length ? h('div', { class: 'note-block', testid: 'note-block' },
             h('div', { class: 'note-title' }, S.labels.notes),
             h('div', { class: 'note-chips' }, notes.map(n => h('button', {
               class: ['note-chip', sheet.notes.includes(n.id) ? 'on' : ''], type: 'button', testid: 'note-chip-' + n.id,
@@ -690,8 +690,24 @@ export function mountCounter(root, app, opts = {}) {
 
   render()
 
+  // Hướng dẫn lần đầu: chỗ đang làm ở Quầy (màn ca bán chọn tour theo chỗ này).
+  // 'idle' (quầy trống) | 'order' | 'order-sheet' (bảng chọn món đang mở) | 'thanh_toan' | 'tinh_tien' | 'qr' | 'receipt'
+  function tourSpot() {
+    const c = counter()
+    if (destroyed || !c || !customerOf(c)) return 'idle'
+    if (c.stage === 'order') return ui.sheet && sheetPortal.node() ? 'order-sheet' : 'order'
+    if (c.stage === 'thanh_toan') return 'thanh_toan'
+    if (c.stage === 'tinh_tien') {
+      const paid = c.payMethod === 'cash' ? c.changeDone : c.paid
+      if (paid) return 'receipt'
+      return c.payMethod === 'qr' ? 'qr' : 'tinh_tien'
+    }
+    return 'idle'
+  }
+
   return {
     el,
+    tourSpot,
     update() {
       if (destroyed) return
       if (stateSig() !== sig) render()

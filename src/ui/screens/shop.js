@@ -35,7 +35,7 @@ export default {
       const state = app.state
       const cat = shopCatalog(state, app.ctx)
       el.textContent = ''
-      el.appendChild(screenHead(app, { title: cat.name || S.shop, sub: 'Món mới, dụng cụ và màu dù cho xe', icon: 'ro', backLabel: '‹ Chuẩn bị' }))
+      el.appendChild(screenHead(app, { title: cat.name || S.shop, sub: 'Món mới, dụng cụ và màu dù cho xe', icon: 'ro', backLabel: '‹ Chuẩn bị', help: true }))
       el.appendChild(h('nav', { class: 'seg-tabs', role: 'tablist' }, TABS.map(t => h('button', {
         class: ['seg-tab', t.id === tab ? 'active' : ''], type: 'button', role: 'tab', testid: t.testid,
         'aria-selected': String(t.id === tab), onclick: () => { if (tab !== t.id) { tab = t.id; app.sound('click'); render() } }

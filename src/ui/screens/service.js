@@ -1,10 +1,14 @@
 // Màn Ca bán: HUD, hàng khách, tiến trình 4 khâu, dây phiếu, 2 panel Quầy/Bếp, phiếu chấm, xử lý phàn nàn.
 // M3: tình huống trong ca (hộp thoại chặn thời gian ca — kiên nhẫn khách tạm dừng) chỉ bật ở tab Quầy, giữa hai khách
 // (ngay sau khi kẹp phiếu, hoặc lúc quầy trống), không chen vào mini-game; khách quen trả nợ báo đầu ca.
+// 0.4.1: hướng dẫn lần đầu theo khâu đang làm (tour Quầy: Order, bảng chọn món, Thanh toán, Tính tiền, chuyển khoản, phiếu
+// thu; Bếp: dây phiếu, dòng món, chọn nguyên liệu, Thớt, giao món; phiếu chấm) — tự hiện lần đầu, không chen vào mini-game;
+// khi tour hoặc bảng Hướng dẫn (nút "?" trên HUD) đang mở thì ca TẠM DỪNG (setPaused: kiên nhẫn khách, giờ ca đứng yên),
+// đồng hồ bước Chọn đứng yên, phiếu chấm chưa tắt.
 import { h, svgBox } from '../dom.js'
 import { face, billSvg, DI_SAU } from '../art.js'
 import { incidentDue, openIncident, resolveIncident } from '../../core/incidents.js'
-import { isShiftOver, endShift } from '../../core/shift.js'
+import { isShiftOver, endShift, setPaused } from '../../core/shift.js'
 import { beginCounter } from '../../core/order.js'
 import { stageOf, personaObj } from '../../core/customer.js'
 import { resolveComplaint, complaintRemakeOk } from '../../core/kitchen.js'
@@ -31,6 +35,8 @@ export default {
     const S = app.data.STRINGS
     const state0 = app.state
     if (!state0.shift) { setTimeout(() => app.go('prep'), 0); return { unmount() {} } }
+    // ca thật không bao giờ tự dừng: bản lưu ghi lúc hướng dẫn đang hiện (tải lại trang giữa tour) thì chạy tiếp
+    if (state0.shift.paused && !state0.shift.tasting && !(app.tour && app.tour.isHeld())) setPaused(state0, false)
 
     const hud = createHud(app)
     const progress = createProgress4(app.data)
@@ -199,11 +205,15 @@ export default {
       sheetHost.appendChild(node)
       requestAnimationFrame(() => node.classList.add('show'))
       app.sound(sheet.stars >= 4 ? 'ding' : 'click')
-      setTimeout(() => {
+      const hide = () => {
+        if (destroyed) return
+        // hướng dẫn phiếu chấm (hoặc bảng Hướng dẫn) đang mở: giữ phiếu tới khi đóng
+        if (app.tour && app.tour.isHeld()) { setTimeout(hide, 300); return }
         node.classList.remove('show')
         node.classList.add('hide')
         setTimeout(() => { node.remove(); sheetShowing = false; showNextSheet() }, 250)
-      }, SHEET_MS)
+      }
+      setTimeout(hide, SHEET_MS)
     }
     offs.push(app.bus.on('customer.rated', ({ customerId } = {}) => {
       const sh = app.state.shift
@@ -367,7 +377,7 @@ export default {
     // không có hộp thoại khác. Hộp thoại chặn nên thời gian ca và kiên nhẫn khách tạm dừng tới khi chọn xong.
     let incidentOpen = false
     function checkIncident() {
-      if (incidentOpen || destroyed || ended || active !== 'counter' || app.locked || app.modalOpen()) return
+      if (incidentOpen || destroyed || ended || active !== 'counter' || app.locked || app.modalOpen() || (app.tour && app.tour.isHeld())) return
       if (!app.state.shift || !incidentDue(app.state, app.ctx)) return
       const view = openIncident(app.state, app.ctx)
       if (!view) return
@@ -477,7 +487,7 @@ export default {
     // ---------- Phàn nàn ----------
     let complaintOpen = false
     function checkComplaint() {
-      if (complaintOpen || app.modalOpen()) return
+      if (complaintOpen || app.modalOpen() || (app.tour && app.tour.isHeld())) return
       const sh = app.state.shift
       const c = Object.values(sh.customers).find(x => x.status === 'nhan_mon' && x.complaint && !x.complaint.resolved)
       if (!c) return
@@ -542,7 +552,7 @@ export default {
     let overSince = 0
     let ended = false
     function checkEnd(now) {
-      if (ended) return
+      if (ended || (app.tour && app.tour.isHeld())) return
       if (!isShiftOver(app.state)) { overSince = 0; return }
       if (!overSince) { overSince = now; return }
       if (now - overSince < END_DELAY_MS || sheetShowing || sheetQueue.length || app.modalOpen()) return
@@ -550,6 +560,55 @@ export default {
       const summary = endShift(app.state, app.ctx)
       app.saveNow({ backup: true })
       app.go('summary', { summary })
+    }
+
+    // ---------- 0.4.1: Hướng dẫn lần đầu (tour) theo khâu đang làm ----------
+    const tourBySpot = {}
+    for (const [id, t] of Object.entries(app.data.TOURS || {})) if (t.screen === 'service' && t.spot) tourBySpot[t.spot] = id
+    // chỗ đang làm: phiếu chấm đang hiện > tab đang mở (Quầy: khâu của khách ở quầy; Bếp: dây phiếu / chọn / Thớt / giao);
+    // null = đang bận (mini-game, bảng chọn của bếp, công bố món) → chưa tự hiện
+    function tourSpot() {
+      if (sheetShowing && sheetSettled(sheetHost.querySelector('.score-sheet.show'))) {
+        // không chen vào mini-game vừa mở ở Bếp
+        return active === 'kitchen' && kitchen && kitchen.busy && kitchen.busy() ? null : 'score'
+      }
+      if (active === 'counter') return counter.tourSpot ? counter.tourSpot() : null
+      return kitchen && kitchen.tourSpot ? kitchen.tourSpot() : null
+    }
+    // tour của một chỗ, kèm tour dẫn (lead) đi trước: tới thẳng chỗ này (vd chạm phiếu trên dây ở đầu màn là mở luôn phiếu
+    // trong Bếp) thì tour của chỗ bị bỏ qua (Dây phiếu) hiện nối tiếp, không lỡ mất
+    function spotTours(spot) {
+      const id = tourBySpot[spot]
+      if (!id) return []
+      const lead = (app.data.TOURS[id].lead || []).filter(x => app.data.TOURS[x])
+      return [...lead, id]
+    }
+    function offerTour() {
+      if (!app.tour || ended || destroyed || app.locked) return
+      const ids = spotTours(tourSpot()).filter(id => app.tour.canAuto(id))
+      if (ids.length) app.tour.offer(ids)
+    }
+    let heldHere = false
+    if (app.tour) {
+      // nút "?" → "Xem lại hướng dẫn màn này": tour của khâu đang làm; quầy trống / bếp chưa có phiếu → tổng quan ca bán
+      app.tour.provide(() => {
+        const ids = spotTours(tourSpot())
+        return ids.length ? ids : [tourBySpot.idle].filter(Boolean)
+      })
+      offs.push(app.tour.onHold(held => {
+        heldHere = held
+        const st = app.state
+        if (st && st.shift && !st.shift.tasting) setPaused(st, held)
+        if (held) { if (active === 'kitchen' && kitchen && kitchen.guideHold) kitchen.guideHold(true) }
+        else if (kitchen && kitchen.guideHold) kitchen.guideHold(false)
+        if (!held) app.save()
+      }))
+      offs.push(() => {
+        app.tour.provide(null)
+        // rời màn khi đang giữ (hiếm): không để ca dừng mãi
+        const st = app.state
+        if (heldHere && st && st.shift && !st.shift.tasting) setPaused(st, false)
+      })
     }
 
     paintTabs()
@@ -577,6 +636,7 @@ export default {
         }
         checkComplaint()
         checkIncident()
+        offerTour()
         // thời gian ca (giây) cho kiểm thử tự động: đứng yên khi có hộp thoại chặn (vd tình huống trong ca)
         el.dataset.t = sh.t.toFixed(2)
         checkEnd(performance.now())
@@ -591,6 +651,16 @@ export default {
       }
     }
   }
+}
+
+// Phiếu chấm đã trượt lên xong (hết hiệu ứng hiện, đã rõ hẳn)? Tour phiếu chấm chỉ tự hiện lúc này: đang trượt lên thì phiếu
+// còn trong suốt, các bước chỉ vào phiếu (Phiếu chấm, Tip) bị coi là chưa hiện và bị bỏ mất.
+export function sheetSettled(node) {
+  if (!node || !node.isConnected || !node.classList.contains('show')) return false
+  try {
+    if (typeof node.getAnimations === 'function' && node.getAnimations().some(a => a.playState === 'running' || a.playState === 'pending')) return false
+  } catch { /* trình duyệt cũ: chỉ xem độ mờ */ }
+  return Number(getComputedStyle(node).opacity) >= 0.9
 }
 
 // Phiếu chấm từng khách: trượt lên 2 giây, không chặn thao tác.

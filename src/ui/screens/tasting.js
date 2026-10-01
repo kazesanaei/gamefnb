@@ -32,9 +32,10 @@ export default {
     }
 
     const sb = tastingSandbox(state, app.ctx)
-    // app "hộp cát": bếp đọc state/ctx của phiên nấu thử; bus riêng nên không sự kiện nào tới nhiệm vụ, chuỗi, Tem
+    // app "hộp cát": bếp đọc state/ctx của phiên nấu thử; bus riêng nên không sự kiện nào tới nhiệm vụ, chuỗi, Tem.
+    // overlay: bảng chọn, hộp hỏi lại, bảng công bố món của bếp nằm ở lớp nổi gốc của app (như trong ca bán)
     const sandboxApp = {
-      state: sb.state, ctx: sb.ctx, data: app.data, bus: createBus(),
+      state: sb.state, ctx: sb.ctx, data: app.data, bus: createBus(), overlay: app.overlay,
       save: () => app.save(), saveNow: o => app.saveNow(o),
       toast: (t, o) => app.toast(t, o), modal: o => app.modal(o), modalOpen: () => app.modalOpen(),
       sound: n => app.sound(n), vibrate: ms => app.vibrate(ms), settings: () => app.settings()

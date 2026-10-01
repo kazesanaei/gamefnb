@@ -7,6 +7,9 @@ import { linesPar } from './kitchen.js'
 import { noteObjects } from './scoring.js'
 import { rareLinesFit } from './rare.js'
 
+// M4: chuỗi "Quầy chuẩn" (liền bấy nhiêu khách không sai ở quầy) cho 1 lượt Giỏ chợ cuối ca (tối đa 1 lượt mỗi ca theo chuỗi).
+export const COUNTER_STREAK_ROLL = 5
+
 function counterOf(state, stage) {
   const sh = state.shift
   const c = sh && sh.counter
@@ -574,7 +577,7 @@ export function clipTicket(state, ctx) {
   sh.counterStreak = counterErr || assistCash ? 0 : (sh.counterStreak || 0) + 1
   // M4: chuỗi "Quầy chuẩn" chạm 5 khách lần đầu trong ca → +1 lượt Giỏ chợ (tối đa 1 lượt mỗi ca theo chuỗi, rút lúc
   // cuối ca; bật Hỗ trợ tính tiền thì chuỗi luôn 0 nên không có lượt). Thay tip 10.000đ theo chuỗi của M2.
-  if (sh.counterStreak >= 5 && !assistCash && !sh.streakRoll) {
+  if (sh.counterStreak >= COUNTER_STREAK_ROLL && !assistCash && !sh.streakRoll) {
     sh.streakRoll = true
     sh.rareRolls = (Number(sh.rareRolls) || 0) + 1
   }

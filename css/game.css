@@ -1,8 +1,9 @@
 /* Giao diện các màn: mở đầu, chuẩn bị ca, ca bán (HUD, hàng khách, dây phiếu, quầy), tổng kết. */
 
 /* ---------- Thông báo nổi ---------- */
+/* ngay dưới HUD ca bán (HUD cao thêm vùng an toàn trên khi có tai thỏ) */
 .toast-stack {
-  position: absolute; top: 50px; left: 12px; right: 12px; display: flex; flex-direction: column; gap: 6px;
+  position: absolute; top: calc(50px + var(--safe-top)); left: 12px; right: 12px; display: flex; flex-direction: column; gap: 6px;
   align-items: center; z-index: 60;
 }
 .toast {
@@ -52,6 +53,11 @@
   background: linear-gradient(180deg, rgba(255, 250, 240, 0) 0, var(--paper) 8px);
 }
 .modal-layer.show .modal { transform: none; }
+/* màn rất thấp (iPhone SE có thanh Safari 375×553, 320×568): hộp sát mép hơn để nội dung hộp có thêm chỗ */
+@media (max-height: 600px) {
+  .modal-layer { padding: calc(8px + var(--safe-top)) 8px calc(8px + var(--safe-bottom)); }
+  .modal { padding-top: 14px; }
+}
 .modal-icon { width: 56px; height: 56px; align-self: center; }
 .modal-title { font-size: 19px; font-weight: 800; text-align: center; color: var(--brick-dark); }
 .modal-text { font-size: 15px; text-align: center; }
@@ -127,7 +133,7 @@
 .service-screen { position: absolute; inset: 0; display: flex; flex-direction: column; overflow: hidden; }
 .hud {
   flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 6px 12px; min-height: 46px; background: var(--brick); color: #fff;
+  padding: calc(6px + var(--safe-top)) 12px 6px; min-height: calc(46px + var(--safe-top)); background: var(--brick); color: #fff;
 }
 .hud-cell { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .hud-day { font-weight: 800; font-size: 16px; }
@@ -136,6 +142,16 @@
 .hud-cap { font-size: 13px; opacity: .85; line-height: 1; }
 .hud-wallet { font-weight: 800; font-size: 17px; font-variant-numeric: tabular-nums; }
 .hud-stars { font-weight: 800; color: #ffe08a; }
+/* 0.4.1: HUD có thêm nút "?" (44px, css/tour.css) → màn hẹp gọn lại để HUD vẫn một hàng, số không ngắt dòng */
+.hud-day, .hud-time, .hud-wallet, .hud-stars { white-space: nowrap; }
+@media (max-width: 380px) {
+  .hud { gap: 6px; padding-left: 8px; padding-right: 8px; }
+  .hud-cell:not(.hud-money) { gap: 6px; }
+  .hud-wallet { font-size: 16px; }
+}
+@media (max-width: 340px) {
+  .hud > .hud-cell:first-child { flex-direction: column; align-items: flex-start; gap: 0; line-height: 1.2; }
+}
 
 .street {
   flex: none; display: flex; align-items: flex-end; gap: 8px; padding: 6px 12px 4px; min-height: 102px;
@@ -413,7 +429,7 @@
 
 /* ---------- Tổng kết ---------- */
 .summary-screen { display: flex; flex-direction: column; gap: 12px; padding: 16px var(--gutter) 0; min-height: 100%; }
-.sum-head h1 { font-size: 22px; font-weight: 900; color: var(--brick); }
+.sum-head-row h1 { font-size: 22px; font-weight: 900; color: var(--brick); }
 .ledger { width: 100%; border-collapse: collapse; font-size: 15px; }
 .ledger td { padding: 5px 2px; border-bottom: 1px dashed var(--line); }
 .ledger td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }

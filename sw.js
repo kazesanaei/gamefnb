@@ -11,7 +11,7 @@
 // VERSION trùng "version" trong package.json (có test đối chiếu); đổi tệp của game thì tăng VERSION.
 // Thêm/bớt tệp trong src/, css/, icons/ thì sửa PRECACHE (test tests/unit/pwa.test.mjs đối chiếu với cây thư mục thật).
 
-const VERSION = '0.4.0'
+const VERSION = '0.4.1'
 const CACHE_PREFIX = 'bkn-'
 const CACHE = CACHE_PREFIX + VERSION
 
@@ -27,6 +27,7 @@ const PRECACHE = [
   'css/kitchen.css',
   'css/meta.css',
   'css/settings.css',
+  'css/tour.css',
   'src/main.js',
   'src/core/bus.js',
   'src/core/chains.js',
@@ -56,6 +57,7 @@ const PRECACHE = [
   'src/core/shop.js',
   'src/core/state.js',
   'src/core/stats.js',
+  'src/core/tour.js',
   'src/data/balance.js',
   'src/data/chains.js',
   'src/data/checkin.js',
@@ -76,6 +78,7 @@ const PRECACHE = [
   'src/data/shop.js',
   'src/data/strings.js',
   'src/data/tips.js',
+  'src/data/tours.js',
   'src/data/upgrades.js',
   'src/ui/app.js',
   'src/ui/art.js',
@@ -88,6 +91,7 @@ const PRECACHE = [
   'src/ui/components/cash-drawer.js',
   'src/ui/components/chain-card.js',
   'src/ui/components/checkin-popup.js',
+  'src/ui/components/help.js',
   'src/ui/components/hud.js',
   'src/ui/components/meta-ui.js',
   'src/ui/components/modal.js',
@@ -96,6 +100,7 @@ const PRECACHE = [
   'src/ui/components/progress4.js',
   'src/ui/components/ticket-rail.js',
   'src/ui/components/toast.js',
+  'src/ui/components/tour.js',
   'src/ui/minigames/_util.js',
   'src/ui/minigames/cha.js',
   'src/ui/minigames/cham.js',

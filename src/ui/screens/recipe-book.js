@@ -30,7 +30,7 @@ export default {
       const book = recipeBook(app.state, app.ctx)
       el.textContent = ''
       el.appendChild(screenHead(app, {
-        title: S.screens.recipeBook, backLabel: '‹ Chuẩn bị',
+        title: S.screens.recipeBook, backLabel: '‹ Chuẩn bị', help: true,
         sub: `Đã có ${book.owned}/${book.total} món · chạm món để xem nguyên liệu và các bước`
       }))
       el.appendChild(h('nav', { class: 'seg-tabs book-tabs', role: 'tablist' },

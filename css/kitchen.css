@@ -1,6 +1,7 @@
 /* Màn Bếp và 6 mini-game. Dùng biến màu của base.css, có giá trị dự phòng. */
 
-.kitchen {
+/* biến màu dùng chung cho bếp và lớp nổi của bếp (.k-scope: bảng chọn, hộp hỏi lại, bảng công bố món ở lớp nổi gốc của app) */
+.kitchen, .k-scope {
   --k-bg: var(--bg, #fbf3e2);
   --k-paper: var(--paper, #fffaf0);
   --k-ink: var(--ink, #3b2a1f);
@@ -14,6 +15,8 @@
   --k-radius-s: var(--radius-s, 10px);
   --k-tap: var(--tap, 44px);
   --k-shadow: var(--shadow, 0 2px 0 rgba(59, 42, 31, .12), 0 6px 18px rgba(59, 42, 31, .1));
+}
+.kitchen {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -55,7 +58,7 @@
 .k-empty { padding: 32px 8px; text-align: center; color: var(--k-muted); }
 
 .svg-box, .k-line-icon, .k-card-icon, .k-ing-icon, .k-disau-face { display: inline-block; line-height: 0; }
-.kitchen svg { width: 100%; height: 100%; display: block; }
+.kitchen svg, .k-scope svg { width: 100%; height: 100%; display: block; }
 
 /* ----- Dì Sáu ----- */
 .k-disau { display: flex; align-items: flex-start; gap: 8px; }
@@ -188,14 +191,15 @@
 .k-layer[hidden] { display: none; }
 .k-layer[data-kind="stage"] { align-items: stretch; background: var(--k-bg); }
 .k-layer[data-kind="reveal"] { align-items: center; background: rgba(59, 42, 31, .6); }
-/* bảng chọn / hỏi lại nằm trong panel Bếp (đã ở trên thanh tab, thanh tab lo vùng an toàn; màn Nấu thử tự chừa vùng an
-   toàn ở đáy màn): không cộng vùng an toàn lần nữa. Panel thấp hơn bảng (màn thấp) thì bảng cuộn trong khung panel,
-   không bị cắt mất đầu. */
-.k-layer:is([data-kind="sheet"], [data-kind="prompt"], [data-kind="confirm"]) { padding-top: 8px; }
+/* Bảng chọn / hỏi lại / xác nhận / công bố món: ở lớp nổi gốc của app (.k-pop, kitchen.js), phủ cả thanh tab Quầy/Bếp —
+   panel Bếp ở màn thấp chỉ cao ~200px, và iOS Safari cắt phần nằm trong panel (vùng cuộn) theo khung panel. Bảng cao tối
+   đa bằng khung app (100dvh) trừ vùng an toàn; dài hơn thì cuộn bên trong bảng, không bị cắt mất đầu hay mất nút. */
+.k-pop { padding-top: calc(8px + var(--safe-top)); color: var(--k-ink); }
+.k-pop[data-kind="reveal"] { padding: calc(8px + var(--safe-top)) 0 calc(8px + var(--safe-bottom)); }
 .k-sheet {
   width: 100%; max-width: 480px; max-height: 100%; overflow-y: auto; overscroll-behavior: contain;
   display: flex; flex-direction: column; gap: 10px;
-  padding: 16px; background: var(--k-paper);
+  padding: 16px 16px calc(16px + var(--safe-bottom)); background: var(--k-paper);
   border-radius: 18px 18px 0 0; box-shadow: var(--k-shadow); animation: k-up .18s var(--ease, ease-out);
 }
 .k-sheet > * { flex-shrink: 0; }
@@ -249,10 +253,14 @@
   -webkit-tap-highlight-color: transparent; overscroll-behavior: contain;
 }
 .mg-stage * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-.k-chon-wrap { flex: 1; display: flex; min-height: 0; }
+/* Sân khấu Chọn không co nhỏ hơn nội dung (flex-shrink 0): màn thấp (iPhone SE + thanh Safari, 360×600…) thì khung bếp
+   .k-main cuộn; cuộn hết thì thanh "Trong rổ / Xong" (dính đáy) nằm dưới hàng kệ cuối, không che mép ô kệ. Trước đây sân
+   khấu bị ép còn ~30px, kệ tràn ra ngoài nên hàng cuối luôn bị thanh chân che vài px. */
+.k-chon-wrap { flex: 1 0 auto; display: flex; min-height: 0; }
 /* min-width 0: rổ đầy (8–10 món) cuộn ngang bên trong rổ, không kéo sân khấu rộng quá khung (đẩy nút Xong, cột kệ thứ 4 ra
-   ngoài mép phải) */
-.k-chon-wrap .mg-stage { padding: 0; min-width: 0; }
+   ngoài mép phải). Bước Chọn chỉ có chạm (không kéo, không vuốt) nên cho vuốt dọc: vuốt trên kệ cuộn được khung bếp (sân
+   khấu chung chặn mọi cử chỉ — touch-action: none — vì các trò kéo/vuốt khác). */
+.k-chon-wrap .mg-stage { padding: 0; min-width: 0; touch-action: pan-y; }
 .mg-head { display: flex; align-items: center; gap: 10px; }
 .mg-head-icon { width: 40px; height: 40px; flex: 0 0 40px; }
 .mg-head-text { flex: 1; min-width: 0; }
@@ -292,6 +300,9 @@
 /* CHON */
 .mg-chon { gap: 8px; }
 .mg-chon .mg-foot { position: sticky; bottom: 0; background: var(--k-bg); padding-top: 4px; }
+/* trong khung bếp: thanh dính phủ kín cả phần đệm dưới của .k-main (như .k-toolbar) — màn thấp phải cuộn thì kệ không lộ ra
+   bên dưới thanh "Trong rổ / Xong" */
+.k-main .mg-chon .mg-foot { bottom: -16px; padding-bottom: 16px; margin-bottom: -16px; }
 .chon-basket {
   flex: none; display: flex; align-items: center; gap: 4px; min-height: 48px; padding: 4px 10px; overflow-x: auto;
   border-radius: 26px; background: #d9b77e; box-shadow: inset 0 -4px 0 #b88f52;
@@ -386,6 +397,15 @@
 .thai-blade::after { content: ''; position: absolute; left: -9px; top: -34px; width: 22px; height: 38px; border-radius: 6px; background: #5b3a23; }
 .thai-aim { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px dashed rgba(207, 59, 43, .6); pointer-events: none; }
 .thai-knife[hidden], .thai-aim[hidden] { display: none; }
+/* Bước Thái trong ca (sân khấu trên Thớt, lớp phủ panel Bếp): thớt cao vừa chỗ còn lại giữa đầu sân khấu và thanh chân
+   dính (màn thấp như iPhone SE + thanh Safari chỉ còn ~60–90px; thấp nhất 64px), không quá cỡ chuẩn; nguyên liệu, vạch, vết cắt canh giữa
+   thớt và thấp lại theo thớt. Không đổi cách chơi: nhát cắt chỉ tính theo hoành độ, bề ngang giữ nguyên. Trước đây thớt
+   cao cố định 210px nên nguyên liệu nằm dưới thanh "Nhát / Xong", chạm vào đó không cắt được. */
+.k-layer[data-kind="stage"] .mg-thai > .mg-area { flex: 1 1 0; min-height: 64px; }
+.k-layer[data-kind="stage"] .mg-thai .thai-board { flex: 1 1 auto; height: auto; min-height: 64px; max-height: 250px; }
+.k-layer[data-kind="stage"] .mg-thai .thai-food { top: calc(50% - min(42px, 50% - 12px)); height: min(84px, 100% - 24px); }
+.k-layer[data-kind="stage"] .mg-thai .thai-guide { top: calc(50% - min(60px, 50% - 4px)); height: min(120px, 100% - 8px); }
+.k-layer[data-kind="stage"] .mg-thai .thai-cut { top: calc(50% - min(46px, 50% - 10px)); height: min(92px, 100% - 20px); }
 
 /* CHAM */
 .cham-exact-wrap, .cham-spoon-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
@@ -520,13 +540,14 @@
   .k-stage-bar { padding-top: 4px; }
   /* bước Chà (ca đông khách, phiếu có ghi chú): tên món và ghi chú chung một dòng, chữ nhỏ hơn, dài thì cắt "…" (tên món
      nhường trước — phiếu trên dây và đầu sân khấu vẫn ghi món, bước) → thớt chà có thêm ~25px, vừa khung không phải cuộn */
-  .k-stage-wrap[data-type="cha"] .k-stage-bar { flex-wrap: nowrap; gap: 8px; font-size: 13px; line-height: 1.3; white-space: nowrap; }
-  .k-stage-wrap[data-type="cha"] .k-stage-bar > * { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .k-stage-wrap[data-type="cha"] .k-stage-dish { flex-shrink: 1000; min-width: 3em; }
-  .k-stage-wrap[data-type="cha"] .k-stage-method { flex-shrink: 0; }
-  .k-stage-wrap[data-type="cha"] .k-stage-bar .k-notes { display: block; margin-top: 0; }
-  .k-stage-wrap[data-type="cha"] .k-stage-bar .k-note { display: inline; font-size: 13px; }
-  .k-stage-wrap[data-type="cha"] .k-stage-bar .k-note + .k-note { margin-left: 4px; }
+  /* bước Thái cũng vậy: thớt thái cao vừa chỗ còn lại (xem THAI ở trên) nên mỗi dòng nhường lại đều thành thớt */
+  .k-stage-wrap:is([data-type="cha"], [data-type="thai"]) .k-stage-bar { flex-wrap: nowrap; gap: 8px; font-size: 13px; line-height: 1.3; white-space: nowrap; }
+  .k-stage-wrap:is([data-type="cha"], [data-type="thai"]) .k-stage-bar > * { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .k-stage-wrap:is([data-type="cha"], [data-type="thai"]) .k-stage-dish { flex-shrink: 1000; min-width: 3em; }
+  .k-stage-wrap:is([data-type="cha"], [data-type="thai"]) .k-stage-method { flex-shrink: 0; }
+  .k-stage-wrap:is([data-type="cha"], [data-type="thai"]) .k-stage-bar .k-notes { display: block; margin-top: 0; }
+  .k-stage-wrap:is([data-type="cha"], [data-type="thai"]) .k-stage-bar .k-note { display: inline; font-size: 13px; }
+  .k-stage-wrap:is([data-type="cha"], [data-type="thai"]) .k-stage-bar .k-note + .k-note { margin-left: 4px; }
   .k-layer[data-kind="stage"] .mg-stage { padding-top: 6px; gap: 6px; }
   .k-layer[data-kind="stage"] .mg-head { gap: 8px; }
   .k-layer[data-kind="stage"] .mg-head-icon { width: 32px; height: 32px; flex-basis: 32px; }
@@ -547,17 +568,15 @@
   .k-layer[data-kind="stage"] .lua-pan.is-phin { margin: -22px 0 4px; }
   .k-layer[data-kind="stage"] .lua-pan.is-noi { margin: -25px 0; }
   .k-layer[data-kind="stage"] .rot-scene { transform: scale(.6); margin-top: -112px; }
-  .k-layer[data-kind="stage"] .thai-board { height: 210px; }
-  .k-layer[data-kind="stage"] .thai-food { top: 60px; }
-  .k-layer[data-kind="stage"] .thai-guide { top: 42px; }
-  .k-layer[data-kind="stage"] .thai-cut { top: 56px; }
+  .k-layer[data-kind="stage"] .mg-thai .thai-board { max-height: 210px; }
 }
 
 /* Giảm chuyển động */
 @media (prefers-reduced-motion: reduce) {
-  .kitchen *, .kitchen *::before, .kitchen *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; }
+  .kitchen *, .kitchen *::before, .kitchen *::after, .k-scope *, .k-scope *::before, .k-scope *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; }
 }
-.kitchen.is-reduced *, .reduce-motion .kitchen *, .kitchen.is-reduced *::before, .kitchen.is-reduced *::after {
+.kitchen.is-reduced *, .reduce-motion .kitchen *, .kitchen.is-reduced *::before, .kitchen.is-reduced *::after,
+.k-scope.is-reduced *, .reduce-motion .k-scope *, .k-scope.is-reduced *::before, .k-scope.is-reduced *::after {
   animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important;
 }
 /* vẫn giữ nhấp nháy tín hiệu (không dùng chuyển động) cho phiếu đỏ */

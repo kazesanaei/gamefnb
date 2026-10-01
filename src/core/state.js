@@ -2,6 +2,8 @@
 
 // Phiên bản cấu trúc save: 1 = M1 (0.1), 2 = M2–M3 (0.2–0.3), 3 = M4 (0.4: tình huống/sự kiện tiền, hàng hiếm).
 // save.migrate nâng mọi bản cũ lên bản này.
+import { defaultTour } from './tour.js'
+
 export const STATE_VERSION = 3
 export const DEFAULT_RECIPE_IDS = Object.freeze(['banh_mi_op_la', 'tra_tac'])
 
@@ -201,6 +203,7 @@ export function defaultState(seed = 0, data = null) {
     backup: defaultBackupInfo(),
     incidents: defaultIncidents(),
     notebook: defaultNotebook(),
+    tour: defaultTour(),     // 0.4.1: hướng dẫn lần đầu {seen: {tourId: true}, disabled} (core/tour.js)
     ...defaultMeta()
   }
 }

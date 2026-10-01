@@ -9,6 +9,7 @@ import { screenHead } from '../components/meta-ui.js'
 import { exportCode, readCode, backupSummary, listArchives, countBrokenArchives } from '../../core/save.js'
 import { defaultState, INCIDENT_FREQUENCIES } from '../../core/state.js'
 import { refreshMeta } from '../../core/meta.js'
+import { toursEnabled, setToursEnabled } from '../../core/tour.js'
 
 // Biểu tượng bánh răng (nút Cài đặt ở màn Chuẩn bị).
 export const GEAR_SVG = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.4h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.4-2-1.6ZM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" transform="translate(-1 0)"/></svg>'
@@ -337,6 +338,8 @@ export async function resetGame(app) {
   if (!step2) return false
   const next = defaultState(randomSeed(), app.data)
   next.settings = { ...next.settings, ...app.state.settings }
+  // hướng dẫn lần đầu: ván mới hướng dẫn lại từ đầu, giữ lựa chọn bật/tắt tự hiện
+  setToursEnabled(next, toursEnabled(app.state))
   next.backup = { lastAt: 0, since: app.now() }
   return applyNewState(app, next, 'Đã cất bản cũ. Bắt đầu lại từ ngày 1, chúc đắt hàng!')
 }
@@ -381,6 +384,21 @@ export default {
             else app.sound('click')
             if (key === 'vibrate' && e.target.checked) app.vibrate(30)
             if (key === 'sound') render()     // bật/tắt ô âm lượng theo công tắc
+          }
+        }))
+    }
+
+    // 0.4.1: bật/tắt tự hiện hướng dẫn lần đầu (state.tour.disabled, không nằm trong settings)
+    function tourRow() {
+      return h('label', { class: 'set-row set-switch' },
+        h('span', { class: 'set-text' }, h('b', null, 'Hướng dẫn lần đầu'),
+          h('small', null, 'Lần đầu con tới một màn hay một khâu, Dì Sáu chỉ từng chỗ; trong ca, khách đang chờ cũng tạm dừng. Tắt thì không tự hiện nữa, vẫn xem lại được bằng nút "?".')),
+        h('input', {
+          type: 'checkbox', class: 'switch', role: 'switch', checked: toursEnabled(app.state), testid: 'setting-tour',
+          onchange: e => {
+            setToursEnabled(app.state, e.target.checked)
+            app.saveNow()
+            app.sound('click')
           }
         }))
     }
@@ -500,6 +518,7 @@ export default {
           switchRow('assistCash', 'Hỗ trợ tính tiền', 'Hiện sẵn tổng tiền và tiền thối. Khi bật: chuỗi "Quầy chuẩn" và việc ở Quầy không được đếm, không ghi kỷ lục.'),
           switchRow('assistMotion', 'Hỗ trợ thao tác', 'Vùng mục tiêu rộng hơn, thời gian dài hơn, ô cần lấy nhấp nháy. Khi bật: món không đạt "Không tì vết" và tối đa hạng Ngon.')),
         section('Chơi', 'settings-play',
+          tourRow(),
           switchRow('tips', 'Mẹo nghề', 'Thẻ mẹo vận hành quán, hiện ngắn trong ca, không dừng game. Tắt thì thẻ mới không nổi lên nhưng vẫn được ghi vào Sổ tay nghề.'),
           switchRow('reducedMotion', 'Giảm chuyển động', 'Bớt hiệu ứng rung lắc, nhấp nháy, trượt.'),
           incidentRow(),

@@ -23,7 +23,7 @@ export default {
       const list = mailList(state, nowInfo).filter(m => !m.expired)
       const claimable = list.filter(m => m.hasReward && !m.claimed)
       el.textContent = ''
-      el.appendChild(screenHead(app, { title: S.mailbox, sub: `${mailBadge(state, nowInfo)} thư mới · quà giữ tối đa 30 ngày`, icon: 'thu', backLabel: '‹ Chuẩn bị' }))
+      el.appendChild(screenHead(app, { title: S.mailbox, sub: `${mailBadge(state, nowInfo)} thư mới · quà giữ tối đa 30 ngày`, icon: 'thu', backLabel: '‹ Chuẩn bị', help: true }))
       const rw = rewindNote(app, nowInfo)
       if (rw) el.appendChild(rw)
       el.appendChild(h('div', { class: 'mail-bar' },

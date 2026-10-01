@@ -3,17 +3,22 @@
 // Giới hạn chiều cao (setLimit, màn ca bán): chồng thông báo không được che quá dải khách (thanh 4 khâu phải luôn
 // thấy). Thông báo không vừa thì xếp hàng theo thứ tự đến, hiện khi thông báo trước tắt; thông báo thường chờ quá
 // MAX_WAIT_MS thì bỏ (tin đã cũ, vd "Đã kẹp phiếu…" khi khách đã nhận món), thẻ Mẹo nghề không bỏ.
+// Giữ thẻ Mẹo nghề (hold, 0.4.1 — hướng dẫn lần đầu đang hiện, chồng thông báo bị ẩn): thẻ đang nổi dừng đồng hồ (chưa tính
+// thời gian bị ẩn), thẻ mới chờ trong hàng; thôi giữ thì thẻ hiện tiếp phần thời gian còn lại (ít nhất TIP_RESUME_MS).
+// Thông báo thường không bị giữ (tin ngắn, cũ thì bỏ).
 import { h, svgBox } from '../dom.js'
 
 export const MAX_TOASTS = 2
 export const MAX_TIP_QUEUE = 2
 export const MAX_PENDING = 3
 export const MAX_WAIT_MS = 3500
+export const TIP_RESUME_MS = 1500
 
 /**
- * createToaster(host) → { show(text, opts), setLimit(fn) }
+ * createToaster(host) → { show(text, opts), setLimit(fn), hold(on), isHeld() }
  * opts: { duration (ms, mặc định 2200), kind: 'info'|'good'|'bad'|'tip', title, icon (SVG), testid }
  * setLimit(fn | null): fn() → chiều cao tối đa (px) của chồng thông báo, hoặc null/0 = không giới hạn.
+ * hold(on): giữ / thôi giữ thẻ Mẹo nghề (xem trên).
  */
 export function createToaster(host) {
   const box = h('div', { class: 'toast-stack', 'aria-live': 'polite', role: 'status' })
@@ -21,6 +26,8 @@ export function createToaster(host) {
   const queue = []             // [{ tip, text, opts, at }] theo thứ tự đến
   let tipShowing = false
   let limitFn = null
+  let held = false
+  let tipLive = null           // thẻ Mẹo nghề đang nổi: { left (ms còn lại), since, timer, finish }
 
   const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now())
 
@@ -43,13 +50,27 @@ export function createToaster(host) {
   }
   const liveItems = () => [...box.children].filter(n => !n.classList.contains('hide'))
 
-  function present(item, duration, onGone) {
+  function present(item, duration) {
     requestAnimationFrame(() => item.classList.add('show'))
     setTimeout(() => {
       item.classList.remove('show')
       item.classList.add('hide')
-      setTimeout(() => { item.remove(); if (onGone) onGone(); pump() }, 260)
+      setTimeout(() => { item.remove(); pump() }, 260)
     }, duration)
+  }
+
+  // Thẻ Mẹo nghề: đồng hồ dừng được (hold). Thời gian chỉ tính lúc thẻ thật sự nổi.
+  function presentTip(item, duration) {
+    requestAnimationFrame(() => item.classList.add('show'))
+    const live = { left: duration, since: now(), timer: 0, finish: null }
+    live.finish = () => {
+      if (tipLive === live) tipLive = null
+      item.classList.remove('show')
+      item.classList.add('hide')
+      setTimeout(() => { item.remove(); tipShowing = false; pump() }, 260)
+    }
+    tipLive = live
+    if (!held) live.timer = setTimeout(live.finish, duration)
   }
 
   // Thử đặt một mục vào chồng. Không vừa (và đang có thông báo khác) → false, mục chờ tiếp.
@@ -60,7 +81,7 @@ export function createToaster(host) {
     if (liveItems().length > 1 && !fits()) { item.remove(); return false }
     if (entry.tip) {
       tipShowing = true
-      present(item, entry.opts.duration ?? 3000, () => { tipShowing = false })
+      presentTip(item, entry.opts.duration ?? 3000)
       return true
     }
     // tối đa 2 thông báo thường cùng lúc (thẻ Mẹo nghề không tính)
@@ -77,7 +98,7 @@ export function createToaster(host) {
     for (let i = queue.length - 1; i >= 0; i--) if (!queue[i].tip && t - queue[i].at > MAX_WAIT_MS) queue.splice(i, 1)
     for (let i = 0; i < queue.length;) {
       const e = queue[i]
-      if (e.tip && tipShowing) { i++; continue }
+      if (e.tip && (tipShowing || held)) { i++; continue }
       if (!place(e)) break
       queue.splice(i, 1)
     }
@@ -104,6 +125,24 @@ export function createToaster(host) {
     setLimit(fn) {
       limitFn = typeof fn === 'function' ? fn : null
       pump()
-    }
+    },
+    hold(on) {
+      on = !!on
+      if (on === held) return
+      held = on
+      const live = tipLive
+      if (live && on) {
+        // dừng đồng hồ: phần đã nổi được trừ đi, phần còn lại chờ thôi giữ
+        clearTimeout(live.timer)
+        live.timer = 0
+        live.left = Math.max(0, live.left - (now() - live.since))
+      } else if (live && !on) {
+        live.left = Math.max(live.left, TIP_RESUME_MS)
+        live.since = now()
+        live.timer = setTimeout(live.finish, live.left)
+      }
+      if (!on) pump()
+    },
+    isHeld: () => held
   }
 }

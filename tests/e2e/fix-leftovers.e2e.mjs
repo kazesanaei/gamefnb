@@ -413,8 +413,10 @@ test('(e2) chạm thẻ gợi ý đúng chỗ nút Xong sắp hiện: bước N�
   }
 })
 
+// Bản 0.4.1 (mục 28): bảng công bố món nằm ở lớp nổi gốc của app, giữa cả khung (không còn giữa panel Bếp) — ở 360×640 nút
+// "Giao cho khách" đã nằm dưới mép bảng, không còn dưới bảng; khung cao 390×844 thì nút vẫn nằm dưới bảng → thử ở khung này.
 test('(e3) chạm bảng công bố món (đóng ở pointerdown): không giao nhầm phiếu nằm dưới ngón tay', { timeout: 240000 }, async () => {
-  const g = await openGame({ clock: true, name: 'click-ma-cong-bo', viewport: { width: 360, height: 640 } })
+  const g = await openGame({ clock: true, name: 'click-ma-cong-bo', viewport: { width: 390, height: 844 } })
   const { page, errors } = g
   try {
     const { state, ticket } = shiftSave({ recipeId: 'banh_mi_op_la', notes: [] }, 'all', { cooks: 5 })
@@ -429,8 +431,10 @@ test('(e3) chạm bảng công bố món (đóng ở pointerdown): không giao n
     await g.shot('cong-bo')
     // điểm trên bảng công bố mà ngay dưới (dây phiếu) là nút "Giao cho khách"
     const p = await page.evaluate(() => {
-      const r = document.querySelector('[data-testid="dish-reveal"]').getBoundingClientRect()
-      const layer = document.querySelector('.k-layer')
+      const reveal = document.querySelector('[data-testid="dish-reveal"]')
+      const r = reveal.getBoundingClientRect()
+      // lớp chứa bảng công bố (lớp nổi của bếp, nằm ở lớp nổi gốc của app)
+      const layer = reveal.closest('.k-layer')
       layer.style.visibility = 'hidden'
       let hit = null
       for (let y = r.top + 8; y < r.bottom - 4 && !hit; y += 6) {

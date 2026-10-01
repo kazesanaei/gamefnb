@@ -36,14 +36,15 @@ export default {
     }
     const stallDef = id => (app.data.STALLS || []).find(s => s.id === id) || null
 
-    function head(sub) {
-      return screenHead(app, { title: S.screens.market || 'Gánh hàng quê', sub, backLabel: '‹ Chuẩn bị', onBack: () => leave() })
+    // help: nút "?" (Hướng dẫn) — không đặt trong lúc đang lựa (đồng hồ của bước lựa không dừng theo bảng Hướng dẫn)
+    function head(sub, help = true) {
+      return screenHead(app, { title: S.screens.market || 'Gánh hàng quê', sub, backLabel: '‹ Chuẩn bị', onBack: () => leave(), help })
     }
 
     // Đầu màn + thân màn (lề 16px hai bên); trả thân màn để gắn thẻ.
-    function frame(sub) {
+    function frame(sub, help = true) {
       el.textContent = ''
-      el.appendChild(head(sub))
+      el.appendChild(head(sub, help))
       const body = h('div', { class: 'meta-body market-body' })
       el.appendChild(body)
       return body
@@ -119,7 +120,7 @@ export default {
       if (!r.ok) { app.toast(reasonText(app, r.reason), { kind: 'bad' }); render(); return }
       app.sound('click')
       app.saveNow()
-      const body = frame(`${r.stall.name} · lựa hàng`)
+      const body = frame(`${r.stall.name} · lựa hàng`, false)
       const stage = h('div', { class: 'mg-stage' })
       const wrap = h('section', { class: 'market-stage', testid: 'market-stage', dataset: { stall: id } },
         h('p', { class: 'small market-hint' }, 'Bỏ vào rổ đúng ' + r.game.goods.map(g => INGS[g] ? INGS[g].name : g).join(' và ') + ', rồi bấm Xong.'),

@@ -66,10 +66,13 @@ code { font-family: ui-monospace, Menlo, Consolas, monospace; background: var(--
   height: 100vh;
   height: 100dvh;
   margin: 0 auto;
+  /* lớp phủ (hộp thoại, bảng trượt) cao tối đa bằng khung này: khung luôn vừa phần nhìn thấy của khung nhìn */
   background: var(--bg);
   overflow: hidden;
   box-shadow: 0 0 0 1px rgba(59, 42, 31, 0.06), 0 10px 40px rgba(59, 42, 31, 0.18);
 }
+/* trình duyệt chưa hiểu 100dvh (iOS Safari trước 15.4): app.js đo chiều cao phần nhìn thấy vào --app-h */
+.app-frame.is-fit-h { height: var(--app-h); }
 
 .screen {
   position: absolute;

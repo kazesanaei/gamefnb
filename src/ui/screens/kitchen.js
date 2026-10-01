@@ -1,5 +1,6 @@
 // Màn Bếp (panel con của màn ca bán): dây phiếu → chọn nguyên liệu → Thớt sơ chế → Ra món → Giao cho khách.
-// Giao diện với khung app: mountKitchen(root, app, opts?) → { unmount(), update(dt), onShow(), onHide(), selectTicket(id) }.
+// Giao diện với khung app: mountKitchen(root, app, opts?) → { unmount(), update(dt), onShow(), onHide(), selectTicket(id),
+// tourSpot(), busy(), guideHold(on) } (3 hàm cuối: hướng dẫn lần đầu, bản 0.4.1).
 // opts.tasting = { onDone(dish) }: chế độ NẤU THỬ ở Chợ Công Thức (app là app "hộp cát" có state/ctx riêng):
 // không đếm giờ (giới hạn bước nới rộng, ẩn thanh thời gian), không nút về dây phiếu / bỏ món, Ra món xong gọi onDone.
 import { h, svgBox, clear } from '../dom.js'
@@ -116,10 +117,16 @@ export function mountKitchen(root, app, opts = {}) {
   ensureStyles()
   const tasting = opts && opts.tasting ? opts.tasting : null
   const main = h('div', { class: 'k-main' })
+  // Hai lớp phủ, mỗi lúc chỉ một lớp hiện: sân khấu mini-game nằm trong panel Bếp (vùng chơi giữa dây phiếu và thanh tab);
+  // bảng chọn, hộp hỏi lại, hộp xác nhận, bảng công bố món nằm ở lớp nổi gốc của app (app.overlay), phủ cả thanh tab —
+  // panel Bếp ở màn thấp chỉ cao ~200px, và iOS Safari cắt mọi thứ nằm trong panel (vùng cuộn) theo khung panel nên
+  // bảng nằm trong panel bị mất các nút phía dưới. Lớp nổi mang class k-scope để dùng chung biến màu, kiểu của bếp.
   const layer = h('div', { class: 'k-layer', hidden: true })
+  const popLayer = h('div', { class: 'k-layer k-scope k-pop', 'data-testid': 'kitchen-pop', hidden: true })
   const flashHost = h('div', { class: 'k-flash-host', 'aria-live': 'polite' })
   const el = h('section', { class: ['kitchen', tasting ? 'is-tasting' : ''], 'data-testid': 'kitchen', 'aria-label': tasting ? 'Nấu thử' : 'Bếp' }, main, flashHost, layer)
   root.appendChild(el)
+  ;(app.overlay || el).appendChild(popLayer)
 
   const ui = {
     visible: true,
@@ -142,14 +149,17 @@ export function mountKitchen(root, app, opts = {}) {
   // ngón rơi xuống phần tử mới nằm dưới ngón: nút "Bỏ món" trên Thớt, "Giao cho khách" trên dây phiếu, nút Xong của mini-game
   // vừa mở (bước về 0 điểm). Bỏ click của lần chạm bắt đầu TRƯỚC lần đổi lớp phủ gần nhất (so thứ tự sự kiện, không so giờ)
   // và chưa quá TAP_GUARD_MS; lần chạm mới và click từ bàn phím (có phím bấm sau lần chạm cuối) không bị chặn.
+  // Lớp nổi (popLayer) nằm ngoài `el` nên gắn cùng bộ chặn: chạm bắt đầu ở bếp, nhấc ngón trên bảng vừa mở (và ngược lại).
   const tapGuard = { seq: 0, press: 0, pressAt: 0, layer: 0 }
   const markLayer = () => { tapGuard.layer = ++tapGuard.seq }
-  el.addEventListener('pointerdown', () => { tapGuard.press = ++tapGuard.seq; tapGuard.pressAt = performance.now() }, true)
-  el.addEventListener('keydown', () => { tapGuard.press = 0 }, true)
-  el.addEventListener('click', e => {
-    const g = tapGuard
-    if (g.press > 0 && g.press < g.layer && performance.now() - g.pressAt < TAP_GUARD_MS) { e.preventDefault(); e.stopPropagation() }
-  }, true)
+  for (const node of [el, popLayer]) {
+    node.addEventListener('pointerdown', () => { tapGuard.press = ++tapGuard.seq; tapGuard.pressAt = performance.now() }, true)
+    node.addEventListener('keydown', () => { tapGuard.press = 0 }, true)
+    node.addEventListener('click', e => {
+      const g = tapGuard
+      if (g.press > 0 && g.press < g.layer && performance.now() - g.pressAt < TAP_GUARD_MS) { e.preventDefault(); e.stopPropagation() }
+    }, true)
+  }
 
   // ---------- tiện ích ----------
   const S = () => app.state
@@ -518,6 +528,8 @@ export function mountKitchen(root, app, opts = {}) {
       cls.push('is-available')
     }
     if (s.critical) cls.push('is-critical')
+    // bước phải chọn cách sơ chế (thái lát / thái sợi…): hướng dẫn lần đầu chỉ đúng vào bước này
+    if (s.method) cls.push('has-method')
     return h('button', {
       class: cls, type: 'button', 'data-testid': 'board-step-' + s.id, dataset: { stepId: s.id, type: s.type },
       'aria-disabled': !r && !s.available ? 'true' : 'false',
@@ -867,24 +879,32 @@ export function mountKitchen(root, app, opts = {}) {
   }
 
   // ---------- lớp phủ ----------
+  // kind: 'stage' (sân khấu mini-game, trong panel) | 'sheet' | 'prompt' | 'confirm' | 'reveal' (lớp nổi của app)
   function showLayer(kind, node) {
     clearTimeout(ui.revealTimer)
     markLayer()
     if (kind !== 'stage') clear(flashHost)   // nhãn nổi không che hộp thoại
-    clear(layer)
-    layer.appendChild(node)
-    layer.hidden = false
-    layer.dataset.kind = kind
+    const target = kind === 'stage' ? layer : popLayer
+    hideLayer(target === layer ? popLayer : layer)
+    clear(target)
+    target.appendChild(node)
+    target.hidden = false
+    target.dataset.kind = kind
     ui.layerKind = kind
+  }
+
+  function hideLayer(node) {
+    clear(node)
+    node.hidden = true
+    delete node.dataset.kind
   }
 
   function closeLayer() {
     clearTimeout(ui.revealTimer)
     markLayer()
     if (ui.play && ui.play.kind === 'step') stopPlay()
-    clear(layer)
-    layer.hidden = true
-    delete layer.dataset.kind
+    hideLayer(layer)
+    hideLayer(popLayer)
     ui.layerKind = null
   }
 
@@ -928,13 +948,63 @@ export function mountKitchen(root, app, opts = {}) {
     else startStep(s.id, null)
   }
 
+  // ---------- hướng dẫn lần đầu (tour) / bảng Hướng dẫn ----------
+  // Chỗ đang làm ở Bếp cho màn ca bán chọn tour: null khi đang bận (mini-game, bảng chọn cách, hộp hỏi, công bố món) để
+  // hướng dẫn không chen ngang; 'chon' | 'thot' | 'ready' (có phiếu đủ món chờ giao) | 'rail' (dây phiếu có phiếu).
+  function busy() {
+    return !!(ui.layerKind || (ui.play && ui.play.kind === 'step'))
+  }
+  function tourSpot() {
+    if (destroyed || !ui.visible || busy() || tasting) return null
+    const m = mode()
+    if (m === 'chon') return ui.play && ui.play.kind === 'chon' ? 'chon' : null
+    if (m === 'thot') return 'thot'
+    if (m !== 'rail') return null
+    const sh = SH()
+    if (!sh || !sh.tickets.length) return null
+    if (sh.tickets.some(t => t.status === 'xong')) return 'ready'
+    // phiếu đang mở có dòng chưa làm (có nút "Làm món này" / "Làm tiếp")
+    const open = ui.openTicket ? sh.tickets.find(t => t.id === ui.openTicket) : null
+    if (open && open.lines.some((l, i) => !(open.done && open.done[i]))) return 'line'
+    return 'rail'
+  }
+  // Tour hoặc bảng Hướng dẫn đang mở (ca tạm dừng): bước Chọn giữ đồng hồ đứng yên (không tính quá giờ lúc đọc); bước
+  // mini-game đang chơi thì dừng, đóng lại chơi lại từ đầu như khi đổi tab. Không vẽ lại bếp trong lúc giữ.
+  let guide = null
+  function guideHold(on) {
+    if (destroyed) return
+    if (on) {
+      if (guide) return
+      const p = ui.play
+      if (p && p.kind === 'chon' && p.handle && typeof p.handle.hold === 'function') {
+        p.handle.hold(true)
+        guide = { kind: 'chon', handle: p.handle }
+      } else if (p && p.kind === 'step') {
+        closeLayer()
+        guide = { kind: 'step' }
+      } else guide = { kind: 'none' }
+      return
+    }
+    const g = guide
+    guide = null
+    if (!g) return
+    if (g.kind === 'chon') {
+      if (ui.play && ui.play.handle === g.handle) g.handle.hold(false)
+    } else if (g.kind === 'step' && ui.visible) {
+      render()
+      resumeActive()
+    }
+  }
+
   // ---------- vòng đời ----------
   function update() {
-    if (destroyed || !ui.visible) return
+    if (destroyed || !ui.visible || guide) return
     const k = computeKey()
     if (k !== ui.key) render()
     updateWaitColors()
-    el.classList.toggle('is-reduced', reduced())
+    const r = reduced()
+    el.classList.toggle('is-reduced', r)
+    popLayer.classList.toggle('is-reduced', r)
   }
 
   function onShow() {
@@ -963,6 +1033,7 @@ export function mountKitchen(root, app, opts = {}) {
     stopPlay()
     clearTimeout(ui.revealTimer)
     el.remove()
+    popLayer.remove()
   }
 
   // Dây phiếu chung của màn ca bán: chạm phiếu → mở phiếu đó trong bếp.
@@ -977,7 +1048,7 @@ export function mountKitchen(root, app, opts = {}) {
     render()
     resumeActive()
   }
-  return { unmount, update, onShow, onHide, selectTicket }
+  return { unmount, update, onShow, onHide, selectTicket, tourSpot, busy, guideHold }
 }
 
 // Theo quy ước router (mục 13): export default { mount(root, app, params) }.

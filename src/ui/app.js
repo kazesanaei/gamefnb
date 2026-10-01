@@ -8,12 +8,13 @@ import { createRouter, isSubScreen } from './router.js'
 import { createToaster } from './components/toast.js'
 import { createModalHost } from './components/modal.js'
 import { createAudio } from './audio.js'
+import { createTourHost } from './components/tour.js'
 import { DI_SAU } from './art.js'
 
 export const SAVE_DEBOUNCE_MS = 300
 
 // Phiên bản game: trùng "version" trong package.json và VERSION của sw.js (có test đối chiếu).
-export const APP_VERSION = '0.4.0'
+export const APP_VERSION = '0.4.1'
 
 // Màn con: nút Back của điện thoại / cử chỉ vuốt lùi đưa về màn Chuẩn bị thay vì rời game.
 // (Danh sách tham khảo; thực tế mọi màn không phải màn gốc của router.js đều là màn con — isSubScreen.)
@@ -28,7 +29,8 @@ export function freshSession() {
  * createApp({ root, storage, now, screens, saveKeys, devBanner }) → app
  * app = { state, data, bus, ctx: { emit, data, now }, save(), saveNow(opts), go(name, params), toast(text, opts),
  *         modal(opts) → Promise, vibrate(ms), sound(name), now(), nowInfo(), session, router, screens, locked,
- *         version, pwa, onPwaChange(fn), updateSlot(), applyUpdate(), installMode(), promptInstall(), replaceState(next) }
+ *         version, pwa, onPwaChange(fn), updateSlot(), applyUpdate(), installMode(), promptInstall(), replaceState(next),
+ *         tour (0.4.1: hướng dẫn lần đầu, components/tour.js) }
  * saveKeys: {save, backup} (xem trước bằng ?devNow dùng khóa riêng); devBanner: chữ dải cảnh báo giờ giả.
  * Hai tab cùng mở: tab nào thấy bản lưu mới hơn do tab khác ghi (state.rev lớn hơn) thì tự khóa, không ghi đè.
  */
@@ -52,6 +54,7 @@ export function createApp({ root, storage = null, now = () => Date.now(), screen
   }
   root.appendChild(screenRoot)
   root.appendChild(overlay)
+  fitFrameHeight(root)
   const toaster = createToaster(overlay)
   const modals = createModalHost(overlay)
 
@@ -109,6 +112,8 @@ export function createApp({ root, storage = null, now = () => Date.now(), screen
     go(name, params) {
       const scr = app.router.go(name, params)
       syncHistory(name)
+      // hướng dẫn lần đầu: đóng tour của màn cũ; màn mới có tour thì chờ lúc hiện được (lần đầu tới màn)
+      if (app.tour) app.tour.onRoute(name)
       return scr
     },
     toast(text, opts) {
@@ -117,6 +122,11 @@ export function createApp({ root, storage = null, now = () => Date.now(), screen
     // Giới hạn chiều cao chồng thông báo (màn ca bán: không che thanh 4 khâu). fn() → px | null; null để bỏ giới hạn.
     toastLimit(fn) {
       toaster.setLimit(fn)
+    },
+    // Giữ thẻ Mẹo nghề (hướng dẫn lần đầu đang hiện, chồng thông báo bị ẩn): thẻ đang nổi dừng đồng hồ, thẻ mới chờ;
+    // thôi giữ thì thẻ hiện tiếp (toast.js hold).
+    toastHold(on) {
+      toaster.hold(on)
     },
     modal(opts) {
       return modals.open(opts)
@@ -151,6 +161,8 @@ export function createApp({ root, storage = null, now = () => Date.now(), screen
   const audio = createAudio(() => app.settings())
   app.audio = audio
   app.router = createRouter(screenRoot, app, screens)
+  // Hướng dẫn lần đầu (tour) và nút "?" (components/tour.js, components/help.js)
+  app.tour = createTourHost(app)
 
   // ---------- Không lưu được tiến trình ----------
   // Trình duyệt chặn bộ nhớ của trang, bộ nhớ đầy… → game vẫn chơi được nhưng đóng/tải lại trang là mất tiến trình.
@@ -325,6 +337,8 @@ export function createApp({ root, storage = null, now = () => Date.now(), screen
     // thẻ mở lúc kết ca hiện trong mục "Mẹo của Dì Sáu" của màn Tổng kết, không nổi đè lên tiêu đề;
     // tắt công tắc "Mẹo nghề": thẻ vẫn vào Sổ tay nghề nhưng không nổi lên trong ca
     if (tip.trigger === 'shift_end' || app.settings().tips === false) { app.save(); return }
+    // hướng dẫn lần đầu đang hiện (hoặc hiện ở khung hình kế — thẻ thường mở bởi chính thao tác chuyển khâu): toaster giữ
+    // thẻ, đồng hồ 3 giây chỉ chạy khi thẻ thật sự nổi, không chồng lên bong bóng của Dì Sáu (tour gọi app.toastHold)
     app.toast(tip.text, { title: 'Mẹo nghề: ' + tip.title, kind: 'tip', icon: DI_SAU.vui, duration: 3000, testid: 'tip-card' })
     app.save()
   })
@@ -404,6 +418,12 @@ export function createApp({ root, storage = null, now = () => Date.now(), screen
     hist.pushed = false
     const name = app.router && app.router.name
     if (!isSubScreen(name) || app.locked) return
+    // hướng dẫn lần đầu đang hiện: Back đóng hướng dẫn (như "Bỏ qua hướng dẫn"), ở lại màn
+    if (app.tour && app.tour.isActive()) {
+      pushEntry(name)
+      app.tour.skip()
+      return
+    }
     if (modals.isOpen()) {
       pushEntry(name)
       if (modals.isDismissible()) modals.closeActive(null)
@@ -419,6 +439,25 @@ export function createApp({ root, storage = null, now = () => Date.now(), screen
   })
 
   return app
+}
+
+// Khung app cao bằng khung nhìn động (CSS 100dvh): mọi lớp phủ, bảng trượt cao tối đa bằng khung này. Trình duyệt chưa hiểu
+// dvh (iOS Safari trước 15.4) lấy 100vh, cao hơn phần nhìn thấy (tính cả chỗ thanh công cụ Safari) nên đáy khung — thanh
+// tab, nút của bảng trượt — nằm dưới thanh công cụ. Khi đó đo chiều cao phần nhìn thấy (innerHeight, đổi theo thanh công
+// cụ) gắn vào biến --app-h (lớp .is-fit-h của base.css), đo lại khi xoay máy, đổi cỡ.
+function fitFrameHeight(root) {
+  if (typeof window === 'undefined' || !root) return
+  try {
+    if (window.CSS && typeof CSS.supports === 'function' && CSS.supports('height', '100dvh')) return
+  } catch { /* đo bằng JS */ }
+  const fit = () => {
+    const hgt = window.innerHeight
+    if (hgt > 0) root.style.setProperty('--app-h', Math.round(hgt) + 'px')
+  }
+  fit()
+  root.classList.add('is-fit-h')
+  window.addEventListener('resize', fit)
+  window.addEventListener('orientationchange', () => setTimeout(fit, 250))
 }
 
 // Đang chạy như ứng dụng đã cài (màn hình chính, không thanh địa chỉ).

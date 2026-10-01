@@ -38,7 +38,7 @@ export default {
       }
       input.addEventListener('keydown', e => { if (e.key === 'Enter') start() })
       body = h('div', { class: 'title-body' },
-        h('div', { class: 'npc-talk' },
+        h('div', { class: 'npc-talk', testid: 'title-talk' },
           svgBox(DI_SAU.vui, 'npc-face'),
           h('div', { class: 'bubble npc-bubble' },
             h('b', null, 'Dì Sáu'),

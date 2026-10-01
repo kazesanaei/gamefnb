@@ -30,7 +30,7 @@ export default {
       const ql = questList(state, app.ctx)
       const left = nextResetMs(nowInfo.trusted) - nowInfo.trusted
       el.textContent = ''
-      el.appendChild(screenHead(app, { title: S.quests, sub: `${S.questResetAt} · còn ${durationText(left)}`, icon: 'lich', backLabel: '‹ Chuẩn bị' }))
+      el.appendChild(screenHead(app, { title: S.quests, sub: `${S.questResetAt} · còn ${durationText(left)}`, icon: 'lich', backLabel: '‹ Chuẩn bị', help: true }))
       const rw = rewindNote(app, nowInfo)
       if (rw) el.appendChild(rw)
       const body = h('div', { class: 'meta-body' })

@@ -118,22 +118,30 @@ export function luaValue(t, period, slowAfter = null) {
 // ---- Phần dùng DOM (chỉ gọi bên trong mount) ----
 
 // Đồng hồ đo bằng performance.now(), tự tạm dừng khi tab bị ẩn.
+// hold(true): giữ đồng hồ đứng yên (vd hướng dẫn lần đầu đang che bước Chọn) — hiện lại tab không tự chạy tiếp; hold(false)
+// chạy tiếp (nếu tab đang hiện).
 export function createClock() {
   let acc = 0
   let start = nowMs()
   let running = true
+  let held = false
   const onVis = () => {
     if (document.hidden) pause()
-    else resume()
+    else if (!held) resume()
   }
   function pause() { if (running) { acc += nowMs() - start; running = false } }
   function resume() { if (!running) { start = nowMs(); running = true } }
+  function hold(on) {
+    held = !!on
+    if (held) pause()
+    else if (typeof document === 'undefined' || !document.hidden) resume()
+  }
   if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVis)
   return {
-    // giây đã trôi (không tính lúc ẩn tab)
+    // giây đã trôi (không tính lúc ẩn tab, lúc bị giữ)
     elapsed() { return (acc + (running ? nowMs() - start : 0)) / 1000 },
     get running() { return running },
-    pause, resume,
+    pause, resume, hold,
     destroy() { if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis) }
   }
 }

@@ -159,7 +159,7 @@
 .meta-screen { display: flex; flex-direction: column; min-height: 100%; padding: 0 0 calc(24px + var(--safe-bottom)); }
 .meta-head {
   position: sticky; top: 0; z-index: 10; display: flex; flex-direction: column; gap: 6px;
-  padding: 8px var(--gutter) 10px; background: var(--bg); border-bottom: 1px solid var(--line);
+  padding: calc(8px + var(--safe-top)) var(--gutter) 10px; background: var(--bg); border-bottom: 1px solid var(--line);
 }
 .meta-head-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 0; }
 .meta-back { min-height: 44px; padding: 6px 10px; flex: none; font-size: 15px; white-space: nowrap; }
@@ -591,6 +591,21 @@
 .incident-tip { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 12px; background: #fff8e0; border: 1px solid #f0d68a; }
 .incident-tip b { font-size: 15px; color: var(--brick-dark); }
 .incident-tip p { font-size: 14px; line-height: 1.35; }
+/* màn thấp (≤ 760px: iPhone có thanh Safari, máy nhỏ): hộp tình huống gọn lại để cả các lựa chọn — cách an toàn thường nằm
+   cuối — lọt khung không phải cuộn (iPhone SE 375×553, 360×600). Chữ vẫn ≥ 14px, vùng chạm vẫn ≥ 44px. Màn rất thấp
+   (320×568) hộp vẫn cuộn bên trong, lựa chọn cuối lộ một phần cho biết còn nữa. */
+@media (max-height: 760px) {
+  .incident-modal { padding-top: 14px; }
+  .incident { gap: 6px; }
+  .incident-head { gap: 10px; }
+  .incident-art.is-bill { width: 64px; height: 34px; }
+  .incident-art:not(.is-bill) { width: 52px; height: 52px; }
+  .incident-title { font-size: 17px; line-height: 1.25; }
+  .incident-text { line-height: 1.35; }
+  .incident-choices { gap: 6px; }
+  .incident-choice { padding-top: 6px; padding-bottom: 6px; gap: 1px; }
+  .incident-choice .safe-badge { margin-top: 1px; }
+}
 
 /* ---------- Tổng kết: tình huống, sổ ghi nợ ---------- */
 .sum-incident { display: flex; flex-direction: column; gap: 6px; }
@@ -660,6 +675,8 @@
 .market-locked { color: var(--brick-dark); font-weight: 700; }
 .market-stage { display: flex; flex-direction: column; gap: 8px; }
 .market-stage .mg-stage { position: relative; min-height: 420px; }
+/* màn Lựa hàng không có thanh tab: thanh "Trong rổ / Xong" dính đáy màn chừa vùng an toàn (thanh Home iPhone), nền đặc */
+.market-stage .mg-chon .mg-foot { padding-bottom: calc(6px + var(--safe-bottom)); background: var(--bg); }
 .market-hint { font-weight: 700; }
 .market-score { display: flex; align-items: baseline; gap: 10px; }
 .market-score b { font-size: 32px; color: var(--brick); }

@@ -13,6 +13,7 @@ import { progressBar } from '../components/meta-ui.js'
 import { chainTitle } from '../components/chain-card.js'
 import { dayEffectLines, forecastCustomers, dayEventWarnLine, choiceCostText } from './prep.js'
 import { notebookBadge } from '../../core/notebook.js'
+import { helpButton } from '../components/help.js'
 
 export default {
   mount(root, app, params = {}) {
@@ -38,8 +39,9 @@ export default {
     const talk = good ? pick(D.diSau.praise) : pick(D.diSau.regret)
     const drawerStart = sum.drawerExpected !== undefined ? n(sum.drawerExpected) - n(sum.cashSales) : null
 
+    // tiêu đề và nút "?" dính đầu màn khi cuộn (tour Tổng kết tự cuộn xuống tới "Ngày mai" vẫn thấy "?")
+    el.appendChild(h('div', { class: 'sum-head-row' }, h('h1', null, `${SM.title} · Ngày ${sum.day}`), helpButton(app)))
     el.appendChild(h('header', { class: 'sum-head' },
-      h('h1', null, `${SM.title} · Ngày ${sum.day}`),
       // khách trả bằng ảnh chuyển khoản giả bị bắt là làm đúng: tách khỏi số khách bỏ về
       h('p', { class: 'muted' }, `${SM.served}: ${n(sum.served)} · ${SM.lost}: ${Math.max(0, n(sum.lost) - n(sum.scamCaught))}` +
         (n(sum.scamCaught) ? ` · Bắt được ảnh chuyển khoản giả: ${n(sum.scamCaught)}` : '') +
