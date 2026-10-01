@@ -2,8 +2,10 @@
 // Không tự kết thúc; quá 2,5 × par thì các ô cần lấy nhấp nháy (và tính thêm 1 lần nhầm = −15).
 // Hỗ trợ thao tác: gợi ý sớm hơn (1,5 × par, không phạt), không gợi ý ngay từ đầu.
 // Nấu thử (ctx.untimed, ctx.guide): gợi ý ngay từ đầu, không bao giờ tính quá giờ.
-// ctx.initial = {picked, mistakes} để khôi phục rổ đang chọn dở; handle.snapshot() trả rổ hiện tại; ctx.onChange(snapshot)
-// gọi sau mỗi lần chạm ô kệ (vd gánh hàng quê lưu rổ dở vào save để tải lại trang không thành lượt lựa mới).
+// ctx.initial = {picked, mistakes, overtime?} để khôi phục rổ đang chọn dở (overtime: lượt trước đã quá giờ → vẫn phạt,
+// ô cần lấy nhấp nháy ngay); handle.snapshot() trả rổ hiện tại {picked, mistakes, overtime?}; ctx.onChange(snapshot) gọi
+// sau mỗi lần chạm ô kệ và lúc vừa quá giờ (vd bếp, gánh hàng quê lưu rổ dở vào save để tải lại trang không thành lượt mới,
+// không xóa được lần nhầm hay phạt quá giờ).
 // Thiếu nguyên liệu chính: báo chung + khóa 1,5 giây, không cho qua (ctx.missingText đổi câu báo, vd ở gánh hàng quê).
 // M4: ctx.stockLeft = {ingId: số phần còn trong kho hàng hiếm} → ô kệ hiện nhãn "còn n" (nguyên liệu hiếm).
 import { h, svgBox } from '../dom.js'
@@ -27,8 +29,9 @@ function mount(stage, step, ctx = {}) {
   const picked = (Array.isArray(init.picked) ? init.picked : []).filter(id => shelf.includes(id))
   let mistakes = Math.max(0, Math.floor(Number(init.mistakes) || 0))
   let lockedUntil = 0
-  let hinting = false
-  let overtime = false
+  // đã quá giờ ở lượt trước (về dây phiếu, đổi tab, tải lại trang): vẫn tính phạt, gợi ý luôn (không áp cho nấu thử)
+  let overtime = init.overtime === true && Number.isFinite(limit)
+  let hinting = overtime
 
   stage.classList.add('mg-chon')
   const basket = h('div', { class: 'chon-basket', 'data-testid': 'chon-basket', 'aria-label': 'Rổ' })
@@ -75,6 +78,8 @@ function mount(stage, step, ctx = {}) {
       basket.appendChild(h('span', { class: 'chon-in', title: ingName(id, ctx) + (n > 1 ? ` ×${n}` : '') },
         svgBox(ingIcon(id, ctx), 'chon-in-icon'), n > 1 ? h('span', { class: 'chon-in-qty' }, '×' + n) : null))
     }
+    // rổ đầy hơn bề ngang (8–10 món) cuộn ngang bên trong: luôn thấy món vừa bỏ vào
+    basket.scrollLeft = basket.scrollWidth
   }
 
   function renderHints() {
@@ -102,8 +107,13 @@ function mount(stage, step, ctx = {}) {
     }
     renderBasket()
     renderHints()
+    changed()
+  }
+
+  const snapshot = () => (overtime ? { picked: picked.slice(), mistakes, overtime: true } : { picked: picked.slice(), mistakes })
+  function changed() {
     if (typeof ctx.onChange === 'function') {
-      try { ctx.onChange({ picked: picked.slice(), mistakes }) } catch (err) { console.error(err) }
+      try { ctx.onChange(snapshot()) } catch (err) { console.error(err) }
     }
   }
 
@@ -140,6 +150,7 @@ function mount(stage, step, ctx = {}) {
       overtime = true
       hinting = true
       renderHints()
+      changed()   // lưu ngay: tải lại trang / đổi tab sau khi quá giờ không xóa được phạt
     }
   })
 
@@ -161,7 +172,7 @@ function mount(stage, step, ctx = {}) {
   renderBasket()
   return {
     result: out.promise,
-    snapshot: () => ({ picked: picked.slice(), mistakes }),
+    snapshot,
     destroy() { cleanup(); out.settle(null) }
   }
 }

@@ -4,6 +4,7 @@ import {
   defaultState, defaultStats, defaultSettings, defaultMeta, newRecipeProgress, STATE_VERSION, INCIDENT_FREQUENCIES,
   defaultIncidents, defaultNotebook, defaultRare
 } from './state.js'
+import { normalizeChonDraft } from './kitchen.js'
 
 export const SAVE_KEY = 'bkn.save'
 export const BACKUP_KEY = 'bkn.bak'
@@ -309,7 +310,30 @@ export function migrate(raw, data = null, report = null) {
   migrateMeta(raw, s, data)
   migrateContentM3(raw, s, data)
   migrateContentM4(raw, s, data)
+  // rổ đang chọn dở của bước Chọn: ca thật và phiên nấu thử
+  if (isObj(s.shift)) s.shift = migrateCookDraft(s.shift, data)
+  if (isObj(s.tasting) && isObj(s.tasting.shift)) {
+    const tsh = migrateCookDraft(s.tasting.shift, data)
+    if (tsh !== s.tasting.shift) s.tasting = { ...s.tasting, shift: tsh }
+  }
   return s
+}
+
+// Rổ đang chọn dở (cook.chonDraft = {picked, mistakes, overtime?}, kitchen.saveChonDraft) của ca `sh`: picked chỉ giữ id
+// nguyên liệu có trên kệ của món (khi có dữ liệu), mistakes số nguyên 0..99, overtime chỉ giữ khi đúng là true; phiên nấu
+// đã qua bước Chọn (hoặc rổ hỏng kiểu) thì bỏ rổ. Save cũ không có trường này giữ nguyên; rổ hợp lệ giữ nguyên (lưu rồi tải lại không đổi). Không sửa object đầu vào:
+// có thay đổi thì trả bản sao nông của ca (kèm bản sao phiên nấu), không thì trả chính `sh`.
+export function migrateCookDraft(sh, data = null) {
+  const cook = isObj(sh) ? sh.cook : null
+  if (!isObj(cook) || !('chonDraft' in cook)) return sh
+  const R = data && data.RECIPES && data.RECIPES[cook.recipeId]
+  const shelf = R && Array.isArray(R.shelf) ? R.shelf : null
+  const next = cook.phase === 'chon' && isObj(cook.chonDraft) ? normalizeChonDraft(cook.chonDraft, shelf) : null
+  if (next && JSON.stringify(next) === JSON.stringify(cook.chonDraft)) return sh
+  const c2 = { ...cook }
+  if (next) c2.chonDraft = next
+  else delete c2.chonDraft
+  return { ...sh, cook: c2 }
 }
 
 // M4: tiền sự kiện hoàn lại khi hủy ca dở (migrate): tiền phạt/chi sự kiện đã trừ ví (ledger.eventOut) trừ phần tự bỏ tiền

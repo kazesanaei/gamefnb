@@ -163,8 +163,64 @@ export function startCook(state, ticketId, lineIndex, ctx) {
   return sh.cook
 }
 
-// Chốt bước chọn. Thiếu nguyên liệu chính → {ok:false, blockedMissingMain:true}, không trừ tiền.
-// Thành công: trừ giá vốn vào ví (phần cần → cogs, phần thừa/bẫy/trái ghi chú → waste), sang Thớt sơ chế.
+// ---------- Rổ đang chọn dở của bước Chọn (cook.chonDraft) ----------
+// Rổ dở lưu trong phiên nấu (state.shift.cook.chonDraft = {picked, mistakes, overtime?}, JSON thuần) mỗi lần người chơi
+// thêm/bớt nguyên liệu (và lúc vừa quá giờ), để tải lại trang giữa bước Chọn vẫn còn rổ. Phiên nấu thử dùng chung
+// (state.tasting.shift.cook). Rổ dở mất theo phiên nấu: submitChon thành công thì xóa; bỏ món (abandonDish) và món khác
+// (startCook) là phiên mới.
+
+// Trần số lần chọn nhầm lưu trong rổ dở (7 lần nhầm đã về 0 điểm).
+export const CHON_DRAFT_MISTAKES_MAX = 99
+
+// Chuẩn hóa rổ dở: picked = id nguyên liệu (chuỗi a-z0-9_, không trùng; biết kệ `shelf` thì chỉ giữ ô có trên kệ),
+// mistakes = số nguyên 0..CHON_DRAFT_MISTAKES_MAX (lần chạm nhầm), overtime: true khi bước Chọn đã quá giờ (phạt thêm
+// 1 lần nhầm lúc chốt; chỉ có trường này khi đúng là true). Dữ liệu hỏng → rổ trống, 0 lần nhầm.
+export function normalizeChonDraft(draft, shelf = null) {
+  const d = isPlainObject(draft) ? draft : {}
+  const ok = id => typeof id === 'string' && /^[a-z0-9_]{1,40}$/.test(id) && (!Array.isArray(shelf) || shelf.includes(id))
+  const picked = [...new Set((Array.isArray(d.picked) ? d.picked : []).filter(ok))]
+  const n = Math.floor(Number(d.mistakes))
+  const mistakes = Number.isFinite(n) ? Math.min(CHON_DRAFT_MISTAKES_MAX, Math.max(0, n)) : 0
+  return d.overtime === true ? { picked, mistakes, overtime: true } : { picked, mistakes }
+}
+
+function shelfOf(ctx, cook) {
+  const r = recipeOf(ctx, cook && cook.recipeId)
+  return r && Array.isArray(r.shelf) ? r.shelf : null
+}
+
+// Rổ đang chọn dở để giao diện khôi phục: {picked, mistakes, overtime?} (picked chỉ gồm ô có trên kệ của món), hoặc null
+// khi phiên nấu không ở bước Chọn hay chưa có rổ dở.
+export function chonDraft(state, ctx) {
+  const cook = state.shift && state.shift.cook
+  if (!cook || cook.phase !== 'chon' || !isPlainObject(cook.chonDraft)) return null
+  return normalizeChonDraft(cook.chonDraft, shelfOf(ctx, cook))
+}
+
+// Lưu rổ đang chọn dở (gọi mỗi lần thêm/bớt nguyên liệu, lúc vừa quá giờ và lúc rời bước Chọn): picked = rổ hiện tại,
+// mistakes = số lần chọn nhầm — chỉ tăng, không giảm; overtime (đã quá giờ) — đã bật thì giữ. Bỏ hàng nhầm ra khỏi rổ,
+// về dây phiếu, đổi tab, tải lại trang đều không xóa lần nhầm hay phạt quá giờ đã mắc.
+// Trả {ok, picked, mistakes, overtime?, raised} (raised: lần nhầm vừa tăng / vừa quá giờ → nên ghi save ngay) |
+// {ok:false, reason}.
+export function saveChonDraft(state, draft, ctx) {
+  const cook = state.shift && state.shift.cook
+  if (!cook || cook.phase !== 'chon') return { ok: false, reason: 'khong_hop_le' }
+  const shelf = shelfOf(ctx, cook)
+  const prev = normalizeChonDraft(cook.chonDraft, shelf)
+  const next = normalizeChonDraft(draft, shelf)
+  const mistakes = Math.max(prev.mistakes, next.mistakes)
+  const overtime = !!(prev.overtime || next.overtime)
+  cook.chonDraft = overtime ? { picked: next.picked, mistakes, overtime } : { picked: next.picked, mistakes }
+  const raised = mistakes > prev.mistakes || (overtime && !prev.overtime)
+  return overtime
+    ? { ok: true, picked: next.picked.slice(), mistakes, overtime, raised }
+    : { ok: true, picked: next.picked.slice(), mistakes, raised }
+}
+
+// Chốt bước chọn. Thiếu nguyên liệu chính → {ok:false, blockedMissingMain:true}, không trừ tiền (rổ dở giữ nguyên).
+// Thành công: trừ giá vốn vào ví (phần cần → cogs, phần thừa/bẫy/trái ghi chú → waste), sang Thớt sơ chế, xóa rổ dở.
+// Số lần nhầm tính = max(mistakes gửi lên, lần nhầm đã lưu trong rổ dở + 1 nếu rổ dở ghi đã quá giờ): tải lại trang hay
+// đổi tab không xóa được lần nhầm, phạt quá giờ.
 export function submitChon(state, picked, mistakes, ctx) {
   const sh = state.shift
   const cook = sh && sh.cook
@@ -175,6 +231,8 @@ export function submitChon(state, picked, mistakes, ctx) {
   const req = requiredIngredients(recipe, cook.notes)
   const missingMain = req.main.filter(id => !uniq.includes(id))
   if (missingMain.length) return { ok: false, blockedMissingMain: true, missing: missingMain }
+  const saved = isPlainObject(cook.chonDraft) ? normalizeChonDraft(cook.chonDraft) : null
+  const savedMistakes = saved ? saved.mistakes + (saved.overtime ? 1 : 0) : 0
   const INGS = (ctx.data && ctx.data.INGREDIENTS) || {}
   // M4: sự kiện ngày làm tăng giá nguyên liệu (sh.mods.ingCostMul, vd Tắc lên giá ×2); nấu thử không tính
   const ingMul = !sh.tasting && sh.mods && sh.mods.ingCostMul ? sh.mods.ingCostMul : null
@@ -215,7 +273,8 @@ export function submitChon(state, picked, mistakes, ctx) {
   spend(state, waste, 'waste')
   cook.cost = { cogs, waste }
   cook.picked = uniq
-  cook.chonMistakes = Math.max(0, Number(mistakes) || 0)
+  cook.chonMistakes = Math.max(0, Number(mistakes) || 0, savedMistakes)
+  delete cook.chonDraft
   const chon = scoreChon({ required: req.required, optional: req.optional, decoys: req.decoys, picked: uniq, mistakes: cook.chonMistakes })
   cook.chonScore = chon.score
   const labels = cfg(ctx, 'stepLabels')

@@ -7,7 +7,7 @@ import { upper, formatVND } from '../format.js'
 import { icon, DI_SAU } from '../art.js'
 import {
   startCook, submitChon, boardSteps, beginStep, getStep, submitStep, autoStep, retryStep,
-  finishDish, abandonDish, serveTicket, effectiveSteps
+  finishDish, abandonDish, serveTicket, effectiveSteps, chonDraft, saveChonDraft
 } from '../../core/kitchen.js'
 import { zoneMul } from '../../core/minigame-scoring.js'
 import { playStep, hintFor, skinFor } from '../minigames/index.js'
@@ -17,6 +17,8 @@ import { rareStock } from '../../core/rare.js'
 export const HINT_MS = 800
 export const REVEAL_MS = 1200
 export const HINT_HIDE_AFTER_COOKS = 3
+// Chặn click ma: chỉ bỏ click đến trong khoảng này sau lần chạm (một cú chạm thường nhấc ngón trong vài trăm ms).
+export const TAP_GUARD_MS = 1000
 
 // Mức ngân sách chờ → màu viền phiếu: xanh < 50%, vàng 50–80%, đỏ > 80% (nhấp nháy).
 export function waitLevel(ratio) {
@@ -122,7 +124,7 @@ export function mountKitchen(root, app, opts = {}) {
   const ui = {
     visible: true,
     showRail: false,       // đang nấu (chọn hoặc thớt) nhưng người chơi quay về dây phiếu
-    chonDraft: null,       // rổ đang chọn dở {key, picked, mistakes} để khôi phục khi quay lại
+    // (rổ đang chọn dở nằm trong state: cook.chonDraft, core/kitchen.js saveChonDraft — tải lại trang vẫn còn)
     openTicket: null,      // phiếu đang mở danh sách dòng
     play: null,            // {kind:'chon'|'step', handle, token, stepId}
     token: 0,
@@ -134,6 +136,20 @@ export function mountKitchen(root, app, opts = {}) {
   }
   let destroyed = false
   const offs = []
+
+  // Chặn "click ma" (màn cảm ứng): lớp phủ đóng/mở ngay lúc ngón tay còn chạm — Nhấc của bước lửa chốt ở pointerdown, chạm
+  // thẻ gợi ý hay bảng công bố món, mini-game tự kết thúc (hết giờ, đủ lần chạm) — thì cú click trình duyệt sinh ra lúc nhấc
+  // ngón rơi xuống phần tử mới nằm dưới ngón: nút "Bỏ món" trên Thớt, "Giao cho khách" trên dây phiếu, nút Xong của mini-game
+  // vừa mở (bước về 0 điểm). Bỏ click của lần chạm bắt đầu TRƯỚC lần đổi lớp phủ gần nhất (so thứ tự sự kiện, không so giờ)
+  // và chưa quá TAP_GUARD_MS; lần chạm mới và click từ bàn phím (có phím bấm sau lần chạm cuối) không bị chặn.
+  const tapGuard = { seq: 0, press: 0, pressAt: 0, layer: 0 }
+  const markLayer = () => { tapGuard.layer = ++tapGuard.seq }
+  el.addEventListener('pointerdown', () => { tapGuard.press = ++tapGuard.seq; tapGuard.pressAt = performance.now() }, true)
+  el.addEventListener('keydown', () => { tapGuard.press = 0 }, true)
+  el.addEventListener('click', e => {
+    const g = tapGuard
+    if (g.press > 0 && g.press < g.layer && performance.now() - g.pressAt < TAP_GUARD_MS) { e.preventDefault(); e.stopPropagation() }
+  }, true)
 
   // ---------- tiện ích ----------
   const S = () => app.state
@@ -150,6 +166,9 @@ export function mountKitchen(root, app, opts = {}) {
   const noteLabels = (recipe, notes) => (notes || []).map(id => ((recipe && recipe.notes) || []).find(n => n.id === id)).filter(Boolean).map(n => n.label)
   const gradeLabel = g => ((D().BALANCE && D().BALANCE.gradeLabels) || (D().STRINGS && D().STRINGS.grades) || {})[g] || g
   const save = () => { try { app.save && app.save() } catch (err) { console.error(err) } }
+  const saveNow = () => {
+    try { if (typeof app.saveNow === 'function') app.saveNow(); else save() } catch (err) { console.error(err) }
+  }
   const toast = text => { try { app.toast && app.toast(text) } catch { /* bỏ qua */ } }
   const sound = n => { try { app.sound && app.sound(n) } catch { /* bỏ qua */ } }
   const vibrate = ms => { try { app.vibrate && app.vibrate(ms) } catch { /* bỏ qua */ } }
@@ -362,14 +381,24 @@ export function mountKitchen(root, app, opts = {}) {
     for (let i = shelf.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [shelf[i], shelf[j]] = [shelf[j], shelf[i]] }
     // ngày 1: lời Dì Sáu nằm ngay trong rổ (đỡ tốn chỗ trên màn dọc)
     const tut = tutorialLine('chon')
-    const draft = ui.chonDraft && ui.chonDraft.key === cookKey(cook) ? ui.chonDraft : null
+    // rổ đang chọn dở (lưu trong state: về dây phiếu, đổi tab hay tải lại trang đều giữ, kể cả lần chọn nhầm)
+    const draft = chonDraft(S(), cctx())
     // M4: nguyên liệu hiếm trên kệ hiện "còn n" (số phần trong kho hàng hiếm; nấu thử không trừ kho nên không hiện)
     const INGS = D().INGREDIENTS || {}
     const stockLeft = {}
     if (!tasting) for (const id of shelf) if (INGS[id] && INGS[id].rare) stockLeft[id] = rareStock(S(), id)
     const handle = playStep(stage, playable(step), {
       ...pluginCtx(step, cook, recipe), shelf, basketHint: tut ? 'Dì Sáu: ' + tut : null, stockLeft,
-      initial: draft ? { picked: draft.picked, mistakes: draft.mistakes } : null
+      initial: draft && (draft.picked.length || draft.mistakes || draft.overtime) ? draft : null,
+      // mỗi lần thêm/bớt nguyên liệu: lưu rổ vào save (debounce); chọn nhầm hay vừa quá giờ thì ghi ngay để tải lại trang
+      // không xóa được lần nhầm, phạt quá giờ
+      onChange: snap => {
+        if (destroyed) return
+        const r = saveChonDraft(S(), snap, cctx())
+        if (!r.ok) return
+        if (r.raised) saveNow()
+        else save()
+      }
     })
     const token = ++ui.token
     ui.play = { kind: 'chon', handle, token, stepId: 'chon' }
@@ -381,15 +410,18 @@ export function mountKitchen(root, app, opts = {}) {
   }
 
   function onChonResult(res) {
-    const key = cookKey(SH() && SH().cook)
     const r = submitChon(S(), res.details.picked, res.details.mistakes, cctx())
     if (!r.ok) {
       if (r.blockedMissingMain) toast('Còn thiếu nguyên liệu chính')
-      ui.chonDraft = { key, picked: res.details.picked.slice(), mistakes: res.details.tapMistakes ?? res.details.mistakes }
+      // giữ rổ đã chọn (lưu vào state) để chọn tiếp
+      const d = saveChonDraft(S(), {
+        picked: res.details.picked, mistakes: res.details.tapMistakes ?? res.details.mistakes, overtime: res.details.overtime === true
+      }, cctx())
+      if (d.ok) save()
       render()
       return
     }
-    ui.chonDraft = null
+    // submitChon đã xóa rổ dở (cook.chonDraft)
     ui.showRail = false
     save()
     const cook = SH().cook
@@ -633,6 +665,8 @@ export function mountKitchen(root, app, opts = {}) {
       if (destroyed || !ui.play || ui.play.token !== token) return
       hintEl && hintEl.remove()
       const handle = playStep(stage, playable(step), pluginCtx(step, cook, recipe))
+      markLayer()   // thẻ gợi ý vừa nhường chỗ cho mini-game (nút Xong có thể nằm ngay dưới ngón tay)
+      revealTargets(stage)
       ui.play.handle = handle
       handle.result.then(res => {
         if (!res || destroyed || !ui.play || ui.play.token !== token) return
@@ -782,10 +816,10 @@ export function mountKitchen(root, app, opts = {}) {
       if (!ok || destroyed) return
     }
     stopPlay()
+    // bỏ món: phiên nấu (kèm rổ dở cook.chonDraft) bị xóa
     const r = abandonDish(S(), cctx())
     if (!r.ok) return
     save()
-    ui.chonDraft = null
     ui.showRail = false
     toast(r.waste ? `Đã bỏ món, hao hụt ${formatVND(r.waste)}` : 'Đã bỏ món')
     render()
@@ -805,9 +839,34 @@ export function mountKitchen(root, app, opts = {}) {
     render()
   }
 
+  // Màn thấp (360×600–640 trong ca thật, ca đông khách): nội dung sân khấu cao hơn panel nên sân khấu cuộn, thanh chân dính
+  // đáy. Mở bước thì cuộn sẵn vừa đủ để mọi mục tiêu rời (vết bẩn của bước Chà, chai của bước Nêm) nằm trọn phía trên thanh
+  // chân, không phải tự vuốt tìm; không đẩy mục tiêu cao nhất khuất đầu sân khấu. Chỉ cuộn: vị trí, kích thước mục tiêu và
+  // cách chơi giữ nguyên (đầu sân khấu — tên món, hướng dẫn — có thể khuất một phần, vuốt xuống để xem lại).
+  function revealTargets(stage) {
+    try {
+      const foot = stage.querySelector(':scope > .mg-foot')
+      const targets = stage.querySelectorAll('.cha-spot, .cham-bottle')
+      if (!foot || !targets.length || stage.scrollHeight <= stage.clientHeight + 1) return
+      const footTop = foot.getBoundingClientRect().top
+      const stageTop = stage.getBoundingClientRect().top
+      let lo = Infinity
+      let hi = -Infinity
+      for (const t of targets) {
+        const r = t.getBoundingClientRect()
+        lo = Math.min(lo, r.top)
+        hi = Math.max(hi, r.bottom)
+      }
+      const need = Math.ceil(hi + 4 - footTop)
+      const room = Math.floor(lo - 4 - stageTop)
+      if (need > 0 && room > 0) stage.scrollTop += Math.min(need, room)
+    } catch (err) { console.error(err) }
+  }
+
   // ---------- lớp phủ ----------
   function showLayer(kind, node) {
     clearTimeout(ui.revealTimer)
+    markLayer()
     if (kind !== 'stage') clear(flashHost)   // nhãn nổi không che hộp thoại
     clear(layer)
     layer.appendChild(node)
@@ -818,6 +877,7 @@ export function mountKitchen(root, app, opts = {}) {
 
   function closeLayer() {
     clearTimeout(ui.revealTimer)
+    markLayer()
     if (ui.play && ui.play.kind === 'step') stopPlay()
     clear(layer)
     layer.hidden = true
@@ -828,10 +888,9 @@ export function mountKitchen(root, app, opts = {}) {
   function stopPlay() {
     const p = ui.play
     ui.play = null
-    // giữ rổ đang chọn dở (về dây phiếu, đổi tab) để mở lại không phải chọn từ đầu
+    // giữ rổ đang chọn dở (về dây phiếu, đổi tab) để mở lại không phải chọn từ đầu (mỗi lần chạm đã lưu, đây là chốt cuối)
     if (p && p.kind === 'chon' && p.handle && typeof p.handle.snapshot === 'function') {
-      const cook = SH() && SH().cook
-      try { if (cook && cook.phase === 'chon') ui.chonDraft = { key: cookKey(cook), ...p.handle.snapshot() } } catch { /* bỏ qua */ }
+      try { saveChonDraft(S(), p.handle.snapshot(), cctx()) } catch (err) { console.error(err) }
     }
     if (p && p.handle) { try { p.handle.destroy() } catch (err) { console.error(err) } }
   }

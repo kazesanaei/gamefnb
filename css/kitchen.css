@@ -244,7 +244,9 @@
 }
 .mg-stage * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .k-chon-wrap { flex: 1; display: flex; min-height: 0; }
-.k-chon-wrap .mg-stage { padding: 0; }
+/* min-width 0: rổ đầy (8–10 món) cuộn ngang bên trong rổ, không kéo sân khấu rộng quá khung (đẩy nút Xong, cột kệ thứ 4 ra
+   ngoài mép phải) */
+.k-chon-wrap .mg-stage { padding: 0; min-width: 0; }
 .mg-head { display: flex; align-items: center; gap: 10px; }
 .mg-head-icon { width: 40px; height: 40px; flex: 0 0 40px; }
 .mg-head-text { flex: 1; min-width: 0; }
@@ -257,6 +259,21 @@
 /* thanh chân (nút Xong) luôn nằm trên nội dung vùng chơi lỡ tràn xuống (màn thấp), không bị che mất chỗ bấm */
 .mg-foot { position: relative; z-index: 2; display: flex; align-items: center; gap: 10px; min-height: var(--k-tap); }
 .mg-foot .mg-done { margin-left: auto; min-width: 96px; }
+/* Sân khấu bước trên Thớt (lớp phủ panel Bếp). Trong ca thật HUD, dải phố, thanh 4 khâu, dây phiếu và thanh tab Quầy/Bếp
+   chiếm gần nửa màn thấp (360×600–640) nên nội dung sân khấu có thể cao hơn panel: sân khấu cuộn dọc (vuốt trên nền), còn
+   thanh chân (Xong, Rót, Nhấc…) dính đáy khung nhìn của sân khấu — ngay trên thanh tab — luôn thấy và bấm được.
+   Vùng chơi không co nhỏ hơn nội dung (flex-shrink 0) để không tràn đè lên thanh chân. */
+.k-layer[data-kind="stage"] .mg-stage {
+  overflow-x: hidden; overflow-y: auto; padding-bottom: 0;
+  touch-action: pan-y; scroll-padding-bottom: calc(var(--k-tap) + 16px);
+}
+.k-layer[data-kind="stage"] .mg-stage > * { flex-shrink: 0; }
+.k-layer[data-kind="stage"] .mg-area { flex: 1 0 auto; }
+.k-layer[data-kind="stage"] .mg-foot {
+  position: sticky; bottom: 0; margin: 0 -16px; padding: 4px 16px 6px; background: var(--k-bg);
+}
+/* vùng thao tác (kéo dao, vuốt, chạm nhanh, giữ để rót) vẫn chặn cuộn/thu phóng của trình duyệt như cũ */
+.k-layer[data-kind="stage"] :is(.thai-board, .cha-pad, .cham-pan, .cham-jar, .cham-pad, .cham-bottle, .mg-foot) { touch-action: none; }
 .mg-count { font-weight: 800; font-variant-numeric: tabular-nums; min-width: 64px; }
 .mg-bar { flex: 1; height: 14px; border-radius: 7px; background: var(--k-line); overflow: hidden; }
 .mg-bar-fill { width: 100%; height: 100%; background: var(--k-green); transform: scaleX(0); transform-origin: left center; transition: transform .08s linear; }
@@ -468,6 +485,48 @@
 @media (max-height: 740px) {
   .cham-bottle { min-height: 124px; }
   .cham-bottle-icon { width: 44px; height: 44px; }
+}
+/* màn thấp (≤ 760px, vd 360×740 trong ca thật): phần trang trí của cảnh thu nhỏ một chút để chỉ báo cần nhìn (kim lửa, vạch
+   rót) nằm trên thanh chân dính, không phải cuộn. Không đổi cách chơi: thớt thái, chỗ chà, chảo đập trứng giữ nguyên kích
+   thước (tọa độ chạm); kim lửa, vạch rót tính theo tỉ lệ nên thu nhỏ hình không đổi điểm. */
+@media (max-height: 760px) {
+  .k-layer[data-kind="stage"] .mg-stage { padding-top: 8px; }
+  .k-layer[data-kind="stage"] .cham-hand { display: none; }
+  .k-layer[data-kind="stage"] .lua-pan { transform: scale(.8); margin: -20px 0; }
+  .k-layer[data-kind="stage"] .lua-pan.is-phin { margin: -15px 0 14px; }
+  .k-layer[data-kind="stage"] .lua-pan.is-noi { margin: -17px 0; }
+  .k-layer[data-kind="stage"] .rot-scene { transform: scale(.85); transform-origin: 50% 100%; margin-top: -42px; }
+}
+/* màn rất thấp (≤ 700px, vd 360×600–640; trình duyệt có thanh địa chỉ trên máy 360×740–780 cũng vào mức này): trong ca thật
+   panel Bếp chỉ còn ~300px. Đầu sân khấu, chai Nêm gọn lại để mọi chai nằm trọn phía trên thanh chân dính (nút Xong); thước
+   lửa lên trên chảo (luôn thấy kim); lọ gia vị và ly đứng cạnh nhau; thớt thái thấp hơn (vạch và nguyên liệu dời lên, nhát
+   cắt chỉ tính theo hoành độ nên không đổi điểm); nút chạm nhanh nhỏ lại (chạm chỗ nào trên nút cũng tính). */
+@media (max-height: 700px) {
+  .k-stage-bar { padding-top: 4px; }
+  .k-layer[data-kind="stage"] .mg-stage { padding-top: 6px; gap: 6px; }
+  .k-layer[data-kind="stage"] .mg-head { gap: 8px; }
+  .k-layer[data-kind="stage"] .mg-head-icon { width: 32px; height: 32px; flex-basis: 32px; }
+  .k-layer[data-kind="stage"] .mg-title { font-size: 15px; line-height: 1.2; }
+  .k-layer[data-kind="stage"] .mg-sub { line-height: 1.25; }
+  .k-layer[data-kind="stage"] .mg-time { width: 48px; }
+  .k-layer[data-kind="stage"] .mg-area { min-height: 0; }
+  .cham-bottles { gap: 8px; }
+  .cham-bottle { min-height: 0; padding: 6px 4px; gap: 2px; }
+  .cham-bottle-icon { width: 32px; height: 32px; }
+  .cham-bottle-name { font-size: 14px; line-height: 1.15; }
+  .cham-bottle-need { font-size: 13px; }
+  .k-layer[data-kind="stage"] .cham-pad { width: 160px; height: 160px; }
+  .k-layer[data-kind="stage"] .cham-spoon-wrap { flex-direction: row; align-items: flex-end; gap: 16px; }
+  .k-layer[data-kind="stage"] .mg-lua .mg-area { gap: 24px; }
+  .k-layer[data-kind="stage"] .lua-gauge { order: -1; }
+  .k-layer[data-kind="stage"] .lua-pan { transform: scale(.7); margin: -30px 0; }
+  .k-layer[data-kind="stage"] .lua-pan.is-phin { margin: -22px 0 4px; }
+  .k-layer[data-kind="stage"] .lua-pan.is-noi { margin: -25px 0; }
+  .k-layer[data-kind="stage"] .rot-scene { transform: scale(.6); margin-top: -112px; }
+  .k-layer[data-kind="stage"] .thai-board { height: 210px; }
+  .k-layer[data-kind="stage"] .thai-food { top: 60px; }
+  .k-layer[data-kind="stage"] .thai-guide { top: 42px; }
+  .k-layer[data-kind="stage"] .thai-cut { top: 56px; }
 }
 
 /* Giảm chuyển động */
