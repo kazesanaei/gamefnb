@@ -1,7 +1,7 @@
 /* Thành phần M5 trong bếp: thẻ vào bước (.g-step-card), con dấu kết quả bước (.g-stamp), Dì Sáu phản ứng (.g-disau-react),
    khung sân khấu mới (.g-frame2: chấm bước, thanh giờ, thẻ hướng dẫn, lớp .mg-fx), bước Thái kiểu mới (.g-thai2) và màn ra
    món (.g-reveal). Dùng biến --g-* của css/theme.css.
-   Quy ước: chỉ thêm lớp tiền tố g- (và .mg-fx); KHÔNG đổi lớp cũ của game — chỗ cần đè kiểu cũ của sân khấu (kitchen.css)
+   Quy ước: chỉ thêm lớp tiền tố g- (và .mg-fx); KHÔNG đổi lớp cũ của game — chỗ cần đè kiểu cũ của sân khấu (mg-prep.css…)
    thì chỉ đè khi phần tử có thêm lớp g- tương ứng (đủ độ ưu tiên). Hoạt ảnh chỉ đổi transform/opacity, hữu hạn (trừ tia
    sáng, nhịp nhún nhẹ, tay mẫu lặp — tắt hẳn khi giảm chuyển động, cuối tệp). Lớp hiệu ứng không nhận chạm.
    Màn thấp: thẻ bước và màn ra món co theo khung chứa (container query; khung panel Bếp ở 360×600 chỉ ~300px). */
@@ -193,6 +193,44 @@
 .g-step-card-demo[data-gesture="shake"] .g-demo-path { animation-name: g-demo-shake; animation-duration: 1.2s; }
 .g-step-card-demo[data-gesture="drag"] .g-demo-path { animation-name: g-demo-drag; animation-duration: 1.8s; }
 
+/* Trang trí riêng của cử chỉ mới (Đợt 1): mũi tên hướng vuốt, đầu mũi tên trên vòng khuấy, vòng đích của kéo thả, món nhỏ đi
+   theo tay. Toạ độ khớp đường chạy của tay mẫu (keyframes g-demo-* bên dưới, tính theo % khung hình). */
+.g-demo-arrow { position: absolute; display: block; width: 12%; min-width: 18px; filter: drop-shadow(0 2px 0 rgba(58, 38, 24, .25)); }
+.g-demo-arrow svg { display: block; width: 100%; height: 100%; }
+/* chạm-rồi-vuốt (đập trứng): vòng chạm ở 38%, vạch vuốt xuống 44% → 78% */
+.g-demo-arrow--swipe { left: 50%; top: 44%; height: 36%; transform: translateX(-50%); opacity: .95; }
+/* vuốt xuống (gọt): vạch chấm dọc giữa quả 20% → 80%, lệch phải để không nằm dưới bàn tay */
+.g-demo-arrow--down { left: 64%; top: 20%; height: 60%; transform: translateX(-50%); }
+/* lên-xuống (lắc): mũi tên hai đầu bên phải đường chạy của tay (36% → 64%) */
+.g-demo-arrow--updown { left: 76%; top: 26%; height: 48%; transform: translateX(-50%); }
+.g-demo-orbit-head { position: absolute; inset: 0; display: block; }
+.g-demo-orbit-head svg { display: block; width: 100%; height: 100%; }
+/* kéo thả (bày): vòng đích nét đứt ở giữa, nhịp sáng khi tay thả món vào */
+.g-demo-target {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 40%;
+  aspect-ratio: 1;
+  border: 3px dashed #fff;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .22);
+  box-shadow: 0 0 0 2px rgba(58, 38, 24, .45);
+  transform: translate(-50%, -50%);
+  animation: g-demo-target 1.8s ease-in-out .5s infinite both;
+}
+/* món nhỏ đi theo tay: tâm món trùng đầu ngón (gốc của khung .g-demo-path), hơi lệch lên trên ngón */
+.g-demo-carry {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: block;
+  width: 30%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -78%);
+}
+.g-demo-carry svg { display: block; width: 100%; height: 100%; }
+
 /* Bản gọn (từ lần nấu thứ 3): ruy băng nhỏ trôi qua đầu sân khấu, không chặn chạm */
 .g-step-mini {
   position: absolute;
@@ -220,6 +258,15 @@
 }
 .g-step-mini span { overflow: hidden; text-overflow: ellipsis; }
 .g-step-mini i { font-style: normal; opacity: .6; }
+/* ruy băng đã chuyển vào đầu sân khấu (createStepCard bản gọn → .mg-head.g-head-dock): giữa hàng chấm bước, đè tạm lên tên
+   bước ~1,3 s; không bao giờ rộng hơn đầu sân khấu */
+.g-head-dock { position: relative; }
+.g-head-dock > .g-step-mini.is-docked {
+  top: 50%;
+  max-width: 100%;
+  transform: translate(-50%, -50%);
+  animation-name: g-mini-dock;
+}
 
 /* ======================================================================
    2. Con dấu kết quả bước
@@ -270,14 +317,16 @@
   white-space: nowrap;
   box-shadow: 0 2px 0 rgba(58, 38, 24, .25);
 }
-/* Trong lớp hiệu ứng của sân khấu: giữa vùng chơi, hơi cao, nhưng luôn nằm DƯỚI bong bóng Dì Sáu (bong bóng ở 60px, cao
-   ≤ 56px → tâm dấu ≥ 175px). Khung thấp: xem @container g-fx bên dưới (dấu neo theo mép trên thanh chân). */
-.mg-fx > .g-stamp { position: absolute; left: 50%; top: max(38%, 175px); margin: -59px 0 0 -59px; }
+/* Trong lớp hiệu ứng của sân khấu: giữa vùng chơi, hơi cao, nhưng luôn nằm DƯỚI bong bóng Dì Sáu (bong bóng ở
+   --g-stage-pt + 48px, cao ≤ 56px → tâm dấu ≥ --g-stage-pt + 163px; mặc định 175px). Màn Bếp đổi lề trên sân khấu thì đặt
+   --g-stage-pt trên .mg-stage, dấu và Dì Sáu cùng dời. Khung thấp: xem @container g-fx bên dưới (dấu neo trên thanh chân). */
+.mg-fx > .g-stamp { position: absolute; left: 50%; top: max(38%, calc(var(--g-stage-pt, 12px) + 163px)); margin: -59px 0 0 -59px; }
 
 /* ======================================================================
    3. Dì Sáu phản ứng (góc trên-phải, ngay dưới hàng chấm bước)
    ====================================================================== */
-/* top = lề trên sân khấu (12px, kitchen.css .mg-stage) + đầu màn 44px + 4px: nằm đúng chỗ thẻ hướng dẫn .mg-sub, mà thẻ
+/* top = lề trên sân khấu (--g-stage-pt, mặc định 12px = padding-top của .mg-stage ở mg-prep.css) + đầu màn 44px + 4px: nằm
+   đúng chỗ thẻ hướng dẫn .mg-sub, mà thẻ
    này được ẩn khi đã có kết quả bước (mục 4) — không đè hàng chấm bước, không đè chữ. */
 .g-disau-react {
   position: absolute;
@@ -956,6 +1005,18 @@
   24% { transform: translateX(-50%) scale(1); }
   78% { opacity: 1; transform: translateX(-50%); }
   100% { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+}
+@keyframes g-mini-dock {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.7); }
+  14% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+  24% { transform: translate(-50%, -50%) scale(1); }
+  78% { opacity: 1; transform: translate(-50%, -50%); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(.94); }
+}
+@keyframes g-demo-target {
+  0%, 52% { opacity: .75; transform: translate(-50%, -50%) scale(1); }
+  62% { opacity: 1; transform: translate(-50%, -50%) scale(1.12); }
+  78%, 100% { opacity: .75; transform: translate(-50%, -50%) scale(1); }
 }
 @keyframes g-demo-tap {
   0% { opacity: 0; transform: translate(12%, 20%); }

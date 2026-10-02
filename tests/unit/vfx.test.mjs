@@ -3,7 +3,7 @@
 // và quy ước css/theme.css (font Baloo 2 tự lưu, chỉ biến --g-*, chỉ lớp g- / vfx-, giảm chuyển động).
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -522,4 +522,56 @@ test('âm M5 Đợt 0 có trong SOUND_NAMES: stamp, sparkle, fanfare, tick, whoo
   for (const n of ['stamp', 'sparkle', 'fanfare', 'tick', 'whoosh']) assert.ok(SOUND_NAMES.includes(n), 'thiếu âm ' + n)
   for (const n of ['click', 'coin', 'cash', 'ding', 'bell', 'chop', 'sizzle', 'pour', 'error', 'nudge', 'chest', 'paper']) assert.ok(SOUND_NAMES.includes(n))
   assert.equal(new Set(SOUND_NAMES).size, SOUND_NAMES.length, 'không trùng tên âm')
+})
+
+// ---------- M5 Đợt 1 (gói G): app.vfx dùng chung ----------
+
+test('app.js tạo app.vfx đúng một lần trên lớp nổi gốc, giảm chuyển động hỏi isReduced(app); dọn khi đổi màn và khi bật Giảm chuyển động', () => {
+  const src = read('src/ui/app.js')
+  assert.match(src, /import \{ createVfx \} from '\.\/vfx\.js'/)
+  assert.match(src, /import \{ isReduced \} from '\.\/motion\.js'/)
+  const made = src.match(/createVfx\(/g) || []
+  assert.equal(made.length, 1, 'chỉ tạo một hệ hiệu ứng')
+  assert.match(src, /app\.vfx = createVfx\(\{ host: overlay, reduced: \(\) => isReduced\(app\) \}\)/)
+  // đổi màn: dọn hiệu ứng của màn cũ trước khi router dựng màn mới
+  const go = src.slice(src.indexOf('go(name, params) {'), src.indexOf('toast(text, opts) {'))
+  assert.ok(go.indexOf('app.vfx.clear()') >= 0 && go.indexOf('app.vfx.clear()') < go.indexOf('app.router.go'), 'go() phải clear() trước router.go')
+  // bật Giảm chuyển động trong Cài đặt: dừng ngay hiệu ứng đang bay
+  const apply = src.slice(src.indexOf('applySettings() {'), src.indexOf('// Âm thanh: đọc Cài đặt'))
+  assert.match(apply, /reducedMotion && app\.vfx\) app\.vfx\.clear\(\)/)
+  // vfx tạo sau overlay (lớp nổi gốc) và trước router (màn đầu tiên đã có app.vfx)
+  assert.ok(src.indexOf("const overlay = h('div'") < src.indexOf('app.vfx = createVfx'))
+  assert.ok(src.indexOf('app.vfx = createVfx') < src.indexOf('app.router = createRouter'))
+  // các màn và thành phần dùng app.vfx (hoặc ctx.vfx), không tự tạo hệ hiệu ứng riêng
+  const offenders = []
+  const walk = dir => {
+    for (const n of readdirSync(path.join(ROOT, dir))) {
+      const rel = dir + '/' + n
+      if (statSync(path.join(ROOT, rel)).isDirectory()) walk(rel)
+      else if (n.endsWith('.js') && rel !== 'src/ui/vfx.js' && rel !== 'src/ui/app.js' && /\bcreateVfx\(/.test(read(rel))) offenders.push(rel)
+    }
+  }
+  walk('src')
+  assert.deepEqual(offenders, [], 'tự tạo hệ hiệu ứng riêng: ' + offenders.join(', '))
+})
+
+test('app.vfx theo công tắc "Giảm chuyển động" ngay lúc chạy (reduced: () => isReduced(app)), không cần tạo lại', () => {
+  const D = fakeDom()
+  const s = { reducedMotion: false }
+  const app = { settings: () => s }
+  const fx = createVfx({ host: D.host, reduced: () => isReduced(app) })
+  const a = D.box(150, 400, 90, 48)
+  assert.equal(fx.burst(a, 'sparkle'), particlePlan('sparkle').n, 'chưa bật: có hạt bay')
+  fx.clear()
+  s.reducedMotion = true
+  assert.equal(fx.burst(a, 'sparkle'), 0, 'vừa bật: không hạt bay')
+  assert.equal(fx.stats().particles, 0)
+  assert.ok(fx.layer.children.every(e => e.className === 'vfx-p'), 'chỉ còn dấu tĩnh (mờ dần)')
+  assert.equal(fx.confetti(a), 0)
+  assert.equal(fx.shake(a, 2), null)
+  assert.ok(a.classList.contains('vfx-alert'), 'thay rung bằng chớp viền đỏ tĩnh')
+  fx.clear()
+  s.reducedMotion = false
+  assert.equal(fx.confetti(a), 36, 'tắt lại: pháo giấy như thường')
+  fx.destroy()
 })

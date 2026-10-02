@@ -160,3 +160,121 @@ test('mọi âm giao diện gọi (app.sound, sound(), feedback của mini-game)
   assert.deepEqual(missing, [], 'âm chưa có: ' + missing.join(', '))
   for (const n of ['chop', 'sizzle', 'pour', 'chest', 'cash', 'nudge', 'bell', 'ding']) assert.ok(used.has(n), 'chưa gắn âm ' + n + ' vào giao diện')
 })
+
+// ---------- M5 Đợt 1: 5 âm thao tác (crack, stir, peel, shake, plop) ----------
+
+// Môi trường âm thanh giả ghi lại từng nút (bộ lọc, dao động, nguồn ồn) cùng các lời gọi tham số của nó.
+function recordingEnv() {
+  const nodes = []
+  const param = v => ({
+    value: v, calls: [],
+    setValueAtTime(x, t) { this.calls.push(['set', x, t]); this.value = x },
+    linearRampToValueAtTime(x, t) { this.calls.push(['lin', x, t]) },
+    exponentialRampToValueAtTime(x, t) {
+      if (!(x > 0)) throw new RangeError('exponentialRamp cần giá trị dương')
+      this.calls.push(['exp', x, t])
+    }
+  })
+  class AC {
+    constructor() { this.state = 'running'; this.currentTime = 2; this.sampleRate = 8000; this.destination = {} }
+    resume() { return Promise.resolve() }
+    mk(kind, extra) { const n = { kind, connect: x => x, ...extra }; nodes.push(n); return n }
+    createGain() { return this.mk('gain', { gain: param(1) }) }
+    createOscillator() { return this.mk('osc', { type: 'sine', frequency: param(440), start(t) { this.at = t }, stop(t) { this.end = t } }) }
+    createBiquadFilter() { return this.mk('filter', { type: 'lowpass', frequency: param(350), Q: param(1) }) }
+    createBufferSource() { return this.mk('noise', { buffer: null, start(t, off, d) { assert.ok(off >= 0 && d > 0); this.at = t; this.dur = d } }) }
+    createBuffer(ch, len) { const data = new Float32Array(len); return { getChannelData: () => data, length: len } }
+  }
+  const listeners = {}
+  const win = {
+    AudioContext: AC,
+    addEventListener(t, f) { (listeners[t] ||= []).push(f) },
+    removeEventListener(t, f) { listeners[t] = (listeners[t] || []).filter(x => x !== f) },
+    fire(t) { for (const f of [...(listeners[t] || [])]) f({ type: t }) }
+  }
+  const audio = createAudio(() => ({ sound: true, volume: 1 }), { window: win, navigator: {} })
+  win.fire('pointerdown')
+  // phát một âm, trả các nút mới dựng (bỏ nút âm lượng tổng)
+  const play = name => {
+    const from = nodes.length
+    assert.equal(audio.play(name), true, name)
+    return nodes.slice(from)
+  }
+  return { play }
+}
+const firstSet = p => p.calls.find(c => c[0] === 'set')[1]
+const rampTo = p => (p.calls.find(c => c[0] === 'exp') || [])[1]
+const near = (v, base, tol = 0.04) => v >= base * (1 - tol) - 1e-9 && v <= base * (1 + tol) + 1e-9
+
+test('âm thao tác M5 Đợt 1 có trong SOUND_NAMES và ACTION_SOUNDS (đập → crack, khuấy → stir, gọt → peel, lắc → shake, bày → plop)', async () => {
+  const { ACTION_SOUNDS } = await import('../../src/ui/audio.js')
+  for (const n of ['crack', 'stir', 'peel', 'shake', 'plop']) assert.ok(SOUND_NAMES.includes(n), 'thiếu âm ' + n)
+  assert.deepEqual({ ...ACTION_SOUNDS }, { dap: 'crack', xoay: 'stir', got: 'peel', lac: 'shake', bay: 'plop' })
+  assert.ok(Object.isFrozen(ACTION_SOUNDS))
+  for (const n of ['stamp', 'sparkle', 'fanfare', 'tick', 'whoosh', 'click', 'chop', 'sizzle', 'pour', 'chest', 'cash', 'nudge', 'bell', 'ding']) assert.ok(SOUND_NAMES.includes(n), 'mất âm cũ ' + n)
+  assert.equal(new Set(SOUND_NAMES).size, SOUND_NAMES.length)
+})
+
+test('crack: ồn lọc cao 3kHz ~30ms + tiếng click; peel: ồn quét 1,5 → 3kHz 120ms (lệch cao độ ≤ ±4%)', () => {
+  const env = recordingEnv()
+  const crack = env.play('crack')
+  const hp = crack.find(n => n.kind === 'filter' && n.type === 'highpass')
+  assert.ok(hp, 'crack cần bộ lọc cao')
+  assert.ok(near(firstSet(hp.frequency), 3000), 'lọc cao ≈ 3kHz: ' + firstSet(hp.frequency))
+  const burst = crack.filter(n => n.kind === 'noise')
+  assert.ok(burst.length >= 1 && burst.every(n => n.dur <= 0.06), 'tiếng nứt ngắn (≤ 60ms)')
+  assert.ok(Math.abs(burst[0].dur - 0.05) <= 0.021, 'ồn chính ~30ms')
+  assert.ok(crack.some(n => n.kind === 'osc'), 'có tiếng click')
+  const peel = env.play('peel')
+  const bp = peel.find(n => n.kind === 'filter' && n.type === 'bandpass')
+  assert.ok(bp)
+  const f0 = firstSet(bp.frequency), f1 = rampTo(bp.frequency)
+  assert.ok(near(f0, 1500) && near(f1, 3000), `quét ${f0} → ${f1}`)
+  assert.ok(Math.abs(f1 / f0 - 2) < 1e-6, 'cùng hệ số lệch cho cả dải quét')
+  const src = peel.find(n => n.kind === 'noise')
+  assert.ok(Math.abs(src.dur - 0.14) < 0.001, 'dài 120ms (+20ms đuôi)')
+})
+
+test('stir: tiếng muỗng chạm thành tô (dao động cao, tắt nhanh); shake: 3 tiếng đá so le; plop: trầm trượt 300 → 120Hz + ồn', () => {
+  const env = recordingEnv()
+  const stir = env.play('stir')
+  const tones = stir.filter(n => n.kind === 'osc')
+  assert.ok(tones.length >= 2, 'bồi âm của muỗng')
+  assert.ok(tones.some(o => near(firstSet(o.frequency), 2450)), 'nốt chính ≈ 2,45kHz')
+  assert.ok(tones.every(o => o.end - o.at <= 0.16), 'tắt nhanh (≤ 160ms)')
+  const shake = env.play('shake')
+  const starts = [...new Set(shake.filter(n => n.kind === 'osc' || n.kind === 'noise').map(n => Math.round((n.at - 2) * 1000)))].sort((a, b) => a - b)
+  assert.equal(starts.length, 3, '3 tiếng đá: ' + starts.join(','))
+  assert.ok(starts[2] - starts[0] >= 100 && starts[2] - starts[0] <= 200, 'so le trong ~0,1–0,2 giây')
+  const plop = env.play('plop')
+  const o = plop.find(n => n.kind === 'osc')
+  assert.ok(near(firstSet(o.frequency), 300) && near(rampTo(o.frequency), 120), `trượt ${firstSet(o.frequency)} → ${rampTo(o.frequency)}`)
+  assert.ok(plop.some(n => n.kind === 'noise'), 'có tiếng nước')
+})
+
+test('âm thao tác lệch cao độ ngẫu nhiên mỗi lần phát, luôn trong ±4%', () => {
+  const env = recordingEnv()
+  const seen = new Set()
+  for (let i = 0; i < 40; i++) {
+    const f = firstSet(env.play('crack').find(n => n.kind === 'filter' && n.type === 'highpass').frequency)
+    assert.ok(near(f, 3000), 'ngoài ±4%: ' + f)
+    seen.add(Math.round(f))
+    const p = firstSet(env.play('plop').find(n => n.kind === 'osc').frequency)
+    assert.ok(near(p, 300), 'ngoài ±4%: ' + p)
+  }
+  assert.ok(seen.size > 5, 'cao độ phải đổi giữa các lần phát')
+})
+
+test('trò chơi mới gọi đúng âm thao tác của nó (bằng tên viết thẳng), có tệp nào thì kiểm tệp đó', async t => {
+  const { ACTION_SOUNDS } = await import('../../src/ui/audio.js')
+  const { existsSync } = await import('node:fs')
+  const missing = []
+  for (const [type, name] of Object.entries(ACTION_SOUNDS)) {
+    const file = path.join(ROOT, 'src/ui/minigames', type + '.js')
+    if (!existsSync(file)) { missing.push(type); continue }
+    const text = readFileSync(file, 'utf8')
+    const called = new RegExp(`\\b(?:sound|cue|feedback)\\((?:[^()]*?,\\s*)?'${name}'`).test(text)
+    assert.ok(called, `${type}.js chưa gọi âm '${name}'`)
+  }
+  if (missing.length) t.diagnostic('chưa có trò chơi: ' + missing.join(', '))
+})

@@ -1,0 +1,197 @@
+/* Sân khấu mini-game, nhóm Sơ chế: khung sân khấu chung (.mg-stage, .mg-head, .mg-area, .mg-foot, thanh tiến độ, nhãn nổi)
+   và 3 trò Chọn (chon), Chà (cha), Thái (thai). Chuyển nguyên văn từ css/kitchen.css (M5 Đợt 1, bước 0), không đổi luật.
+   Thứ tự gắn trong index.html: kitchen.css → mg-prep.css → mg-heat.css → mg-mix.css → meta.css…, nên luật ở đây vẫn đứng
+   sau mọi luật của kitchen.css như trước khi tách. Dùng biến --k-* của .kitchen/.k-scope (kitchen.css). Hoạt ảnh dùng
+   chung: k-float (kitchen.css), k-drop (mg-heat.css); tên hoạt ảnh của nhãn nổi và món vào rổ được đè ở mục "Hoạt ảnh". */
+
+/* ----- Sân khấu mini-game (chung) ----- */
+.mg-stage {
+  position: relative; flex: 1; display: flex; flex-direction: column; gap: 8px; min-height: 0;
+  padding: 12px 16px 16px;
+  touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent; overscroll-behavior: contain;
+}
+.mg-stage * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* Khung chứa sân khấu Chọn (.k-chon-wrap, kitchen.css): min-width 0 để rổ đầy (8–10 món) cuộn ngang bên trong rổ, không
+   kéo sân khấu rộng quá khung (đẩy nút Xong, cột kệ thứ 4 ra ngoài mép phải). Bước Chọn chỉ có chạm (không kéo, không
+   vuốt) nên cho vuốt dọc: vuốt trên kệ cuộn được khung bếp (sân khấu chung chặn mọi cử chỉ — touch-action: none — vì các
+   trò kéo/vuốt khác). */
+.k-chon-wrap .mg-stage { padding: 0; min-width: 0; touch-action: pan-y; }
+.mg-head { display: flex; align-items: center; gap: 10px; }
+.mg-head-icon { width: 40px; height: 40px; flex: 0 0 40px; }
+.mg-head-text { flex: 1; min-width: 0; }
+.mg-title { font-weight: 800; font-size: 17px; }
+.mg-sub { font-size: 14px; color: var(--k-muted); }
+.mg-time { width: 64px; height: 8px; border-radius: 4px; background: var(--k-line); overflow: hidden; }
+.mg-time-fill { width: 100%; height: 100%; background: var(--k-green); transform-origin: left center; }
+.mg-time.is-late .mg-time-fill { background: var(--k-red); }
+.mg-area { position: relative; flex: 1; min-height: 240px; display: flex; flex-direction: column; align-items: center; justify-content: center; justify-content: safe center; gap: 16px; }
+/* thanh chân (nút Xong) luôn nằm trên nội dung vùng chơi lỡ tràn xuống (màn thấp), không bị che mất chỗ bấm */
+.mg-foot { position: relative; z-index: 2; display: flex; align-items: center; gap: 10px; min-height: var(--k-tap); }
+.mg-foot .mg-done { margin-left: auto; min-width: 96px; }
+/* Sân khấu bước trên Thớt (lớp phủ panel Bếp). Trong ca thật HUD, dải phố, thanh 4 khâu, dây phiếu và thanh tab Quầy/Bếp
+   chiếm gần nửa màn thấp (360×600–640) nên nội dung sân khấu có thể cao hơn panel: sân khấu cuộn dọc (vuốt trên nền), còn
+   thanh chân (Xong, Rót, Nhấc…) dính đáy khung nhìn của sân khấu — ngay trên thanh tab — luôn thấy và bấm được.
+   Vùng chơi không co nhỏ hơn nội dung (flex-shrink 0) để không tràn đè lên thanh chân. */
+.k-layer[data-kind="stage"] .mg-stage {
+  overflow-x: hidden; overflow-y: auto; padding-bottom: 0;
+  touch-action: pan-y; scroll-padding-bottom: calc(var(--k-tap) + 16px);
+}
+.k-layer[data-kind="stage"] .mg-stage > * { flex-shrink: 0; }
+.k-layer[data-kind="stage"] .mg-area { flex: 1 0 auto; }
+.k-layer[data-kind="stage"] .mg-foot {
+  position: sticky; bottom: 0; margin: 0 -16px; padding: 4px 16px 6px; background: var(--k-bg);
+}
+/* vùng thao tác (kéo dao, vuốt, chạm nhanh, giữ để rót) vẫn chặn cuộn/thu phóng của trình duyệt như cũ */
+.k-layer[data-kind="stage"] :is(.thai-board, .cha-pad, .mg-foot) { touch-action: none; }   /* vùng của Nêm/Chấm: mg-heat.css */
+.mg-count { font-weight: 800; font-variant-numeric: tabular-nums; min-width: 64px; }
+.mg-bar { flex: 1; height: 14px; border-radius: 7px; background: var(--k-line); overflow: hidden; }
+.mg-bar-fill { width: 100%; height: 100%; background: var(--k-green); transform: scaleX(0); transform-origin: left center; transition: transform .08s linear; }
+.mg-bar.is-over .mg-bar-fill { background: var(--k-red); }
+.mg-pop { position: absolute; transform: translate(-50%, -100%); padding: 2px 8px; border-radius: 999px; font-size: 13px; font-weight: 800; background: var(--k-ink); color: #fff; pointer-events: none; animation: k-float .7s ease-out forwards; white-space: nowrap; }
+.mg-pop.is-good { background: var(--k-green); }
+.mg-pop.is-off { background: var(--k-yellow); color: var(--k-ink); }
+.mg-empty { color: var(--k-muted); }
+
+/* CHON */
+.mg-chon { gap: 8px; }
+.mg-chon .mg-foot { position: sticky; bottom: 0; background: var(--k-bg); padding-top: 4px; }
+/* trong khung bếp: thanh dính phủ kín cả phần đệm dưới của .k-main (như .k-toolbar) — màn thấp phải cuộn thì kệ không lộ ra
+   bên dưới thanh "Trong rổ / Xong" */
+.k-main .mg-chon .mg-foot { bottom: -16px; padding-bottom: 16px; margin-bottom: -16px; }
+.chon-basket {
+  flex: none; display: flex; align-items: center; gap: 4px; min-height: 48px; padding: 4px 10px; overflow-x: auto;
+  border-radius: 26px; background: #d9b77e; box-shadow: inset 0 -4px 0 #b88f52;
+}
+.chon-basket-empty { color: #5a3d1e; font-size: 14px; line-height: 1.25; }
+.chon-in { width: 40px; height: 40px; flex: 0 0 40px; animation: k-drop .2s ease-out; }
+.chon-in-icon { width: 100%; height: 100%; display: block; }
+.chon-shelf { flex: 1; display: grid; grid-template-columns: repeat(var(--cols, 3), 1fr); grid-auto-rows: minmax(64px, 1fr); gap: 6px; padding: 6px; border-radius: var(--k-radius); background: #c89a5f; }
+.chon-cell {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  min-height: 64px; padding: 3px; border: 0; border-radius: var(--k-radius-s); background: var(--k-paper);
+  box-shadow: 0 3px 0 #a67a42; font: inherit; color: var(--k-ink); cursor: pointer;
+}
+.chon-icon { width: 40px; height: 40px; display: block; }
+.chon-shelf[data-cols="4"] { grid-auto-rows: minmax(56px, 1fr); gap: 5px; padding: 5px; }
+.chon-shelf[data-cols="4"] .chon-cell { min-height: 56px; padding: 2px; }
+.chon-shelf[data-cols="4"] .chon-icon { width: 28px; height: 28px; }
+/* màn thấp (vd 360×740, 390×844): kệ 12 ô gọn lại để cả 3 hàng nằm trên thanh "Trong rổ / Xong", không phải cuộn mới
+   thấy nguyên liệu chính (món hiếm có thẻ công thức dài hơn) */
+@media (max-height: 900px) {
+  .chon-shelf[data-cols="4"] { grid-auto-rows: minmax(50px, auto); gap: 4px; padding: 4px; }
+  .chon-shelf[data-cols="4"] .chon-cell { min-height: 50px; gap: 1px; padding: 2px 1px; }
+  .chon-shelf[data-cols="4"] .chon-icon { width: 24px; height: 24px; }
+  .chon-shelf[data-cols="4"] .chon-label { font-size: 13px; line-height: 1.1; }
+  .chon-basket { min-height: 44px; }
+  .chon-basket-empty { font-size: 13px; }
+  /* khung bếp ở bước Chọn (.k-main[data-view="chon"]) gọn lại cùng mức: kitchen.css */
+}
+.chon-label { font-size: 14px; font-weight: 700; line-height: 1.15; text-align: center; overflow-wrap: anywhere; }
+.chon-cell.is-picked { background: var(--green-soft, #dcefd9); box-shadow: inset 0 0 0 3px var(--k-green); transform: translateY(2px); }
+.chon-cell { position: relative; }
+.chon-cell.is-picked::after { content: '✓'; position: absolute; top: 4px; right: 8px; font-weight: 900; color: var(--k-green); }
+/* số lượng cần (1 lần chạm lấy đủ): chỉ hiện khi đã chọn, đối chiếu với "×2" trên thẻ công thức */
+.chon-qty { position: absolute; top: 3px; left: 5px; padding: 0 5px; border-radius: 999px; background: var(--k-green); color: #fff; font-size: 13px; font-weight: 800; line-height: 18px; display: none; }
+.chon-cell.is-picked .chon-qty { display: block; }
+/* M4: nguyên liệu hiếm trên kệ: số phần còn trong kho hàng hiếm */
+.chon-left { display: inline-block; padding: 0 6px; border-radius: 999px; background: #ffd23f; color: var(--k-ink); font-size: 13px; font-weight: 800; line-height: 17px; white-space: nowrap; }
+.chon-in { position: relative; }
+.chon-in-qty { position: absolute; right: -4px; bottom: -2px; padding: 0 4px; border-radius: 999px; background: var(--k-green); color: #fff; font-size: 13px; font-weight: 800; line-height: 16px; }
+.chon-cell.is-hint { animation: k-hint .8s ease-in-out infinite; }
+.chon-msg { position: absolute; left: 16px; right: 16px; top: 40%; z-index: 4; text-align: center; font-weight: 800; color: #fff; background: var(--k-red); border-radius: 12px; padding: 10px; pointer-events: none; }
+.chon-msg:empty { display: none; }
+.mg-chon.is-locked .chon-shelf { opacity: .5; filter: grayscale(.6); }
+
+/* CHA */
+/* Thớt chà: cha.js đặt kích thước (inline) vừa chỗ còn lại của sân khấu trên Thớt (đo lúc mount + ResizeObserver) để mọi
+   vết bẩn / cả thớt lắc nằm trọn phía trên thanh chân dính, không phải cuộn; vùng chơi không ép cao tối thiểu 240px.
+   Cỡ dưới đây chỉ là cỡ mặc định khi sân khấu chưa đo được. */
+.k-layer[data-kind="stage"] .mg-cha .mg-area { min-height: 0; }
+.cha-pad { position: relative; width: 100%; max-width: 360px; height: 280px; border-radius: 50%; background: radial-gradient(circle at 50% 45%, #fff 0 55%, #e6f1f7 56% 100%); box-shadow: inset 0 0 0 4px #cfe3ee; }
+/* thớt dẹt (màn thấp, cha.js bật is-flat): bo tròn hai đầu, đĩa trắng theo elip */
+.cha-pad.is-flat { border-radius: 999px; background: radial-gradient(ellipse at 50% 45%, #fff 0 55%, #e6f1f7 56% 100%); }
+.is-strokes .cha-pad { border-radius: var(--k-radius); background: #f7ead3; box-shadow: inset 0 0 0 4px #e3cda6; }
+.cha-food { position: absolute; left: 50%; top: 50%; width: 200px; height: 200px; transform: translate(calc(-50% + var(--dx, 0px)), -50%); transition: filter .3s; pointer-events: none; }
+.is-strokes .cha-food { transition: transform .08s linear; }
+.cha-food-icon { width: 100%; height: 100%; display: block; }
+.cha-food.is-washed { filter: saturate(1.3) brightness(1.1) drop-shadow(0 0 8px #bfe8ff); }
+.cha-spot {
+  --clean: 0; position: absolute; width: var(--size, 60px); height: var(--size, 60px); transform: translate(-50%, -50%);
+  border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(110, 84, 50, .9) 0 35%, rgba(110, 84, 50, .55) 36% 60%, transparent 62%);
+  opacity: calc(1 - var(--clean) * .92);
+}
+.cha-spot.is-clean { background: radial-gradient(circle, rgba(191, 232, 255, .9) 0 20%, transparent 22%); opacity: 1; animation: k-sparkle .5s ease-out forwards; }
+
+/* THAI */
+.thai-board { position: relative; width: 100%; height: 250px; border-radius: var(--k-radius); background: #e9d2a8; box-shadow: inset 0 0 0 4px #d4b27d; overflow: hidden; }
+.thai-food {
+  position: absolute; top: 88px; height: 84px; border-radius: 42px;
+  background: linear-gradient(180deg, var(--skin) 0 22%, var(--flesh) 23% 77%, var(--skin) 78% 100%);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, .12);
+}
+.thai-food-icon { position: absolute; right: -8px; top: -30px; width: 40px; height: 40px; }
+.thai-guide {
+  position: absolute; top: 70px; width: 0; height: 120px; margin-left: -1px;
+  border-left: 3px dotted var(--k-ink); pointer-events: none;
+}
+.thai-guide::before { /* dải dung sai */
+  content: ''; position: absolute; top: 0; bottom: 0; left: calc(-1 * var(--band, 6px) - 1.5px); width: calc(2 * var(--band, 6px));
+  background: rgba(63, 154, 82, .18); border-radius: 3px;
+}
+.is-wide-guide .thai-guide { border-left-width: 5px; margin-left: -2px; }
+.thai-guide.is-cut { border-left-style: solid; opacity: .35; }
+.thai-guide.is-cut.is-off { border-left-color: var(--k-yellow); }
+.thai-cut { position: absolute; top: 84px; width: 4px; height: 92px; margin-left: -2px; background: var(--k-bg); border-radius: 2px; box-shadow: 0 0 0 1px rgba(59, 42, 31, .25); pointer-events: none; }
+.thai-knife { position: absolute; width: 0; height: 0; pointer-events: none; z-index: 3; }
+.thai-blade { position: absolute; left: -2px; bottom: 0; width: 4px; height: 110px; background: linear-gradient(90deg, #9aa4ad, #eef2f5 50%, #9aa4ad); border-radius: 2px 2px 0 0; box-shadow: 0 0 0 1px #6c757d; }
+.thai-blade::after { content: ''; position: absolute; left: -9px; top: -34px; width: 22px; height: 38px; border-radius: 6px; background: #5b3a23; }
+.thai-aim { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px dashed rgba(207, 59, 43, .6); pointer-events: none; }
+.thai-knife[hidden], .thai-aim[hidden] { display: none; }
+/* Bước Thái trong ca (sân khấu trên Thớt, lớp phủ panel Bếp): thớt cao vừa chỗ còn lại giữa đầu sân khấu và thanh chân
+   dính (màn thấp như iPhone SE + thanh Safari chỉ còn ~60–90px; thấp nhất 64px), không quá cỡ chuẩn; nguyên liệu, vạch, vết cắt canh giữa
+   thớt và thấp lại theo thớt. Không đổi cách chơi: nhát cắt chỉ tính theo hoành độ, bề ngang giữ nguyên. Trước đây thớt
+   cao cố định 210px nên nguyên liệu nằm dưới thanh "Nhát / Xong", chạm vào đó không cắt được. */
+.k-layer[data-kind="stage"] .mg-thai > .mg-area { flex: 1 1 0; min-height: 64px; }
+.k-layer[data-kind="stage"] .mg-thai .thai-board { flex: 1 1 auto; height: auto; min-height: 64px; max-height: 250px; }
+.k-layer[data-kind="stage"] .mg-thai .thai-food { top: calc(50% - min(42px, 50% - 12px)); height: min(84px, 100% - 24px); }
+.k-layer[data-kind="stage"] .mg-thai .thai-guide { top: calc(50% - min(60px, 50% - 4px)); height: min(120px, 100% - 8px); }
+.k-layer[data-kind="stage"] .mg-thai .thai-cut { top: calc(50% - min(46px, 50% - 10px)); height: min(92px, 100% - 20px); }
+
+/* ----- Hoạt ảnh -----
+   Đè tên hoạt ảnh của nhãn nổi .mg-pop (k-float → k-pop-lbl) và món vào rổ .chon-in (k-drop → k-drop-in); keyframes riêng
+   của sân khấu Sơ chế. */
+.mg-pop { animation-name: k-pop-lbl; }
+@keyframes k-pop-lbl { 0% { transform: translate(-50%, -80%); opacity: 0; } 20% { transform: translate(-50%, -100%); opacity: 1; } 100% { transform: translate(-50%, -150%); opacity: 0; } }
+.chon-in { animation-name: k-drop-in; }
+@keyframes k-drop-in { from { transform: translateY(-12px) scale(.6); opacity: 0; } }
+@keyframes k-hint { 50% { box-shadow: 0 0 0 4px var(--k-yellow), 0 3px 0 #a67a42; background-color: #fff6cf; } }   /* chỉ phát sáng, không xê dịch ô (dễ chạm trúng) */
+@keyframes k-sparkle { 0% { transform: translate(-50%, -50%) scale(.6); } 100% { transform: translate(-50%, -50%) scale(1.4); opacity: 0; } }
+
+/* màn thấp (≤ 760px, vd 360×740 trong ca thật): sân khấu gọn lại một chút để chỉ báo cần nhìn nằm trên thanh chân dính,
+   không phải cuộn. Không đổi cách chơi: thớt thái giữ nguyên kích thước (tọa độ chạm); thớt chà co giãn đều (cha.js: vết
+   theo tọa độ chuẩn hóa, vùng chạm và quãng vuốt theo tỉ lệ, vùng chạm mỗi vết ≥ 44px). Nêm, lửa, rót: mg-heat.css. */
+@media (max-height: 760px) {
+  .k-layer[data-kind="stage"] .mg-stage { padding-top: 8px; }
+  /* chân bước Chà chỉ có thanh tiến độ (không nút) nên không cần cao 44px: nhường chỗ cho thớt chà */
+  .k-layer[data-kind="stage"] .mg-cha .mg-foot { min-height: 0; padding-top: 4px; padding-bottom: 6px; }
+}
+/* màn rất thấp (≤ 700px, vd 360×600–640; trình duyệt có thanh địa chỉ trên máy 360×740–780 cũng vào mức này): trong ca thật
+   panel Bếp chỉ còn ~300px. Đầu sân khấu gọn lại để vùng chơi và thanh chân dính (nút Xong) vừa khung; thớt thái thấp hơn
+   (vạch và nguyên liệu dời lên, nhát cắt chỉ tính theo hoành độ nên không đổi điểm). Nêm, lửa, rót: mg-heat.css. */
+@media (max-height: 700px) {
+  .k-layer[data-kind="stage"] .mg-stage { padding-top: 6px; gap: 6px; }
+  .k-layer[data-kind="stage"] .mg-head { gap: 8px; }
+  .k-layer[data-kind="stage"] .mg-head-icon { width: 32px; height: 32px; flex-basis: 32px; }
+  .k-layer[data-kind="stage"] .mg-title { font-size: 15px; line-height: 1.2; }
+  .k-layer[data-kind="stage"] .mg-sub { line-height: 1.25; }
+  .k-layer[data-kind="stage"] .mg-time { width: 48px; }
+  .k-layer[data-kind="stage"] .mg-area { min-height: 0; }
+  .k-layer[data-kind="stage"] .mg-thai .thai-board { max-height: 210px; }
+}
+
+/* màn hẹp: thớt chà mặc định thấp hơn (cỡ khi cha.js chưa đo được sân khấu) */
+@media (max-width: 360px) {
+  .cha-pad { height: 250px; }
+}

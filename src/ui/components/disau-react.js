@@ -5,6 +5,7 @@
 import { h, svgBox } from '../dom.js'
 import { DI_SAU } from '../art.js'
 import { DIALOGUE } from '../../data/dialogue.js'
+import { isReduced } from '../motion.js'
 
 // Hạng bước → biểu cảm Dì Sáu (art.js: tu_hao, vui, lo, tiec).
 export const MOOD_BY_KEY = Object.freeze({ hoan_hao: 'tu_hao', tot: 'vui', dat: 'lo', hong: 'tiec' })
@@ -24,16 +25,20 @@ export function reactLine(key, rand = Math.random, data = null) {
 }
 
 /**
- * createDiSauReact({ key, text, reduced }) → div.g-disau-react[data-testid="disau-react", data-grade] (pointer-events: none).
- * Bên gọi đặt vào lớp hiệu ứng của sân khấu (.mg-fx của buildFrame2) hoặc khung có position: relative; tự gỡ khi xong.
- * text bỏ trống thì tự chọn câu bằng reactLine(key).
+ * createDiSauReact({ key, text, reduced, rand, data }) → div.g-disau-react[data-testid="disau-react", data-grade]
+ * (pointer-events: none). Bên gọi đặt vào lớp hiệu ứng của sân khấu (.mg-fx của buildFrame2 — showStepResult của stamp.js
+ * làm sẵn) hoặc khung có position: relative; phần tử theo sân khấu, gỡ cùng sân khấu.
+ * text bỏ trống thì tự chọn câu bằng reactLine(key, rand, data). reduced: true/false hoặc hàm; bỏ trống thì hỏi isReduced()
+ * (giảm chuyển động: bong bóng chỉ mờ dần vào, không nảy).
  */
-export function createDiSauReact({ key = 'dat', text = '', reduced = false } = {}) {
-  const mood = MOOD_BY_KEY[key] || 'vui'
-  const line = text || reactLine(key)
+export function createDiSauReact({ key = 'dat', text = '', reduced = null, rand = Math.random, data = null } = {}) {
+  const k = MOOD_BY_KEY[key] ? key : 'dat'
+  const mood = MOOD_BY_KEY[k]
+  const line = text || reactLine(k, rand, data)
+  const red = typeof reduced === 'function' ? !!reduced() : (reduced === null || reduced === undefined ? isReduced() : !!reduced)
   return h('div', {
-    class: ['g-disau-react', 'grade-' + key, reduced ? 'is-reduced' : ''], 'data-testid': 'disau-react',
-    dataset: { grade: key }, role: 'status', 'aria-live': 'polite'
+    class: ['g-disau-react', 'grade-' + k, red ? 'is-reduced' : ''], 'data-testid': 'disau-react',
+    dataset: { grade: k }, role: 'status', 'aria-live': 'polite'
   },
   h('div', { class: 'g-disau-bubble' }, line),
   svgBox(DI_SAU[mood] || DI_SAU.vui, 'g-disau-face'))

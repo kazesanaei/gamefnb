@@ -152,3 +152,93 @@ export function stepLabel(score, labels = DEFAULT_BALANCE.stepLabels) {
   for (const [min, label] of labels) if (s >= min) return label
   return labels[labels.length - 1][1]
 }
+
+// ---------- M5 (0.5.0): năm thao tác mới — đập trứng, khuấy, gọt, lắc, bày ----------
+// Mỗi hàm chọn để cùng nghĩa với bước nó thay (thiết kế M5 mục 1.5): lắc/khuấy/gọt thay chà (giữ "−15 nếu quá 2 × par" và tỉ
+// lệ đủ lượt), bày thay chạm đúng số lần (−30 mỗi lần lệch số lượng). Đầu vào lỗi (NaN, âm, rỗng, sai kiểu) cho 0 hoặc bỏ
+// qua phần lỗi, không bao giờ ra NaN; kết quả là số nguyên 0..100.
+
+// Vùng xanh của thước lực khi đập trứng (phần của thước 0..1; nới quanh tâm theo mul như zoneScore).
+export const DAP_ZONE = Object.freeze([0.40, 0.70])
+
+const num = (v, d = 0) => { const x = Number(v); return Number.isFinite(x) ? x : d }
+const posInt = (v, d = 1) => { const x = Math.floor(Number(v)); return Number.isFinite(x) && x >= 1 ? x : d }
+const mulOf = m => { const x = Number(m); return Number.isFinite(x) && x > 0 ? x : 1 }
+const zoneOf = z => (Array.isArray(z) && z.length >= 2 && Number.isFinite(Number(z[0])) && Number.isFinite(Number(z[1])) ? z : DAP_ZONE)
+// −15 khi làm quá 2 × par (cùng luật với chà).
+const overtime = (elapsed, par) => (num(par) > 0 && num(elapsed) > 2 * num(par) ? 15 : 0)
+
+// Đập trứng: cracks = [{ force /*vị trí kim 0..1 lúc chạm*/, split /*đã tách*/, shell /*vỏ rơi vào chảo*/ }] theo thứ tự quả.
+// Mỗi quả = zoneScore(lực, vùng xanh, mul) nếu đã tách; vỏ rơi thì tối đa 40; quả chưa đập / chưa tách = 0.
+// Điểm = trung bình n quả (quả đập dư bỏ qua).
+export function scoreDap({ cracks = [], n = 1, zone = DAP_ZONE, mul = 1 } = {}) {
+  const N = posInt(n)
+  const list = Array.isArray(cracks) ? cracks : []
+  const z = zoneOf(zone)
+  let sum = 0
+  for (let i = 0; i < N; i++) {
+    const c = list[i]
+    if (!c || typeof c !== 'object' || !c.split) continue
+    const f = Number(c.force)
+    if (!Number.isFinite(f)) continue
+    let s = zoneScore(f, z, mulOf(mul))
+    if (c.shell) s = Math.min(40, s)
+    sum += s
+  }
+  return clampScore(sum / N)
+}
+
+// Khuấy: 100 · min(1, vòng/K) − 12 · số lần sánh − (cv thời gian mỗi vòng > 0,45 · mul ? 10 : 0) − (quá 2 · par ? 15 : 0).
+export function scoreXoay({ turns = 0, target = 1, spills = 0, cv = 0, elapsed = 0, par = 0, mul = 1 } = {}) {
+  const t = Math.max(0, num(turns))
+  if (t <= 0) return 0
+  let s = 100 * Math.min(1, t / posInt(target))
+  s -= 12 * Math.max(0, Math.floor(num(spills)))
+  if (num(cv) > 0.45 * mulOf(mul)) s -= 10
+  s -= overtime(elapsed, par)
+  return clampScore(s)
+}
+
+// Gọt: trung bình min(1, phủ/0,85) của K dải × 100 − min(24, 8 · nhát hụt) − (quá 2 · par ? 15 : 0).
+// coverage[i] = phần dải i đã gọt (0..1); thiếu dải → 0. K = target (số dải), không có thì số phần tử coverage.
+export function scoreGot({ coverage = [], target, misses = 0, elapsed = 0, par = 0 } = {}) {
+  const list = Array.isArray(coverage) ? coverage : []
+  const K = posInt(target, Math.max(1, list.length))
+  let sum = 0
+  for (let i = 0; i < K; i++) sum += Math.min(1, clamp(num(list[i]), 0, 1) / 0.85)
+  if (sum <= 0) return 0
+  let s = (sum / K) * 100
+  s -= Math.min(24, 8 * Math.max(0, Math.floor(num(misses))))
+  s -= overtime(elapsed, par)
+  return clampScore(s)
+}
+
+// Lắc: 100 · min(1, lượt/K) − (cv nhịp > 0,6 · mul ? 10 : 0) − (quá 2 · par ? 15 : 0). Cùng nghĩa với chà kiểu strokes cũ.
+export function scoreLac({ strokes = 0, target = 1, cv = 0, elapsed = 0, par = 0, mul = 1 } = {}) {
+  const k = Math.max(0, Math.floor(num(strokes)))
+  if (k <= 0) return 0
+  let s = 100 * Math.min(1, k / posInt(target))
+  if (num(cv) > 0.6 * mulOf(mul)) s -= 10
+  s -= overtime(elapsed, par)
+  return clampScore(s)
+}
+
+// Điểm vị trí một món đã thả: d = khoảng cách tới tâm đích / bán kính đích.
+export function bayPlaceScore(d, mul = 1) {
+  const x = Math.abs(Number(d))
+  if (!Number.isFinite(x)) return 0
+  const m = mulOf(mul)
+  if (x <= 0.35 * m) return 100
+  if (x <= 0.6 * m) return 80
+  if (x <= 1) return 55
+  return 20
+}
+
+// Bày: trung bình điểm vị trí các món đã thả − 30 · |số đã thả − n|; chưa thả gì = 0. Cùng nghĩa với chạm đúng số lần cũ.
+// placed = [d] (hoặc [{ d }]) theo thứ tự thả.
+export function scoreBay({ placed = [], n = 1, mul = 1 } = {}) {
+  const list = (Array.isArray(placed) ? placed : []).map(p => (p && typeof p === 'object' ? p.d : p))
+  if (!list.length) return 0
+  const base = list.reduce((s, d) => s + bayPlaceScore(d, mul), 0) / list.length
+  return clampScore(base - 30 * Math.abs(list.length - posInt(n)))
+}

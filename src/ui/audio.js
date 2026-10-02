@@ -2,12 +2,18 @@
 // Âm: click, coin (tiền vào túi), cash (tiền vào két), ding (Hoàn hảo), bell (chuông ra món / khách tới),
 // chop (dao thái "tách"), sizzle (dầu "xèo"), pour (rót nước), error (lỗi), nudge (nhắc nhẹ), chest (mở rương), paper (giấy).
 // M5: stamp (con dấu "cộp"), sparkle (lấp lánh), fanfare (kèn mừng ra món), tick (tích đếm số), whoosh (vút bay).
+// M5 Đợt 1 (âm thao tác của 5 trò mới): crack (đập trứng "cạch"), stir (muỗng chạm thành tô), peel (gọt vỏ "sột"),
+// shake (đá lách cách khi lắc), plop (thả đá "tõm").
 // Âm M5 lệch cao độ ngẫu nhiên khoảng ±4% mỗi lần phát để nghe không lặp đều (âm giao diện, được dùng Math.random).
+// Giao diện luôn gọi bằng tên viết thẳng sound('…') để test âm (tests/unit/audio.test.mjs) quét được.
 // AudioContext chỉ tạo sau thao tác đầu tiên của người chơi; trình duyệt chặn âm thanh thì im lặng, không báo lỗi.
 // Mọi âm luôn có tín hiệu hình đi kèm ở giao diện (âm thanh chỉ là phần thêm).
 
 export const SOUND_NAMES = Object.freeze(['click', 'coin', 'cash', 'ding', 'bell', 'chop', 'sizzle', 'pour', 'error', 'nudge', 'chest', 'paper',
-  'stamp', 'sparkle', 'fanfare', 'tick', 'whoosh'])
+  'stamp', 'sparkle', 'fanfare', 'tick', 'whoosh',
+  'crack', 'stir', 'peel', 'shake', 'plop'])
+// Âm thao tác M5 Đợt 1 (dap → crack, xoay → stir, got → peel, lac → shake, bay → plop).
+export const ACTION_SOUNDS = Object.freeze({ dap: 'crack', xoay: 'stir', got: 'peel', lac: 'shake', bay: 'plop' })
 
 // Âm lượng tổng tối đa (trước khi nhân âm lượng trong Cài đặt): tránh chói tai trên loa điện thoại.
 const MASTER_MAX = 0.9
@@ -170,6 +176,51 @@ const RECIPES = {
   whoosh: (ac, d, t, buf) => {
     const j = jitter()
     return [noise(ac, d, t, buf, { d: 0.25, v: 0.13, env: 'swell', filter: { type: 'bandpass', f: 600 * j, f2: 2400 * j, q: 1.4 }, attack: 0.03 })]
+  },
+  // ---------- M5 Đợt 1: âm thao tác ----------
+  // đập trứng "cạch": ồn lọc cao 3kHz 30ms + tiếng click vỏ trứng
+  crack: (ac, d, t, buf) => {
+    const j = jitter()
+    return [
+      noise(ac, d, t, buf, { d: 0.03, v: 0.22, filter: { type: 'highpass', f: 3000 * j, q: 0.9 }, attack: 0.001 }),
+      tone(ac, d, t, { f: 1900 * j, f2: 1100 * j, d: 0.022, type: 'square', v: 0.05, attack: 0.001, glide: 0.018, filter: { type: 'lowpass', f: 4200 } }),
+      noise(ac, d, t, buf, { d: 0.02, v: 0.08, at: 0.018, filter: { type: 'bandpass', f: 5200 * j, q: 2.5 }, attack: 0.001 })
+    ]
+  },
+  // khuấy "keng": muỗng chạm thành tô sứ — hai bồi âm không điều hòa ngắn, tắt nhanh, kèm tiếng gõ nhỏ
+  stir: (ac, d, t, buf) => {
+    const j = jitter()
+    return [
+      noise(ac, d, t, buf, { d: 0.015, v: 0.07, filter: { type: 'bandpass', f: 3400 * j, q: 3 }, attack: 0.001 }),
+      tone(ac, d, t, { f: 2450 * j, d: 0.11, type: 'sine', v: 0.075, attack: 0.002 }),
+      tone(ac, d, t, { f: 3870 * j, d: 0.07, type: 'sine', v: 0.035, attack: 0.002 }),
+      tone(ac, d, t, { f: 6120 * j, d: 0.04, type: 'sine', v: 0.015, attack: 0.002 })
+    ]
+  },
+  // gọt vỏ "sột": ồn dải hẹp quét 1,5 → 3kHz trong 120ms
+  peel: (ac, d, t, buf) => {
+    const j = jitter()
+    return [noise(ac, d, t, buf, { d: 0.12, v: 0.15, env: 'swell', filter: { type: 'bandpass', f: 1500 * j, f2: 3000 * j, q: 2.2 }, attack: 0.012 })]
+  },
+  // lắc bình: 3 tiếng đá chạm nhau lách cách, so le, mỗi tiếng một cao độ
+  shake: (ac, d, t, buf) => {
+    const j = jitter()
+    const hits = [[0, 2900, 0.11], [0.065, 3600, 0.09], [0.125, 3150, 0.1]]
+    const out = []
+    for (const [at, f, v] of hits) {
+      out.push(noise(ac, d, t, buf, { d: 0.022, v: v * 0.9, at, filter: { type: 'bandpass', f: f * 1.7 * j, q: 3 }, attack: 0.001 }))
+      out.push(tone(ac, d, t, { f: f * j, d: 0.045, type: 'triangle', v: v * 0.45, at, attack: 0.001 }))
+    }
+    return out
+  },
+  // thả viên đá / món "tõm": tiếng trầm trượt 300 → 120Hz + ồn nước ngắn
+  plop: (ac, d, t, buf) => {
+    const j = jitter()
+    return [
+      tone(ac, d, t, { f: 300 * j, f2: 120 * j, d: 0.14, type: 'sine', v: 0.2, attack: 0.003, glide: 0.09 }),
+      noise(ac, d, t, buf, { d: 0.06, v: 0.06, filter: { type: 'lowpass', f: 1200 * j, q: 0.8 }, attack: 0.002 }),
+      noise(ac, d, t, buf, { d: 0.05, v: 0.035, at: 0.05, filter: { type: 'bandpass', f: 2600 * j, q: 1.6 }, attack: 0.004 })
+    ]
   }
 }
 

@@ -8,6 +8,8 @@ import { createRouter, isSubScreen } from './router.js'
 import { createToaster } from './components/toast.js'
 import { createModalHost } from './components/modal.js'
 import { createAudio } from './audio.js'
+import { createVfx } from './vfx.js'
+import { isReduced } from './motion.js'
 import { createTourHost } from './components/tour.js'
 import { DI_SAU } from './art.js'
 
@@ -30,7 +32,8 @@ export function freshSession() {
  * app = { state, data, bus, ctx: { emit, data, now }, save(), saveNow(opts), go(name, params), toast(text, opts),
  *         modal(opts) → Promise, vibrate(ms), sound(name), now(), nowInfo(), session, router, screens, locked,
  *         version, pwa, onPwaChange(fn), updateSlot(), applyUpdate(), installMode(), promptInstall(), replaceState(next),
- *         tour (0.4.1: hướng dẫn lần đầu, components/tour.js) }
+ *         tour (0.4.1: hướng dẫn lần đầu, components/tour.js),
+ *         vfx (M5: hệ hiệu ứng dùng chung src/ui/vfx.js, lớp .vfx-layer trong app.overlay; tự theo "Giảm chuyển động") }
  * saveKeys: {save, backup} (xem trước bằng ?devNow dùng khóa riêng); devBanner: chữ dải cảnh báo giờ giả.
  * Hai tab cùng mở: tab nào thấy bản lưu mới hơn do tab khác ghi (state.rev lớn hơn) thì tự khóa, không ghi đè.
  */
@@ -110,6 +113,8 @@ export function createApp({ root, storage = null, now = () => Date.now(), screen
       return false
     },
     go(name, params) {
+      // đổi màn: hiệu ứng của màn cũ (hạt, chữ nổi, mảnh đang bay) không bay tiếp trên màn mới
+      if (app.vfx) app.vfx.clear()
       const scr = app.router.go(name, params)
       syncHistory(name)
       // hướng dẫn lần đầu: đóng tour của màn cũ; màn mới có tour thì chờ lúc hiện được (lần đầu tới màn)
@@ -155,11 +160,17 @@ export function createApp({ root, storage = null, now = () => Date.now(), screen
     applySettings() {
       const s = app.settings()
       document.documentElement.classList.toggle('reduce-motion', !!s.reducedMotion)
+      // vừa bật "Giảm chuyển động": dừng ngay hiệu ứng đang bay (hiệu ứng mới tự hỏi isReduced(app) mỗi lần gọi)
+      if (s.reducedMotion && app.vfx) app.vfx.clear()
     }
   }
   // Âm thanh: đọc Cài đặt (bật/tắt, âm lượng) mỗi lần phát.
   const audio = createAudio(() => app.settings())
   app.audio = audio
+  // Hệ hiệu ứng dùng chung (M5): một lớp .vfx-layer (z-index 25, không nhận chạm) trong lớp nổi gốc, tạo lười ở lần
+  // hiệu ứng đầu. Mỗi hiệu ứng hỏi isReduced(app) (Cài đặt trong game, lớp reduce-motion, hoặc hệ điều hành) ngay lúc
+  // chạy; trang ẩn thì vfx tự dọn. Không phát gì lên bus (bus.on('*') lưu game sau mỗi sự kiện).
+  app.vfx = createVfx({ host: overlay, reduced: () => isReduced(app) })
   app.router = createRouter(screenRoot, app, screens)
   // Hướng dẫn lần đầu (tour) và nút "?" (components/tour.js, components/help.js)
   app.tour = createTourHost(app)

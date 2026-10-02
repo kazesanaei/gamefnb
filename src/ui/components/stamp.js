@@ -2,12 +2,23 @@
 // riêng (không chỉ dựa vào màu): Hoàn hảo = huy hiệu răng cưa vàng có sao, Tốt = tròn xanh lá có dấu ✓, Đạt = vuông bo xanh
 // dương có chấm tròn, Hỏng = tròn mẻ đỏ xám có dấu ✕.
 // gradeKey(score, labels) thuần; createStamp() dựng DOM; playStamp() chạy hoạt ảnh (WAAPI trên PHẦN TỬ CON, hữu hạn) +
-// dừng hình + hạt (vfx) + âm. Import trong Node an toàn: chỉ chạm DOM bên trong hàm.
+// dừng hình + hạt (vfx) + âm. showStepResult() (Đợt 1) gói cả việc cho màn Bếp: dấu + Dì Sáu vào lớp .mg-fx của sân khấu
+// thật, canh theo phần sân khấu đang thấy, trả thời gian nên giữ sân khấu (700 / 500 ms). Dấu và Dì Sáu đặt theo lề trên
+// sân khấu --g-stage-pt; khung thấp (≤ 380px) dấu neo trên thanh chân .mg-foot (--g-foot-h) — css/fx.css. Import trong Node an toàn.
 import { h } from '../dom.js'
 import { BALANCE } from '../../data/balance.js'
 import { isReduced } from '../motion.js'
+import { createDiSauReact } from './disau-react.js'
 
 export const GRADE_KEYS = Object.freeze(['hoan_hao', 'tot', 'dat', 'hong'])
+// Màn Bếp giữ sân khấu thêm chừng này sau khi có kết quả bước (con dấu, dừng hình, Dì Sáu) rồi mới đóng lớp (m5-thiet-ke 1.8).
+export const RESULT_HOLD_MS = 700
+export const RESULT_HOLD_MS_REDUCED = 500
+
+/** Thời gian giữ sân khấu sau kết quả bước: 700 ms, giảm chuyển động 500 ms. */
+export function resultHoldMs(reduced = false) {
+  return reduced ? RESULT_HOLD_MS_REDUCED : RESULT_HOLD_MS
+}
 // Nhãn hạng bước → khóa (để nhận đúng cả khi bảng nhãn đổi thứ tự).
 const KEY_BY_LABEL = Object.freeze({ 'Hoàn hảo': 'hoan_hao', 'Tốt': 'tot', 'Đạt': 'dat', 'Hỏng': 'hong' })
 
@@ -190,4 +201,62 @@ export async function playStamp(el, { vfx = null, sound: soundFn = null, reduced
       vfx.shake(shake || el, 2)
     }
   } catch { /* hiệu ứng lỗi không chặn luồng chơi */ }
+}
+
+/**
+ * Lớp hiệu ứng của sân khấu cho kết quả bước: .mg-fx của buildFrame2 (không có — khung cũ — thì tạo một lớp .mg-fx ở cuối
+ * sân khấu). Sân khấu bếp cuộn dọc ở màn thấp: lớp được dời theo phần đang nhìn thấy (top = scrollTop, cao = clientHeight)
+ * để con dấu neo trên thanh chân và Dì Sáu ở mép trên của đúng phần người chơi đang thấy.
+ */
+export function stageFx(stage) {
+  if (!stage || typeof stage.querySelector !== 'function') return null
+  let fx = null
+  for (const c of stage.children || []) if (c.classList && c.classList.contains('mg-fx')) { fx = c; break }
+  if (!fx) {
+    const doc = stage.ownerDocument
+    if (!doc) return null
+    fx = doc.createElement('div')
+    fx.className = 'mg-fx'
+    fx.setAttribute('aria-hidden', 'true')
+    stage.appendChild(fx)
+  }
+  const top = Number(stage.scrollTop) || 0
+  if (top > 0) {
+    fx.style.top = top + 'px'
+    fx.style.bottom = 'auto'
+    fx.style.height = (Number(stage.clientHeight) || 0) + 'px'
+  }
+  return fx
+}
+
+/**
+ * showStepResult(stage, { score, label, note, react = true, text, rand, data, vfx, sound, reduced, shake, starTo })
+ *   → { stamp, react, played: Promise, holdMs } — kết quả một bước trên sân khấu thật (màn Bếp gọi ngay sau submitStep).
+ * - Gỡ dấu / Dì Sáu cũ trong lớp .mg-fx (stageFx), gắn con dấu createStamp({ score, label, note }) và Dì Sáu phản ứng
+ *   (createDiSauReact, câu theo hạng; react: false thì bỏ), rồi playStamp (đập dấu, dừng hình 60 ms, hạt, âm).
+ * - shake mặc định là chính sân khấu (Hỏng: rung 4px; giảm chuyển động: chớp viền đỏ tĩnh của vfx); starTo mặc định là
+ *   chấm bước hiện tại (.g-dot.is-now) — Hoàn hảo có sao bay về đó.
+ * - holdMs: thời gian nên giữ sân khấu trước khi đóng lớp (RESULT_HOLD_MS / RESULT_HOLD_MS_REDUCED). played xong ~300 ms.
+ * Bên gọi đóng lớp sân khấu sau holdMs (con dấu và Dì Sáu đi theo sân khấu). Không có sân khấu thì trả null.
+ */
+export function showStepResult(stage, {
+  score = 0, label = '', note = '', react = true, text = '', rand = Math.random, data = null,
+  vfx = null, sound = null, reduced = null, shake = null, starTo = null
+} = {}) {
+  const fx = stageFx(stage)
+  if (!fx) return null
+  const red = typeof reduced === 'function' ? !!reduced() : (reduced === null || reduced === undefined ? isReduced() : !!reduced)
+  for (const old of [...fx.children]) {
+    if (old.classList && (old.classList.contains('g-stamp') || old.classList.contains('g-disau-react'))) old.remove()
+  }
+  const stamp = createStamp({ score, label, note })
+  fx.appendChild(stamp)
+  let reactEl = null
+  if (react !== false) {
+    reactEl = createDiSauReact({ key: stamp.dataset.grade, text, rand, data, reduced: red })
+    fx.appendChild(reactEl)
+  }
+  const dot = starTo || (typeof stage.querySelector === 'function' ? stage.querySelector('.g-dot.is-now') : null)
+  const played = playStamp(stamp, { vfx, sound, reduced: red, shake: shake || stage, starTo: dot }).catch(() => {})
+  return { stamp, react: reactEl, played, holdMs: resultHoldMs(red) }
 }

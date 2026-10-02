@@ -10,7 +10,8 @@ import { ICONS, icon, FACES, DI_SAU, ANH_KHOA, MOODS, billSvg, fakeQrSvg, CART, 
 const { BALANCE, INGREDIENTS, RECIPES, METHOD_LABELS, MINIGAME_TYPES, PERSONAS, REGULARS, NAMES,
   DIALOGUE, makeSpeech, makeLine, makeReview, TIPS, UPGRADES, STRINGS } = DATA
 
-const STEP_TYPES = ['chon', 'cha', 'thai', 'cham', 'lua', 'rot']
+// M5 (0.5.0, sửa có chủ ý): thêm 5 thao tác mới — đập trứng, khuấy, gọt, lắc, bày (thiết kế M5 mục 1.6)
+const STEP_TYPES = ['chon', 'cha', 'thai', 'cham', 'lua', 'rot', 'dap', 'xoay', 'got', 'lac', 'bay']
 const ROLES = ['chinh', 'phu', 'tuy_chon']
 
 // Sinh số ngẫu nhiên có hạt giống (mulberry32) cho test lặp lại được.
@@ -158,6 +159,18 @@ for (const [rid, r] of Object.entries(RECIPES)) {
       if (s.type === 'lua') assert.ok(s.params.period > 0)
       if (s.type === 'thai') assert.ok(Number.isInteger(s.params.cuts) && s.params.cuts > 0)
       if (s.type === 'cha') assert.ok(s.params.spots > 0 || s.params.strokes > 0)
+      // M5: tham số đếm của 5 thao tác mới là số nguyên > 0 (nhân theo số phần: n, turns, strips, strokes)
+      const posInt = v => Number.isInteger(v) && v > 0
+      if (s.type === 'dap') assert.ok(posInt(s.params.n), `bước ${s.id}: dap.n`)
+      if (s.type === 'xoay') {
+        assert.ok(posInt(s.params.turns), `bước ${s.id}: xoay.turns`)
+        if (s.params.fast !== undefined) assert.equal(typeof s.params.fast, 'boolean')
+      }
+      if (s.type === 'got') assert.ok(posInt(s.params.strips), `bước ${s.id}: got.strips`)
+      if (s.type === 'lac') assert.ok(posInt(s.params.strokes), `bước ${s.id}: lac.strokes`)
+      if (s.type === 'bay') assert.ok(posInt(s.params.n), `bước ${s.id}: bay.n`)
+      // lớp vỏ khai báo ở bước phải có trong MINIGAME_TYPES của loại đó
+      if (s.skin !== undefined) assert.ok(MINIGAME_TYPES[s.type].skins && MINIGAME_TYPES[s.type].skins[s.skin], `bước ${s.id}: skin ${s.skin}`)
     }
 
     // after không tạo vòng
@@ -261,6 +274,8 @@ test('mọi icon được dùng đều có trong ICONS', () => {
   for (const r of Object.values(RECIPES)) assert.ok(ICONS[r.icon], `thiếu icon món ${r.icon}`)
   for (const u of Object.values(UPGRADES)) assert.ok(ICONS[u.icon], `thiếu icon nâng cấp ${u.icon}`)
   for (const m of Object.values(MINIGAME_TYPES)) assert.ok(ICONS[m.icon], `thiếu icon mini-game ${m.icon}`)
+  // M5: biểu tượng của lớp vỏ (thẻ gợi ý dùng thay biểu tượng của loại)
+  for (const m of Object.values(MINIGAME_TYPES)) for (const sk of Object.values(m.skins || {})) if (sk.icon) assert.ok(ICONS[sk.icon], `thiếu icon lớp vỏ ${sk.icon}`)
   // hình riêng của bước (vd chén sữa muối của Cà phê muối)
   for (const r of Object.values(RECIPES)) for (const st of r.steps || []) if (st.icon) assert.ok(ICONS[st.icon], `thiếu icon bước ${r.id}/${st.id}: ${st.icon}`)
 })
@@ -315,6 +330,16 @@ test('cặp bẫy phân biệt được bằng hình hoặc màu', () => {
 
 test('METHOD_LABELS, MINIGAME_TYPES đầy đủ', () => {
   for (const t of STEP_TYPES) assert.ok(MINIGAME_TYPES[t]?.name && MINIGAME_TYPES[t]?.hint, `thiếu ${t}`)
+  assert.deepEqual(Object.keys(MINIGAME_TYPES).sort(), [...STEP_TYPES].sort())
+  // M5: lớp vỏ của thao tác mới (thiết kế mục 1.6)
+  assert.deepEqual(Object.keys(MINIGAME_TYPES.xoay.skins).sort(), ['chen', 'ly', 'to'])
+  assert.deepEqual(Object.keys(MINIGAME_TYPES.lac.skins).sort(), ['binh', 'ro'])
+  assert.deepEqual(Object.keys(MINIGAME_TYPES.bay.skins), ['ly'])
+  for (const t of ['dap', 'xoay', 'got', 'lac', 'bay']) {
+    const m = MINIGAME_TYPES[t]
+    assert.ok(m.hint.length > 10 && /[.!]$/.test(m.hint), `${t}: lời gợi ý`)
+    for (const [k, sk] of Object.entries(m.skins || {})) assert.ok(sk.name && sk.hint && sk.sub, `${t}.${k}: name, hint, sub`)
+  }
   for (const v of Object.values(METHOD_LABELS)) assert.ok(v)
 })
 

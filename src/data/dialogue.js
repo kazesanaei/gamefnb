@@ -555,6 +555,15 @@ export const DIALOGUE = deepFreeze({
       dat: ['Hơi lệch chút, không sao!', 'Tạm được, bước sau kỹ hơn nha.', 'Cũng xong, mà chậm tay lại chút con.', 'Từ từ thôi, nhìn kỹ vạch nghen.'],
       hong: ['Lỡ tay rồi, bước sau kỹ hơn nha!', 'Không sao, hít thở rồi làm tiếp nè.', 'Đừng nản nghen con, ai mới làm cũng vậy.', 'Trật chút xíu thôi, mình gỡ lại ở bước sau.']
     },
+    // M5: góp ý sau món theo loại thao tác mới của bước kém nhất; ghép sau tên bước: "<Tên bước> <câu>"
+    // (vd "Thả đá vào ly chưa vừa: thả đúng số vô giữa ly rồi hẵng bấm Xong nha con.")
+    typeTips: {
+      dap: 'chưa khéo: chạm trứng lúc kim vô vùng xanh rồi vuốt xuống cho gọn nha con.',
+      xoay: 'chưa tới: vẽ vòng tròn đều tay cho đủ vòng, đừng quay nhanh quá kẻo văng ra nha.',
+      got: 'còn sót vỏ: vuốt thẳng từ trên xuống theo từng dải nha con.',
+      lac: 'chưa đều tay: kéo lên xuống nhịp nhàng cho đủ lượt nha con.',
+      bay: 'chưa vừa: thả đúng số vô giữa ly rồi hẵng bấm Xong nha con.'
+    },
     loanOffer: 'Kẹt vốn hả con? Dì cho mượn đỡ, bán được thì trả dần.',
     tutorial: {
       order: 'Khách nói gì thì ghi y vậy vào sổ order nha con.',

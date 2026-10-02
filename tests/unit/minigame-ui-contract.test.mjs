@@ -13,7 +13,8 @@ import { mountKitchen, waitLevel, waitRatio, moodForGrade, dishComment } from '.
 import kitchenScreen from '../../src/ui/screens/kitchen.js'
 import { DATA } from '../../src/data/index.js'
 
-const TYPES = ['chon', 'cha', 'thai', 'cham', 'lua', 'rot']
+// M5 (0.5.0, sửa có chủ ý): 6 loại thành 11 — thêm đập trứng, khuấy, gọt, lắc, bày
+const TYPES = ['chon', 'cha', 'thai', 'cham', 'lua', 'rot', 'dap', 'xoay', 'got', 'lac', 'bay']
 
 test('mỗi file plugin export default {type, mount} đúng loại', async () => {
   for (const t of TYPES) {
@@ -25,11 +26,25 @@ test('mỗi file plugin export default {type, mount} đúng loại', async () =>
   }
 })
 
-test('MINIGAMES gồm đủ 6 loại, khớp MINIGAME_TYPES trong dữ liệu', () => {
+test('MINIGAMES gồm đủ 11 loại, khớp MINIGAME_TYPES trong dữ liệu', () => {
   assert.deepEqual(Object.keys(MINIGAMES).sort(), [...TYPES].sort())
   for (const t of TYPES) assert.equal(MINIGAMES[t].type, t)
   for (const t of Object.keys(DATA.MINIGAME_TYPES)) assert.ok(MINIGAMES[t], `thiếu plugin cho ${t}`)
+  assert.equal(Object.keys(DATA.MINIGAME_TYPES).length, 11)
   assert.equal(typeof playStep, 'function')
+})
+
+test('M5: thẻ gợi ý theo lớp vỏ của 5 thao tác mới; mỗi thao tác có sàn giờ', async () => {
+  const find = (rid, sid) => DATA.RECIPES[rid].steps.find(s => s.id === sid)
+  assert.equal(hintFor(find('tra_tac', 'lac'), DATA).name, 'Lắc bình')
+  assert.equal(hintFor(find('che_buoi', 'ao_bot'), DATA).name, 'Lắc rổ')
+  assert.equal(hintFor(find('ca_phe_muoi', 'danh_sua_muoi'), DATA).name, 'Đánh bông')
+  assert.equal(hintFor(find('banh_trang_tron', 'tron'), DATA).name, 'Trộn đều')
+  assert.equal(hintFor(find('ca_phe_sua_da', 'them_da'), DATA).name, 'Thả đá')
+  assert.equal(hintFor(find('banh_mi_op_la', 'dap_trung'), DATA).name, 'Đập trứng')
+  assert.equal(hintFor(find('che_buoi', 'got_vo'), DATA).name, 'Gọt vỏ')
+  const { minLimitSec } = await import('../../src/ui/minigames/_gesture.js')
+  for (const t of ['dap', 'xoay', 'got', 'lac', 'bay']) assert.ok(minLimitSec(t, {}) > 0, `${t}: có sàn giờ`)
 })
 
 test('mọi bước trong công thức đều có plugin và thẻ gợi ý', () => {

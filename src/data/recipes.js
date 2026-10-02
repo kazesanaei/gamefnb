@@ -1,5 +1,8 @@
 // Công thức món (thuần dữ liệu). Lược đồ: mục 6 docs/kien-truc.md.
 // Giá vốn thật = tổng cost × qty của nguyên liệu 'chinh' + 'phu' (xem ingredients.js); `cost` ở đây khớp con số đó.
+// M5 (0.5.0): 15 bước đổi sang 5 thao tác mới (dap, xoay, got, lac, bay — thiết kế M5 mục 1.6). Chỉ đổi type, params,
+// skin (và nhãn của 2 bước: them_da, ao_bot); GIỮ id, par, w, critical, after, ing, retryCost (khóa bằng
+// tests/unit/m5-balance.test.mjs) và tên tham số bị ghi chú vá (them_trung → dap_trung.n, it_da → them_da.n).
 
 function deepFreeze(o) {
   for (const v of Object.values(o)) if (v && typeof v === 'object') deepFreeze(v)
@@ -33,8 +36,8 @@ export const RECIPES = deepFreeze({
       { id: 'rua_dua', type: 'cha', label: 'Rửa dưa leo', ing: 'dua_leo', params: { spots: 4 }, par: 3, w: 1 },
       { id: 'thai_dua', type: 'thai', label: 'Thái dưa leo', ing: 'dua_leo', after: ['rua_dua'],
         method: { options: ['thai_lat', 'thai_soi', 'bao'], correct: 'thai_lat' }, params: { cuts: 3 }, par: 4, w: 1 },
-      { id: 'dap_trung', type: 'cham', label: 'Đập trứng vào chảo', ing: 'trung_ga',
-        params: { mode: 'exact', n: 2, target: true }, par: 2, w: 2 },
+      { id: 'dap_trung', type: 'dap', label: 'Đập trứng vào chảo', ing: 'trung_ga',
+        params: { n: 2 }, par: 2, w: 2 },
       { id: 'chien_trung', type: 'lua', label: 'Chiên trứng', ing: 'trung_ga', after: ['dap_trung'], critical: true,
         params: { period: 5, zone: [0.55, 0.72] }, par: 5, w: 3, retryCost: 6000 },
       { id: 'nem', type: 'cham', label: 'Nêm nước tương', ing: 'nuoc_tuong', after: ['chien_trung'],
@@ -67,7 +70,7 @@ export const RECIPES = deepFreeze({
       { id: 'rot_tra', type: 'rot', label: 'Rót trà', ing: 'tra', params: { zone: [0.70, 0.82] }, par: 3, w: 2 },
       { id: 'nem_duong', type: 'cham', label: 'Nêm đường', ing: 'duong',
         params: { mode: 'exact', n: 2, target: false }, par: 2, w: 3 },
-      { id: 'lac', type: 'cha', label: 'Lắc đều', after: ['rot_tra', 'nem_duong', 'vat_tac'],
+      { id: 'lac', type: 'lac', skin: 'binh', label: 'Lắc đều', after: ['rot_tra', 'nem_duong', 'vat_tac'],
         params: { strokes: 6 }, par: 2, w: 1 }
     ]
   },
@@ -97,7 +100,7 @@ export const RECIPES = deepFreeze({
       { id: 'chon', type: 'chon', label: 'Chọn nguyên liệu', par: 8, w: 1 },
       { id: 'cat_banh_trang', type: 'thai', label: 'Cắt bánh tráng', ing: 'banh_trang',
         method: { options: ['cat_soi', 'cat_vuong', 'de_nguyen'], correct: 'cat_soi' }, params: { cuts: 5 }, par: 4, w: 1 },
-      { id: 'got_xoai', type: 'cha', label: 'Gọt vỏ xoài', ing: 'xoai_xanh', params: { spots: 5 }, par: 3, w: 1 },
+      { id: 'got_xoai', type: 'got', label: 'Gọt vỏ xoài', ing: 'xoai_xanh', params: { strips: 5 }, par: 3, w: 1 },
       { id: 'thai_xoai', type: 'thai', label: 'Thái xoài', ing: 'xoai_xanh', after: ['got_xoai'],
         method: { options: ['thai_soi', 'thai_lat', 'hat_luu'], correct: 'thai_soi' }, params: { cuts: 5 }, par: 4, w: 1 },
       { id: 'boc_trung_cut', type: 'cha', label: 'Bóc trứng cút', ing: 'trung_cut', params: { spots: 3 }, par: 3, w: 1 },
@@ -105,9 +108,9 @@ export const RECIPES = deepFreeze({
         params: { mode: 'targets', targets: { sa_te: 2, tac: 2 } }, par: 3, w: 2 },
       { id: 'rot_dau_hanh', type: 'rot', skin: 'to', label: 'Rưới dầu hành phi', ing: 'hanh_phi',
         params: { zone: [0.55, 0.70] }, par: 2, w: 1 },
-      { id: 'tron', type: 'cha', label: 'Trộn đều',
+      { id: 'tron', type: 'xoay', skin: 'to', label: 'Trộn đều',
         after: ['cat_banh_trang', 'got_xoai', 'thai_xoai', 'boc_trung_cut', 'nem', 'rot_dau_hanh'],
-        params: { strokes: 8 }, par: 4, w: 3 }
+        params: { turns: 5 }, par: 4, w: 3 }
     ]
   },
 
@@ -136,10 +139,10 @@ export const RECIPES = deepFreeze({
         params: { period: 6, zone: [0.60, 0.80] }, par: 6, w: 2 },
       { id: 'them_sua', type: 'cham', label: 'Thêm sữa đặc', ing: 'sua_dac',
         params: { mode: 'exact', n: 2, target: false }, par: 2, w: 3 },
-      { id: 'them_da', type: 'cham', label: 'Thêm đá', ing: 'da',
-        params: { mode: 'exact', n: 2, target: false }, par: 2, w: 1 },
-      { id: 'khuay', type: 'cha', label: 'Khuấy đều', after: ['rot_nuoc', 'u_phin', 'them_sua', 'them_da'],
-        params: { strokes: 6 }, par: 2, w: 1 }
+      { id: 'them_da', type: 'bay', skin: 'ly', label: 'Thả đá vào ly', ing: 'da',
+        params: { n: 2 }, par: 2, w: 1 },
+      { id: 'khuay', type: 'xoay', skin: 'ly', label: 'Khuấy đều', after: ['rot_nuoc', 'u_phin', 'them_sua', 'them_da'],
+        params: { turns: 3 }, par: 2, w: 1 }
     ]
   },
 
@@ -163,13 +166,13 @@ export const RECIPES = deepFreeze({
     ],
     steps: [
       { id: 'chon', type: 'chon', label: 'Chọn nguyên liệu', par: 6, w: 1 },
-      { id: 'got_vo', type: 'cha', label: 'Gọt lớp vỏ xanh', ing: 'vo_buoi', params: { spots: 5 }, par: 3, w: 1 },
+      { id: 'got_vo', type: 'got', label: 'Gọt lớp vỏ xanh', ing: 'vo_buoi', params: { strips: 5 }, par: 3, w: 1 },
       { id: 'thai_cui', type: 'thai', label: 'Thái cùi bưởi', ing: 'vo_buoi', after: ['got_vo'],
         method: { options: ['hat_luu', 'thai_lat', 'thai_soi'], correct: 'hat_luu' }, params: { cuts: 4 }, par: 4, w: 1 },
       { id: 'bop_muoi', type: 'cha', label: 'Bóp muối, xả cho hết đắng', ing: 'muoi', after: ['thai_cui'],
         params: { strokes: 6 }, par: 3, w: 1 },
-      { id: 'ao_bot', type: 'cham', label: 'Lăn bột năng', ing: 'bot_nang', after: ['bop_muoi'],
-        params: { mode: 'min', N: 8, T: 3.5 }, par: 4, w: 2 },
+      { id: 'ao_bot', type: 'lac', skin: 'ro', label: 'Lắc rổ áo bột năng', ing: 'bot_nang', after: ['bop_muoi'],
+        params: { strokes: 8 }, par: 4, w: 2 },
       { id: 'luoc', type: 'lua', skin: 'noi', label: 'Luộc tới khi trong', ing: 'bot_nang', after: ['ao_bot'], critical: true,
         params: { period: 5, zone: [0.55, 0.75] }, par: 5, w: 3, retryCost: 3000 },
       { id: 'rot_cot_dua', type: 'rot', skin: 'to', label: 'Rưới nước cốt dừa', ing: 'cot_dua',
@@ -180,7 +183,7 @@ export const RECIPES = deepFreeze({
   // ---------- M4: công thức hiếm (thiết kế mục C.3) ----------
   // source 'hiem': mở bằng 3 mảnh công thức + nấu thử đạt hạng Được. baseRecipe/requires: món nền phải có trước.
   // rare {ingId: số phần}: nguyên liệu hiếm tiêu hao mỗi phần món, trừ kho lúc "Ra món" (không trừ Tiền quán).
-  // Dùng lại 6 mini-game và hình của món nền; giao diện gắn huy hiệu ★. `cost` gồm giá quy đổi của nguyên liệu hiếm.
+  // Dùng lại mini-game và hình của món nền; giao diện gắn huy hiệu ★. `cost` gồm giá quy đổi của nguyên liệu hiếm.
   // Quy tắc "món ngang giá trị": lãi/giây nấu ≤ 550đ (trần của Chặng 1).
 
   tra_tac_mat_ong: {
@@ -207,7 +210,7 @@ export const RECIPES = deepFreeze({
       { id: 'rot_tra', type: 'rot', label: 'Rót trà', ing: 'tra', params: { zone: [0.70, 0.82] }, par: 3, w: 2 },
       { id: 'rot_mat_ong', type: 'rot', skin: 'to', label: 'Rót mật ong', ing: 'mat_ong_rung',
         params: { zone: [0.55, 0.68] }, par: 3, w: 3 },
-      { id: 'lac', type: 'cha', label: 'Lắc đều', after: ['rot_tra', 'rot_mat_ong', 'vat_tac'],
+      { id: 'lac', type: 'lac', skin: 'binh', label: 'Lắc đều', after: ['rot_tra', 'rot_mat_ong', 'vat_tac'],
         params: { strokes: 6 }, par: 2, w: 1 }
     ]
   },
@@ -240,8 +243,8 @@ export const RECIPES = deepFreeze({
       { id: 'rua_dua', type: 'cha', label: 'Rửa dưa leo', ing: 'dua_leo', params: { spots: 4 }, par: 3, w: 1 },
       { id: 'thai_dua', type: 'thai', label: 'Thái dưa leo', ing: 'dua_leo', after: ['rua_dua'],
         method: { options: ['thai_lat', 'thai_soi', 'bao'], correct: 'thai_lat' }, params: { cuts: 3 }, par: 4, w: 1 },
-      { id: 'dap_trung', type: 'cham', label: 'Đập trứng gà ta vào chảo', ing: 'trung_ga_ta',
-        params: { mode: 'exact', n: 2, target: true }, par: 2, w: 2 },
+      { id: 'dap_trung', type: 'dap', label: 'Đập trứng gà ta vào chảo', ing: 'trung_ga_ta',
+        params: { n: 2 }, par: 2, w: 2 },
       { id: 'chien_trung', type: 'lua', label: 'Chiên trứng', ing: 'trung_ga_ta', after: ['dap_trung'], critical: true,
         params: { period: 5, zone: [0.55, 0.72] }, par: 5, w: 3, retryCost: 6000 },
       { id: 'nem', type: 'cham', label: 'Nêm nước tương', ing: 'nuoc_tuong', after: ['chien_trung'],
@@ -276,7 +279,7 @@ export const RECIPES = deepFreeze({
       { id: 'chon', type: 'chon', label: 'Chọn nguyên liệu', par: 8, w: 1 },
       { id: 'cat_banh_trang', type: 'thai', label: 'Cắt bánh tráng', ing: 'banh_trang',
         method: { options: ['cat_soi', 'cat_vuong', 'de_nguyen'], correct: 'cat_soi' }, params: { cuts: 5 }, par: 4, w: 1 },
-      { id: 'got_xoai', type: 'cha', label: 'Gọt vỏ xoài', ing: 'xoai_xanh', params: { spots: 5 }, par: 3, w: 1 },
+      { id: 'got_xoai', type: 'got', label: 'Gọt vỏ xoài', ing: 'xoai_xanh', params: { strips: 5 }, par: 3, w: 1 },
       { id: 'thai_xoai', type: 'thai', label: 'Thái xoài', ing: 'xoai_xanh', after: ['got_xoai'],
         method: { options: ['thai_soi', 'thai_lat', 'hat_luu'], correct: 'thai_soi' }, params: { cuts: 5 }, par: 4, w: 1 },
       { id: 'boc_trung_cut', type: 'cha', label: 'Bóc trứng cút', ing: 'trung_cut', params: { spots: 3 }, par: 3, w: 1 },
@@ -285,9 +288,9 @@ export const RECIPES = deepFreeze({
         params: { mode: 'targets', targets: { sa_te: 2, muoi_tom_tay_ninh: 1, tac: 2 } }, par: 3, w: 2 },
       { id: 'rot_dau_hanh', type: 'rot', skin: 'to', label: 'Rưới dầu hành phi', ing: 'hanh_phi',
         params: { zone: [0.55, 0.70] }, par: 2, w: 1 },
-      { id: 'tron', type: 'cha', label: 'Trộn đều',
+      { id: 'tron', type: 'xoay', skin: 'to', label: 'Trộn đều',
         after: ['cat_banh_trang', 'got_xoai', 'thai_xoai', 'boc_trung_cut', 'xe_kho_muc', 'nem', 'rot_dau_hanh'],
-        params: { strokes: 8 }, par: 4, w: 3 }
+        params: { turns: 5 }, par: 4, w: 3 }
     ]
   },
 
@@ -317,12 +320,13 @@ export const RECIPES = deepFreeze({
         params: { period: 6, zone: [0.60, 0.80] }, par: 6, w: 2 },
       { id: 'them_sua', type: 'cham', label: 'Thêm sữa đặc', ing: 'sua_dac',
         params: { mode: 'exact', n: 2, target: false }, par: 2, w: 2 },
-      { id: 'them_da', type: 'cham', label: 'Thêm đá', ing: 'da',
-        params: { mode: 'exact', n: 2, target: false }, par: 2, w: 1 },
-      { id: 'khuay', type: 'cha', label: 'Khuấy đều', after: ['rot_nuoc', 'u_phin', 'them_sua', 'them_da'],
-        params: { strokes: 6 }, par: 2, w: 1 },
+      { id: 'them_da', type: 'bay', skin: 'ly', label: 'Thả đá vào ly', ing: 'da',
+        params: { n: 2 }, par: 2, w: 1 },
+      { id: 'khuay', type: 'xoay', skin: 'ly', label: 'Khuấy đều', after: ['rot_nuoc', 'u_phin', 'them_sua', 'them_da'],
+        params: { turns: 3 }, par: 2, w: 1 },
       // icon: hình riêng của bước (chén sữa muối) thay cho hình hũ muối
-      { id: 'danh_sua_muoi', type: 'cha', label: 'Đánh sữa muối', ing: 'muoi', icon: 'sua_muoi', params: { strokes: 8 }, par: 4, w: 2 },
+      { id: 'danh_sua_muoi', type: 'xoay', skin: 'chen', label: 'Đánh sữa muối', ing: 'muoi', icon: 'sua_muoi',
+        params: { turns: 6, fast: true }, par: 4, w: 2 },
       { id: 'rot_sua_muoi', type: 'rot', skin: 'to', label: 'Rưới lớp sữa muối', ing: 'muoi', icon: 'sua_muoi',
         after: ['khuay', 'danh_sua_muoi'], params: { zone: [0.55, 0.70] }, par: 2, w: 3 }
     ]

@@ -6,8 +6,14 @@ import thai from './thai.js'
 import cham from './cham.js'
 import lua from './lua.js'
 import rot from './rot.js'
+// M5 (0.5.0): năm thao tác mới — đập trứng, khuấy, gọt, lắc, bày (thiết kế M5 mục 1.5)
+import dap from './dap.js'
+import xoay from './xoay.js'
+import got from './got.js'
+import lac from './lac.js'
+import bay from './bay.js'
 
-export const MINIGAMES = Object.freeze({ chon, cha, thai, cham, lua, rot })
+export const MINIGAMES = Object.freeze({ chon, cha, thai, cham, lua, rot, dap, xoay, got, lac, bay })
 
 // Thẻ gợi ý theo loại (và chế độ) bước, lấy từ dữ liệu MINIGAME_TYPES; bước có lớp vỏ (skin, vd phin cà phê,
 // nồi luộc, tô rưới) dùng tên/gợi ý/biểu tượng của lớp vỏ đó.

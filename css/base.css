@@ -100,30 +100,80 @@ code { font-family: ui-monospace, Menlo, Consolas, monospace; background: var(--
 .small { font-size: 14px; }
 .center { text-align: center; }
 
-/* Nút: vùng chạm tối thiểu 44px */
+/* Nút "bánh kẹo" toàn game (M5, cùng phong cách .g-btn đã duyệt ở css/theme.css): viền mực 3px, nền sáng trên → đậm dưới,
+   vệt bóng elip mờ ở mép trên (::before, nằm dưới chữ), bóng cứng 3px tông đậm, bấm thì lún 2px + co .97 (80ms, chỉ
+   transform), chữ Baloo 2 ExtraBold. Kích thước vùng chạm giữ như cũ: min-height var(--tap), viền dày thêm 1px thì đệm
+   bớt 1px nên khung ngoài không đổi. Màu theo nghĩa giữ nguyên: chính = đỏ gạch (--brick), phụ = vàng, nguy hiểm = chữ đỏ.
+   Chữ trắng (nút chính) luôn có viền mực mỏng (--btn-ink-outline): tương phản do viền mực quyết định, không phụ thuộc nền
+   gradient; phần đáy nút (--brick, 5,2:1 với chữ trắng) cũng đã đạt 4,5:1.
+   Màu nền vẽ bằng biến --btn-top / --btn-bot / --btn-edge: luật riêng của từng màn đặt `background: …` vẫn thắng như cũ. */
 .btn {
+  --btn-top: #fffdf6;
+  --btn-bot: #f0dcb4;
+  --btn-edge: #a8773a;
+  --btn-tw: 1.15px;
+  --btn-ink-outline:
+    var(--btn-tw) 0 0 #3a2618, calc(-1 * var(--btn-tw)) 0 0 #3a2618, 0 var(--btn-tw) 0 #3a2618, 0 calc(-1 * var(--btn-tw)) 0 #3a2618,
+    calc(var(--btn-tw) * .75) calc(var(--btn-tw) * .75) 0 #3a2618, calc(var(--btn-tw) * -.75) calc(var(--btn-tw) * .75) 0 #3a2618,
+    calc(var(--btn-tw) * .75) calc(var(--btn-tw) * -.75) 0 #3a2618, calc(var(--btn-tw) * -.75) calc(var(--btn-tw) * -.75) 0 #3a2618,
+    0 calc(var(--btn-tw) + 1.25px) 0 #3a2618;
+  position: relative; isolation: isolate;
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   min-height: var(--tap); min-width: var(--tap);
-  padding: 10px 16px;
-  border: 2px solid transparent; border-radius: 12px;
-  font-size: 16px; font-weight: 700; line-height: 1.15; text-align: center;
-  background: var(--paper); color: var(--ink);
-  box-shadow: 0 2px 0 rgba(59, 42, 31, 0.18);
-  transition: transform .08s var(--ease), background-color .15s, opacity .15s;
-  touch-action: manipulation; user-select: none;
+  padding: 10px 15px 8px;
+  border: 3px solid #3a2618; border-radius: 14px;
+  font-family: 'Baloo 2', var(--font); font-size: 18px; font-weight: 800; line-height: 1.1; letter-spacing: .01em; text-align: center;
+  background: linear-gradient(180deg, var(--btn-top) 0%, var(--btn-top) 16%, var(--btn-bot) 100%);
+  color: var(--ink);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .6);
+  box-shadow: inset 0 -3px 0 rgba(58, 38, 24, .14), 0 3px 0 var(--btn-edge);
+  transition: transform .08s cubic-bezier(.33, 1, .68, 1);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation; -webkit-user-select: none; user-select: none;
 }
-.btn:active:not(:disabled) { transform: translateY(1px) scale(.98); box-shadow: none; }
-.btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+/* vệt bóng elip (≤ 35% trắng) sát mép trên: nằm dưới chữ (isolation + z-index âm), không nhận chạm */
+.btn::before {
+  content: ''; position: absolute; z-index: -1; left: 9%; right: 9%; top: 2px; height: 32%;
+  border-radius: 999px; background: linear-gradient(180deg, rgba(255, 255, 255, .35), rgba(255, 255, 255, .06));
+  pointer-events: none;
+}
+.btn:active:not(:disabled) {
+  transform: translateY(2px) scale(.97);
+  box-shadow: inset 0 -2px 0 rgba(58, 38, 24, .14), 0 1px 0 var(--btn-edge);
+}
+@media (hover: hover) {
+  .btn:not(:disabled):hover { filter: brightness(1.04); }
+}
+/* không bấm được: phẳng, xám ấm, không lún (không dựa vào độ mờ: chữ vẫn đọc được) */
+.btn:disabled {
+  --btn-top: #efe7d8; --btn-bot: #d8ccb7; --btn-edge: #a8987f;
+  border-color: #8f7b66; color: #6f5f4e; text-shadow: none; opacity: 1; cursor: not-allowed;
+  box-shadow: 0 2px 0 var(--btn-edge); filter: none;
+}
+.btn:disabled::before { opacity: .35; }
 .btn:focus-visible, .icon-btn:focus-visible, .tab:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
-.btn-primary { background: var(--brick); color: #fff; }
-.btn-primary:not(:disabled):hover { background: var(--brick-dark); }
-.btn-secondary { background: var(--yellow); color: var(--ink); }
-.btn-ghost { background: transparent; border-color: var(--line); box-shadow: none; }
-.btn-danger { background: #fff; color: var(--bad); border-color: var(--bad); }
-.btn-muted { background: #c9a89c; }
-.btn-big { min-height: 54px; font-size: 18px; padding: 12px 22px; width: 100%; }
+.btn-primary {
+  --btn-top: #dd6448; --btn-bot: var(--brick); --btn-edge: var(--brick-dark);
+  color: #fff; text-shadow: var(--btn-ink-outline);
+}
+.btn-secondary { --btn-top: #fff0a6; --btn-bot: var(--yellow); --btn-edge: #a87404; color: var(--ink); }
+/* nút phụ trong suốt: viền mực nhạt, nền giấy mờ — đặt được trên nền giấy lẫn nền đậm (màn Nấu thử đổi màu chữ) */
+.btn-ghost {
+  background: rgba(255, 250, 240, .22);
+  border-color: rgba(58, 38, 24, .78);
+  text-shadow: none;
+  box-shadow: 0 2px 0 rgba(58, 38, 24, .22);
+}
+.btn-ghost::before { display: none; }
+.btn-ghost:active:not(:disabled) { box-shadow: 0 1px 0 rgba(58, 38, 24, .22); }
+.btn-ghost:disabled { background: rgba(239, 231, 216, .6); border-color: rgba(143, 123, 102, .7); box-shadow: none; }
+.btn-danger { --btn-top: #fffaf6; --btn-bot: #f8d2c8; --btn-edge: #a42a1d; color: #a42a1d; }
+.btn-muted { --btn-top: #efe2da; --btn-bot: #c9a89c; --btn-edge: #8a6a5e; color: var(--ink); text-shadow: 0 1px 0 rgba(255, 255, 255, .5); }
+.btn-big { --btn-tw: 1.5px; min-height: 54px; font-size: 22px; padding: 11px 21px 9px; width: 100%; border-radius: 18px; box-shadow: inset 0 -4px 0 rgba(58, 38, 24, .14), 0 4px 0 var(--btn-edge); }
+.btn-big:active:not(:disabled) { transform: translateY(3px) scale(.97); box-shadow: inset 0 -3px 0 rgba(58, 38, 24, .14), 0 1px 0 var(--btn-edge); }
+.btn-big.btn-ghost { box-shadow: 0 3px 0 rgba(58, 38, 24, .22); }
 .btn-wide { width: 100%; }
-.btn-small { min-height: var(--tap); font-size: 14px; padding: 8px 12px; }
+.btn-small { --btn-tw: 1px; min-height: var(--tap); font-size: 16px; padding: 8px 11px 6px; border-width: 2.5px; border-radius: 12px; }
 
 .icon-btn {
   min-width: var(--tap); min-height: var(--tap);

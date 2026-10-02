@@ -1,4 +1,5 @@
-// Sáu cơ chế mini-game của MVP: tên và thẻ gợi ý hiện trước mỗi bước.
+// Cơ chế mini-game: tên và thẻ gợi ý hiện trước mỗi bước. Sáu cơ chế của MVP + năm thao tác M5 (0.5.0, thiết kế mục 1.6):
+// đập trứng (dap), khuấy (xoay), gọt (got), lắc (lac), bày (bay).
 
 function deepFreeze(o) {
   for (const v of Object.values(o)) if (v && typeof v === 'object') deepFreeze(v)
@@ -53,6 +54,63 @@ export const MINIGAME_TYPES = deepFreeze({
       to: {
         name: 'Rưới', hint: 'Giữ để rưới lên món, thả tay khi tới vạch xanh.',
         act: 'Giữ để rưới', actMore: 'Giữ để rưới thêm', actResume: 'Giữ để rưới tiếp', count: 'Lần rưới', sub: 'Giữ để rưới, thả tay đúng vạch.'
+      }
+    }
+  },
+  // ---------- M5: năm thao tác mới ----------
+  // icon tạm (ICONS chưa có hình riêng của thao tác): xoay 'sua_muoi' → muong_khuay, got 'dao_thep' → dao_bao,
+  // lac 'ly' → binh_lac, bay 'ro' → khay_bay (đổi lại khi bộ hình dụng cụ M5 vào ICONS).
+  // Lớp vỏ: sub là dòng hướng dẫn trên sân khấu, count là chữ của bộ đếm, act là chữ nút (nếu có).
+  dap: {
+    name: 'Đập trứng',
+    hint: 'Chạm quả trứng khi kim nằm trong vùng xanh cho trứng nứt, rồi vuốt xuống để tách vào chảo.',
+    sub: 'Chạm trứng khi kim vào vùng xanh, rồi vuốt xuống.',
+    count: 'Trứng',
+    icon: 'trung_ga'
+  },
+  xoay: {
+    name: 'Khuấy', hint: 'Vẽ vòng tròn quanh lòng tô cho đủ số vòng, quay vừa tay kẻo văng ra ngoài.', icon: 'sua_muoi',
+    skins: {
+      to: {
+        name: 'Trộn đều', hint: 'Vẽ vòng tròn trong tô để trộn đều, quay vừa tay kẻo văng ra ngoài.',
+        sub: 'Vẽ vòng quanh tô cho đủ số vòng.', count: 'Vòng'
+      },
+      ly: {
+        name: 'Khuấy ly', hint: 'Vẽ vòng tròn trong ly cho sữa và cà phê hòa đều, quay vừa tay thôi.',
+        sub: 'Vẽ vòng quanh ly cho đủ số vòng.', count: 'Vòng'
+      },
+      chen: {
+        name: 'Đánh bông', hint: 'Vẽ vòng thật nhanh trong chén cho sữa bông lên, nhanh quá thì văng ra đó.',
+        sub: 'Vẽ vòng nhanh tay cho đủ số vòng.', count: 'Vòng', icon: 'sua_muoi'
+      }
+    }
+  },
+  got: {
+    name: 'Gọt vỏ',
+    hint: 'Vuốt thẳng từ trên xuống theo từng dải vỏ cho tới khi hết vỏ.',
+    sub: 'Vuốt thẳng từ trên xuống theo từng dải vỏ.',
+    count: 'Dải',
+    icon: 'dao_thep'
+  },
+  lac: {
+    name: 'Lắc', hint: 'Kéo lên kéo xuống thật đều tay cho đủ số lượt.', icon: 'ly',
+    skins: {
+      binh: {
+        name: 'Lắc bình', hint: 'Kéo bình lên xuống thật đều tay cho đủ số lượt lắc.',
+        sub: 'Kéo bình lên xuống cho đủ lượt.', count: 'Lượt lắc'
+      },
+      ro: {
+        name: 'Lắc rổ', hint: 'Kéo rổ lên xuống đều tay cho bột năng áo đều từng miếng.',
+        sub: 'Kéo rổ lên xuống cho đủ lượt.', count: 'Lượt lắc', icon: 'bot_nang'
+      }
+    }
+  },
+  bay: {
+    name: 'Bày', hint: 'Kéo từng món thả vào giữa đích cho đủ số, rồi bấm Xong.', icon: 'ro',
+    skins: {
+      ly: {
+        name: 'Thả đá', hint: 'Kéo từng viên đá thả vào giữa ly cho đủ số, rồi bấm Xong.',
+        sub: 'Kéo đá thả vào ly, đủ số thì bấm Xong.', count: 'Đá', icon: 'da'
       }
     }
   }

@@ -153,6 +153,125 @@ test('art-v2: hàng hiếm trứng gà ta có sao #ffd23f, khác trứng gà; l�
   assert.ok(kit.rareStar().includes('#ffd23f'))
 })
 
+// ---------- Đợt 1, gói B: nguyên liệu tươi (src/ui/art/ing-tuoi.js) ----------
+const TUOI_ICONS = ['dua_leo', 'trung_ga', 'tac', 'hanh_la', 'trung_ga_ta', 'trung_vit', 'trung_cut', 'hanh_tay', 'chanh',
+  'xoai_xanh', 'rau_ram', 'rau_hung_lui', 'vo_buoi']
+const EGG_STATES = ['nut', 'op_la_song', 'op_la', 'op_la_chay', 'long_dao', 'chin_ky']
+const TUOI_STATES = ['dua_leo.sach', 'dua_leo.lat', 'dua_leo.soi', 'dua_leo.bao',
+  ...EGG_STATES.map(s => 'trung_ga.' + s), ...EGG_STATES.map(s => 'trung_ga_ta.' + s),
+  'tac.bo_doi', 'tac.vat', 'trung_cut.boc',
+  'xoai_xanh.got', 'xoai_xanh.soi', 'xoai_xanh.lat', 'xoai_xanh.hat_luu',
+  'vo_buoi.got', 'vo_buoi.hat_luu', 'vo_buoi.lat', 'vo_buoi.soi', 'vo_buoi.ao_bot', 'vo_buoi.chin']
+// Tên trạng thái theo cách sơ chế (method) của bước thái trong recipes.js.
+const METHOD_STATE = { thai_lat: 'lat', thai_soi: 'soi', bao: 'bao', hat_luu: 'hat_luu' }
+const fillOf = s => s.match(/<path d="[^"]+" fill="(#[0-9a-f]{6})" stroke="none"\/>/)[1]
+// d của bóng dáng chính (path tô màu đầu tiên, như silhouette()).
+const silhouetteD = s => s.match(/<path d="([^"]+)" fill="#(?!3a2618)[0-9a-f]{6}" stroke="none"\/>/)[1]
+const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16))
+
+test('art-v2 đồ tươi: đủ 13 hình gốc, 29 hình trạng thái; có trong ICONS_V2/STATES_V2; không hình nào trùng', async () => {
+  const { INGREDIENTS } = await import('../../src/data/ingredients.js')
+  assert.deepEqual(Object.keys(ING_TUOI).sort(), [...TUOI_ICONS].sort())
+  assert.deepEqual(Object.keys(ING_TUOI_STATES).sort(), [...TUOI_STATES].sort())
+  for (const id of TUOI_ICONS) {
+    assert.ok(INGREDIENTS[id], `${id} là nguyên liệu trong dữ liệu`)
+    assert.equal(ICONS_V2[id], ING_TUOI[id], `${id} có trong ICONS_V2`)
+    assert.equal(artV2(id), ING_TUOI[id])
+  }
+  for (const k of TUOI_STATES) {
+    const [id, st] = k.split('.')
+    assert.ok(ING_TUOI[id], `${k}: trạng thái của nguyên liệu tươi`)
+    assert.equal(STATES_V2[k], ING_TUOI_STATES[k], `${k} có trong STATES_V2`)
+    assert.equal(artV2(id, st), ING_TUOI_STATES[k])
+  }
+  const all = [...Object.values(ING_TUOI), ...Object.values(ING_TUOI_STATES)]
+  assert.equal(new Set(all).size, all.length, 'không có hai hình đồ tươi trùng chuỗi SVG')
+})
+
+test('art-v2 đồ tươi: đúng quy tắc vẽ (viewBox 64, ≤ 3,5 KB, không ảnh ngoài / gradient / giá trị lỗi, bóng đất, điểm sáng)', () => {
+  for (const [id, s] of [...Object.entries(ING_TUOI), ...Object.entries(ING_TUOI_STATES)]) {
+    assert.ok(s.startsWith('<svg') && s.endsWith('</svg>') && s.includes('viewBox="0 0 64 64"'), `${id}: khung svg 64`)
+    assert.ok(Buffer.byteLength(s) <= ICON_MAX, `${id}: ${Buffer.byteLength(s)} B > ${ICON_MAX} B`)
+    assert.ok(!/url\(|href|<use\b|<image\b|base64|gradient|<filter\b|filter=|clip-?path|<mask\b|mask=|<pattern\b|<text\b/i.test(s), `${id}: phần tử cấm`)
+    assert.ok(!/undefined|NaN|null|Infinity|\[object/.test(s), `${id}: giá trị lỗi`)
+    assert.ok(s.includes(`stroke="${kit.INK}" stroke-width="3"`), `${id}: viền mực dày 3`)
+    assert.ok(/fill="#3a2618" opacity="\.15" stroke="none"/.test(s), `${id}: bóng đất`)
+    assert.ok(/fill="#fff" opacity="\.\d"|stroke="#fff"/.test(s), `${id}: điểm sáng`)
+  }
+})
+
+test('art-v2 đồ tươi: mỗi bước sơ chế nguyên liệu tươi trong recipes.js có hình trạng thái tương ứng', async () => {
+  const { RECIPES } = await import('../../src/data/recipes.js')
+  const has = (ing, st, where) => assert.ok(ING_TUOI_STATES[`${ing}.${st}`], `${where}: thiếu hình ${ing}.${st}`)
+  let n = 0
+  for (const r of Object.values(RECIPES)) {
+    for (const s of r.steps) {
+      if (!s.ing || !ING_TUOI[s.ing]) continue
+      const where = `${r.id}/${s.id}`
+      for (const m of s.method?.options || []) { assert.ok(METHOD_STATE[m], `${where}: cách ${m} chưa có tên trạng thái`); has(s.ing, METHOD_STATE[m], where); n++ }
+      if (s.type === 'got') { has(s.ing, 'got', where); n++ }
+      if (s.type === 'cha' && s.id.startsWith('rua')) { has(s.ing, 'sach', where); n++ }
+      if (s.type === 'cha' && s.id.startsWith('boc')) { has(s.ing, 'boc', where); n++ }
+      if (s.type === 'dap') { has(s.ing, 'nut', where); has(s.ing, 'op_la_song', where); n++ }
+      if (s.type === 'lua') { for (const st of ['op_la', 'op_la_chay']) has(s.ing, st, where); n++ }
+      if (s.id === 'thai_tac') { has(s.ing, 'bo_doi', where); n++ }
+      if (s.id === 'vat_tac') { has(s.ing, 'vat', where); n++ }
+      // Ghi chú độ chín vá bước chiên → có hình lòng đào / chín kỹ.
+      for (const note of r.notes || []) if (note.group === 'do_chin' && note.patch?.[s.id]) { has(s.ing, note.id, where); n++ }
+    }
+  }
+  assert.ok(n >= 30, `đã đối chiếu ${n} cặp bước/hình`)
+  // Áo bột và luộc (nguyên liệu của bước là bột năng) vẫn đổi hình cùi bưởi.
+  for (const st of ['ao_bot', 'chin']) assert.ok(ING_TUOI_STATES[`vo_buoi.${st}`])
+})
+
+test('art-v2 đồ tươi: cặp bẫy khác chuỗi SVG và khác DÁNG (trứng vịt/gà, tắc/chanh, hành lá/hành tây, rau răm/húng lủi)', () => {
+  const T = ING_TUOI
+  for (const [a, b] of [['trung_ga', 'trung_vit'], ['tac', 'chanh'], ['hanh_la', 'hanh_tay'], ['rau_ram', 'rau_hung_lui']]) {
+    assert.notEqual(T[a], T[b], `${a} / ${b}`)
+  }
+  // Trứng vịt: quả to hơn hẳn, vỏ trắng xanh; trứng gà: nhỏ hơn, vỏ nâu.
+  const area = b => (b.x1 - b.x0) * (b.y1 - b.y0)
+  const ga = silhouette(T.trung_ga), vit = silhouette(T.trung_vit)
+  assert.ok(area(vit) >= area(ga) * 1.2, `trứng vịt phải to hơn trứng gà (${area(vit)} so với ${area(ga)})`)
+  const [vr, vg, vb] = rgb(fillOf(T.trung_vit)), [gr, , gb] = rgb(fillOf(T.trung_ga))
+  assert.ok(vg > vr && vb > vr, 'vỏ trứng vịt ngả xanh')
+  assert.ok(gr - gb > 60, 'vỏ trứng gà nâu')
+  // Tắc: quả tròn (cung tròn A) có lá; chanh: bầu dục có núm (đường cong C), không có lá.
+  assert.match(silhouetteD(T.tac), /A/)
+  assert.ok(T.tac.includes(kit.PAL.la[0]), 'tắc có lá')
+  assert.match(silhouetteD(T.chanh), /^M[^A]*C[^A]*Z$/)
+  assert.ok(!T.chanh.includes(kit.PAL.la[0]) && !T.chanh.includes(kit.PAL.la[1]), 'chanh không có lá')
+  // Hành lá: bó cọng (nét ống dày, màu lá hành); hành tây: củ tô kín gần tròn, không có cọng lá.
+  assert.ok(T.hanh_la.includes('stroke-width="10"') && T.hanh_la.includes(kit.PAL.hanh[1]), 'hành lá là bó cọng')
+  const bt = silhouette(T.hanh_tay)
+  const ratio = (bt.x1 - bt.x0) / (bt.y1 - bt.y0)
+  assert.ok(ratio > 0.75 && ratio < 1.3, `củ hành tây gần tròn (${ratio.toFixed(2)})`)
+  assert.ok(!T.hanh_tay.includes(kit.PAL.hanh[0]) && !T.hanh_tay.includes(kit.PAL.hanh[1]), 'hành tây không có cọng lá')
+  // Rau răm: lá mũi mác (cung Q nhọn hai đầu), cọng tía, đốm tía giữa lá; húng lủi: lá răng cưa (đa giác ≥ 20 đỉnh), cọng xanh.
+  assert.ok(T.rau_ram.includes('#a5436c') && T.rau_ram.includes('#7b2852'), 'rau răm có cọng tía và đốm tía')
+  assert.ok(!T.rau_hung_lui.includes('#a5436c') && !T.rau_hung_lui.includes('#7b2852'), 'húng lủi không có màu tía')
+  assert.match(silhouetteD(T.rau_ram), /Q/)
+  const teeth = [...T.rau_hung_lui.matchAll(/<path d="(M[^"]*z)" fill="#[0-9a-f]{6}" stroke-width="2.2"\/>/g)]
+  assert.ok(teeth.length >= 4, `húng lủi có ≥ 4 lá răng cưa (${teeth.length})`)
+  for (const [, d] of teeth) {
+    const nums = d.match(/-?\d*\.?\d+/g).length
+    assert.ok(nums / 2 >= 20, `lá húng có răng cưa (${nums / 2} đỉnh)`)
+  }
+})
+
+test('art-v2 đồ tươi: trạng thái trứng gà / trứng gà ta dùng --yolk; gà ta có sao, gà thường không', () => {
+  for (const st of EGG_STATES) {
+    const ga = ING_TUOI_STATES['trung_ga.' + st], ta = ING_TUOI_STATES['trung_ga_ta.' + st]
+    assert.ok(ga.includes('var(--yolk,#f6b21a)'), `trung_ga.${st}: lòng đỏ --yolk`)
+    assert.ok(!ga.includes('#ffd23f'), `trung_ga.${st}: hàng thường không có sao`)
+    assert.ok(ta.includes('var(--yolk,#e8730c)'), `trung_ga_ta.${st}: lòng đỏ cam đậm --yolk`)
+    assert.ok(ta.includes('#ffd23f'), `trung_ga_ta.${st}: sao hàng hiếm`)
+  }
+  assert.notEqual(ING_TUOI_STATES['trung_ga.op_la_chay'], ING_TUOI_STATES['trung_ga.op_la'])
+  assert.notEqual(ING_TUOI_STATES['trung_ga.long_dao'], ING_TUOI_STATES['trung_ga.chin_ky'])
+})
+
 test('art-v2: đóng băng sâu (bảng hình, PROP_META, bảng màu, các tệp nguồn)', () => {
   for (const o of [ICONS_V2, STATES_V2, PROPS, PROP_META, kit.PAL, ING_TUOI, ING_TUOI_STATES, ING_KHO, ING_KHO_STATES, MON, TOOLS]) {
     assert.ok(isDeepFrozen(o))
@@ -180,9 +299,17 @@ test('art-v2: artV2 ưu tiên trạng thái → hình mới → icon cũ; propV2
   assert.equal(artV2('dua_leo', 'chua_ve'), ICONS_V2.dua_leo, 'trạng thái chưa vẽ → hình mới')
   assert.equal(artV2('dua_leo'), ICONS_V2.dua_leo)
   assert.equal(artV2('tra_tac'), ICONS_V2.mon_tra_tac, 'nhận id món không kèm mon_')
-  assert.equal(artV2('trung_vit'), icon('trung_vit'), 'chưa có hình mới → icon cũ')
-  assert.equal(artV2('trung_vit', 'nut'), ICONS.trung_vit)
-  assert.equal(artV2('mon_che_buoi'), ICONS.mon_che_buoi)
+  // Id chỉ có ở bộ hình cũ (chọn động vì Đợt 1 vẽ thêm dần, vd trung_vit đã có hình mới): chưa có hình mới → icon cũ.
+  const oldOnly = Object.keys(ICONS).find(k => k !== 'fallback' && !k.startsWith('mon_') && !ICONS_V2[k] && !ICONS_V2['mon_' + k])
+  assert.ok(oldOnly, 'còn ít nhất một id chỉ có ở bộ hình cũ')
+  assert.equal(artV2(oldOnly), icon(oldOnly), 'chưa có hình mới → icon cũ')
+  assert.equal(artV2(oldOnly, 'nut'), ICONS[oldOnly])
+  assert.equal(artV2('trung_vit'), ICONS_V2.trung_vit, 'trứng vịt đã có hình mới (Đợt 1)')
+  assert.equal(artV2('trung_vit', 'nut'), ICONS_V2.trung_vit, 'trạng thái chưa vẽ → hình mới')
+  // Đợt 1, gói D1: chè bưởi đã có hình mới; id món chỉ có ở bộ hình cũ (món tương lai) vẫn trả icon cũ.
+  assert.equal(artV2('mon_che_buoi'), MON.mon_che_buoi, 'chè bưởi đã có hình mới (Đợt 1)')
+  const oldMon = Object.keys(ICONS).find(k => k.startsWith('mon_') && !ICONS_V2[k])
+  if (oldMon) assert.equal(artV2(oldMon), ICONS[oldMon], 'món chưa có hình mới → icon cũ')
   assert.equal(artV2('khong_co_that'), ICONS.fallback)
   assert.equal(artV2(undefined), ICONS.fallback)
   assert.equal(artV2(null, 'lat'), ICONS.fallback)
@@ -238,5 +365,156 @@ test('art-v2: mã nguồn src/ui/art/* thuần (không DOM, không ngẫu nhiên
     assert.ok(!/\b(document|window|navigator|matchMedia|localStorage)\b/.test(src), `${f}: chạm DOM/trình duyệt`)
     assert.ok(!/Math\.random|Date\.now|new Date|performance\.now/.test(src), `${f}: không tất định`)
     assert.ok(!/console\./.test(src), `${f}: còn console`)
+  }
+})
+
+// ---------- Đợt 1, gói C: đồ khô, chai lọ, bột, đồ uống (src/ui/art/ing-kho.js) ----------
+const KHO_ICONS = ['nuoc_tuong', 'nuoc_mam', 'tuong_ot', 'muoi', 'hanh_phi', 'sa_te', 'mat_ong_rung', 'duong', 'duong_phen',
+  'ca_phe', 'ca_phe_hoa_tan', 'sua_dac', 'sua_tuoi', 'bot_mi', 'bot_nang', 'cot_dua', 'dua_nao', 'dau_xanh', 'muoi_tom_tay_ninh',
+  'ca_phe_bmt', 'banh_mi', 'banh_trang', 'banh_trang_me', 'kho_bo', 'dau_phong', 'kho_muc', 'tra', 'da', 'ly']
+const KHO_STATES = ['banh_trang.soi', 'banh_trang.vuong', 'kho_muc.xe', 'banh_mi.nuong', 'da.vien', 'da.mot_vien']
+// Cách cắt bánh tráng (method của bước cat_banh_trang) → tên trạng thái; để nguyên thì dùng hình gốc.
+const KHO_METHOD_STATE = { cat_soi: 'soi', cat_vuong: 'vuong', de_nguyen: null }
+const khoEntries = () => [...Object.entries(ING_KHO), ...Object.entries(ING_KHO_STATES)]
+// Các nét viền ngoài dày 3 (path fill="none" không đặt màu riêng) nằm ngoài nhóm xoay: "dáng" của hình.
+const khoOutlines = s => [...s.replace(/<g transform="[^"]*">[\s\S]*?<\/g>/g, '').matchAll(/<path d="([^"]+)" fill="none"\/>/g)].map(m => m[1])
+const khoAspect = d => { const b = pathBox(d); return (b.y1 - b.y0) / (b.x1 - b.x0) }
+const khoCount = (s, re) => (s.match(re) || []).length
+
+test('art-v2 đồ khô: đủ 29 hình gốc, 6 hình trạng thái; có trong ICONS_V2/STATES_V2; cùng đồ tươi phủ kín mọi nguyên liệu', async () => {
+  const { INGREDIENTS } = await import('../../src/data/ingredients.js')
+  assert.deepEqual(Object.keys(ING_KHO).sort(), [...KHO_ICONS].sort())
+  assert.deepEqual(Object.keys(ING_KHO_STATES).sort(), [...KHO_STATES].sort())
+  for (const id of KHO_ICONS) {
+    assert.ok(INGREDIENTS[id], `${id} là nguyên liệu trong dữ liệu`)
+    assert.equal(INGREDIENTS[id].icon, id, `${id}: khóa hình trùng id nguyên liệu`)
+    assert.equal(ICONS_V2[id], ING_KHO[id], `${id} có trong ICONS_V2`)
+    assert.equal(artV2(id), ING_KHO[id])
+  }
+  for (const k of KHO_STATES) {
+    const [id, st] = k.split('.')
+    assert.ok(ING_KHO[id], `${k}: trạng thái của đồ khô`)
+    assert.equal(STATES_V2[k], ING_KHO_STATES[k], `${k} có trong STATES_V2`)
+    assert.equal(artV2(id, st), ING_KHO_STATES[k])
+  }
+  // Đồ tươi (gói B) và đồ khô (gói C) không giành nhau một id; mọi nguyên liệu đều thuộc đúng một bên.
+  for (const id of Object.keys(ING_KHO)) assert.ok(!(id in ING_TUOI), `${id} nằm ở cả hai tệp`)
+  for (const [id, g] of Object.entries(INGREDIENTS)) {
+    if (ING_KHO[g.icon]) continue
+    assert.ok(ING_TUOI[g.icon], `${id}: chưa có hình mới ở tệp đồ tươi hay đồ khô`)
+  }
+  const all = khoEntries().map(([, s]) => s)
+  assert.equal(new Set(all).size, all.length, 'không có hai hình đồ khô trùng chuỗi SVG')
+})
+
+test('art-v2 đồ khô: đúng quy tắc vẽ (viewBox 64, ≤ 3,5 KB, viền mực 3, bóng đất, điểm sáng; chữ chỉ ở TƯƠNG / MẮM)', () => {
+  for (const [id, s] of khoEntries()) {
+    assert.ok(s.startsWith('<svg') && s.endsWith('</svg>') && s.includes('viewBox="0 0 64 64"'), `${id}: khung svg 64`)
+    assert.ok(Buffer.byteLength(s) <= ICON_MAX, `${id}: ${Buffer.byteLength(s)} B > ${ICON_MAX} B`)
+    assert.ok(!/url\(|href|<use\b|<image\b|base64|gradient|<filter\b|filter=|clip-?path|<mask\b|mask=|<pattern\b/i.test(s), `${id}: phần tử cấm`)
+    assert.ok(!/undefined|NaN|null|Infinity|\[object/.test(s), `${id}: giá trị lỗi`)
+    assert.ok(s.includes(`stroke="${kit.INK}" stroke-width="3"`), `${id}: viền mực dày 3`)
+    assert.ok(/fill="#3a2618" opacity="\.15" stroke="none"/.test(s), `${id}: bóng đất`)
+    assert.ok(/fill="#fff" opacity="\.\d"|stroke="#fff"/.test(s), `${id}: điểm sáng`)
+    const open = khoCount(s, /<(svg|g|text)\b/g), close = khoCount(s, /<\/(svg|g|text)>/g)
+    assert.equal(open, close, `${id}: thẻ cân bằng`)
+    const texts = khoCount(s, /<text\b/g)
+    if (id === 'nuoc_tuong' || id === 'nuoc_mam') assert.equal(texts, 1, `${id}: giữ một dòng chữ`)
+    else assert.equal(texts, 0, `${id}: không có chữ trong hình (chỉ vẽ)`)
+  }
+})
+
+test('art-v2 đồ khô: hình trạng thái khớp bước thật trong recipes.js (cắt bánh tráng, xé khô mực, nướng bánh mì, thả đá)', async () => {
+  const { RECIPES } = await import('../../src/data/recipes.js')
+  const has = (ing, st, where) => assert.ok(ING_KHO_STATES[`${ing}.${st}`], `${where}: thiếu hình ${ing}.${st}`)
+  let n = 0
+  for (const r of Object.values(RECIPES)) {
+    for (const s of r.steps) {
+      if (!s.ing || !ING_KHO[s.ing]) continue
+      const where = `${r.id}/${s.id}`
+      for (const m of s.method?.options || []) {
+        assert.ok(m in KHO_METHOD_STATE, `${where}: cách ${m} chưa có tên trạng thái`)
+        if (KHO_METHOD_STATE[m]) { has(s.ing, KHO_METHOD_STATE[m], where); n++ }
+      }
+      if (s.type === 'cha' && s.id.startsWith('xe')) { has(s.ing, 'xe', where); n++ }
+      if (s.id.startsWith('nuong')) { has(s.ing, 'nuong', where); n++ }
+      if (s.type === 'bay') { has(s.ing, 'vien', where); has(s.ing, 'mot_vien', where); n++ }
+    }
+  }
+  assert.ok(n >= 8, `đã đối chiếu ${n} cặp bước/hình`)
+  // Trạng thái nào cũng ứng với ít nhất một bước thật (không vẽ thừa).
+  const used = new Set()
+  for (const r of Object.values(RECIPES)) for (const s of r.steps) {
+    if (!s.ing) continue
+    for (const m of s.method?.options || []) if (KHO_METHOD_STATE[m]) used.add(`${s.ing}.${KHO_METHOD_STATE[m]}`)
+    if (s.type === 'cha' && s.id.startsWith('xe')) used.add(`${s.ing}.xe`)
+    if (s.id.startsWith('nuong')) used.add(`${s.ing}.nuong`)
+    if (s.type === 'bay') { used.add(`${s.ing}.vien`); used.add(`${s.ing}.mot_vien`) }
+  }
+  for (const k of KHO_STATES) assert.ok(used.has(k), `${k}: không ứng với bước nào`)
+})
+
+test('art-v2 đồ khô: cặp bẫy khác chuỗi SVG và khác DÁNG (không chỉ đổi màu)', async () => {
+  const { INGREDIENTS } = await import('../../src/data/ingredients.js')
+  const K = ING_KHO
+  const pairs = []
+  for (const [id, g] of Object.entries(INGREDIENTS)) {
+    for (const t of [g.trapOf, ...(g.traps || [])]) if (t && K[g.icon] && K[INGREDIENTS[t].icon]) pairs.push([g.icon, INGREDIENTS[t].icon])
+  }
+  assert.ok(pairs.length >= 14, `đủ cặp bẫy đồ khô (${pairs.length})`)
+  for (const [a, b] of pairs) {
+    assert.notEqual(K[a], K[b], `${a} / ${b}`)
+    assert.notDeepEqual(khoOutlines(K[a]), khoOutlines(K[b]), `${a} / ${b}: viền ngoài giống hệt (chỉ đổi màu)`)
+  }
+  const outline0 = id => khoOutlines(K[id])[0]
+  // Đường: bao mở miệng (đống đường vòm + mép bao cuộn), nhãn đỏ; muối: hũ thấp bè nắp xanh, đầy tinh thể;
+  // đường phèn: ba cục đa giác (chỉ nét thẳng), không bao, không nắp.
+  assert.ok(K.muoi.includes(kit.PAL.xanh_nhan[0]) && !K.duong.includes(kit.PAL.xanh_nhan[0]), 'muối nắp xanh, đường không')
+  assert.ok(khoAspect(outline0('muoi')) < 0.9, 'hũ muối thấp bè')
+  assert.equal(khoOutlines(K.duong).length, 3, 'bao đường: đống đường, thân bao, mép bao cuộn')
+  const lumps = khoOutlines(K.duong_phen)
+  assert.equal(lumps.length, 3, 'đường phèn: ba cục')
+  for (const d of lumps) assert.match(d, /^M[\d. L]+Z$/, 'cục đường phèn là đa giác cạnh thẳng')
+  assert.ok(!/<rect\b/.test(K.duong_phen), 'đường phèn không có nắp hay nhãn')
+  // Bánh tráng: xấp ≥ 4 lá; bánh tráng mè: một lá dày rắc ≥ 12 hạt mè đen.
+  assert.ok(khoCount(K.banh_trang, /<ellipse cx="32" cy="[\d.]+" rx="25" ry="10.4"/g) >= 4, 'bánh tráng là một xấp lá')
+  assert.equal(khoCount(K.banh_trang_me, /<ellipse cx="32" cy="33" rx="27"/g), 1, 'bánh tráng mè là một lá')
+  const seeds = K.banh_trang_me.match(/<path d="([^"]+)" fill="none" stroke="#2a1a10"/)
+  assert.ok(seeds && khoCount(seeds[1], /M/g) >= 12, 'bánh tráng mè rắc mè đen')
+  assert.ok(!K.banh_trang.includes('#2a1a10'), 'bánh tráng thường không có mè')
+  // Cà phê phin: một túi đứng có kẹp kẽm; hòa tan: ba gói que xòe; Buôn Ma Thuột: bao bố buộc dây thừng, không kẹp kẽm.
+  const sticks = khoCount(K.ca_phe_hoa_tan, /<g transform="rotate\(-?\d+ 32 58\)">/g)
+  assert.equal(sticks, 3, 'cà phê hòa tan: ba gói que')
+  assert.equal(khoCount(K.ca_phe, /rotate\(-?\d+ 32 58\)/g), 0, 'cà phê phin không phải gói que')
+  assert.ok(khoOutlines(K.ca_phe_bmt).length === 2 && !/<rect x="10.6" y="12.4"/.test(K.ca_phe_bmt), 'bao Buôn Ma Thuột buộc túm, không kẹp kẽm')
+  assert.ok(/<rect x="10.6" y="12.4"/.test(K.ca_phe), 'túi cà phê phin có kẹp kẽm')
+  // Sữa tươi: hộp giấy CAO mái nhọn; sữa đặc: lon THẤP bè có nắp tròn.
+  assert.ok(khoAspect(outline0('sua_tuoi')) > 1.3, 'hộp sữa tươi cao')
+  assert.ok(khoAspect(outline0('sua_dac')) < 1, 'lon sữa đặc thấp bè')
+  assert.ok(/<ellipse cx="32" cy="23.6" rx="20"/.test(K.sua_dac) && !/<ellipse cx="32" cy="23.6"/.test(K.sua_tuoi), 'sữa đặc có nắp lon tròn, sữa tươi không')
+  // Bột mì: bao giấy đứng cao kèm bông lúa (≥ 6 hạt lúa); bột năng: túi vải tròn kèm củ khoai mì, không có lúa.
+  assert.ok(khoAspect(outline0('bot_mi')) > 1.3, 'bao bột mì đứng cao')
+  assert.ok(khoCount(K.bot_mi, /<ellipse[^>]*fill="#ecbd4c"/g) >= 6, 'bột mì có bông lúa')
+  assert.ok(!K.bot_nang.includes('#ecbd4c') && K.bot_nang.includes('#8f5a32'), 'bột năng có củ khoai mì, không có lúa')
+  assert.ok(!K.bot_mi.includes('#8f5a32'), 'bột mì không có củ khoai mì')
+  // Nước cốt dừa: nửa trái dừa vỏ nâu, thấp bè; dừa nạo: đống sợi trên lá chuối, không có vỏ dừa.
+  assert.ok(khoAspect(outline0('cot_dua')) < 0.7 && K.cot_dua.includes('#8f5a32'), 'nửa trái dừa vỏ nâu')
+  assert.ok(K.dua_nao.includes(kit.PAL.la[0]) && !K.dua_nao.includes('#8f5a32'), 'dừa nạo trên lá, không có vỏ dừa')
+  // Hàng hiếm khác dáng hàng thường dễ nhầm.
+  assert.ok(K.mat_ong_rung.includes(kit.PAL.do[0]) && khoCount(K.mat_ong_rung, /l3.1 1.8v3.6/g) === 3, 'mật ong: hũ phủ vải, nhãn tổ ong')
+  assert.ok(/<rect x="11" y="11.4" width="42"/.test(K.muoi_tom_tay_ninh) && !K.muoi_tom_tay_ninh.includes(kit.PAL.xanh_nhan[0]), 'muối tôm: túi zip, không nắp xanh')
+  assert.equal(khoOutlines(K.kho_bo).length, 3, 'khô bò: ba dải thịt')
+  for (const d of khoOutlines(K.kho_bo)) assert.match(d, /^M[\d. L]+Z$/, 'dải khô bò cạnh thẳng')
+  assert.ok(khoAspect(outline0('kho_muc')) > 1.2 && /stroke-width="5.6"/.test(K.kho_muc), 'khô mực: con mực dựng đứng có râu')
+})
+
+test('art-v2 đồ khô: hàng hiếm có sao #ffd23f (cả khô mực xé), hàng thường không', async () => {
+  const { INGREDIENTS } = await import('../../src/data/ingredients.js')
+  for (const id of KHO_ICONS) {
+    if (INGREDIENTS[id].rare) assert.ok(ING_KHO[id].includes('#ffd23f'), `${id}: hàng hiếm có sao`)
+    else assert.ok(!ING_KHO[id].includes('#ffd23f'), `${id}: hàng thường không có sao`)
+  }
+  for (const [k, s] of Object.entries(ING_KHO_STATES)) {
+    assert.equal(s.includes('#ffd23f'), !!INGREDIENTS[k.split('.')[0]].rare, `${k}: sao theo hàng hiếm`)
   }
 })

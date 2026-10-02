@@ -4,7 +4,7 @@ import {
   defaultState, defaultStats, defaultSettings, defaultMeta, newRecipeProgress, STATE_VERSION, INCIDENT_FREQUENCIES,
   defaultIncidents, defaultNotebook, defaultRare
 } from './state.js'
-import { normalizeChonDraft, normalizeLineMistakes } from './kitchen.js'
+import { normalizeChonDraft, normalizeLineMistakes, effectiveSteps } from './kitchen.js'
 import { migrateTour } from './tour.js'
 
 export const SAVE_KEY = 'bkn.save'
@@ -312,9 +312,10 @@ export function migrate(raw, data = null, report = null) {
   migrateContentM3(raw, s, data)
   migrateContentM4(raw, s, data)
   // rổ đang chọn dở của bước Chọn và lần chọn nhầm theo dòng phiếu: ca thật và phiên nấu thử
-  if (isObj(s.shift)) s.shift = migrateLineMistakes(migrateCookDraft(s.shift, data))
+  // M5 (0.5.0): phiên nấu đang ở Thớt dựng lại bảng bước theo công thức hiện tại (bước đổi loại thao tác) — migrateCookBoard
+  if (isObj(s.shift)) s.shift = migrateLineMistakes(migrateCookBoard(migrateCookDraft(s.shift, data), data))
   if (isObj(s.tasting) && isObj(s.tasting.shift)) {
-    const tsh = migrateLineMistakes(migrateCookDraft(s.tasting.shift, data))
+    const tsh = migrateLineMistakes(migrateCookBoard(migrateCookDraft(s.tasting.shift, data), data))
     if (tsh !== s.tasting.shift) s.tasting = { ...s.tasting, shift: tsh }
   }
   // 0.4.1: hướng dẫn lần đầu (state.tour); bản cũ chưa có trường này: tour của vòng chơi chính coi như đã xem với người
@@ -358,6 +359,27 @@ export function migrateCookDraft(sh, data = null) {
   const c2 = { ...cook }
   if (next) c2.chonDraft = next
   else delete c2.chonDraft
+  return { ...sh, cook: c2 }
+}
+
+// M5 (0.5.0): bước đổi loại thao tác (vd Lắc đều: chà → lắc). Phiên nấu ở Thớt giữ bảng bước cũ trong save → dựng lại
+// cook.board theo công thức hiện tại (cùng ghi chú, nguyên liệu đã chọn, số phần — effectiveSteps như lúc chốt bước Chọn);
+// giữ kết quả bước đã làm (cùng id, cook.steps không đổi), giữ activeStepId/retryPending nếu bước còn trên bảng (không thì
+// về null); không đổi tiền, phiếu, giá vốn, lượt làm lại. Chạy lại nhiều lần không đổi. Thiếu dữ liệu công thức, phiên không
+// ở Thớt (chọn/xong) hay phiên hỏng kiểu → giữ nguyên. Không sửa object đầu vào: có thay đổi thì trả bản sao nông của ca
+// (kèm bản sao phiên nấu), không thì trả chính `sh`.
+export function migrateCookBoard(sh, data = null) {
+  const cook = isObj(sh) ? sh.cook : null
+  if (!isObj(cook) || cook.phase !== 'thot' || !Array.isArray(cook.board)) return sh
+  const R = data && data.RECIPES && data.RECIPES[cook.recipeId]
+  if (!isObj(R) || !Array.isArray(R.steps) || !Array.isArray(cook.picked)) return sh
+  const notes = Array.isArray(cook.notes) ? cook.notes : []
+  const board = effectiveSteps(R, notes, cook.picked, cook.qty).filter(st => st.type !== 'chon')
+  if (!board.length || JSON.stringify(board) === JSON.stringify(cook.board)) return sh
+  const ids = new Set(board.map(st => st.id))
+  const c2 = { ...cook, board }
+  if (c2.activeStepId != null && !ids.has(c2.activeStepId)) c2.activeStepId = null
+  if (c2.retryPending != null && !ids.has(c2.retryPending)) c2.retryPending = null
   return { ...sh, cook: c2 }
 }
 

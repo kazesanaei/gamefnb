@@ -7,7 +7,8 @@ import { makeRand } from './rng.js'
 import { roundCost } from './money.js'
 import { consumeRare, rareReputation, rareLinesFit } from './rare.js'
 
-const SCALE_KEYS = ['n', 'N', 'cuts', 'strokes']
+// Tham số đếm nhân theo số phần (M5: thêm turns của khuấy, strips của gọt).
+const SCALE_KEYS = ['n', 'N', 'cuts', 'strokes', 'turns', 'strips']
 
 function isPlainObject(v) { return v && typeof v === 'object' && !Array.isArray(v) }
 

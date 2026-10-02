@@ -1,0 +1,4 @@
+/* Sân khấu mini-game, nhóm Pha trộn: Khuấy (xoay), Lắc (lac), Bày (bay) — M5 Đợt 1, gói E3.
+   Tạo trống ở bước 0 (tách CSS sân khấu khỏi kitchen.css); luật của 3 trò mới thêm vào đây. Gắn sau mg-prep.css (khung
+   sân khấu chung) và mg-heat.css trong index.html. Dùng biến --k-* của .kitchen/.k-scope (kitchen.css) và --g-* (theme.css).
+   Quy ước hiệu ứng: chỉ animate transform/opacity, lớp hiệu ứng pointer-events: none, tôn trọng giảm chuyển động. */

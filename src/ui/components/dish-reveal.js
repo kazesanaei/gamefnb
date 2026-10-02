@@ -11,6 +11,7 @@ import { artV2 } from '../art/v2.js'
 import { DI_SAU } from '../art.js'
 import { BALANCE } from '../../data/balance.js'
 import { isReduced } from '../motion.js'
+import { guardNextClick } from './step-card.js'
 
 export const REVEAL_MS = 2200
 export const REVEAL_MS_REDUCED = 1400
@@ -19,6 +20,11 @@ export const STAR_GAP_MS = 120
 export const MAX_STARS = 5
 export const DISH_GRADES = Object.freeze(['tuyet_hao', 'ngon', 'duoc', 'kem', 'hong'])
 const HIGH = new Set(['tuyet_hao', 'ngon'])
+
+/** Thời gian màn ra món tự đóng: REVEAL_MS (2.200 ms), giảm chuyển động REVEAL_MS_REDUCED (1.400 ms). */
+export function revealMs(reduced = false) {
+  return reduced ? REVEAL_MS_REDUCED : REVEAL_MS
+}
 
 /** Số sao (1–5) của hạng món theo bảng ngưỡng (BALANCE.gradeThresholds: [ngưỡng, hạng, sao]). */
 export function starsOf(grade, thresholds = BALANCE.gradeThresholds) {
@@ -125,7 +131,10 @@ function gradeLabelOf(grade, data) {
  * el: div.g-reveal.grade-<hạng> [data-testid="dish-reveal", data-grade, data-q] (giá trị cuối ghi ngay), có .k-bubble.
  * Khung chứa nên có kích thước xác định (vd lớp phủ position:absolute; inset:0); thẻ tự canh giữa và co theo chiều cao.
  * play({ vfx, sound }): chạy nhịp JS (đếm %, âm, hạt, pháo giấy) — gọi ngay sau khi gắn el vào trang. Hoạt ảnh CSS tự
- * chạy khi gắn. Chạm (pointerdown) = bỏ qua: hiện thẳng trạng thái cuối và gọi onClose (nếu có). finish(): chỉ hiện thẳng.
+ * chạy khi gắn. Chạm (pointerdown) = bỏ qua: hiện thẳng trạng thái cuối và gọi onClose (nếu có); cú click của chính lần
+ * chạm đó bị nuốt (không rơi xuống nút bên dưới). finish(): chỉ hiện thẳng.
+ * Tự đóng: bên gọi hẹn giờ plan.totalMs (= revealMs(reduced): 2.200 / 1.400 ms) rồi close(); nấu thử gọi onDone sau
+ * plan.totalMs + 150 như cũ.
  */
 export function createDishReveal({
   dish = {}, recipe = null, name = '', mood = null, comment = '', lvUpText = '', data = null,
@@ -299,7 +308,14 @@ export function createDishReveal({
     el.remove()
   }
 
-  el.addEventListener('pointerdown', e => { if (e.button > 0) return; close() })
+  // Chạm = bỏ qua (đóng). Lớp ra món biến mất ngay ở pointerdown nên cú click trình duyệt sinh ra lúc nhấc ngón sẽ rơi
+  // xuống phần tử bên dưới (vd nút "Giao cho khách"): nuốt đúng cú click đó.
+  el.addEventListener('pointerdown', e => {
+    if (e.button > 0 || closed) return
+    const d = el.ownerDocument
+    guardNextClick((d && d.defaultView) || d, { pointerId: e.pointerId })
+    close()
+  })
 
   return { el, plan, play, finish, close, destroy }
 }
