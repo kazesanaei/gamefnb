@@ -5,6 +5,9 @@ import { pushMail, refreshMail, claimMail, claimAllMail, mailBadge, mailList, pu
 import { handleMetaEvent, refreshMeta } from '../../src/core/meta.js'
 import { makeNowInfo, addDaysKey } from '../../src/core/clock.js'
 import { makeMetaCtx, newState, at, vn } from '../helpers/meta-helpers.mjs'
+import { DATA } from '../../src/data/index.js'
+import { effectiveSteps } from '../../src/core/kitchen.js'
+import { stepProgress } from '../../src/ui/components/step-card.js'
 
 test('thư chào mừng đẩy đúng 1 lần theo id; đẩy trùng id bị từ chối', () => {
   const ctx = makeMetaCtx()
@@ -148,8 +151,20 @@ test('thư phiên bản 0.5.0: giới thiệu bếp mới, 5 thao tác, thẻ b�
   assert.equal(def.kind, 'phien_ban')
   assert.match(def.title, /^Có gì mới: /)
   // đủ ý: giao diện bếp mới, 5 thao tác mới, thẻ bước có tay mẫu, chế độ tập trung khi nấu
-  for (const w of [/Bếp/, /hình mới/, /5 thao tác mới/, /Đập trứng/, /Khuấy/, /Gọt vỏ/, /Lắc/, /Thả đá/, /Bước 1\/5/, /bàn tay mẫu/,
+  for (const w of [/Bếp/, /hình mới/, /5 thao tác mới/, /Đập trứng/, /Khuấy/, /Gọt vỏ/, /Lắc/, /Thả đá/, /bàn tay mẫu/,
     /màn hình thấp/, /ẩn dải khách và thanh 4 khâu/, /dây phiếu vẫn hiện/]) assert.match(def.body, w)
+  // Ví dụ thẻ bước trong thư phải là thẻ có thật: bước Chọn là bước 1 và không có thẻ, nên thẻ đầu tiên của món đầu
+  // (Bánh mì ốp la) là "Bước 2/6" theo stepProgress; thư từng ghi "Bước 1/5" (không bao giờ hiện).
+  const first = DATA.RECIPES.banh_mi_op_la
+  const board = effectiveSteps(first, []).filter(st => st.type !== 'chon')
+  const p = stepProgress({ phase: 'thot', chonScore: 100, board, steps: {} }, board[0].id)
+  assert.ok(def.body.includes(`"Bước ${p.index}/${p.total}"`), `thư phải lấy ví dụ thẻ đầu tiên "Bước ${p.index}/${p.total}"`)
+  assert.doesNotMatch(def.body, /Bước 1\//, 'không có thẻ "Bước 1/N"')
+  for (const m of def.body.matchAll(/Bước (\d+)\/(\d+)/g)) {
+    const k = Number(m[1]), n = Number(m[2])
+    assert.ok(k >= 2 && k <= n, `thẻ ${m[0]}: k phải trong [2, N]`)
+    assert.ok(Object.values(DATA.RECIPES).some(r => r.steps.length === n), `${m[0]}: có món ${n} bước`)
+  }
   // đúng giọng thư cũ (Dì Sáu gọi "con"), câu cuối có dấu chấm than
   assert.match(def.body, /\bcon\b/)
   assert.match(def.body, /!$/)

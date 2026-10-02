@@ -14,6 +14,7 @@ import { clamp, createClock, frameLoop, settleOnce, feedback, stepLimitSec, scal
 import { buildFrame2 } from './_frame.js'
 import { artV2, propV2, PROP_META } from '../art/v2.js'
 import { isReduced } from '../motion.js'
+import { panEggSlots } from './dap.js'
 
 export const LUA_MAX = 1.2
 export const LUA_GAUGE_H = 58        // px: dải thước kim ở đầu cảnh (đầu kim nhô lên + thước + nhãn vạch quá)
@@ -221,12 +222,11 @@ function mount(stage, step, ctx = {}) {
     const fl = vm.floor
     const layers = foodLayers(ta ? 'trung_ga' : ingArt)
     const isEgg = artV2(ta ? 'trung_ga' : ingArt, 'op_la') !== artV2(ta ? 'trung_ga' : ingArt)
-    const k = isEgg ? eggCount(step, ctx) : 1
-    const span = k === 1 ? 0 : Math.min(0.9, 1.4 - 0.25 * Math.min(k, 4)) * fl.rx
-    const size = isEgg ? Math.min(1.25, 2.2 / k) * fl.rx : fl.rx * 1.7
-    for (let i = 0; i < k; i++) {
-      const off = k === 1 ? 0 : -span + (2 * span * i) / (k - 1)
-      const slot = h('div', { class: ['lua-slot', isEgg ? 'is-egg' : 'is-item'], style: box(fl.cx + off, fl.cy - (isEgg ? 0 : fl.ry * 0.25), size, size) })
+    // trứng: cùng chỗ với lúc đập (panEggSlots, trọn trong lòng chảo, xếp từ trong ra ngoài); món khác: một miếng to giữa chảo
+    const spots = isEgg ? panEggSlots(eggCount(step, ctx), fl)
+      : [{ cx: fl.cx, cy: fl.cy - fl.ry * 0.25, size: fl.rx * 1.7 }]
+    for (const sp of spots) {
+      const slot = h('div', { class: ['lua-slot', isEgg ? 'is-egg' : 'is-item'], style: box(sp.cx, sp.cy, sp.size, sp.size) })
       for (const [key, svg, tint] of layers) slot.append(svgBox(svg, ['lua-layer', 'st-' + key, tint].filter(Boolean).join(' ')))
       food.append(slot)
     }

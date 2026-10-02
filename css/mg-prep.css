@@ -170,10 +170,10 @@
   text-shadow: 0 1px 0 rgba(58, 38, 24, .6);
 }
 .chon-cell.is-picked .chon-qty { display: block; }
-/* M4: nguyên liệu hiếm trên kệ: số phần còn trong kho hàng hiếm — nhãn vàng ở góc dưới-trái của hình, ngay trên ván (góc
-   trên-phải là dấu ✓, góc trên-trái là huy hiệu ×n khi đã chọn: không đè nhau) */
+/* M4: nguyên liệu hiếm trên kệ: số phần còn trong kho hàng hiếm — viên vàng cao 17px ở góc dưới-trái của hình, đáy viên
+   chạm mép trên nhãn tên (không đè chữ tên); góc trên-phải là dấu ✓, góc trên-trái là huy hiệu ×n khi đã chọn: không đè nhau */
 .chon-left {
-  position: absolute; z-index: 3; top: calc(var(--pad-top) + var(--ico) - 17px); left: 1px; padding: 0 4px; border: 2px solid var(--g-ink, #3a2618); border-radius: 999px;
+  position: absolute; z-index: 3; top: calc(var(--pad-top) + var(--ico) - 20px); left: 1px; padding: 0 4px; border: 2px solid var(--g-ink, #3a2618); border-radius: 999px;
   background: #ffd23f; color: var(--g-ink, #3a2618); font-size: 13px; font-weight: 800; line-height: 13px; letter-spacing: -.02em; white-space: nowrap;
 }
 /* gợi ý món cần lấy: quầng vàng sau món, nhịp sáng (chỉ opacity/transform; giảm chuyển động: quầng tĩnh) */
@@ -244,12 +244,16 @@
   position: absolute; right: -4px; top: 0; padding: 0 4px; border: 2px solid var(--g-ink, #3a2618); border-radius: 999px;
   background: var(--g-go, #43a63d); color: #fff; font-size: 13px; font-weight: 800; line-height: 15px;
 }
-/* kệ nhỏ (khung bếp thấp): ván mỏng hơn, nhãn sát mép */
-.chon-shelf.is-small .chon-cell { --pad-top: 3px; padding-left: 1px; padding-right: 1px; padding-bottom: 3px; }
+/* kệ nhỏ (khung bếp thấp): ván mỏng hơn, nhãn sát mép, tầng sát nhau hơn (khung 360×600 vừa trọn kệ 12 món tên một dòng) */
+.chon-shelf.is-small { padding-bottom: 4px; }
+.chon-shelf.is-small .chon-cell { --pad-top: 3px; padding-left: 1px; padding-right: 1px; padding-bottom: 1px; }
 .chon-shelf.is-small .chon-cell::after { height: 10px; }
 .chon-shelf.is-small .chon-label { padding: 1px 3px 0; border-width: 1.5px; }
 .chon-shelf.is-small .chon-check { width: 20px; height: 20px; right: -8px; top: -6px; }
 .chon-shelf.is-small .chon-check::after { left: 5px; top: 2px; width: 5px; height: 9px; border-width: 0 2.5px 2.5px 0; }
+/* khung bếp cao nhưng thẻ công thức chiếm nhiều chỗ (vd món có nguyên liệu hiếm ở 390×844): hình đã ở sàn 36px mà tầng cuối
+   của kệ vẫn khuất sau thanh "Trong rổ / Xong" → chon.js gắn .is-tight, bỏ đầu sân khấu như ở khung ≤ 700px */
+.k-main .mg-stage.g-frame2.mg-chon.is-tight > .mg-head.g-head2 { display: none; }
 /* màn khác (Gánh hàng quê): cỡ mặc định theo chiều cao màn */
 @media (max-height: 700px) {
   .chon-shelf { --ico: 40px; }

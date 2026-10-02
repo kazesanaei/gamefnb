@@ -71,6 +71,26 @@ export function dropGround(svg) {
   return typeof svg === 'string' ? svg.replace(/<ellipse[^>]*opacity="\.15"[^>]*\/>/, '') : svg
 }
 
+// Một nhát gọt phải chạm ít nhất phần này của đoạn cần gọt mới tính là nằm trên quả; gọt thêm ít nhất phần này mới là nhát
+// gọt mới (ít hơn: vuốt lại chỗ đã gọt).
+export const GOT_STROKE_MIN = 0.04
+
+/**
+ * Kết quả một nhát vuốt HỢP LỆ (thẳng, đúng chiều — classifySwipe ok) phủ đoạn [a, c] (phần chiều cao quả) trên dải có đoạn
+ * cần gọt [lo, hi] và các khúc đã gọt segs (thuần, không đổi segs): { kind, cov } với cov = độ phủ dải sau nhát.
+ *  - 'ngoai': nhát nằm ngoài thân quả (trên hoặc dưới đoạn cần gọt) — nhát hụt;
+ *  - 'got': gọt thêm ≥ GOT_STROKE_MIN của dải — nhát gọt;
+ *  - 'lai': vuốt lại chỗ đã gọt (kể cả dải đã sạch) — chỉ nhắc, KHÔNG phải nhát hụt.
+ */
+export function gotStroke(segs, a, c, lo, hi) {
+  const list = Array.isArray(segs) ? segs : []
+  const before = bandCoverage(list, lo, hi)
+  const on = (Math.min(c, hi) - Math.max(a, lo)) / Math.max(1e-6, hi - lo)
+  if (!(on >= GOT_STROKE_MIN)) return { kind: 'ngoai', cov: before }
+  const cov = bandCoverage([...list, [a, c]], lo, hi)
+  return { kind: cov - before >= GOT_STROKE_MIN ? 'got' : 'lai', cov }
+}
+
 /** Dải dọc i (trên K) của quả hình elip rộng W cao H: { left, width, top, height } (px) — đoạn cần gọt của dải (dây cung
  *  của elip tại giữa dải; vuốt dọc giữa dải phần thấy được là phủ trọn). */
 export function bandRect(i, K, W, H) {
@@ -319,15 +339,15 @@ function mount(stage, step, ctx = {}) {
     const b = bands[i]
     const a = Math.min(d.p0.y, p1.y) / H
     const c = Math.max(d.p0.y, p1.y) / H
-    // nhát nằm ngoài thân quả (trên hoặc dưới đoạn cần gọt của dải) là trượt ra ngoài quả
-    if ((Math.min(c, b.hi) - Math.max(a, b.lo)) / Math.max(1e-6, b.hi - b.lo) < 0.04) { miss(p, 'Trượt rồi'); return }
+    // nhát nằm ngoài thân quả (trên hoặc dưới đoạn cần gọt của dải) là trượt ra ngoài quả; nhát hợp lệ trên quả không bao
+    // giờ là nhát hụt: vuốt lại chỗ đã gọt (kể cả dải đã sạch) thì chỉ nhắc, không trừ điểm
+    const st = gotStroke(b.segs, a, c, b.lo, b.hi)
+    if (st.kind === 'ngoai') { miss(p, 'Trượt rồi'); return }
     const before = b.cov
     b.segs.push([a, c])
-    b.cov = bandCoverage(b.segs, b.lo, b.hi)
-    // Nhát hợp lệ (thẳng, đúng chiều, trên quả) không bao giờ là nhát hụt: vuốt lại chỗ đã gọt thì chỉ nhắc, không trừ điểm.
-    const peeledNow = b.cov - before >= 0.04
+    b.cov = st.cov
     if (b.cov > before) { b.el.dataset.done = b.cov.toFixed(2); drawBand(b) }
-    if (peeledNow) {
+    if (st.kind === 'got') {
       strokes++
       doneBtn.disabled = false
       // tiếng "sột" + vỏ cuộn bắn ra (vfx, giảm chuyển động: không hạt) + dải vỏ rơi

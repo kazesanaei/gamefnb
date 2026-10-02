@@ -9,14 +9,15 @@
 //
 // M5 (0.5.0, thiết kế mục 1.8): luồng bước mới
 // - Thẻ vào bước (components/step-card.js) thay thẻ gợi ý chữ: món nấu chưa tới HINT_HIDE_AFTER_COOKS lần thì thẻ đầy đủ
-//   (ruy băng "Bước k/N", hình to, động từ, tay mẫu; tự vào sau 1,1 giây hoặc chạm), từ đó trở đi ruy băng gọn không chờ.
+//   (ruy băng "Bước k/N", hình to, động từ, tay mẫu; tự vào sau 1,1 giây hoặc chạm), từ đó trở đi ruy băng gọn không chờ —
+//   trừ lần đầu gặp mỗi loại thao tác mới (đập, khuấy, gọt, lắc, thả đá): thẻ đầy đủ + tour của loại đó (stepCardFull).
 // - Mini-game nhận ctx mở rộng { vfx, reduced, stepIndex, stepTotal, stepGrades, method }.
 // - Có kết quả: lưu ngay (submitStep), giữ sân khấu thêm ~700 ms (500 ms khi giảm chuyển động) cho con dấu, dừng hình,
 //   Dì Sáu phản ứng (components/stamp.js), rồi mới đóng lớp, vẽ lại Thớt và hỏi lại nếu bước chí mạng Hỏng.
 // - Thớt gỗ: nguyên liệu là hình to đổi sang hình đã sơ chế (art/state-map.js); mỗi bước là huy hiệu tròn có biểu tượng
 //   loại thao tác. Bảng chọn cách sơ chế là các thẻ hình. Dây phiếu, dòng món, thẻ công thức có hình món/nguyên liệu to.
 // - Ra món: bảng ra món mới (components/dish-reveal.js) trên lớp nổi, ~2,2 giây (giảm chuyển động 1,4 giây), chạm để bỏ qua.
-import { h, svgBox, clear } from '../dom.js'
+import { h, svgBox as svgBoxRaw, clear } from '../dom.js'
 import { upper, formatVND } from '../format.js'
 import { icon, art, prop, DI_SAU } from '../art.js'
 import {
@@ -32,6 +33,7 @@ import { createStepCard, stepCardModel, stepProgress, STEP_CARD_AUTO_MS } from '
 import { showStepResult, createStamp, playStamp, gradeKey } from '../components/stamp.js'
 import { createDishReveal, revealMs, REVEAL_MS, REVEAL_MS_REDUCED } from '../components/dish-reveal.js'
 import { boardStates, methodState } from '../art/state-map.js'
+import { isTourSeen, markSeen } from '../../core/tour.js'
 
 // Thẻ vào bước tự chạy sau chừng này (ms) nếu người chơi không chạm (thẻ đầy đủ).
 export const HINT_MS = STEP_CARD_AUTO_MS
@@ -43,6 +45,8 @@ export const TAP_GUARD_MS = 1000
 // Con dấu nổi của bước Chọn / bước Tự làm (không có sân khấu để giữ): hiện chừng này rồi tự gỡ.
 export const FLASH_MS = 1600
 export const FLASH_MS_REDUCED = 1200
+// Con dấu trên sân khấu: dựng sẵn Thớt (chưa gắn) ở mốc này sau khi dấu hiện (dấu đã đóng xong, sân khấu còn giữ).
+export const PREBUILD_AT_MS = 320
 
 // Mức ngân sách chờ → màu viền phiếu: xanh < 50%, vàng 50–80%, đỏ > 80% (nhấp nháy).
 export function waitLevel(ratio) {
@@ -68,8 +72,32 @@ export function moodForGrade(grade) {
 
 const lowerFirst = s => (s ? s.charAt(0).toLocaleLowerCase('vi-VN') + s.slice(1) : '')
 const ING_ERR_ORDER = ['trai_ghi_chu', 'bay', 'thieu_chinh', 'thieu_phu', 'thua']
-// Năm thao tác M5: lời góp ý ghép từ DIALOGUE.diSau.typeTips theo mẫu `${nhãn bước} ${góp ý}`.
-const NEW_TYPES = ['dap', 'xoay', 'got', 'lac', 'bay']
+// Năm thao tác M5: lời góp ý ghép từ DIALOGUE.diSau.typeTips theo mẫu `${nhãn bước} ${góp ý}`; thẻ vào bước đầy đủ hiện lần
+// đầu gặp mỗi loại (stepCardFull).
+export const NEW_TYPES = Object.freeze(['dap', 'xoay', 'got', 'lac', 'bay'])
+
+/** Id tour hướng dẫn thẻ vào bước của một loại thao tác mới ('bep_dap'…), null nếu không phải loại mới. */
+export function newTypeTour(type) {
+  return NEW_TYPES.includes(type) ? 'bep_' + type : null
+}
+
+/**
+ * stepCardFull(step, state, { recipeId, tasting }) → true nếu thẻ vào bước hiện bản ĐẦY ĐỦ (ruy băng, tay mẫu, chờ chạm
+ * hoặc 1,1 giây), false nếu chỉ ruy băng gọn (thuần, test Node).
+ * - Món nấu chưa tới HINT_HIDE_AFTER_COOKS lần: đầy đủ (như 0.4.x).
+ * - Loại thao tác mới của 0.5.0 (NEW_TYPES) mà người chơi chưa xem hướng dẫn của loại đó (state.tour.seen['bep_<loại>']):
+ *   đầy đủ, kể cả ở món đã nấu nhiều lần — người chơi nâng cấp từ 0.4.x đã nấu Bánh mì ốp la, Trà tắc rất nhiều lần vẫn
+ *   phải thấy tay mẫu (và tour bep_<loại> chỉ vào chính thẻ này) lần đầu gặp Đập trứng, Lắc… Xem xong (tour đóng, hoặc
+ *   tour không tự hiện được thì lúc vào bước từ thẻ đầy đủ — xem markTypeSeen trong mountKitchen) thì thôi.
+ * - Nấu thử (Chợ Công Thức): chỉ theo số lần nấu (không có tour, trạng thái hộp cát không lưu).
+ */
+export function stepCardFull(step, state, { recipeId = null, tasting = false } = {}) {
+  const prog = state && state.recipes && recipeId ? state.recipes[recipeId] : null
+  if (!prog || (Number(prog.cooks) || 0) < HINT_HIDE_AFTER_COOKS) return true
+  if (tasting) return false
+  const tour = newTypeTour(step && step.type)
+  return !!tour && !isTourSeen(state, tour)
+}
 
 // Một câu góp ý của Dì Sáu: lỗi nguyên liệu nặng nhất, không thì bước kém nhất, không thì khen.
 export function dishComment(dish, recipe, data) {
@@ -217,11 +245,50 @@ export const TASTING_PAR_MUL = 4
 const TICK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 const LOCK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 11V8.2a4.5 4.5 0 0 1 9 0V11" fill="none" stroke="#3a2618" stroke-width="2.6" stroke-linecap="round"/><rect x="4.5" y="10.5" width="15" height="11" rx="3" fill="#f7b928" stroke="#3a2618" stroke-width="2.4"/><circle cx="12" cy="15.6" r="1.7" fill="#3a2618"/></svg>'
 
+// Hình SVG nội bộ (chuỗi tin cậy từ art.js) dựng lại rất nhiều lần mỗi khi vẽ lại Thớt / dây phiếu: phân tích chuỗi một lần
+// vào <template>, các lần sau nhân bản cây đã phân tích (nhanh hơn innerHTML nhiều) — cùng kết quả DOM với svgBox.
+const SVG_TPL = new Map()
+const SVG_TPL_MAX = 300
+function svgBox(svg, cls = 'svg-box', props = {}) {
+  if (typeof document === 'undefined' || typeof svg !== 'string') return svgBoxRaw(svg, cls, props)
+  let tpl = SVG_TPL.get(svg)
+  if (!tpl) {
+    tpl = document.createElement('template')
+    tpl.innerHTML = svg
+    if (SVG_TPL.size >= SVG_TPL_MAX) SVG_TPL.delete(SVG_TPL.keys().next().value)
+    SVG_TPL.set(svg, tpl)
+  }
+  const el = h('span', { class: cls, 'aria-hidden': 'true', ...props })
+  el.appendChild(tpl.content.cloneNode(true))
+  return el
+}
+
+// Việc chạy ở task kế tiếp (sau task hiện tại, thường trước khung hình kế): chia việc nặng của một cú chạm thành nhiều task
+// ngắn. Dùng MessageChannel (không bị đồng hồ giả của kiểm thử giữ lại như setTimeout / requestAnimationFrame).
+function nextTask(fn) {
+  if (typeof MessageChannel === 'function') {
+    const ch = new MessageChannel()
+    ch.port1.onmessage = () => { ch.port1.onmessage = null; ch.port1.close(); fn() }
+    ch.port2.postMessage(0)
+    return
+  }
+  setTimeout(fn, 0)
+}
+
+// Bảng ra món dựng lần ĐẦU trong trang tốn bố cục gấp ~4 lần các lần sau (phông chữ, hình, luật CSS của bảng chưa "ấm"):
+// ngay lúc bấm Ra món đó là một khung hình đứng hình thấy rõ ở máy yếu. Bếp dựng sẵn một bảng ẩn (không testid, không nhận
+// chạm, không chạy hiệu ứng) lúc rảnh trên Thớt, một lần mỗi trang.
+let revealWarmed = false
+
 export function mountKitchen(root, app, opts = {}) {
   ensureStyles()
   const tasting = opts && opts.tasting ? opts.tasting : null
   const onFocus = opts && typeof opts.onFocus === 'function' ? opts.onFocus : null
+  // M5 (vòng sửa F): báo màn ca bán lúc bảng ra món mở / đóng — thông báo nổi chờ tới khi bảng đóng (không đè ruy băng tên món)
+  const onReveal = opts && typeof opts.onReveal === 'function' ? opts.onReveal : null
   const main = h('div', { class: 'k-main' })
+  // nơi các hàm vẽ (renderRail / renderChon / renderBoard) gắn nội dung: thường là main; dựng sẵn Thớt thì là một fragment
+  let out = main
   // Hai lớp phủ, mỗi lúc chỉ một lớp hiện: sân khấu mini-game nằm trong panel Bếp (vùng chơi giữa dây phiếu và thanh tab);
   // bảng chọn, hộp hỏi lại, hộp xác nhận, bảng công bố món nằm ở lớp nổi gốc của app (app.overlay), phủ cả thanh tab —
   // panel Bếp ở màn thấp chỉ cao ~200px, và iOS Safari cắt mọi thứ nằm trong panel (vùng cuộn) theo khung panel nên
@@ -248,6 +315,7 @@ export function mountKitchen(root, app, opts = {}) {
     pendingCritical: null, // bước chí mạng Hỏng mà chưa kịp hỏi lại (đổi tab lúc con dấu đang hiện)
     reveal: null,          // bảng ra món đang hiện (createDishReveal)
     revealTimer: 0,
+    railPending: false,    // vừa Ra món: dây phiếu dưới bảng ra món vẽ ở task kế (nextTask), update() chưa vẽ lại
     key: ''
   }
   let destroyed = false
@@ -305,6 +373,19 @@ export function mountKitchen(root, app, opts = {}) {
     return sh && sh.day === 1 && t && t[key] ? t[key] : null
   }
 
+  // Thẻ đầy đủ của một loại thao tác mới vừa nhường chỗ cho mini-game. Hướng dẫn bep_<loại> không tự hiện được (người
+  // chơi tắt "Hướng dẫn lần đầu" trong Cài đặt, hoặc trình duyệt do kiểm thử tự động điều khiển) thì ghi luôn là đã xem:
+  // người chơi đã thấy tay mẫu, lần sau ở món nấu nhiều lần chỉ còn ruy băng gọn. Tour tự hiện được thì để chính tour ghi
+  // khi xem xong / bỏ qua (chạm thẻ trước khi tour kịp hiện thì lần sau thẻ đầy đủ hiện lại, tour có chỗ để chỉ vào).
+  function markTypeSeen(type) {
+    const id = newTypeTour(type)
+    if (!id || tasting || !S() || isTourSeen(S(), id)) return
+    let canShow = false
+    try { canShow = !!(app.tour && typeof app.tour.canAuto === 'function' && app.tour.canAuto(id)) } catch { canShow = false }
+    if (canShow) return
+    if (markSeen(S(), [id])) save()
+  }
+
   function mode() {
     const sh = SH()
     if (!sh) return 'off'
@@ -314,11 +395,14 @@ export function mountKitchen(root, app, opts = {}) {
     return 'rail'
   }
 
-  // Chế độ tập trung (màn ca bán): bếp đang nấu — bước Chọn, Thớt hoặc sân khấu một bước. Báo cho màn ca bán mỗi khi đổi;
-  // gọi trước khi dựng mini-game để plugin đo đúng khung.
+  // Chế độ tập trung (màn ca bán): bếp đang nấu — bước Chọn, Thớt hoặc sân khấu một bước — và cả lúc bảng ra món của món
+  // vừa nấu còn hiện (giữ nguyên bố cục dưới lớp phủ tới khi bảng đóng: không dựng lại dải khách ngay lúc bấm Ra món, và
+  // thông báo bị hoãn chỉ thả ra khi bảng đã đóng). Báo cho màn ca bán mỗi khi đổi; gọi trước khi dựng mini-game để plugin
+  // đo đúng khung.
   let focusSent = null
   function focusWanted() {
     if (tasting || destroyed || !ui.visible) return false
+    if (ui.reveal && ui.layerKind === 'reveal') return true
     const m = mode()
     return m === 'chon' || m === 'thot'
   }
@@ -349,9 +433,11 @@ export function mountKitchen(root, app, opts = {}) {
   // ---------- dựng giao diện ----------
   function render() {
     if (destroyed) return
+    ui.railPending = false
     ui.key = computeKey()
     if (ui.play && ui.play.kind === 'chon') stopPlay()
     clear(main)
+    out = main
     const m = mode()
     main.dataset.view = m
     // chế độ tập trung bật/tắt TRƯỚC khi dựng kệ Chọn (plugin đo khung lúc dựng)
@@ -363,6 +449,30 @@ export function mountKitchen(root, app, opts = {}) {
     if (m === 'chon') renderChon()
     else if (m === 'thot') renderBoard()
     else renderRail()
+    updateWaitColors()
+  }
+
+  // Dựng sẵn Thớt (chưa gắn vào trang) trong lúc con dấu của bước vừa xong còn giữ sân khấu: lúc đóng sân khấu chỉ còn thay
+  // nội dung (showPrebuilt), không phải dựng cả Thớt ngay khung hình đó. → { key, frag } | null.
+  function prebuildBoard() {
+    if (destroyed || !ui.visible || mode() !== 'thot' || typeof document === 'undefined') return null
+    const frag = document.createDocumentFragment()
+    const key = computeKey()
+    out = frag
+    try { renderBoard() } catch (err) { console.error(err); return null } finally { out = main }
+    return { key, frag }
+  }
+  // Gắn Thớt dựng sẵn nếu vẫn đúng trạng thái hiện tại (cùng khóa); không thì vẽ lại như thường.
+  function showPrebuilt(pre) {
+    if (destroyed) return
+    if (!pre || pre.key !== computeKey() || mode() !== 'thot' || (ui.play && ui.play.kind === 'chon')) { render(); return }
+    ui.railPending = false
+    ui.key = pre.key
+    clear(main)
+    out = main
+    main.dataset.view = 'thot'
+    syncFocus()
+    main.appendChild(pre.frag)
     updateWaitColors()
   }
 
@@ -441,36 +551,36 @@ export function mountKitchen(root, app, opts = {}) {
     const sh = SH()
     if (tasting) {
       // nấu thử: không có dây phiếu; Ra món xong màn Nấu thử tự hiện kết quả
-      if (ui.lastDish) main.appendChild(lastDishBanner())
-      else main.appendChild(h('div', { class: 'k-empty' }, 'Đang dọn thớt…'))
+      if (ui.lastDish) out.appendChild(lastDishBanner())
+      else out.appendChild(h('div', { class: 'k-empty' }, 'Đang dọn thớt…'))
       return
     }
     const max = (D().BALANCE && D().BALANCE.ticketRailMax) || 3
     const head = h('div', { class: 'k-rail-head' },
       h('h2', null, 'Dây phiếu'),
       h('span', { class: ['k-rail-count', sh.tickets.length >= max ? 'is-full' : ''] }, `${sh.tickets.length}/${max}`))
-    main.appendChild(head)
-    if (ui.lastDish) main.appendChild(lastDishBanner())
+    out.appendChild(head)
+    if (ui.lastDish) out.appendChild(lastDishBanner())
     const c = sh.cook
     if (c && c.phase !== 'xong') {
       const r = recipeOf(c.recipeId)
-      main.appendChild(h('div', { class: 'k-resume' },
+      out.appendChild(h('div', { class: 'k-resume' },
         svgBox(icon(r ? r.icon : c.recipeId), 'k-resume-icon'),
         h('span', { class: 'k-resume-name' }, h('small', null, 'Đang làm'), h('b', null, r ? r.name : c.recipeId)),
         h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-testid': 'abandon-dish', onclick: () => onAbandon() }, 'Bỏ món'),
         h('button', { class: 'btn btn-primary', type: 'button', 'data-testid': 'cook-resume', onclick: () => { ui.showRail = false; render() } }, 'Làm tiếp')))
     }
     if (!sh.tickets.length) {
-      main.appendChild(h('div', { class: 'k-empty', 'data-testid': 'rail-empty' },
+      out.appendChild(h('div', { class: 'k-empty', 'data-testid': 'rail-empty' },
         svgBox(icon('thot'), 'k-empty-art'), h('span', null, 'Chưa có phiếu nào. Qua Quầy nhận order nha!')))
       return
     }
     const list = h('div', { class: 'k-tickets' })
     for (const t of sh.tickets) list.appendChild(ticketCard(t))
-    main.appendChild(list)
+    out.appendChild(list)
     if (sh.tickets.some(t => t.status === 'xong')) {
       const line = diSauLine(tutorialLine('serve'))
-      if (line) main.appendChild(line)
+      if (line) out.appendChild(line)
     }
   }
 
@@ -543,11 +653,11 @@ export function mountKitchen(root, app, opts = {}) {
     const sh = SH()
     const cook = sh.cook
     const recipe = recipeOf(cook.recipeId)
-    if (!recipe) { main.appendChild(h('div', { class: 'k-empty' }, 'Không tìm thấy công thức.')); return }
-    if (!tasting) main.appendChild(boardHeader(cook))
-    main.appendChild(recipeCard(cook))
+    if (!recipe) { out.appendChild(h('div', { class: 'k-empty' }, 'Không tìm thấy công thức.')); return }
+    if (!tasting) out.appendChild(boardHeader(cook))
+    out.appendChild(recipeCard(cook))
     const stage = h('div', { class: 'mg-stage' })
-    main.appendChild(h('div', { class: 'k-chon-wrap' }, stage))
+    out.appendChild(h('div', { class: 'k-chon-wrap' }, stage))
     // bước chọn đã nhân par theo số lượng
     const step = effectiveSteps(recipe, cook.notes, null, cook.qty).find(s => s.type === 'chon') ||
       { id: 'chon', type: 'chon', label: 'Chọn nguyên liệu', par: 6, w: 1 }
@@ -626,8 +736,8 @@ export function mountKitchen(root, app, opts = {}) {
     const ctx = cctx()
     const recipe = recipeOf(cook.recipeId) || {}
     const bs = boardSteps(S(), ctx)
-    if (!tasting) main.appendChild(boardHeader(cook))
-    main.appendChild(recipeCard(cook, false, true))
+    if (!tasting) out.appendChild(boardHeader(cook))
+    out.appendChild(recipeCard(cook, false, true))
 
     // Nguyên liệu trên thớt, mỗi thứ kèm các bước của nó; hình nguyên liệu theo các bước đã xong (art/state-map.js).
     const states = boardStates(cook.board || [], cook.steps || {}, { notes: cook.notes || [], activeId: null })
@@ -654,15 +764,60 @@ export function mountKitchen(root, app, opts = {}) {
     // che mất ở màn thấp, người mới không thấy lời giải thích duy nhất về Thớt sơ chế
     const tip = diSauLine(tutorialLine('thot'))
     if (tip) tip.classList.add('is-compact')
-    main.appendChild(h('div', { class: 'k-thot' },
+    out.appendChild(h('div', { class: 'k-thot' },
       h('i', { class: 'k-thot-hole', 'aria-hidden': 'true' }),
       h('div', { class: 'k-thot-title' }, 'Thớt sơ chế'), tip, boardEl, readyRow))
 
     const retryInfo = cook.retriesLeft > 0 ? `Còn ${cook.retriesLeft} lượt làm lại` : 'Hết lượt làm lại'
-    main.appendChild(h('div', { class: 'k-toolbar' },
+    out.appendChild(h('div', { class: 'k-toolbar' },
       h('span', { class: 'k-retry-info' }, retryInfo),
       tasting ? null : h('button', { class: 'btn btn-danger', type: 'button', 'data-testid': 'abandon-dish', onclick: onAbandon }, 'Bỏ món'),
       h('button', { class: 'btn btn-primary', type: 'button', 'data-testid': 'finish-dish', onclick: onFinish }, 'Ra món')))
+    scheduleWarm()
+  }
+
+  // Dựng thử bảng ra món (ẩn) lúc rảnh trên Thớt, một lần mỗi trang (revealWarmed): lần Ra món thật đầu tiên không còn phải
+  // trả giá bố cục "lạnh". Đang chơi / có lớp phủ / panel ẩn thì hẹn lại.
+  let warmTimer = 0
+  function scheduleWarm(tries = 0) {
+    if (revealWarmed || warmTimer || destroyed || typeof document === 'undefined') return
+    const run = () => {
+      if (revealWarmed || destroyed) return
+      if (!ui.visible || ui.play || ui.layerKind || ui.result || mode() !== 'thot') { if (tries < 8) scheduleWarm(tries + 1); return }
+      warmReveal()
+    }
+    warmTimer = setTimeout(() => {
+      warmTimer = 0
+      if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 1500 })
+      else run()
+    }, tries ? 700 : 300)
+  }
+  function warmReveal() {
+    const cook = SH() && SH().cook
+    const recipe = cook ? recipeOf(cook.recipeId) : null
+    let rv = null
+    let wrap = null
+    try {
+      rv = createDishReveal({
+        dish: { grade: 'tuyet_hao', q: 100, flawless: true }, recipe, name: recipe ? recipe.name : '', mood: 'tu_hao',
+        comment: 'Khéo tay lắm con!', data: D(), reduced: reduced()
+      })
+      // bản dựng thử: không testid / vai trò (kiểm thử, trình đọc màn hình không thấy), không nhận chạm, không hiện
+      for (const a of ['data-testid', 'role', 'aria-label']) rv.el.removeAttribute(a)
+      wrap = h('div', {
+        class: 'k-layer k-scope k-pop k-warm', 'aria-hidden': 'true', dataset: { kind: 'reveal' },
+        style: { visibility: 'hidden', pointerEvents: 'none', zIndex: '-1' }
+      }, rv.el)
+      ;(app.overlay || el).appendChild(wrap)
+      void wrap.offsetHeight   // ép bố cục một lần ngay lúc rảnh
+      revealWarmed = true
+    } catch (err) {
+      console.error(err)
+      revealWarmed = true   // lỗi thì thôi, không thử lại mãi
+    } finally {
+      if (rv) { try { rv.destroy() } catch { /* bỏ qua */ } }
+      if (wrap) wrap.remove()
+    }
   }
 
   function ingTile(ing, steps, all, recipe, states) {
@@ -859,10 +1014,12 @@ export function mountKitchen(root, app, opts = {}) {
     ui.play = { kind: 'step', handle: null, token, stepId }
     const progress = stepProgress(cook, step.id)
 
+    const full = stepCardFull(step, S(), { recipeId: cook.recipeId, tasting: !!tasting })
     const go = () => {
       if (destroyed || !ui.play || ui.play.token !== token) return
       ui.card = null
       if (ui.layerKind === 'card') ui.layerKind = 'stage'
+      if (full) markTypeSeen(step.type)
       const handle = playStep(stage, playable(step), pluginCtx(step, cook, recipe, { method, progress }))
       markLayer()   // thẻ vào bước vừa nhường chỗ cho mini-game (nút Xong có thể nằm ngay dưới ngón tay)
       revealTargets(stage)
@@ -873,8 +1030,6 @@ export function mountKitchen(root, app, opts = {}) {
         onStepResult(step, method, res, stage, wrap)
       })
     }
-    const prog = S().recipes && S().recipes[cook.recipeId]
-    const full = !prog || (prog.cooks || 0) < HINT_HIDE_AFTER_COOKS
     const model = stepCardModel(step, { index: progress.index, total: progress.total, data: D(), recipe })
     const card = createStepCard(model, { full, onStart: go, reduced, stage })
     ui.card = card
@@ -906,18 +1061,29 @@ export function mountKitchen(root, app, opts = {}) {
       })
     } catch (err) { console.error(err) }
     const holdMs = shown ? shown.holdMs : 0
-    const pending = { step, score: r.score, timer: 0 }
+    const pending = { step, score: r.score, timer: 0, preTimer: 0, pre: null }
     ui.result = pending
     pending.timer = setTimeout(() => finishResult(pending), holdMs)
+    // dựng sẵn Thớt (chưa gắn) giữa lúc con dấu đứng yên — sau nhịp đóng dấu ~220 ms, trước lúc đóng sân khấu — để khung
+    // hình đóng sân khấu không phải dựng cả Thớt (máy yếu: cú khựng ~100 ms ngay sau mỗi con dấu)
+    if (holdMs > 200) {
+      pending.preTimer = setTimeout(() => {
+        pending.preTimer = 0
+        if (ui.result === pending) pending.pre = prebuildBoard()
+      }, Math.min(PREBUILD_AT_MS, holdMs - 150))
+    }
   }
 
   function finishResult(pending) {
     if (!pending || ui.result !== pending) return
     ui.result = null
     clearTimeout(pending.timer)
+    clearTimeout(pending.preTimer)
+    const pre = pending.pre
+    pending.pre = null
     closeLayer()
     if (destroyed) return
-    render()
+    showPrebuilt(pre)
     if (pending.step.critical && pending.score < 50) criticalPrompt(pending.step)
   }
 
@@ -989,8 +1155,10 @@ export function mountKitchen(root, app, opts = {}) {
     const cook = sh && sh.cook
     if (!cook || cook.phase !== 'thot') return
     const recipe = recipeOf(cook.recipeId)
+    // bảng ra món sắp mở: thông báo nổi do chính lần ra món sinh ra (tiến độ việc, chuỗi…) chờ tới khi bảng đóng
+    revealNotice(true)
     const dish = finishDish(S(), ctx)
-    if (!dish) { toast('Chưa ra món được.'); return }
+    if (!dish) { revealNotice(false); toast('Chưa ra món được.'); return }
     save()
     const mood = moodForGrade(dish.grade)
     ui.lastDish = {
@@ -999,8 +1167,17 @@ export function mountKitchen(root, app, opts = {}) {
     }
     ui.showRail = false
     ui.openTicket = null
-    render()
+    // Cú chạm "Ra món" chia thành các task ngắn (máy yếu: một task 120–240 ms là đứng hình thấy rõ): task này chỉ lưu món
+    // và dựng bảng ra món; dây phiếu bên dưới lớp phủ (bỏ Thớt, dựng phiếu) vẽ ở task kế. Chế độ tập trung giữ nguyên tới
+    // khi bảng đóng (focusWanted) nên bố cục màn ca bán không đổi dưới lớp phủ.
     const shownMs = showReveal()
+    if (ui.reveal) {
+      ui.railPending = true
+      nextTask(() => { if (!destroyed && ui.railPending) { ui.railPending = false; if (ui.visible) render() } })
+    } else {
+      render()
+      revealNotice(false)
+    }
     if (tasting && typeof tasting.onDone === 'function') {
       setTimeout(() => { if (!destroyed) tasting.onDone(dish) }, shownMs + 150)
     }
@@ -1105,12 +1282,14 @@ export function mountKitchen(root, app, opts = {}) {
     if (kind !== 'stage') clear(flashHost)   // nhãn nổi không che hộp thoại
     const target = kind === 'stage' ? layer : popLayer
     hideLayer(target === layer ? popLayer : layer)
-    if (target === popLayer && ui.reveal) { const rv = ui.reveal; ui.reveal = null; rv.destroy() }
+    const hadReveal = !!ui.reveal && kind !== 'reveal'
+    if (ui.reveal && (target === popLayer || hadReveal)) { const rv = ui.reveal; ui.reveal = null; rv.destroy() }
     clear(target)
     target.appendChild(node)
     target.hidden = false
     target.dataset.kind = kind
     ui.layerKind = kind
+    if (hadReveal) afterReveal()
   }
 
   function hideLayer(node) {
@@ -1127,14 +1306,36 @@ export function mountKitchen(root, app, opts = {}) {
       const p = ui.result
       ui.result = null
       clearTimeout(p.timer)
+      clearTimeout(p.preTimer)
+      p.pre = null
       if (p.step.critical && p.score < 50) ui.pendingCritical = p.step
     }
     if (ui.card) { const c = ui.card; ui.card = null; c.destroy() }
     if (ui.play && ui.play.kind === 'step') stopPlay()
+    const hadReveal = !!ui.reveal
     if (ui.reveal) { const rv = ui.reveal; ui.reveal = null; rv.destroy() }
     hideLayer(layer)
     hideLayer(popLayer)
     ui.layerKind = null
+    if (hadReveal) afterReveal()
+  }
+
+  // Bảng ra món vừa đóng (hết giờ, chạm, bị lớp khác thay): dây phiếu còn chờ vẽ thì vẽ ngay (trước khi lớp phủ biến mất
+  // ở khung hình này), tắt chế độ tập trung nếu không còn nấu, rồi mới báo màn ca bán thả thông báo đang chờ.
+  function afterReveal() {
+    if (destroyed) return
+    if (ui.railPending && ui.visible) render()
+    else syncFocus()
+    revealNotice(false)
+  }
+
+  // Báo màn ca bán: bảng ra món sắp mở / đã đóng (giữ thông báo nổi trong lúc bảng hiện, mọi cỡ khung).
+  let noticeHeld = false
+  function revealNotice(on) {
+    const want = !!on && !tasting
+    if (want === noticeHeld || !onReveal) { noticeHeld = want; return }
+    noticeHeld = want
+    try { onReveal(want) } catch (err) { console.error(err) }
   }
 
   function stopPlay() {
@@ -1244,7 +1445,7 @@ export function mountKitchen(root, app, opts = {}) {
     if (destroyed || !ui.visible || guide) return
     const k = computeKey()
     // con dấu đang hiện: Thớt chỉ vẽ lại khi đóng sân khấu (finishResult), để bước "đã xong" hiện cùng lúc với Thớt
-    if (k !== ui.key && !ui.result) render()
+    if (k !== ui.key && !ui.result && !ui.railPending) render()
     updateWaitColors()
     const r = reduced()
     el.classList.toggle('is-reduced', r)
@@ -1277,7 +1478,8 @@ export function mountKitchen(root, app, opts = {}) {
   function unmount() {
     destroyed = true
     for (const off of offs) { try { off() } catch { /* bỏ qua */ } }
-    if (ui.result) { clearTimeout(ui.result.timer); ui.result = null }
+    clearTimeout(warmTimer)
+    if (ui.result) { clearTimeout(ui.result.timer); clearTimeout(ui.result.preTimer); ui.result = null }
     if (ui.card) { try { ui.card.destroy() } catch { /* bỏ qua */ } ui.card = null }
     if (ui.reveal) { try { ui.reveal.destroy() } catch { /* bỏ qua */ } ui.reveal = null }
     stopPlay()
@@ -1285,6 +1487,7 @@ export function mountKitchen(root, app, opts = {}) {
     el.remove()
     popLayer.remove()
     if (onFocus && focusSent) { focusSent = false; try { onFocus(false) } catch (err) { console.error(err) } }
+    revealNotice(false)
   }
 
   // Dây phiếu chung của màn ca bán: chạm phiếu → mở phiếu đó trong bếp.

@@ -489,3 +489,107 @@ test('Phòng mẫu 375×553 (vùng an toàn) khi hệ thống bật giảm chuy�
     await g.close()
   }
 })
+
+// Vòng sửa 0.5.0 (gói R): mau.html phải gắn CSS sân khấu mini-game tách khỏi kitchen.css (css/mg-prep.css, mg-heat.css,
+// mg-mix.css) đúng thứ tự như index.html, thiếu thì bước Thái vỡ bố cục (sân khấu thành block, mất dòng hướng dẫn và bộ
+// đếm, nút Xong đè lên thớt). Thẻ Hình: cột Cũ là bộ hình trước 0.5.0 (legacyIcon), không trùng cột Mới; cột Mới là
+// hình game đang dùng (icon() của art.js); chú thích không còn ghi "chưa ráp vào game", nhãn đi liền chữ của nó.
+for (const vp of [VIEWPORTS[0], VIEWPORTS[2]]) {
+  test(`Phòng mẫu ${vpName(vp)}: CSS sân khấu gắn như index.html, Thái đúng bố cục, thẻ Hình so đúng hình cũ / mới`, { timeout: 120000 }, async () => {
+    const g = await openMau(vp)
+    const label = vpName(vp) + ' gói R'
+    try {
+      const { page } = g
+      // CSS sân khấu: cùng danh sách và thứ tự css/mg-*.css như index.html, gắn ngay sau css/kitchen.css, đã nạp xong
+      const css = await page.evaluate(async () => {
+        const mine = [...document.querySelectorAll('link[rel="stylesheet"]')].map(l => ({ href: l.getAttribute('href'), ok: !!l.sheet }))
+        const html = await (await fetch(new URL('index.html', location.href))).text()
+        const game = [...html.matchAll(/<link rel="stylesheet" href="([^"]+)">/g)].map(m => m[1])
+        return { mine, game }
+      })
+      const isMg = h => /^css\/mg-[a-z]+\.css$/.test(h)
+      const gameMg = css.game.filter(isMg)
+      assert.ok(gameMg.length >= 3, label + ': index.html phải có CSS sân khấu css/mg-*.css')
+      const mineHrefs = css.mine.map(l => l.href)
+      assert.deepEqual(mineHrefs.filter(isMg), gameMg, label + ': mau.html thiếu hoặc sai thứ tự CSS sân khấu so với index.html')
+      const k = mineHrefs.indexOf('css/kitchen.css')
+      assert.deepEqual(mineHrefs.slice(k + 1, k + 1 + gameMg.length), gameMg, label + ': CSS sân khấu phải gắn ngay sau css/kitchen.css')
+      assert.deepEqual(css.mine.filter(l => !l.ok).map(l => l.href), [], label + ': có tệp CSS chưa nạp')
+
+      // ---- Hình ----
+      await openTab(g, 'hinh')
+      await page.waitForSelector(T('mau-art-grid'))
+      const art = await page.evaluate(async () => {
+        const A = await import(new URL('src/ui/art.js', location.href).href)
+        const asHtml = svg => { const s = document.createElement('span'); s.innerHTML = svg; return s.innerHTML }
+        const pic = (key, v) => { const e = document.querySelector(`[data-testid="mau-art-${key}"] .mau-pic[data-v="${v}"]`); return e ? e.innerHTML : null }
+        const same = []
+        for (const card of document.querySelectorAll('[data-testid="mau-art-grid"] > [data-testid^="mau-art-"]')) {
+          const cu = card.querySelector('.mau-pic[data-v="cu"]'), moi = card.querySelector('.mau-pic[data-v="moi"]')
+          if (cu && moi && cu.innerHTML === moi.innerHTML) same.push(card.dataset.testid)
+        }
+        const legend = document.querySelector('[data-testid="mau-art-legend"]')
+        const items = [...legend.querySelectorAll('.mau-legend-item')].map(e => {
+          const pill = e.querySelector('.g-pill').getBoundingClientRect(), r = e.getBoundingClientRect()
+          return { text: e.textContent, h: Math.round(r.height), pillH: Math.round(pill.height) }
+        })
+        return {
+          same,
+          legend: legend.textContent,
+          items,
+          cuIsLegacy: ['dua_leo', 'trung_ga', 'mon_tra_tac', 'thot'].every(id => pic(id, 'cu') === asHtml(A.legacyIcon(id))),
+          moiIsGame: ['dua_leo', 'trung_ga', 'mon_tra_tac', 'thot'].every(id => pic(id, 'moi') === asHtml(A.icon(id))),
+          sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth
+        }
+      })
+      assert.deepEqual(art.same, [], label + ': cột Cũ trùng hệt cột Mới (Cũ phải là bộ hình trước 0.5.0)')
+      assert.equal(art.cuIsLegacy, true, label + ': cột Cũ phải là legacyIcon() của art.js')
+      assert.equal(art.moiIsGame, true, label + ': cột Mới phải là hình game đang dùng (icon() của art.js)')
+      assert.doesNotMatch(art.legend, /chưa ráp/, label + ': chú thích còn ghi hình mới chưa ráp vào game')
+      assert.match(art.legend, /đã vào game từ 0\.5\.0/, label + ': chú thích cột Mới')
+      assert.equal(art.items.length, 2, label + ': chú thích có 2 nhãn Cũ / Mới')
+      for (const it of art.items) assert.ok(it.h <= it.pillH + 2, `${label}: nhãn "${it.text}" bị ngắt dòng (cao ${it.h}px)`)
+      assert.ok(art.sw <= art.cw, `${label}: thẻ Hình tràn ngang (${art.sw} > ${art.cw})`)
+      await settle(page, 200)
+      await assertAudit(g, label + ' Hình')
+      await g.shot('hinh')
+
+      // ---- Bếp: Thái ----
+      await openTab(g, 'thai')
+      await page.waitForSelector(T('step-hint'), { state: 'visible' })
+      await settle(page, 500)
+      await page.click(T('step-card-go'))
+      await page.waitForSelector(T('thai-board'), { state: 'visible' })
+      await page.waitForSelector(T('step-hint'), { state: 'detached' })
+      await settle(page, 400)
+      const st = await page.evaluate(() => {
+        const stage = document.querySelector('[data-testid="minigame-stage"]') || document.querySelector('.mg-stage')
+        const cs = getComputedStyle(stage)
+        const box = s => { const e = document.querySelector(s); if (!e) return null; const r = e.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, w: r.width, h: r.height, vis: e.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) } }
+        const board = box('[data-testid="thai-board"]')
+        const hit = document.elementFromPoint(board.left + board.w / 2, board.top + board.h / 2)
+        return {
+          display: cs.display, dir: cs.flexDirection,
+          board, done: box('[data-testid="thai-done"]'), count: box('[data-testid="thai-count"]'), sub: box('.mg-sub'),
+          countText: (document.querySelector('[data-testid="thai-count"]') || {}).textContent || '',
+          centerIsDone: !!(hit && hit.closest('[data-testid="thai-done"]')),
+          sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth
+        }
+      })
+      assert.equal(st.display, 'flex', label + ': sân khấu .mg-stage phải là flex (thiếu css/mg-prep.css?)')
+      assert.equal(st.dir, 'column', label + ': sân khấu xếp dọc')
+      assert.ok(st.sub && st.sub.vis && st.sub.h > 0, label + ': dòng hướng dẫn của sân khấu phải hiện')
+      assert.ok(st.count && st.count.vis && st.count.h > 0, label + ': bộ đếm nhát phải hiện')
+      assert.match(st.countText, /Nhát 0\/\d+/, label + ': bộ đếm "Nhát 0/N"')
+      assert.ok(st.done.top >= st.board.bottom - 1, `${label}: nút Xong phải nằm dưới thớt (Xong ${Math.round(st.done.top)}, đáy thớt ${Math.round(st.board.bottom)})`)
+      assert.equal(st.centerIsDone, false, label + ': giữa thớt bị nút Xong che')
+      assert.ok(st.sw <= st.cw, `${label}: sân khấu Thái tràn ngang (${st.sw} > ${st.cw})`)
+      await assertAudit(g, label + ' sân khấu Thái')
+      await assertReach(g, [T('thai-done')], label + ' sân khấu Thái')
+      await g.shot('thai')
+      assert.deepEqual(g.errors, [], label + ': có lỗi console / trang / mạng')
+    } finally {
+      await g.close()
+    }
+  })
+}

@@ -18,9 +18,17 @@
 //      khoảng REVEAL_MS_REDUCED); dòng kết quả món trên dây phiếu đúng Q; giao món được.
 //  (e) Chế độ tập trung: ở 360×600 bật khi đang nấu (Thớt, sân khấu), tắt khi về dây phiếu hoặc sang tab Quầy, bật lại khi
 //      quay về; ở 390×844 không bao giờ bật.
+//  (f) Hồi quy vòng sửa F: người chơi cũ (món đã nấu 5 lần, bản lưu kiểu 0.4.x) chưa xem hướng dẫn của loại thao tác mới
+//      vẫn thấy thẻ đầy đủ (tay mẫu) lần đầu gặp loại đó — có tour bep_<loại> khi hướng dẫn tự hiện được (?tour=1); xem xong
+//      (hoặc không tự hiện được) thì ghi đã xem, làm lại bước chỉ còn ruy băng gọn.
+//  (g) Hồi quy vòng sửa F: chế độ tập trung giữ tới khi màn ra món đóng — thông báo bị hoãn không thả ra đè ruy băng tên món.
+//  (h) Hồi quy vòng sửa F: bước Chọn ở khung thấp (375×553 vùng an toàn, 320×568, món hiếm Tây Ninh thẻ dài) — vừa mở đã
+//      thấy và bấm được ít nhất một hàng kệ (không phải tự vuốt tìm).
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { T, openGame, seedSave, waitSave, resolveIncidentIfShown, cookShiftSave, COOK_OPEN_MS } from './helpers.mjs'
+import { markSeen } from '../../src/core/tour.js'
+import { DATA } from '../../src/data/index.js'
 import { GESTURE_BY_TYPE, stepProgress } from '../../src/ui/components/step-card.js'
 import { REVEAL_MS, REVEAL_MS_REDUCED } from '../../src/ui/components/dish-reveal.js'
 import { FOCUS_MAX_H } from '../../src/ui/screens/service.js'
@@ -569,6 +577,60 @@ for (const frame of ['360x600', '390x844']) {
       await page.tap(T('tab-kitchen'))
       await page.waitForSelector(T('board'))
       await expect(low, 'quay lại tab Bếp')
+      assert.deepEqual(errors, [], 'có lỗi console/trang')
+    } finally {
+      await g.close()
+    }
+  })
+}
+
+// ---------- (f) Người chơi cũ gặp thao tác mới (hồi quy vòng sửa F) ----------
+
+for (const c of [
+  { type: 'dap', tour: false, frame: '375x553', line: { recipeId: 'banh_mi_op_la' }, stepId: 'dap_trung' },
+  { type: 'lac', tour: true, frame: '390x844', line: { recipeId: 'tra_tac' }, stepId: 'lac' }
+]) {
+  const id = 'bep_' + c.type
+  test(`(f) người chơi cũ (món nấu 5 lần) lần đầu gặp ${c.type} ${c.frame}${c.tour ? ' ?tour=1' : ''}: thẻ đầy đủ${c.tour ? ' + tour ' + id : ''}, ghi đã xem; làm lại bước chỉ còn ruy băng gọn`, { timeout: 180000 }, async () => {
+    const g = await openFrame(c.frame, `m5-nguoi-cu-${c.type}`)
+    const { page, errors } = g
+    try {
+      const { state } = cookShiftSave(c.line, c.stepId, { tickets: 1, cooks: 5 })
+      markSeen(state, Object.keys(DATA.TOURS).filter(t => t !== id))
+      assert.notEqual(state.tour.seen[id], true, 'save dựng sẵn: chưa xem tour của loại thao tác mới')
+      await seedSave(page, state)
+      await page.goto(g.url(c.tour ? '/?tour=1' : '/'))
+      await page.waitForSelector(T('screen-service'))
+      await resolveIncidentIfShown(g, { waitMs: 300 })
+      await page.tap(T('tab-kitchen'))
+      await page.waitForSelector(T('board'))
+      await tapBoardStep(page, c.stepId)
+      // lần đầu gặp: thẻ đầy đủ (tay mẫu, nút "Chạm để bắt đầu"), không phải ruy băng gọn
+      await page.waitForSelector(T('step-card-go'), { timeout: 1000 })
+      assert.ok(await page.$(T('step-card-demo')), 'thẻ đầy đủ có tay mẫu')
+      assert.ok(!(await page.$(T('step-card-mini'))), 'không phải ruy băng gọn')
+      if (c.tour) {
+        await page.waitForSelector(`${T('tour')}[data-tour~="${id}"]`, { timeout: 1500 })
+        await g.shot('tour-' + id)
+        await page.tap(T('tour-skip'))
+        await page.waitForSelector(T('tour'), { state: 'detached' })
+      }
+      await page.waitForSelector(`${S(c.type)} .mg-foot`, { timeout: 5000 })
+      await waitSave(page, s => s.tour && s.tour.seen && s.tour.seen[id] === true)
+      const cdp = await page.context().newCDPSession(page)
+      await page.waitForTimeout(300)
+      await freeze(page)
+      await solveTouch(page, cdp, c.type)
+      await page.clock.resume()
+      await stepResult(page, c.stepId)
+      await page.waitForSelector(`${T('board-step-' + c.stepId)}.is-done`, { timeout: 5000 })
+      // lần sau (làm lại bước): chỉ ruy băng gọn, vào trò ngay
+      await page.tap(T('board-step-' + c.stepId))
+      await page.tap(T('retry-step'))
+      await page.waitForSelector(T('step-card-mini'), { state: 'attached', timeout: 1000 })
+      assert.ok(!(await page.$(T('step-card-go'))), 'làm lại: không còn thẻ đầy đủ')
+      await page.waitForSelector(`${S(c.type)} .mg-foot`, { timeout: 1000 })
+      assert.ok(!(await page.$(T('tour'))), 'tour không hiện lại')
       assert.deepEqual(errors, [], 'có lỗi console/trang')
     } finally {
       await g.close()

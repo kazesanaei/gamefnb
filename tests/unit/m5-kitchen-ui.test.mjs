@@ -10,8 +10,11 @@ import { DATA } from '../../src/data/index.js'
 import { STATES, ICONS, PROPS } from '../../src/ui/art.js'
 import { STEP_STATE, METHOD_STATE, methodState, stepState, activeState, boardStates, statesOfStep } from '../../src/ui/art/state-map.js'
 import {
-  stepBadge, stepStatus, dishComment, HINT_HIDE_AFTER_COOKS, REVEAL_MS, REVEAL_MS_REDUCED, HINT_MS, FLASH_MS, FLASH_MS_REDUCED
+  stepBadge, stepStatus, dishComment, HINT_HIDE_AFTER_COOKS, REVEAL_MS, REVEAL_MS_REDUCED, HINT_MS, FLASH_MS, FLASH_MS_REDUCED,
+  NEW_TYPES, newTypeTour, stepCardFull
 } from '../../src/ui/screens/kitchen.js'
+import { defaultState } from '../../src/core/state.js'
+import { markSeen, setToursEnabled } from '../../src/core/tour.js'
 import { STEP_CARD_AUTO_MS } from '../../src/ui/components/step-card.js'
 import { METHOD_STATE as THAI_METHOD_STATE } from '../../src/ui/minigames/thai.js'
 
@@ -129,6 +132,56 @@ test('hằng thời gian: thẻ bước 1,1 s; ra món 2,2 s (giảm chuyển đ
   assert.equal(REVEAL_MS_REDUCED, 1400)
   assert.equal(HINT_HIDE_AFTER_COOKS, 3)
   assert.ok(FLASH_MS >= 1200 && FLASH_MS_REDUCED <= FLASH_MS)
+})
+
+// Vòng sửa F (hồi quy): người chơi nâng cấp từ 0.4.x đã nấu Bánh mì ốp la, Trà tắc nhiều lần vẫn phải thấy thẻ đầy đủ (tay
+// mẫu) và tour bep_<loại> lần đầu gặp mỗi loại thao tác mới — luật "món nấu < 3 lần" một mình thì không bao giờ thấy.
+test('thẻ vào bước đầy đủ: món nấu < 3 lần, HOẶC lần đầu gặp loại thao tác mới (chưa xem tour bep_<loại>) dù món nấu nhiều lần', () => {
+  assert.deepEqual([...NEW_TYPES], ['dap', 'xoay', 'got', 'lac', 'bay'])
+  for (const t of NEW_TYPES) {
+    const id = newTypeTour(t)
+    assert.equal(id, 'bep_' + t)
+    assert.ok(DATA.TOURS[id], `${id}: có tour`)
+    assert.equal(DATA.TOURS[id].spot, 'card-' + t, `${id}: tour chỉ vào thẻ vào bước`)
+    assert.ok(!DATA.TOURS[id].veteranDay, `${id}: không có veteranDay (người chơi cũ cũng xem)`)
+  }
+  for (const t of ['chon', 'cha', 'thai', 'cham', 'lua', 'rot', '', undefined]) assert.equal(newTypeTour(t), null, String(t))
+  const st = defaultState(1, DATA)
+  const dap = R.banh_mi_op_la.steps.find(s => s.id === 'dap_trung')
+  const lac = R.tra_tac.steps.find(s => s.id === 'lac')
+  const thai = R.banh_mi_op_la.steps.find(s => s.id === 'thai_dua')
+  const full = (step, recipeId, o = {}) => stepCardFull(step, st, { recipeId, ...o })
+  // món mới (chưa nấu / nấu 2 lần): thẻ đầy đủ với mọi loại bước
+  st.recipes.banh_mi_op_la.cooks = 2
+  assert.equal(full(thai, 'banh_mi_op_la'), true)
+  assert.equal(full(dap, 'banh_mi_op_la'), true)
+  // món nấu 5 lần (người chơi cũ): bước kiểu cũ chỉ ruy băng gọn; loại mới chưa xem → đầy đủ
+  st.recipes.banh_mi_op_la.cooks = 5
+  st.recipes.tra_tac.cooks = 40
+  assert.equal(full(thai, 'banh_mi_op_la'), false)
+  assert.equal(full(dap, 'banh_mi_op_la'), true, 'Đập trứng lần đầu: thẻ đầy đủ')
+  assert.equal(full(lac, 'tra_tac'), true, 'Lắc lần đầu: thẻ đầy đủ')
+  // đã xem tour của loại đó → ruy băng gọn (loại khác chưa xem vẫn đầy đủ)
+  markSeen(st, ['bep_dap'])
+  assert.equal(full(dap, 'banh_mi_op_la'), false)
+  assert.equal(full(lac, 'tra_tac'), true)
+  // tắt "Hướng dẫn lần đầu" không ẩn thẻ đầy đủ của loại chưa gặp (bếp tự ghi đã xem sau lần đầu — kitchen.js markTypeSeen)
+  setToursEnabled(st, false)
+  assert.equal(full(lac, 'tra_tac'), true)
+  // nấu thử (Chợ Công Thức, trạng thái hộp cát): chỉ theo số lần nấu
+  assert.equal(full(lac, 'tra_tac', { tasting: true }), false)
+  st.recipes.tra_tac.cooks = 0
+  assert.equal(full(lac, 'tra_tac', { tasting: true }), true)
+  // thiếu tiến độ món / bản lưu thiếu trường tour: đầy đủ (an toàn)
+  assert.equal(stepCardFull(dap, {}, { recipeId: 'banh_mi_op_la' }), true)
+  assert.equal(stepCardFull(dap, { recipes: { banh_mi_op_la: { cooks: 9 } } }, { recipeId: 'banh_mi_op_la' }), true)
+  assert.equal(stepCardFull(thai, { recipes: { banh_mi_op_la: { cooks: 9 } } }, { recipeId: 'banh_mi_op_la' }), false)
+  // startStep dùng luật này, thẻ đầy đủ vừa vào bước thì ghi đã xem khi tour không tự hiện được
+  const k = read('src/ui/screens/kitchen.js')
+  const start = k.slice(k.indexOf('function startStep('), k.indexOf('function onStepResult('))
+  assert.match(start, /stepCardFull\(step, S\(\)/)
+  assert.match(start, /markTypeSeen\(step\.type\)/)
+  assert.match(k, /canAuto\(id\)/)
 })
 
 test('chế độ tập trung: service.js bật .is-focus (khung < 760px, tab Bếp, bếp đang nấu), game.css ẩn dải khách + thanh 4 khâu', async () => {

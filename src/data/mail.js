@@ -59,6 +59,8 @@ export const MAIL_VERSIONS = deepFreeze([
     reward: { fragments: { tra_tac_mat_ong: 1 }, rare: { mat_ong_rung: 1 } } },
   // M5 (0.5.0): bếp làm lại kiểu game nấu ăn, 5 thao tác mới, thẻ bước có tay mẫu, chế độ tập trung khi nấu.
   // Thư giới thiệu, KHÔNG kèm quà (quyết định đã chốt): reward rỗng nên hộp thư chỉ hiện thư, không có nút Nhận.
+  // Ví dụ thẻ bước phải là thẻ có thật: bước Chọn là bước 1 và không có thẻ (stepProgress ở src/ui/components/step-card.js),
+  // nên thẻ đầu tiên của Bánh mì ốp la (6 bước) là "Bước 2/6"; không bao giờ có thẻ "Bước 1/N".
   { version: '0.5.0', id: 'phien_ban_0_5_0', kind: 'phien_ban',
     title: 'Có gì mới: bếp mới và 5 thao tác mới',
     body: 'Bếp của xe vừa được sửa sang: nguyên liệu, món và dụng cụ có hình mới to rõ, xong mỗi bước là được đóng dấu chấm điểm ngay, ' +
@@ -66,7 +68,8 @@ export const MAIL_VERSIONS = deepFreeze([
       'Có thêm 5 thao tác mới: Đập trứng (chạm quả trứng khi kim nằm trong vùng xanh, rồi vuốt xuống cho trứng vào chảo), ' +
       'Khuấy (vẽ vòng tròn quanh tô hoặc ly, quay vừa tay kẻo văng), Gọt vỏ (vuốt thẳng từ trên xuống theo từng dải vỏ), ' +
       'Lắc (kéo bình hoặc rổ lên xuống thật đều tay) và Thả đá (kéo từng viên đá thả vào giữa ly rồi bấm Xong). ' +
-      'Trước mỗi bước có thẻ "Bước 1/5" kèm bàn tay mẫu làm thử cho con xem; nấu quen món rồi thì thẻ tự thu gọn. ' +
+      'Trước mỗi bước trên thớt có thẻ ghi số bước như "Bước 2/6" (bước 1 là chọn nguyên liệu), kèm bàn tay mẫu làm thử cho con xem; ' +
+      'nấu quen món rồi thì thẻ tự thu gọn. ' +
       'Máy có màn hình thấp thì lúc nấu, bếp tự ẩn dải khách và thanh 4 khâu cho rộng chỗ, dây phiếu vẫn hiện để con canh khách chờ. ' +
       'Giá bán, giá vốn và thời gian dành cho mỗi bước vẫn giữ như cũ. Con vào bếp thử tay nghề nha!',
     reward: {} }

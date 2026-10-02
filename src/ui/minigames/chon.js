@@ -13,7 +13,8 @@
 // (không che hình, tên dài xuống 2 dòng chứ không cắt "…"; không còn ô vuông chữ); chạm thì món nảy và một bản sao bay theo
 // đường cong vào rổ tre ở thanh chân (vfx.fly; giảm chuyển động / không có vfx: món hiện thẳng trong rổ). Cỡ hình tự co theo
 // chỗ còn lại của khung bếp (to nhất 64–72px, nhỏ nhất 36px) để cả kệ nằm trên thanh "Trong rổ / Xong" không phải cuộn
-// (khung quá thấp thì giữ 36px và cuộn khung bếp). Đầu sân khấu buildFrame2 (chấm bước, đồng hồ).
+// (36px vẫn chưa vừa thì bỏ đầu sân khấu; khung quá thấp thì giữ 36px và cuộn khung bếp). Đầu sân khấu buildFrame2 (chấm
+// bước, đồng hồ). Nguyên liệu hiếm: viên "còn n" ở góc dưới-trái của hình, dấu ✓ góc trên-phải, ×n góc trên-trái.
 // Hợp đồng e2e giữ nguyên: shelf-<id> (.chon-cell, .is-picked, .is-hint, data-ing, aria-pressed), shelf-qty-<id>,
 // shelf-left-<id> ("còn N"), chon-basket (.chon-in), chon-count ("Trong rổ: n"), chon-done, .chon-msg, .chon-shelf,
 // .mg-chon .mg-foot.
@@ -224,6 +225,9 @@ function mount(stage, step, ctx = {}) {
   })
 
   // Cỡ hình món vừa khung bếp: thử từ cỡ lớn nhất (theo bề ngang cột), khung bếp còn phải cuộn thì thu nhỏ dần tới sàn.
+  // Ở sàn mà vẫn phải cuộn (thẻ công thức cao, vd món có nguyên liệu hiếm ở 390×844) thì bỏ đầu sân khấu (chấm bước, đồng
+  // hồ — như khung ≤ 700px, css/mg-prep.css .is-tight) rồi đo lại: tầng cuối của kệ không nằm khuất sau thanh "Trong rổ /
+  // Xong". Khung quá thấp (≤ 600px, thẻ công thức đã chiếm gần hết) thì giữ sàn và cuộn khung bếp.
   // Đo khi rổ đã vẽ (rổ trống có lời nhắc, cao theo lời).
   // Màn khác (vd Gánh hàng quê, cả màn cuộn) dùng cỡ mặc định của CSS. Chỉ đo lại khi khung bếp đổi cỡ (xoay máy, thanh
   // địa chỉ, chế độ tập trung), không đo theo nội dung để món không nhảy chỗ dưới ngón tay.
@@ -235,8 +239,8 @@ function mount(stage, step, ctx = {}) {
     grid.style.setProperty('--ico', px + 'px')
     grid.classList.toggle('is-small', px < 44)
   }
-  function fitShelf() {
-    if (!host || !stage.isConnected || host.clientHeight <= 0 || grid.clientWidth <= 0) return
+  // Thu cỡ hình tới khi khung bếp hết cuộn (hoặc tới sàn); trả số px còn thừa (> 0: vẫn phải cuộn).
+  function fitIcons() {
     const colW = grid.clientWidth / cols
     let ico = shelfIconSize(Infinity, rows, colW, cols)
     setIco(ico)
@@ -245,6 +249,15 @@ function mount(stage, step, ctx = {}) {
       if (over <= 0) break
       ico = Math.max(SHELF_ICON_MIN, ico - Math.max(2, Math.ceil(over / rows)))
       setIco(ico)
+    }
+    return host.scrollHeight - host.clientHeight
+  }
+  function fitShelf() {
+    if (!host || !stage.isConnected || host.clientHeight <= 0 || grid.clientWidth <= 0) return
+    stage.classList.remove('is-tight')
+    if (fitIcons() > 0) {
+      stage.classList.add('is-tight')
+      fitIcons()
     }
   }
   renderBasket()

@@ -67,22 +67,38 @@ export default {
     // nấu qua onFocus TRƯỚC khi dựng mini-game (plugin đo khung lúc dựng) nên lớp được bật đồng bộ ngay trong lời gọi đó;
     // mỗi khung hình update() xét lại (đổi tab, xoay máy, đổi cỡ khung).
     // Thông báo nổi trong lúc tập trung: chờ tới khi thoát (bếp gửi phản hồi tức thì của chính nó với { now: true }).
+    // Vòng sửa F: thông báo cũng chờ trong lúc bảng ra món của bếp đang hiện (mọi cỡ khung; bếp báo qua onReveal, và giữ
+    // chế độ tập trung tới khi bảng đóng) — không thả ra đè ruy băng tên món ngay lúc bấm Ra món.
     let kitchenWantsFocus = false
     let focusOn = false
+    let revealOpen = false
     const heldToasts = []
+    // Chiều cao màn (so với FOCUS_MAX_H): đọc lại khi màn đổi cỡ (ResizeObserver báo sau bố cục), không đọc clientHeight mỗi
+    // khung hình — đọc kích thước giữa lúc trang vừa đổi DOM ép trình duyệt tính bố cục sớm rồi tính lại lần nữa trong cùng
+    // khung (máy yếu: 20+ ms mỗi khung trong lúc con dấu, ra món).
+    let screenH = -1
+    const readScreenH = () => { screenH = el.isConnected ? el.clientHeight : 0 }
+    let sizeObs = null
+    if (typeof ResizeObserver === 'function') {
+      sizeObs = new ResizeObserver(() => { if (destroyed) return; readScreenH(); applyFocus() })
+      sizeObs.observe(el)
+    }
     function applyFocus() {
       if (destroyed) return
-      const on = kitchenWantsFocus && active === 'kitchen' && el.isConnected && el.clientHeight > 0 && el.clientHeight < FOCUS_MAX_H
+      if (!sizeObs || screenH < 0) readScreenH()
+      const on = kitchenWantsFocus && active === 'kitchen' && el.isConnected && screenH > 0 && screenH < FOCUS_MAX_H
       if (on === focusOn) return
       focusOn = on
       el.classList.toggle('is-focus', on)
       // chồng thông báo nổi (lớp nổi gốc của app) lên sát HUD: không phủ xuống vùng nấu (css/game.css)
       if (app.overlay && app.overlay.classList) app.overlay.classList.toggle('is-cook-focus', on)
-      if (!on) flushToasts()
+      if (!on) releaseToasts()
     }
+    const holdingToasts = () => focusOn || revealOpen
+    function releaseToasts() { if (!holdingToasts()) flushToasts() }
     const realToast = app.toast
     const focusToast = function (text, opts) {
-      if (focusOn && !(opts && opts.now) && !destroyed) { heldToasts.push([text, opts]); return null }
+      if (holdingToasts() && !(opts && opts.now) && !destroyed) { heldToasts.push([text, opts]); return null }
       return realToast.call(app, text, opts)
     }
     function flushToasts() {
@@ -115,7 +131,10 @@ export default {
       const fn = mod.mountKitchen || (mod.default && mod.default.mount)
       if (typeof fn !== 'function') throw new Error('kitchen.js thiếu mountKitchen')
       kitchenPlaceholder.remove()
-      kitchen = fn(panelKitchen, app, { onFocus: want => { kitchenWantsFocus = !!want; applyFocus() } }) || null
+      kitchen = fn(panelKitchen, app, {
+        onFocus: want => { kitchenWantsFocus = !!want; applyFocus() },
+        onReveal: on => { revealOpen = !!on; if (!revealOpen) releaseToasts() }
+      }) || null
       if (kitchen && active === 'kitchen' && kitchen.onShow) kitchen.onShow()
     }).catch(err => {
       console.warn('Không nạp được bếp:', err && err.message)
@@ -683,12 +702,14 @@ export default {
       },
       unmount() {
         destroyed = true
+        if (sizeObs) sizeObs.disconnect()
         for (const off of offs) off()
         if (typeof app.toastLimit === 'function') app.toastLimit(null)
         // trả lại hàm thông báo của app; thông báo còn chờ lúc rời màn (hết ca) là tin trong ca đã cũ: bỏ (thẻ Mẹo nghề vẫn
         // nằm trong Sổ tay nghề)
         if (app.toast === focusToast) app.toast = realToast
         focusOn = false
+        revealOpen = false
         heldToasts.length = 0
         if (app.overlay && app.overlay.classList) app.overlay.classList.remove('is-cook-focus')
         if (app.switchTab === showTab) app.switchTab = null

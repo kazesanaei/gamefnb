@@ -1,7 +1,8 @@
-// Phòng mẫu giao diện M5 (mau.html, Đợt 0): trang để người dùng duyệt giao diện mới trước khi ráp vào game.
+// Phòng mẫu giao diện M5 (mau.html, dựng từ Đợt 0): trang để người dùng duyệt giao diện mới; từ 0.5.0 bộ hình mới đã ráp vào game.
 // Bốn thẻ:
-//  - Hình: so hình CŨ (icon() của src/ui/art.js) và MỚI (artV2 / propV2 của src/ui/art/v2.js) ở 48, 72, 120, 200 trên nền
-//    giấy và nền gỗ, kèm kệ trưng bày bộ hình mới.
+//  - Hình: so hình CŨ (legacyIcon() của src/ui/art.js: bộ hình trước 0.5.0, giữ nguyên để so) và MỚI (artV2 / propV2 của
+//    src/ui/art/v2.js, cũng là hình game đang dùng) ở 48, 72, 120, 200 trên nền giấy và nền gỗ, kèm kệ trưng bày bộ hình mới.
+//    Không dùng icon() cho cột Cũ: mặt tiền art.js đã gộp hình mới vào ICONS nên icon() trả hình mới.
 //  - Gọi món: luồng thật bằng các thành phần order-bubble, menu-board, order-sheet, order-pad với dữ liệu RECIPES thật
 //    (khách quen Cô Thu; bảng 4 món có món hiếm "★ còn 2" và món "HẾT"; bảng số lượng / ghi chú; phiếu; đọc lại; chốt có
 //    con dấu ĐÃ CHỐT rồi phiếu bay lên dây phiếu nhỏ ở đầu màn).
@@ -21,7 +22,7 @@ import { createAudio } from '../src/ui/audio.js'
 import { createVfx } from '../src/ui/vfx.js'
 import { isReduced } from '../src/ui/motion.js'
 import { h, svgBox, clear } from '../src/ui/dom.js'
-import { icon, DI_SAU } from '../src/ui/art.js'
+import { legacyIcon, DI_SAU } from '../src/ui/art.js'
 import { artV2, propV2 } from '../src/ui/art/v2.js'
 import { createStepCard, stepCardModel } from '../src/ui/components/step-card.js'
 import { createStamp, playStamp, gradeKey, stampSvg, gradeText } from '../src/ui/components/stamp.js'
@@ -361,14 +362,15 @@ export function boot(doc = document) {
     const ctrl = h('div', { class: 'mau-ctrl' },
       h('div', { class: 'mau-ctrl-row' }, h('span', { class: 'mau-ctrl-label' }, 'Nền'), segBg.el),
       h('div', { class: 'mau-ctrl-row' }, h('span', { class: 'mau-ctrl-label' }, 'Cỡ'), segSize.el))
-    const legend = h('p', { class: 'mau-legend' },
-      h('span', { class: 'g-pill mau-pill-old' }, 'Cũ'), ' hình đang dùng trong game · ',
-      h('span', { class: 'g-pill g-pill--gold' }, 'Mới'), ' hình M5 (chưa ráp vào game)')
+    // Mỗi nhãn đi liền chú thích của nó (mau-legend-item) để khung hẹp không ngắt dòng giữa nhãn và chữ.
+    const legend = h('p', { class: 'mau-legend', 'data-testid': 'mau-art-legend' },
+      h('span', { class: 'mau-legend-item' }, h('span', { class: 'g-pill mau-pill-old' }, 'Cũ'), 'hình trước 0.5.0'),
+      h('span', { class: 'mau-legend-item' }, h('span', { class: 'g-pill g-pill--gold' }, 'Mới'), 'hình M5, đã vào game từ 0.5.0'))
     const grid = h('div', { class: 'mau-grid', 'data-testid': 'mau-art-grid' })
     view.append(shelf, ctrl, legend, grid)
 
     function pic(s, which) {
-      const svg = which === 'moi' ? (s.prop ? propV2(s.id) : artV2(s.id, s.state)) : (s.old ? icon(s.old) : '')
+      const svg = which === 'moi' ? (s.prop ? propV2(s.id) : artV2(s.id, s.state)) : (s.old ? legacyIcon(s.old) : '')
       const box = { width: size + 'px', height: size + 'px' }
       if (!svg) return h('span', { class: 'mau-pic mau-pic--none', style: box }, h('span', null, 'Chưa có'))
       return svgBox(svg, 'mau-pic', { style: box, dataset: { v: which } })

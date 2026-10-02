@@ -24,10 +24,66 @@ export const DAP_METER_H = 44          // px: dải thước lực ở đầu c�
 
 const PAN_FALLBACK = { vb: [320, 176], floor: { cx: 140, cy: 99, rx: 90, ry: 37 }, rim: { cx: 140, cy: 90, rx: 116, ry: 52 }, base: [140, 157] }
 
+// Hình quả ốp la trong ô vuông chứa nó (sau scaleY(.8) của .dap-fried-svg / .lua-slot.is-egg), tính theo cạnh ô: tâm hình
+// lệch (dx, dy) so với tâm ô, nửa rộng hw, nửa cao hh. Đo từ friedEgg (art/ing-tuoi.js: mép lượn sóng 27 × 21,5 quanh
+// (32, 34) trên khung 64, gồm cả nét viền); không tính bóng đất mờ và khói của trạng thái cháy.
+export const EGG_FOOT = Object.freeze({ dx: 0.011, dy: 0.034, hw: 0.457, hh: 0.291 })
+export const EGG_MAX = 1.1        // cạnh ô tối đa (một quả) theo floor.rx
+export const EGG_PAD = 0.92       // hình trứng nằm trong ellipse lòng chảo thu nhỏ còn 92% (chừa mép, chừa nhịp nảy squash)
+const EGG_OVERLAP = 0.12          // hai quả cạnh nhau chờm lên nhau tối đa 12% bề rộng (lòng trắng dính nhau như chảo thật)
+const EGG_ROWS_GAIN = 1.15        // chỉ xếp thêm hàng khi quả to hơn ít nhất 15% (ít hàng thì không quả nào khuất sau quả cầm)
+
+/** Hình ốp la của ô {cx, cy, size} (đơn vị khung đạo cụ) có nằm trọn trong ellipse lòng chảo fl (thu theo pad) không. */
+export function eggInFloor(slot, fl, pad = 1, samples = 48) {
+  const RX = fl.rx * pad, RY = fl.ry * pad
+  const ex = slot.cx + slot.size * EGG_FOOT.dx - fl.cx, ey = slot.cy + slot.size * EGG_FOOT.dy - fl.cy
+  for (let i = 0; i < samples; i++) {
+    const a = (i / samples) * Math.PI * 2
+    const x = ex + Math.cos(a) * slot.size * EGG_FOOT.hw, y = ey + Math.sin(a) * slot.size * EGG_FOOT.hh
+    if ((x / RX) ** 2 + (y / RY) ** 2 > 1 + 1e-9) return false
+  }
+  return true
+}
+
+// Xếp quả theo hàng (rows: số quả mỗi hàng, từ trong ra ngoài), cạnh ô sz; hình mỗi hàng canh giữa lòng chảo.
+function eggRows(rows, sz, fl) {
+  const stepX = 2 * EGG_FOOT.hw * sz * (1 - EGG_OVERLAP)
+  const stepY = 2 * EGG_FOOT.hh * sz * (1 - 2 * EGG_OVERLAP)     // hàng trong khuất một phần sau hàng ngoài (nhìn chéo)
+  const out = []
+  rows.forEach((m, r) => {
+    const cy = fl.cy - sz * EGG_FOOT.dy + (r - (rows.length - 1) / 2) * stepY
+    for (let i = 0; i < m; i++) out.push({ cx: fl.cx - sz * EGG_FOOT.dx + (i - (m - 1) / 2) * stepX, cy, size: sz, row: r })
+  })
+  return out
+}
+
+/**
+ * Chỗ các quả trứng đã tách trong lòng chảo (thuần, đơn vị khung đạo cụ chảo): mọi hình ốp la nằm trọn trong ellipse lòng
+ * chảo fl (thu theo EGG_PAD), quả to nhất có thể (tối đa EGG_MAX·fl.rx). 1–3 quả một hàng ngang; nhiều hơn (nhân số phần) thì
+ * 2–4 hàng nếu quả to hơn hẳn. → [{ cx, cy, size, row }] xếp từ trong (row 0, vẽ trước) ra ngoài, trái sang phải.
+ */
+export function panEggSlots(n, fl = PAN_FALLBACK.floor) {
+  const k = Math.max(1, Math.floor(Number(n) || 1))
+  const fitsAll = (rows, sz) => eggRows(rows, sz, fl).every(e => eggInFloor(e, fl, EGG_PAD))
+  const biggest = rows => {
+    let lo = 0, hi = EGG_MAX * fl.rx
+    if (fitsAll(rows, hi)) return hi
+    for (let it = 0; it < 32; it++) { const mid = (lo + hi) / 2; if (fitsAll(rows, mid)) lo = mid; else hi = mid }
+    return lo
+  }
+  let best = null
+  for (let r = 1; r <= Math.min(4, k); r++) {
+    const rows = Array.from({ length: r }, (_, j) => Math.floor((k + j) / r))   // hàng trong ít quả hơn
+    const sz = biggest(rows)
+    if (!best || sz > best.sz * EGG_ROWS_GAIN) best = { rows, sz }
+  }
+  return eggRows(best.rows, best.sz, fl)
+}
+
 /**
  * Bố cục cảnh đập trứng (thuần, px trong khung cảnh W×H): thước lực trên cùng, chảo dưới đáy (lòng chảo canh giữa),
- * quả trứng cầm ngay trên miệng chảo, các ô trứng đã tách trong lòng chảo.
- * → { meter: {x, y, w}, pan: {x, y, w, h, s}, egg: {x, y, size}, slots: [{x, y, size}] }
+ * quả trứng cầm ngay trên miệng chảo, các ô trứng đã tách (n ô, theo thứ tự thả) nằm trọn trong lòng chảo.
+ * → { meter: {x, y, w}, pan: {x, y, w, h, s}, egg: {x, y, size}, slots: [{x, y, size, z}] } (x, y: tâm ô)
  */
 export function dapLayout(W, H, n = 1, meta = PAN_FALLBACK) {
   const m = meta && meta.vb ? meta : PAN_FALLBACK
@@ -46,15 +102,11 @@ export function dapLayout(W, H, n = 1, meta = PAN_FALLBACK) {
   const size = Math.round(Math.max(56, Math.min(132, w * 0.36, room)))
   const ey = Math.round(Math.max(top, py + rim.cy * s - size))
   const egg = { x: Math.round(w / 2 - size / 2), y: ey, size }
-  // ô trứng đã tách: rải đều theo bề ngang lòng chảo
-  const k = Math.max(1, Math.floor(Number(n) || 1))
-  const span = k === 1 ? 0 : Math.min(0.9, 1.4 - 0.25 * Math.min(k, 4)) * fl.rx
-  const fs = Math.min(1.25, 2.2 / k) * fl.rx * s
-  const slots = []
-  for (let i = 0; i < k; i++) {
-    const off = k === 1 ? 0 : -span + (2 * span * i) / (k - 1)
-    slots.push({ x: Math.round(px + (fl.cx + off) * s), y: Math.round(py + fl.cy * s), size: Math.round(fs) })
-  }
+  // ô trứng đã tách: trọn trong lòng chảo (panEggSlots). Thứ tự thả: hàng ngoài trước (không khuất sau quả đang cầm), z theo
+  // hàng để quả hàng trong luôn nằm sau quả hàng ngoài.
+  const slots = panEggSlots(n, fl)
+    .map(e => ({ x: Math.round(px + e.cx * s), y: Math.round(py + e.cy * s), size: Math.round(e.size * s), z: e.row + 1 }))
+    .sort((a, b) => b.z - a.z || a.x - b.x)
   return { meter, pan: { x: Math.round(px), y: Math.round(py), w: Math.round(pw), h: Math.round(ph), s }, egg, slots }
 }
 
@@ -170,7 +222,7 @@ function mount(stage, step, ctx = {}) {
   function placeFried(el, i) {
     const sl = L && L.slots[Math.min(i, L.slots.length - 1)]
     if (!sl) return
-    Object.assign(el.style, { left: (sl.x - sl.size / 2) + 'px', top: (sl.y - sl.size / 2) + 'px', width: sl.size + 'px', height: sl.size + 'px' })
+    Object.assign(el.style, { left: (sl.x - sl.size / 2) + 'px', top: (sl.y - sl.size / 2) + 'px', width: sl.size + 'px', height: sl.size + 'px', zIndex: String(sl.z || 1) })
   }
   layout()
   const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(layout) : null
