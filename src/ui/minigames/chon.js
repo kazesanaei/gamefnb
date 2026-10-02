@@ -9,10 +9,11 @@
 // Thiếu nguyên liệu chính: báo chung + khóa 1,5 giây, không cho qua (ctx.missingText đổi câu báo, vd ở gánh hàng quê).
 // M4: ctx.stockLeft = {ingId: số phần còn trong kho hàng hiếm} → món trên kệ có nhãn "còn n" (nguyên liệu hiếm).
 // 0.4.1: handle.hold(on) giữ đồng hồ đứng yên khi hướng dẫn lần đầu che kệ.
-// M5 (Đợt 1): kệ gỗ nhiều tầng — mỗi món là hình TO đứng trên tấm ván, nhãn tên giấy ghim ở mép ván (không còn ô vuông
-// chữ); chạm thì món nảy và một bản sao bay theo đường cong vào rổ tre ở thanh chân (vfx.fly; giảm chuyển động / không có
-// vfx: món hiện thẳng trong rổ). Cỡ hình tự co theo chỗ còn lại của khung bếp (to nhất 64–72px, màn thấp 30–36px) để cả
-// kệ nằm trên thanh "Trong rổ / Xong" không phải cuộn. Đầu sân khấu buildFrame2 (chấm bước, đồng hồ).
+// M5 (Đợt 1): kệ gỗ nhiều tầng — mỗi món là hình TO đứng trên tấm ván, nhãn tên giấy ghim ở mép ván ngay dưới chân món
+// (không che hình, tên dài xuống 2 dòng chứ không cắt "…"; không còn ô vuông chữ); chạm thì món nảy và một bản sao bay theo
+// đường cong vào rổ tre ở thanh chân (vfx.fly; giảm chuyển động / không có vfx: món hiện thẳng trong rổ). Cỡ hình tự co theo
+// chỗ còn lại của khung bếp (to nhất 64–72px, nhỏ nhất 36px) để cả kệ nằm trên thanh "Trong rổ / Xong" không phải cuộn
+// (khung quá thấp thì giữ 36px và cuộn khung bếp). Đầu sân khấu buildFrame2 (chấm bước, đồng hồ).
 // Hợp đồng e2e giữ nguyên: shelf-<id> (.chon-cell, .is-picked, .is-hint, data-ing, aria-pressed), shelf-qty-<id>,
 // shelf-left-<id> ("còn N"), chon-basket (.chon-in), chon-count ("Trong rổ: n"), chon-done, .chon-msg, .chon-shelf,
 // .mg-chon .mg-foot.
@@ -26,13 +27,16 @@ import { artV2 } from '../art/v2.js'
 export const MISSING_MAIN_LOCK_MS = 1500
 // Cỡ hình món trên kệ (px): to nhất theo số cột, nhỏ nhất khi khung bếp rất thấp.
 export const SHELF_ICON_MAX = Object.freeze({ 3: 72, 4: 64 })
-export const SHELF_ICON_MIN = 30
+export const SHELF_ICON_MIN = 36
+// Lời nhắc trong rổ trống: câu đủ cho rổ rộng, câu ngắn (vừa 2 dòng) cho rổ hẹp / màn thấp (CSS chọn bản hiện).
+export const BASKET_HINT = 'Chạm món trên kệ để bỏ vào rổ, chạm lần nữa để lấy ra.'
+export const BASKET_HINT_SHORT = 'Chạm để bỏ vào rổ, chạm lại để lấy ra.'
 
 /**
- * Cỡ hình món (px) vừa chỗ (thuần): mỗi tầng kệ cao = hình + phần cố định (ván, đệm, nhãn lấn); rows tầng phải nằm trong
- * availH px; không rộng hơn cột (colW − 10). Kẹp trong [SHELF_ICON_MIN, max theo số cột].
+ * Cỡ hình món (px) vừa chỗ (thuần): mỗi tầng kệ cao = hình + phần cố định (đệm, nhãn một dòng dưới chân món); rows tầng phải
+ * nằm trong availH px; không rộng hơn cột (colW − 10). Kẹp trong [SHELF_ICON_MIN, max theo số cột].
  */
-export function shelfIconSize(availH, rows, colW, cols, fixed = 22) {
+export function shelfIconSize(availH, rows, colW, cols, fixed = 26) {
   const max = SHELF_ICON_MAX[cols] || SHELF_ICON_MAX[4]
   const byW = Number.isFinite(colW) && colW > 0 ? colW - 10 : max
   const byH = Number.isFinite(availH) && rows > 0 ? availH / rows - fixed : max
@@ -68,7 +72,8 @@ function mount(stage, step, ctx = {}) {
   })
   // Rổ tre ở thanh chân: lòng rổ (sau), các món đã lấy (cuộn ngang khi đầy), vành rổ (trước, che chân món), nhãn số món.
   const basket = h('div', { class: 'chon-basket', 'data-testid': 'chon-basket', 'aria-label': 'Rổ' })
-  const basketEmpty = h('span', { class: 'chon-basket-empty' }, ctx.basketHint || 'Chạm món trên kệ để bỏ vào rổ, chạm lần nữa để lấy ra.')
+  const basketEmpty = h('span', { class: 'chon-basket-empty' }, ctx.basketHint ||
+    [h('span', { class: 'chon-hint-long' }, BASKET_HINT), h('span', { class: 'chon-hint-short' }, BASKET_HINT_SHORT)])
   basket.appendChild(basketEmpty)
   const countEl = h('span', { class: 'mg-count chon-count', 'data-testid': 'chon-count' })
   const basketWrap = h('div', { class: 'chon-basket-wrap' },
@@ -219,6 +224,7 @@ function mount(stage, step, ctx = {}) {
   })
 
   // Cỡ hình món vừa khung bếp: thử từ cỡ lớn nhất (theo bề ngang cột), khung bếp còn phải cuộn thì thu nhỏ dần tới sàn.
+  // Đo khi rổ đã vẽ (rổ trống có lời nhắc, cao theo lời).
   // Màn khác (vd Gánh hàng quê, cả màn cuộn) dùng cỡ mặc định của CSS. Chỉ đo lại khi khung bếp đổi cỡ (xoay máy, thanh
   // địa chỉ, chế độ tập trung), không đo theo nội dung để món không nhảy chỗ dưới ngón tay.
   const host = typeof stage.closest === 'function' ? stage.closest('.k-main') : null
@@ -241,6 +247,7 @@ function mount(stage, step, ctx = {}) {
       setIco(ico)
     }
   }
+  renderBasket()
   fitShelf()
   let fitRaf = 0
   const ro = host && typeof ResizeObserver === 'function'
@@ -281,7 +288,6 @@ function mount(stage, step, ctx = {}) {
   }
 
   renderHints()
-  renderBasket()
   return {
     result: out.promise,
     snapshot,

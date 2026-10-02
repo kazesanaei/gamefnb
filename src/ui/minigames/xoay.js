@@ -6,10 +6,10 @@
 // tô làm gợi ý tới khi quay được nửa vòng đầu. Đủ vòng thì tự xong.
 // Quay quá nhanh (> 2,2 × mul vòng/giây, gấp 1,8 lần nếu params.fast) liên tục quá 0,25 s thì sánh ra ngoài (−12 điểm mỗi
 // lần): giọt bắn ra mép tô, tô rung 3px, vệt bẩn đọng trên mặt quầy (giảm chuyển động: không giọt, không rung — chớp viền đỏ
-// tĩnh). Chấm: scoreXoay (core/minigame-scoring.js, không đổi).
+// tĩnh). Chấm: scoreXoay (core/minigame-scoring.js, không đổi); nấu thử (ctx.untimed) không phạt quá giờ.
 // Hợp đồng e2e (giữ từ bản tạm gói A): xoay-bowl (tâm và bán kính lấy bằng boundingBox; tâm khuấy = tâm hộp); xoay-progress
-// [data-v = số vòng (2 chữ số), data-n = mục tiêu]; xoay-speed[data-v = vòng/giây, data-max]. Lớp vỏ (step.skin): to | ly |
-// chen → lớp gốc .mg-xoay.skin-<id>, stage[data-skin].
+// [data-v = số vòng, làm tròn XUỐNG 2 chữ số (data-v = data-n nghĩa là đã đủ vòng), data-n = mục tiêu]; xoay-speed
+// [data-v = vòng/giây, data-max]. Lớp vỏ (step.skin): to | ly | chen → lớp gốc .mg-xoay.skin-<id>, stage[data-skin].
 // Cách giải tự động: nhấn ở (tâm + 0,32·cạnh, tâm) của xoay-bowl rồi vẽ 24 điểm mỗi vòng quanh tâm, ~1 vòng/giây (chờ ~12 ms
 // giữa các điểm), đủ data-n vòng (+0,3) thì tự xong.
 import { h, svgBox } from '../dom.js'
@@ -339,7 +339,8 @@ function mount(stage, step, ctx = {}) {
   function renderProgress() {
     const v = Math.min(tc.turns, target)
     progress.textContent = `${countText} ${Math.floor(v)}/${target}`
-    progress.dataset.v = v.toFixed(2)
+    // làm tròn XUỐNG 2 chữ số: 2,996 vòng ghi "2.99" chứ không "3.00" (trò chỉ xong khi đủ hẳn target vòng)
+    progress.dataset.v = (Math.floor(v * 100 + 1e-9) / 100).toFixed(2)
     const f = Math.min(1, v / target)
     blend.style.opacity = (f * look.blendMax).toFixed(3)
     if (clumpEl) clumpEl.style.opacity = (1 - f).toFixed(3)
@@ -515,7 +516,8 @@ function mount(stage, step, ctx = {}) {
     cleanup()
     const turns = Math.round(tc.turns * 100) / 100
     const cv = tc.cv()
-    const score = scoreXoay({ turns, target, spills, cv, elapsed, par: step.par, mul })
+    // Nấu thử (ctx.untimed): không phạt quá giờ (par = Infinity → bỏ luật −15), như cha.js
+    const score = scoreXoay({ turns, target, spills, cv, elapsed, par: ctx.untimed ? Infinity : step.par, mul })
     feedback(ctx, score >= 90 ? 'good' : score < 50 ? 'bad' : 'ok')
     out.settle({ score, details: { turns, target, spills, cv, maxSpeed, elapsed } })
   }

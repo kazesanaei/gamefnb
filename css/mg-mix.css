@@ -115,13 +115,30 @@
 /* hình ly phủ lên đá trong ly (thân ly trong suốt) — không nhận chạm để chạm trúng viên đá bên dưới */
 .bay-glass-art { z-index: 3; }
 .bay-glass-art.is-css { border: 4px solid var(--g-ink, #3a2618); border-top-width: 3px; border-radius: 6px 6px 26px 26px; background: rgba(238, 248, 252, .25); }
-/* vùng thả: vòng nét đứt hiện khi đang kéo, sáng xanh khi viên đá nằm trên vùng; không nhận chạm */
+/* vùng thả = hồng tâm (điểm vị trí của scoreBay): vành ngoài cam nhạt (55), vòng giữa vàng (80), vòng trong xanh (100),
+   chấm tâm. Hiện khi đang kéo; viên đá nằm trên bậc nào thì bậc đó sáng đậm (data-tier: mep | gan | tam). Không nhận chạm.
+   Đường kính vòng (--ra, --rb, px) do bay.js đặt theo hệ số vùng; viền vòng nằm trong đường kính (border-box) nên mép
+   ngoài viền đúng là ranh giới bậc. Đổi màu tức thì (không chuyển tiếp màu); chỉ opacity có chuyển tiếp. */
 .bay-target {
   position: absolute; z-index: 4; border-radius: 50%; pointer-events: none; opacity: 0; transition: opacity .15s ease-out;
-  border: 3px dashed rgba(58, 38, 24, .55); background: rgba(255, 250, 240, .18);
+  border: 3px dashed rgba(58, 38, 24, .55); background: rgba(255, 180, 92, .16);
 }
 .bay-target.is-armed { opacity: 1; }
-.bay-target.is-over { border-color: var(--g-go, #43a63d); background: rgba(142, 219, 106, .22); }
+.bay-zone, .bay-zone-dot { position: absolute; left: 50%; top: 50%; display: block; box-sizing: border-box; border-radius: 50%; pointer-events: none; }
+.bay-zone { transform: translate(-50%, -50%); }
+.bay-zone-b { width: var(--rb, 60%); height: var(--rb, 60%); border: 2.5px solid rgba(58, 38, 24, .5); background: rgba(255, 226, 122, .34); }
+.bay-zone-a {
+  width: var(--ra, 35%); height: var(--ra, 35%); border: 3px solid var(--g-go-dark, #226b28); background: rgba(142, 219, 106, .5);
+  box-shadow: 0 0 0 2px rgba(255, 250, 240, .7);
+}
+.bay-zone-dot { width: 10px; height: 10px; margin: -5px 0 0 -5px; background: var(--g-go-dark, #226b28); box-shadow: 0 0 0 2px var(--g-paper, #fffaf0); }
+/* viên đá trên vùng (lớp móc is-over giữ cho e2e): màu theo bậc — cam = 55, vàng = 80, xanh đậm = 100 */
+.bay-target.is-over { border-color: var(--g-go, #43a63d); }
+.bay-target.is-over[data-tier="mep"] { border-style: solid; border-color: var(--g-orange, #f28a1e); background: rgba(242, 138, 30, .34); }
+.bay-target.is-over[data-tier="gan"] { border-color: var(--g-gold-dark, #a87404); }
+.bay-target.is-over[data-tier="gan"] .bay-zone-b { border-color: var(--g-gold-dark, #a87404); background: rgba(247, 185, 40, .7); }
+.bay-target.is-over[data-tier="tam"] { border-color: var(--g-go-dark, #226b28); }
+.bay-target.is-over[data-tier="tam"] .bay-zone-a { border-color: var(--g-go-dark, #226b28); background: rgba(67, 166, 61, .78); }
 /* gợn mặt nước khi đá rơi (WAAPI) */
 .bay-ring {
   position: absolute; left: 0; top: 0; z-index: 2; display: block; opacity: 0; pointer-events: none; border-radius: 50%;

@@ -53,10 +53,14 @@ export function buildFrame2(stage, { icon = '', title = '', sub = '', steps = nu
 
   function setSteps(st) {
     clear(dotsBox)
-    if (!st || !(Number(st.total) > 0)) { dotsBox.hidden = true; head.classList.remove('is-crowded'); return }
+    if (!st || !(Number(st.total) > 0)) { dotsBox.hidden = true; head.classList.remove('is-crowded', 'is-many', 'is-lots'); return }
     dotsBox.hidden = false
     const list = stepDots(st)
     head.classList.toggle('is-crowded', list.length >= 5)
+    // món nhiều bước: chấm nhỏ lại (css/mg-prep.css) để chuỗi chấm không lấn thanh giờ — từ 8 chấm ở mọi cỡ, từ 6 chấm khi
+    // đầu sân khấu hẹp (màn 320–360px)
+    head.classList.toggle('is-many', list.length >= 6)
+    head.classList.toggle('is-lots', list.length >= 8)
     for (const d of list) {
       const kids = d.state === 'now' && icon ? svgBox(icon, 'g-dot-ico')
         : d.state === 'done' ? svgBox(TICK, 'g-dot-tick')

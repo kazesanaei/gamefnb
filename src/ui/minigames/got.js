@@ -3,8 +3,9 @@
 // của dải lộ ruột — vẽ bằng chính hình trạng thái "đã gọt" (artV2(id, 'got')) khớp khung quả; mỗi nhát gọt có dải vỏ cuộn
 // rơi xuống (vfx 'peel' + một dải vỏ rơi trong lớp .mg-fx; giảm chuyển động: dải vỏ chỉ mờ đi tại chỗ), tiếng peel. Gọt
 // sạch một dải: chữ "Sạch vỏ!"; đủ K dải: cả quả đổi sang hình đã gọt, lấp lánh.
-// Nhát vuốt nghiêng, ngược chiều hoặc trượt ra ngoài quả là nhát hụt (−8 mỗi nhát, tối đa −24). Mọi dải phủ ≥ 85% thì tự
-// xong; bấm Xong để dừng sớm. Chấm: scoreGot (lõi, không đổi).
+// Nhát vuốt nghiêng, ngược chiều hoặc trượt ra ngoài quả là nhát hụt (−8 mỗi nhát, tối đa −24); nhát hợp lệ vuốt lại chỗ đã
+// gọt (kể cả dải đã sạch) chỉ hiện lời nhắc, không tính hụt. Mọi dải phủ ≥ 85% thì tự xong; bấm Xong để dừng sớm. Chấm:
+// scoreGot (lõi, không đổi); nấu thử (ctx.untimed) không phạt quá giờ.
 // Hợp đồng e2e (giữ nguyên từ bản tạm của gói A): got-fruit; got-band-<i>[data-done = độ phủ 0..1, 2 chữ số; data-lo,
 // data-hi = đoạn cần gọt theo phần chiều cao quả] (dải là CỘT cao bằng quả, thẳng đứng, bị viền elip cắt; vuốt từ mép trên
 // xuống mép dưới boundingBox của dải là phủ trọn); got-count[data-v = số dải xong, data-n = K]; got-done (bật sau nhát đầu).
@@ -24,7 +25,9 @@ const TAP_MAX = 10
 export const PEELER_OFFSET_PX = 34
 
 // Tư thế quả trên thớt (lưới 64 của hình SAU khi xoay): rot (độ), box [x0, y0, x1, y1] khung thân quả; peeled: hình đã gọt
-// cùng khung (khớp chỗ với vỏ); màu vỏ (skin, dark) cho dải vỏ rơi, flesh cho phần đang gọt dở; shape: dáng khung (elip).
+// cùng khung (khớp chỗ với vỏ, peeledBox là khung thân của nó); trim / trimPeeled: dấu phần trang trí bỏ đi ở lớp vỏ / lớp
+// đã gọt (trimArt; dải vỏ cuộn của hình đã gọt luôn bị bỏ bằng dropCurls); màu vỏ (skin, dark) cho dải vỏ rơi, flesh cho
+// phần đang gọt dở; shape: dáng khung (elip).
 export const GOT_POSE = Object.freeze({
   xoai_xanh: Object.freeze({
     rot: 40, box: Object.freeze([5.1, 20.3, 50.5, 48]), peeled: 'got', peeledBox: Object.freeze([8.2, 18.4, 49.9, 43.9]),
@@ -52,6 +55,15 @@ export function trimArt(svg, marker) {
   const start = svg.lastIndexOf('<', at)
   const end = svg.lastIndexOf('</g>')
   return start > 0 && end > start ? svg.slice(0, start) + svg.slice(end) : svg
+}
+
+/** Bỏ các dải vỏ cuộn vẽ sẵn quanh hình "đã gọt" — mỗi dải là bộ ba nét liền nhau cùng một đường d (viền mực, mặt ruột,
+ *  mặt vỏ). Phóng to trên sân khấu chúng thành những con sâu xanh to đè lên quả và bong bóng; dải vỏ rơi đã có .got-strip
+ *  và vfx 'peel' lo (thuần). Không thấy bộ ba nào: giữ nguyên. */
+export function dropCurls(svg) {
+  return typeof svg === 'string'
+    ? svg.replace(/<path d="([^"]+)" fill="none"[^>]*\/><path d="\1" fill="none"[^>]*\/><path d="\1" fill="none"[^>]*\/>/g, '')
+    : svg
 }
 
 /** Bỏ bóng đất (elip mực mờ .15 dưới chân hình) — quả nằm xoay trên thớt thì bóng vẽ riêng bằng CSS (thuần). */
@@ -94,7 +106,8 @@ function mount(stage, step, ctx = {}) {
   const iconSvg = artV2(artId)
   const skinSvg = dropGround(trimArt(iconSvg, pose.trim))
   const peeledArt = artV2(artId, pose.peeled)
-  const peeledSvg = dropGround(peeledArt)
+  // lớp đã gọt cũng cắt như lớp vỏ: bỏ dải vỏ cuộn vẽ quanh thân (và phần trimPeeled nếu tư thế có khai báo)
+  const peeledSvg = dropGround(dropCurls(trimArt(peeledArt, pose.trimPeeled)))
   const hasPeeled = !!peeledArt && peeledArt !== iconSvg
   const [bx0, by0, bx1, by1] = pose.box
   const ratio = (by1 - by0) / (bx1 - bx0)
@@ -306,21 +319,29 @@ function mount(stage, step, ctx = {}) {
     const b = bands[i]
     const a = Math.min(d.p0.y, p1.y) / H
     const c = Math.max(d.p0.y, p1.y) / H
+    // nhát nằm ngoài thân quả (trên hoặc dưới đoạn cần gọt của dải) là trượt ra ngoài quả
+    if ((Math.min(c, b.hi) - Math.max(a, b.lo)) / Math.max(1e-6, b.hi - b.lo) < 0.04) { miss(p, 'Trượt rồi'); return }
     const before = b.cov
     b.segs.push([a, c])
     b.cov = bandCoverage(b.segs, b.lo, b.hi)
-    if (b.cov - before < 0.04) { miss(p, 'Trượt rồi'); return }
-    strokes++
-    b.el.dataset.done = b.cov.toFixed(2)
-    drawBand(b)
-    doneBtn.disabled = false
-    // tiếng "sột" + vỏ cuộn bắn ra (vfx, giảm chuyển động: không hạt) + dải vỏ rơi
-    feedback(ctx, 'peel')
-    if (vfx && !reduced()) { try { vfx.burst(b.el, 'peel', { n: 3, colors: [pose.skin, pose.dark] }) } catch { /* bỏ qua */ } }
-    dropPeel(b, Math.max(b.lo, Math.min(a, b.hi)), Math.min(b.hi, Math.max(c, b.lo)))
+    // Nhát hợp lệ (thẳng, đúng chiều, trên quả) không bao giờ là nhát hụt: vuốt lại chỗ đã gọt thì chỉ nhắc, không trừ điểm.
+    const peeledNow = b.cov - before >= 0.04
+    if (b.cov > before) { b.el.dataset.done = b.cov.toFixed(2); drawBand(b) }
+    if (peeledNow) {
+      strokes++
+      doneBtn.disabled = false
+      // tiếng "sột" + vỏ cuộn bắn ra (vfx, giảm chuyển động: không hạt) + dải vỏ rơi
+      feedback(ctx, 'peel')
+      if (vfx && !reduced()) { try { vfx.burst(b.el, 'peel', { n: 3, colors: [pose.skin, pose.dark] }) } catch { /* bỏ qua */ } }
+      dropPeel(b, Math.max(b.lo, Math.min(a, b.hi)), Math.min(b.hi, Math.max(c, b.lo)))
+    } else {
+      const text = before >= GOT_DONE_AT ? 'Dải này sạch rồi' : 'Chỗ này gọt rồi'
+      if (vfx) { try { vfx.floatText({ x: p.clientX, y: p.clientY }, text, { tone: 'info', size: 'small' }) } catch { /* bỏ qua */ } }
+    }
     const done = renderCount()
     if (b.cov >= GOT_DONE_AT && before < GOT_DONE_AT) {
       b.el.classList.add('is-done')
+      doneBtn.disabled = false
       if (vfx) { try { vfx.floatText(b.el, 'Sạch vỏ!', { tone: 'good', size: 'small' }) } catch { /* bỏ qua */ } }
     }
     if (done >= K && !ending) { ending = true; later(finish, 260) }
@@ -353,7 +374,8 @@ function mount(stage, step, ctx = {}) {
     const elapsed = clock.elapsed()
     cleanup()
     const coverage = bands.map(b => Math.round(b.cov * 1000) / 1000)
-    const score = scoreGot({ coverage, target: K, misses, elapsed, par: step.par })
+    // Nấu thử (ctx.untimed): không phạt quá giờ — cùng luật với Chà (bước Gọt thay chỗ)
+    const score = scoreGot({ coverage, target: K, misses, elapsed, par: ctx.untimed ? Infinity : step.par })
     // gọt sạch cả quả: hiện nguyên hình đã gọt, lấp lánh
     if (bands.every(b => b.cov >= GOT_DONE_AT)) {
       fruit.classList.add('is-peeled')

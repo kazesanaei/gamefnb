@@ -4,7 +4,8 @@
 // dùng cảm biến chuyển động (iOS bắt xin quyền). Bình: hơi lạnh đọng dần trên thân, bọt dâng trào ở khe nắp theo số lượt.
 // Rổ: cùi bưởi hạt lựu trong lòng rổ, đống bột năng vơi dần và bột trắng phủ dần lên từng hạt, bụi bột bay. Mũi tên lên
 // xuống bên cạnh làm gợi ý tới lượt lắc đầu tiên. Đủ lượt thì tự xong.
-// Chấm: scoreLac (lượt / K, nhịp không đều −10, quá 2 × par −15 — core/minigame-scoring.js, không đổi).
+// Chấm: scoreLac (lượt / K, nhịp không đều −10, quá 2 × par −15 — core/minigame-scoring.js, không đổi); nấu thử
+// (ctx.untimed) không phạt quá giờ.
 // Hợp đồng e2e (giữ từ bản tạm gói A): lac-area (vùng kéo); lac-shaker (bình/rổ, hộp đứng yên giữa vùng — phần hình bên trong
 // đi theo ngón); lac-count[data-v = số lượt, data-n = K]. Lớp vỏ (step.skin): binh | ro → lớp gốc .mg-lac.skin-<id>,
 // stage[data-skin].
@@ -308,7 +309,8 @@ function mount(stage, step, ctx = {}) {
     cleanup()
     const strokes = rc.count
     const cv = rc.cv()
-    const score = scoreLac({ strokes, target: K, cv, elapsed, par: step.par, mul })
+    // Nấu thử (ctx.untimed): không phạt quá giờ (par = Infinity → bỏ luật −15), như cha.js
+    const score = scoreLac({ strokes, target: K, cv, elapsed, par: ctx.untimed ? Infinity : step.par, mul })
     feedback(ctx, score >= 90 ? 'good' : score < 50 ? 'bad' : 'ok')
     out.settle({ score, details: { strokes, target: K, cv, elapsed } })
   }

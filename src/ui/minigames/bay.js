@@ -5,16 +5,18 @@
 // nó ra khỏi ly) để lấy ra. Thả ≥ 1 viên thì bật "Xong"; đủ số thì nút Xong sáng lên. Giảm chuyển động: không rơi, không
 // bắn — viên đá hiện thẳng trong ly, chỉ còn gợn mặt nước (opacity).
 // Chấm: scoreBay (điểm vị trí theo khoảng cách tới tâm vùng thả / bán kính lúc thả, −30 mỗi viên lệch số lượng —
-// core/minigame-scoring.js, không đổi).
+// core/minigame-scoring.js, không đổi). Điểm vị trí VẼ RA thành hồng tâm trên vùng thả (hiện khi đang kéo): vòng trong
+// (≤ 0,35·mul·R → 100), vòng giữa (≤ 0,6·mul·R → 80), vành ngoài (≤ R → 55); vùng thả đổi màu theo bậc dưới viên đá đang
+// kéo (xanh đậm / vàng / cam) và mỗi lần thả nổi chữ "Giữa ly!" / "Hơi lệch" / "Lệch mép" — phản hồi khớp với điểm.
 // Hợp đồng e2e (giữ từ bản tạm gói A): bay-target (vùng thả hình tròn trên miệng ly; tâm và bán kính bằng boundingBox; không
-// nhận chạm — pointer-events: none); bay-item-<i>[data-placed = 0|1] (vùng chạm ≥ 46px); bay-count chỉ chứa "k/n" (vd "1/2"),
-// data-v, data-n — nhãn "Đá" nằm ngoài; bay-done (bật khi đã thả ≥ 1). Lớp vỏ (step.skin): ly → .mg-bay.skin-ly,
-// stage[data-skin].
+// nhận chạm — pointer-events: none; khi viên đá đang kéo nằm trên vùng: lớp is-over + data-tier = tam | gan | mep);
+// bay-item-<i>[data-placed = 0|1] (vùng chạm ≥ 46px); bay-count chỉ chứa "k/n" (vd "1/2"), data-v, data-n — nhãn "Đá" nằm
+// ngoài; bay-done (bật khi đã thả ≥ 1). Lớp vỏ (step.skin): ly → .mg-bay.skin-ly, stage[data-skin].
 // Cách giải tự động: với i < data-n, nhấn giữa bay-item-i, kéo (≥ 8 bước) tới tâm bay-target (lệch ±8px), thả; rồi bấm
 // bay-done.
 import { h, svgBox } from '../dom.js'
 import { bindPointer } from '../input.js'
-import { scoreBay } from '../../core/minigame-scoring.js'
+import { scoreBay, bayPlaceScore } from '../../core/minigame-scoring.js'
 import { createClock, frameLoop, settleOnce, feedback, vfxOf, reducedOf, frameSteps } from './_util.js'
 import { buildFrame2 } from './_frame.js'
 import { artV2, propV2, PROP_META } from '../art/v2.js'
@@ -25,6 +27,26 @@ const BAY_ITEM_MIN = 46
 const TAP_MAX = 8
 const LEVEL = 0.52                     // mực cà phê ban đầu (phần chiều cao lòng ly)
 const LEVEL_PER = 0.025                // mỗi viên đá làm mực dâng thêm
+
+// Bậc điểm vị trí (bayPlaceScore) → id bậc (data-tier), chữ nổi khi thả, sắc chữ nổi (vfx.floatText).
+const TIERS = Object.freeze({
+  100: Object.freeze({ id: 'tam', label: 'Giữa ly!', tone: 'good' }),
+  80: Object.freeze({ id: 'gan', label: 'Hơi lệch', tone: 'gold' }),
+  55: Object.freeze({ id: 'mep', label: 'Lệch mép', tone: 'bad' })
+})
+/** Bậc của chỗ thả (d = khoảng cách tới tâm / bán kính vùng thả): { id, label, tone } hoặc null khi ngoài vùng. */
+export function bayTier(d, mul = 1) {
+  if (!(Math.abs(Number(d)) <= 1)) return null
+  return TIERS[bayPlaceScore(d, mul)] || null
+}
+/** Bán kính hai vòng hồng tâm (phần của bán kính vùng thả) theo hệ số vùng mul: { a: vòng 100 điểm, b: vòng 80 điểm }. */
+export function bayRings(mul = 1) {
+  const m = Number(mul) > 0 ? Number(mul) : 1
+  return { a: Math.min(1, 0.35 * m), b: Math.min(1, 0.6 * m) }
+}
+// Lời dưới đầu màn: nói rõ "giữa ly" vì điểm tính theo khoảng cách tới tâm (hồng tâm do plugin vẽ); câu ngắn để vừa một
+// dòng ở khung 320px (lời cũ "Kéo đá thả vào ly, đủ số thì bấm Xong." đã xuống hai dòng).
+const SUB_AIM = Object.freeze({ ly: 'Thả đá vào giữa ly, đủ thì bấm Xong.' })
 
 /** Số món trên khay cho n món cần thả. */
 export function trayCount(n) { return Math.max(Math.floor(Number(n) || 1) + 1, 3) }
@@ -106,7 +128,8 @@ function mount(stage, step, ctx = {}) {
   stage.classList.add('mg-bay', 'skin-' + skinId)
   stage.dataset.skin = skinId
   const fr = buildFrame2(stage, {
-    icon: artV2(itemId), title: step.label || skin.name || T.name || '', sub: skin.sub || 'Kéo từng món thả vào đích, đủ số thì bấm Xong.',
+    icon: artV2(itemId), title: step.label || skin.name || T.name || '',
+    sub: SUB_AIM[skinId] || skin.sub || 'Kéo từng món thả vào giữa đích, đủ số thì bấm Xong.',
     steps: frameSteps(ctx), timeLabel: ctx.untimed ? 'Thong thả' : null, vfx
   })
 
@@ -114,7 +137,11 @@ function mount(stage, step, ctx = {}) {
   const liquid = h('div', { class: 'bay-liquid', html: drinkSvg(LEVEL, drink) })
   const glassSvg = propV2('ly_lon')
   const glassArt = glassSvg ? svgBox(glassSvg, 'bay-glass-art') : h('div', { class: 'bay-glass-art is-css' })
-  const target = h('div', { class: 'bay-target', 'data-testid': 'bay-target', 'aria-hidden': 'true' })
+  // vùng thả + hồng tâm: vành ngoài (55), vòng giữa (80), vòng trong (100), chấm tâm — đường kính vòng (px, theo mul) do
+  // layout() đặt vào --ra, --rb
+  const rings = bayRings(mul)
+  const target = h('div', { class: 'bay-target', 'data-testid': 'bay-target', 'aria-hidden': 'true' },
+    h('i', { class: 'bay-zone bay-zone-b' }), h('i', { class: 'bay-zone bay-zone-a' }), h('i', { class: 'bay-zone-dot' }))
   const hint = svgBox(DOWN, 'bay-hint')
   const ring = h('i', { class: 'bay-ring' })
   const tray = h('div', { class: 'bay-tray' })
@@ -181,6 +208,8 @@ function mount(stage, step, ctx = {}) {
     L = { W, H, s, cell, k, gx, gy, gw, gh, tray: tr, tx: gx + CUP.mouth.cx * k, ty, R: CUP.mouth.rx * k }
     for (const el of [liquid, glassArt]) Object.assign(el.style, { left: gx + 'px', top: gy + 'px', width: Math.round(gw) + 'px', height: Math.round(gh) + 'px' })
     Object.assign(target.style, { left: f1(L.tx - L.R) + 'px', top: f1(L.ty - L.R) + 'px', width: f1(2 * L.R) + 'px', height: f1(2 * L.R) + 'px' })
+    target.style.setProperty('--ra', f1(2 * rings.a * L.R) + 'px')
+    target.style.setProperty('--rb', f1(2 * rings.b * L.R) + 'px')
     Object.assign(tray.style, { left: tr.x + 'px', top: tr.y + 'px', width: tr.w + 'px', height: tr.h + 'px' })
     tray.replaceChildren(...items.map((it, i) => {
       const c = cellPos(i)
@@ -257,7 +286,8 @@ function mount(stage, step, ctx = {}) {
     countPill.classList.toggle('is-over', k > n)
     if (k === n && !fullShown) {
       fullShown = true
-      if (vfx) { try { vfx.floatText(glassArt, 'Đủ đá rồi!', { tone: 'good', size: 'small' }) } catch { /* bỏ qua */ } }
+      // nổi trên nhãn đếm (không chồng lên chữ bậc thả "Giữa ly!" ở miệng ly)
+      if (vfx) { try { vfx.floatText(countPill, 'Đủ đá rồi!', { tone: 'good', size: 'small' }) } catch { /* bỏ qua */ } }
     }
     if (k !== n) fullShown = false
   }
@@ -267,7 +297,16 @@ function mount(stage, step, ctx = {}) {
   const timers = new Set()
   const later = (fn, ms) => { const id = setTimeout(() => { timers.delete(id); fn() }, ms); timers.add(id); return id }
 
-  function overTarget(x, y) { return Math.hypot(x - L.tx, y - L.ty) <= L.R }
+  // Khoảng cách chỗ thả (x, y trong cảnh) tới tâm vùng thả / bán kính, làm tròn 3 chữ số — đúng số đưa vào scoreBay, nên
+  // màu vùng thả lúc kéo, chữ bậc lúc thả và điểm luôn cùng một bậc.
+  const distOf = (x, y) => Math.round((Math.hypot(x - L.tx, y - L.ty) / L.R) * 1000) / 1000
+  // Vùng thả dưới viên đá đang kéo: lớp is-over (trong vùng) + data-tier theo bậc điểm (màu vùng thả theo bậc).
+  function markOver(x, y) {
+    const tier = bayTier(distOf(x, y), mul)
+    target.classList.toggle('is-over', !!tier)
+    if (tier) target.dataset.tier = tier.id
+    else delete target.dataset.tier
+  }
 
   const unbinds = items.map(it => bindPointer(it.el, {
     down(p) {
@@ -287,7 +326,7 @@ function mount(stage, step, ctx = {}) {
       d.moved = Math.max(d.moved, Math.hypot(p.clientX - d.x0, p.clientY - d.y0))
       const x = p.clientX - r.left - d.ox, y = p.clientY - r.top - d.oy
       it.el.style.transform = `translate(${f1(x - L.s / 2)}px, ${f1(y - L.s / 2)}px) scale(1.08)`
-      target.classList.toggle('is-over', overTarget(x, y))
+      markOver(x, y)
     },
     up(p) { drop(it, p, false) },
     cancel(p) { drop(it, p, true) }
@@ -297,6 +336,7 @@ function mount(stage, step, ctx = {}) {
     it.drag = null
     it.el.classList.remove('is-drag')
     target.classList.remove('is-armed', 'is-over')
+    delete target.dataset.tier
   }
 
   function takeOut(it) {
@@ -320,18 +360,23 @@ function mount(stage, step, ctx = {}) {
     }
     const r = scene.getBoundingClientRect()
     const x = p.clientX - r.left - d.ox, y = p.clientY - r.top - d.oy
-    const dist = Math.hypot(x - L.tx, y - L.ty) / L.R
+    const dist = distOf(x, y)
     if (dist <= 1 && !cancelled) {
       const was = !!it.placed
       it.placed = { u: (x - L.gx) / L.k }
       it.order = ++order
-      it.d = Math.round(dist * 1000) / 1000
+      it.d = dist
       it.el.dataset.placed = '1'
       setLevel()
       placeAll()
       const to = it.at
       if (!hint.classList.contains('is-off')) { hint.classList.add('is-off'); later(() => { hint.hidden = true }, 280) }
       render()
+      // chữ bậc thả nổi lên từ chỗ viên đá đáp xuống: điểm vị trí của viên này (khớp màu vùng thả lúc kéo)
+      const tier = bayTier(dist, mul)
+      if (vfx && tier) {
+        try { vfx.floatText({ x: r.left + to.x, y: r.top + to.y }, tier.label, { tone: tier.tone, size: 'small' }) } catch { /* bỏ qua */ }
+      }
       fall(it, { x, y }, to, was)
       return
     }

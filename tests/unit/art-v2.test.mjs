@@ -9,7 +9,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ICONS_V2, STATES_V2, PROPS, PROP_META, artV2, propV2 } from '../../src/ui/art/v2.js'
-import { ICONS, icon } from '../../src/ui/art.js'
+import { ICONS, icon, LEGACY_ICONS } from '../../src/ui/art.js'
 import * as kit from '../../src/ui/art/kit.js'
 import { ING_TUOI, ING_TUOI_STATES } from '../../src/ui/art/ing-tuoi.js'
 import { ING_KHO, ING_KHO_STATES } from '../../src/ui/art/ing-kho.js'
@@ -530,8 +530,10 @@ const D1_TOOLS = [...D1_LEGACY_TOOLS, ...Object.values(D1_ACTION)]
 test('art-v2 món/dụng cụ: đủ 5 món, 14 dụng cụ; giữ mọi id cũ; có trong ICONS_V2; không hình nào trùng', () => {
   assert.deepEqual(Object.keys(MON).sort(), [...D1_MON].sort())
   assert.deepEqual(Object.keys(TOOLS).sort(), [...D1_TOOLS].sort())
-  for (const id of D1_LEGACY_TOOLS) assert.ok(ICONS[id], `${id} là id của bộ hình cũ`)
-  for (const id of D1_MON) assert.ok(ICONS[id], `${id} là id món của bộ hình cũ`)
+  // So với bộ hình cũ nguyên vẹn (LEGACY_ICONS): ICONS ở mặt tiền art.js đã gộp ICONS_V2 nên không dùng để đối chiếu.
+  for (const id of D1_LEGACY_TOOLS) assert.ok(LEGACY_ICONS[id], `${id} là id của bộ hình cũ`)
+  for (const id of D1_MON) assert.ok(LEGACY_ICONS[id], `${id} là id món của bộ hình cũ`)
+  for (const id of [...D1_MON, ...D1_TOOLS]) assert.equal(ICONS[id], ICONS_V2[id], `${id}: mặt tiền ICONS dùng hình mới`)
   for (const [id, s] of [...Object.entries(MON), ...Object.entries(TOOLS)]) {
     assert.equal(ICONS_V2[id], s, `${id} có trong ICONS_V2`)
     assert.equal(artV2(id), s)
@@ -539,7 +541,7 @@ test('art-v2 món/dụng cụ: đủ 5 món, 14 dụng cụ; giữ mọi id cũ;
   const all = [...Object.values(MON), ...Object.values(TOOLS)]
   assert.equal(new Set(all).size, all.length, 'không có hai hình món/dụng cụ trùng chuỗi SVG')
   // Vẽ lại theo phong cách mới: không hình nào còn là chuỗi SVG cũ.
-  for (const id of [...D1_MON, ...D1_LEGACY_TOOLS]) assert.notEqual(ICONS_V2[id], ICONS[id], `${id}: phải là hình mới`)
+  for (const id of [...D1_MON, ...D1_LEGACY_TOOLS]) assert.notEqual(ICONS_V2[id], LEGACY_ICONS[id], `${id}: phải là hình mới`)
 })
 
 test('art-v2 món/dụng cụ: đúng quy tắc vẽ (viewBox 64, ≤ 3,5 KB, viền mực 3, bóng đất, điểm sáng, không chữ, không phần tử cấm)', () => {
