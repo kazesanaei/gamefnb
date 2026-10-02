@@ -76,6 +76,10 @@
   /* chữ viền mực (chồng text-shadow, chạy được mọi trình duyệt) */
   --g-text-outline: 2px 0 0 var(--g-ink), -2px 0 0 var(--g-ink), 0 2px 0 var(--g-ink), 0 -2px 0 var(--g-ink),
     1.5px 1.5px 0 var(--g-ink), -1.5px 1.5px 0 var(--g-ink), 1.5px -1.5px 0 var(--g-ink), -1.5px -1.5px 0 var(--g-ink);
+  /* viền mực mỏng cho chữ trắng cỡ nhỏ (huy hiệu, nhãn, ruy băng): tương phản dựa vào viền, không dựa vào nền */
+  --g-text-outline-thin: 1.2px 0 0 var(--g-ink), -1.2px 0 0 var(--g-ink), 0 1.2px 0 var(--g-ink), 0 -1.2px 0 var(--g-ink),
+    .9px .9px 0 var(--g-ink), -.9px .9px 0 var(--g-ink), .9px -.9px 0 var(--g-ink), -.9px -.9px 0 var(--g-ink),
+    0 2.2px 0 var(--g-ink);
   /* đường cong chuyển động (trùng EASE ở src/ui/motion.js) */
   --g-ease-back: cubic-bezier(0.175, 0.885, 0.32, 1.275);
   --g-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -83,14 +87,25 @@
 }
 
 /* ---------- Nút "bánh kẹo" ---------- */
-/* Viền mực 3px, nền sáng trên → đậm dưới, vệt bóng elip ở nửa trên, bóng cứng 0 4px 0 tông đậm.
-   Bấm: lún 3px, bóng còn 1px, co .97 trong 80ms. Chữ Baloo; vùng chạm ≥ 48px. */
+/* Viền mực 3px, nền sáng trên → đậm dưới, vệt bóng elip ở mép trên, bóng cứng 0 4px 0 tông đậm.
+   Bấm: lún 3px, bóng còn 1px, co .97 trong 80ms. Chữ Baloo; vùng chạm ≥ 48px.
+   Chữ trắng (--primary, --go) luôn có viền mực --g-btn-outline: tương phản do viền mực quyết định (trắng trên mực
+   ≈ 15:1), không phụ thuộc nền gradient sáng. */
 .g-btn {
   --g-btn-top: #fffdf6;
   --g-btn-bot: #f2dcae;
   --g-btn-edge: #a8773a;
   --g-btn-text: var(--g-ink);
   --g-btn-text-shadow: 0 1px 0 rgba(255, 255, 255, .65);
+  /* viền chữ mực: độ dày --g-btn-tw (nút nhỏ mỏng hơn), cộng bóng đổ cứng bên dưới */
+  --g-btn-tw: 1.5px;
+  --g-btn-td: calc(var(--g-btn-tw) * .75);
+  --g-btn-outline:
+    var(--g-btn-tw) 0 0 var(--g-ink), calc(-1 * var(--g-btn-tw)) 0 0 var(--g-ink),
+    0 var(--g-btn-tw) 0 var(--g-ink), 0 calc(-1 * var(--g-btn-tw)) 0 var(--g-ink),
+    var(--g-btn-td) var(--g-btn-td) 0 var(--g-ink), calc(-1 * var(--g-btn-td)) var(--g-btn-td) 0 var(--g-ink),
+    var(--g-btn-td) calc(-1 * var(--g-btn-td)) 0 var(--g-ink), calc(-1 * var(--g-btn-td)) calc(-1 * var(--g-btn-td)) 0 var(--g-ink),
+    0 calc(var(--g-btn-tw) + 1.5px) 0 var(--g-ink);
   position: relative;
   isolation: isolate;
   display: inline-flex;
@@ -119,7 +134,8 @@
   cursor: pointer;
   vertical-align: middle;
 }
-/* vệt bóng elip trắng ~35% ở nửa trên (nằm dưới chữ nhờ isolation + z-index âm) */
+/* vệt bóng elip trắng (tối đa 35%) sát mép trên, cao 30%: nằm trên đầu chữ, không làm nhạt lòng chữ
+   (nằm dưới chữ nhờ isolation + z-index âm) */
 .g-btn::before {
   content: '';
   position: absolute;
@@ -127,9 +143,9 @@
   left: 9%;
   right: 9%;
   top: 3px;
-  height: 44%;
+  height: 30%;
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, .14));
+  background: linear-gradient(180deg, rgba(255, 255, 255, .35), rgba(255, 255, 255, .08));
   pointer-events: none;
 }
 .g-btn:active:not(:disabled):not([aria-disabled="true"]),
@@ -141,18 +157,18 @@
 .g-btn svg, .g-btn .g-ico { flex: none; width: 26px; height: 26px; }
 
 .g-btn--primary {
-  --g-btn-top: var(--g-tomato-light);
-  --g-btn-bot: #d93a2c;
-  --g-btn-edge: var(--g-tomato-dark);
+  --g-btn-top: #ff7f60;
+  --g-btn-bot: #c8331f;
+  --g-btn-edge: #8f2216;
   --g-btn-text: #fff;
-  --g-btn-text-shadow: 0 2px 0 rgba(90, 20, 10, .55);
+  --g-btn-text-shadow: var(--g-btn-outline);
 }
 .g-btn--go {
-  --g-btn-top: var(--g-go-light);
-  --g-btn-bot: #359a31;
-  --g-btn-edge: var(--g-go-dark);
+  --g-btn-top: #84d460;
+  --g-btn-bot: #2c8429;
+  --g-btn-edge: #1d5c22;
   --g-btn-text: #fff;
-  --g-btn-text-shadow: 0 2px 0 rgba(20, 70, 20, .6);
+  --g-btn-text-shadow: var(--g-btn-outline);
 }
 .g-btn--gold {
   --g-btn-top: #fff0a6;
@@ -169,6 +185,7 @@
 .g-btn--ghost::before { display: none; }
 .g-btn--ghost:active:not(:disabled):not([aria-disabled="true"]) { box-shadow: 0 1px 0 rgba(58, 38, 24, .28); }
 .g-btn--small {
+  --g-btn-tw: 1.25px;
   min-height: 44px;
   min-width: 44px;
   padding: 6px 14px 5px;
@@ -177,6 +194,7 @@
 }
 .g-btn--small svg, .g-btn--small .g-ico { width: 22px; height: 22px; }
 .g-btn--big {
+  --g-btn-tw: 1.75px;
   min-height: 60px;
   padding: 10px 26px 9px;
   border-radius: var(--g-radius-l);
@@ -184,7 +202,7 @@
 }
 .g-btn--block { display: flex; width: 100%; }
 .g-btn--round { padding: 0; border-radius: 50%; width: 52px; height: 52px; font-size: 26px; line-height: 1; }
-.g-btn--round::before { left: 22%; right: 22%; top: 4px; height: 38%; }
+.g-btn--round::before { left: 22%; right: 22%; top: 4px; height: 30%; }
 .g-btn--round.g-btn--small { width: 46px; height: 46px; font-size: 24px; }
 /* Không bấm được: phẳng, xám ấm, không lún */
 .g-btn:disabled,
@@ -380,12 +398,12 @@
   font-weight: 800;
   font-size: 15px;
   line-height: 1;
-  text-shadow: 0 1px 0 rgba(90, 20, 10, .55);
+  text-shadow: var(--g-text-outline-thin);
   box-shadow: 0 2px 0 var(--g-ink);
   white-space: nowrap;
 }
 .g-badge--gold { background: radial-gradient(circle at 35% 28%, #fff3b0 0 25%, var(--g-gold) 70%); color: var(--g-ink); text-shadow: none; }
-.g-badge--go { background: radial-gradient(circle at 35% 28%, var(--g-go-light) 0 30%, var(--g-go) 70%); text-shadow: 0 1px 0 rgba(20, 70, 20, .6); }
+.g-badge--go { background: radial-gradient(circle at 35% 28%, var(--g-go-light) 0 30%, var(--g-go) 70%); }
 .g-badge--ink { background: var(--g-ink); color: var(--g-gold-light); text-shadow: none; }
 /* góc trên-phải của khung cha (khung cha cần position: relative) */
 .g-badge--corner { position: absolute; top: -12px; right: -10px; z-index: 2; }
@@ -394,7 +412,7 @@
 .g-ribbon {
   --g-ribbon-bg: linear-gradient(180deg, var(--g-tomato-light), var(--g-tomato) 60%, #d23a2c);
   --g-ribbon-text: #fff;
-  --g-ribbon-text-shadow: 0 2px 0 rgba(90, 20, 10, .55);
+  --g-ribbon-text-shadow: var(--g-text-outline-thin);
   --g-ribbon-tail-l: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 38'%3E%3Cpath d='M24 1.5H1.5L9 19L1.5 36.5H24Z' fill='%23a42a1d'/%3E%3Cpath d='M24 1.5H1.5L9 19L1.5 36.5H24' fill='none' stroke='%233a2618' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M24 4V12L18 4Z' fill='%233a2618' opacity='.35'/%3E%3C/svg%3E");
   --g-ribbon-tail-r: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 38'%3E%3Cpath d='M0 1.5H22.5L15 19L22.5 36.5H0Z' fill='%23a42a1d'/%3E%3Cpath d='M0 1.5H22.5L15 19L22.5 36.5H0' fill='none' stroke='%233a2618' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M0 4V12L6 4Z' fill='%233a2618' opacity='.35'/%3E%3C/svg%3E");
   position: relative;
@@ -438,7 +456,6 @@
 }
 .g-ribbon--go {
   --g-ribbon-bg: linear-gradient(180deg, var(--g-go-light), var(--g-go) 65%, #379a33);
-  --g-ribbon-text-shadow: 0 2px 0 rgba(20, 70, 20, .6);
   --g-ribbon-tail-l: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 38'%3E%3Cpath d='M24 1.5H1.5L9 19L1.5 36.5H24Z' fill='%23226b28'/%3E%3Cpath d='M24 1.5H1.5L9 19L1.5 36.5H24' fill='none' stroke='%233a2618' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M24 4V12L18 4Z' fill='%233a2618' opacity='.35'/%3E%3C/svg%3E");
   --g-ribbon-tail-r: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 38'%3E%3Cpath d='M0 1.5H22.5L15 19L22.5 36.5H0Z' fill='%23226b28'/%3E%3Cpath d='M0 1.5H22.5L15 19L22.5 36.5H0' fill='none' stroke='%233a2618' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M0 4V12L6 4Z' fill='%233a2618' opacity='.35'/%3E%3C/svg%3E");
 }
@@ -463,8 +480,8 @@
 }
 .g-pill svg, .g-pill .g-ico { flex: none; width: 20px; height: 20px; }
 .g-pill--gold { background: linear-gradient(180deg, #fff0a6, var(--g-gold)); }
-.g-pill--go { background: linear-gradient(180deg, var(--g-go-light), var(--g-go)); color: #fff; text-shadow: 0 1px 0 rgba(20, 70, 20, .6); }
-.g-pill--bad { background: linear-gradient(180deg, var(--g-bad-light), var(--g-bad)); color: #fff; text-shadow: 0 1px 0 rgba(90, 20, 10, .55); }
+.g-pill--go { background: linear-gradient(180deg, var(--g-go-light), var(--g-go)); color: #fff; text-shadow: var(--g-text-outline-thin); }
+.g-pill--bad { background: linear-gradient(180deg, var(--g-bad-light), var(--g-bad)); color: #fff; text-shadow: var(--g-text-outline-thin); }
 .g-pill--dark { background: linear-gradient(180deg, #5a3d28, var(--g-ink)); color: var(--g-gold-light); }
 .g-pill--big { min-height: 38px; padding: 3px 16px 2px; font-size: 19px; }
 

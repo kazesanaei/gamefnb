@@ -194,6 +194,237 @@ test('createVfx: giảm chuyển động thì không bay, không rung, không ph
   assert.doesNotThrow(() => createVfx({ reduced: () => { throw new Error('x') } }).burst({ x: 0, y: 0 }))
 })
 
+// DOM giả tối thiểu cho createVfx (Node không có DOM): cây nút, hình chữ nhật, WAAPI giả, rAF chạy tay, canvas 2D rỗng.
+function fakeDom({ width = 390, height = 844 } = {}) {
+  const rafs = new Map()
+  let rafId = 0
+  const docListeners = new Map()
+  const ctx2d = new Proxy({}, {
+    get: (t, k) => (k in t ? t[k] : () => ({ addColorStop() {} })),
+    set: (t, k, v) => { t[k] = v; return true }
+  })
+  const win = {
+    devicePixelRatio: 3,
+    requestAnimationFrame(cb) { rafs.set(++rafId, cb); return rafId },
+    cancelAnimationFrame(id) { rafs.delete(id) },
+    getComputedStyle: () => ({ transform: 'none' })
+  }
+  class Anim {
+    constructor(el) { this.el = el; this.ls = { finish: [], cancel: [] }; this.playState = 'running' }
+    addEventListener(t, f) { (this.ls[t] || (this.ls[t] = [])).push(f) }
+    finish() { if (this.playState !== 'running') return; this.playState = 'finished'; this.el._anims.delete(this); for (const f of this.ls.finish) f({}) }
+    cancel() { if (this.playState === 'idle') return; this.playState = 'idle'; this.el._anims.delete(this); for (const f of this.ls.cancel) f({}) }
+    pause() {}
+    play() {}
+  }
+  let doc = null
+  class El {
+    constructor(tag) {
+      this.tagName = String(tag).toUpperCase()
+      this.children = []
+      this.parentNode = null
+      this.className = ''
+      this.style = {}
+      this.attrs = {}
+      this.text = ''
+      this._anims = new Set()
+      this._rect = null
+      this.hiddenBox = false
+      this.width = 0
+      this.height = 0
+      const cls = () => this.className.split(/\s+/).filter(Boolean)
+      this.classList = {
+        add: c => { if (!cls().includes(c)) this.className = [...cls(), c].join(' ') },
+        remove: c => { this.className = cls().filter(x => x !== c).join(' ') },
+        contains: c => cls().includes(c)
+      }
+    }
+    get rect() {
+      if (this._rect) return this._rect
+      if (this.className === 'vfx-layer' && this.parentNode) return this.parentNode.rect
+      return { left: 0, top: 0, width: 0, height: 0 }
+    }
+    set rect(r) { this._rect = r }
+    get ownerDocument() { return doc }
+    get isConnected() { for (let n = this; n; n = n.parentNode) if (n === doc.body) return true; return false }
+    get childElementCount() { return this.children.length }
+    get firstChild() { return this.children[0] || null }
+    get lastElementChild() { return this.children[this.children.length - 1] || null }
+    get clientWidth() { return this.rect.width }
+    get clientHeight() { return this.rect.height }
+    appendChild(c) { return this.insertBefore(c, null) }
+    insertBefore(c, ref) {
+      if (c.parentNode) c.parentNode.removeChild(c)
+      c.parentNode = this
+      const i = ref ? this.children.indexOf(ref) : -1
+      if (i < 0) this.children.push(c); else this.children.splice(i, 0, c)
+      return c
+    }
+    removeChild(c) { const i = this.children.indexOf(c); if (i >= 0) this.children.splice(i, 1); c.parentNode = null; return c }
+    remove() { if (this.parentNode) this.parentNode.removeChild(this) }
+    setAttribute(k, v) { this.attrs[k] = String(v) }
+    getAttribute(k) { return this.attrs[k] ?? null }
+    removeAttribute(k) { delete this.attrs[k] }
+    get textContent() { return this.text }
+    set textContent(v) { for (const c of this.children) c.parentNode = null; this.children = []; this.text = String(v) }
+    set innerHTML(v) { this.textContent = v }
+    getBoundingClientRect() { return this.isConnected && !this.hiddenBox ? { ...this.rect } : { left: 0, top: 0, width: 0, height: 0 } }
+    getClientRects() { return this.isConnected && !this.hiddenBox ? [this.rect] : [] }
+    animate() { const a = new Anim(this); this._anims.add(a); return a }
+    getAnimations() { return [...this._anims] }
+    getContext(kind) { return this.tagName === 'CANVAS' && kind === '2d' ? ctx2d : null }
+    cloneNode() { return new El(this.tagName) }
+    querySelectorAll() { return [] }
+  }
+  doc = {
+    visibilityState: 'visible',
+    defaultView: win,
+    createElement: t => new El(t),
+    addEventListener(t, f) { if (!docListeners.has(t)) docListeners.set(t, new Set()); docListeners.get(t).add(f) },
+    removeEventListener(t, f) { if (docListeners.has(t)) docListeners.get(t).delete(f) },
+    querySelectorAll: () => []
+  }
+  doc.body = new El('body')
+  doc.body.rect = { left: 0, top: 0, width, height }
+  const host = doc.body.appendChild(new El('div'))
+  host.className = 'overlay-root'
+  host.rect = { left: 0, top: 0, width, height }
+  const box = (left, top, w, h) => { const e = doc.body.appendChild(new El('button')); e.rect = { left, top, width: w, height: h }; return e }
+  // chạy các khung rAF đang chờ, mỗi khung cách 50 ms; trả số khung đã chạy
+  let ts = 0
+  const frames = (max = 200) => {
+    let n = 0
+    while (rafs.size && n < max) {
+      const cbs = [...rafs.values()]
+      rafs.clear()
+      ts += 50
+      for (const cb of cbs) cb(ts)
+      n++
+    }
+    return n
+  }
+  const setHidden = v => {
+    doc.visibilityState = v ? 'hidden' : 'visible'
+    for (const f of docListeners.get('visibilitychange') || []) f({ type: 'visibilitychange' })
+  }
+  return { doc, win, host, box, frames, setHidden, El, pendingRaf: () => rafs.size }
+}
+
+test('createVfx (DOM giả): hết hạt thì canvas rời lớp → stats().dom về 0; nổ lại thì gắn lại canvas, DPR ≤ 2', () => {
+  const D = fakeDom()
+  const fx = createVfx({ host: D.host, reduced: () => false })
+  const a = D.box(150, 400, 90, 48)
+  assert.equal(fx.burst(a, 'sparkle'), particlePlan('sparkle').n)
+  const cv = fx.layer.children.find(e => e.className === 'vfx-canvas')
+  assert.ok(cv, 'có canvas khi đang nổ')
+  assert.equal(cv.width, 390 * VFX_LIMITS.dpr, 'DPR kẹp ở 2 (máy giả 3)')
+  assert.equal(cv.getAttribute('data-n'), String(particlePlan('sparkle').n))
+  assert.ok(fx.stats().dom >= 1 && fx.stats().particles > 0)
+  // vòng sáng là nút DOM: cho hoạt ảnh xong
+  for (const e of [...fx.layer.children]) for (const an of e.getAnimations()) an.finish()
+  D.frames()
+  assert.equal(D.pendingRaf(), 0, 'rAF dừng khi hết hạt')
+  assert.deepEqual(fx.stats(), { dom: 0, particles: 0 }, 'lớp về 0 nút khi đứng yên')
+  assert.equal(cv.parentNode, null, 'canvas đã gỡ khỏi lớp')
+  assert.equal(cv.width, 0, 'nhả bộ nhớ canvas')
+  assert.equal(cv.getAttribute('data-n'), '0')
+  // nổ lại: dùng lại đúng canvas cũ, gắn ở đáy lớp
+  assert.equal(fx.confetti(a), 36)
+  assert.equal(fx.layer.children[0], cv)
+  assert.equal(fx.stats().dom, 1)
+  assert.equal(fx.stats().particles, 36)
+  fx.clear()
+  assert.deepEqual(fx.stats(), { dom: 0, particles: 0 }, 'clear() cũng gỡ canvas')
+  fx.destroy()
+})
+
+test('createVfx (DOM giả): clear() chỉ đưa nút của vfx vào pool; nút lạ chỉ bị gỡ, không tái dùng, không bị xóa nội dung', () => {
+  const D = fakeDom()
+  const fx = createVfx({ host: D.host, reduced: () => false })
+  const foreign = new D.El('section')
+  foreign.className = 'co-pad-ghost'
+  foreign.textContent = 'phiếu'
+  const anim = foreign.animate()
+  let cancelled = false
+  anim.addEventListener('cancel', () => { cancelled = true })
+  fx.layer.appendChild(foreign)
+  const own = fx.floatText({ x: 200, y: 300 }, 'Chuẩn!')
+  assert.ok(own)
+  fx.clear()
+  assert.equal(foreign.parentNode, null, 'nút lạ được gỡ khỏi lớp')
+  assert.equal(foreign.textContent, 'phiếu', 'không xóa nội dung nút lạ')
+  assert.equal(foreign.className, 'co-pad-ghost')
+  assert.equal(cancelled, false, 'không hủy hoạt ảnh của module chủ')
+  const seen = new Set()
+  for (let i = 0; i < 4; i++) {
+    const el = fx.floatText({ x: 200, y: 300 }, 'Ngon!')
+    assert.notEqual(el, foreign, 'không cấp nút lạ cho hiệu ứng mới')
+    seen.add(el)
+  }
+  assert.ok(seen.has(own), 'nút của vfx được dùng lại từ pool')
+  fx.destroy()
+})
+
+test('createVfx (DOM giả): đích đã rời DOM hoặc không hiển thị thì không có hiệu ứng (không nổ ở góc 0,0)', async () => {
+  const D = fakeDom()
+  const fx = createVfx({ host: D.host, reduced: () => false })
+  const ok = D.box(150, 400, 90, 48)
+  const gone = D.box(200, 500, 60, 60)
+  gone.remove()
+  const hidden = D.box(40, 60, 60, 40)
+  hidden.hiddenBox = true // display: none → getClientRects() rỗng
+  for (const t of [gone, hidden]) {
+    assert.equal(fx.burst(t, 'sparkle'), 0)
+    assert.equal(fx.confetti(t), 0)
+    assert.equal(fx.floatText(t, 'X'), null)
+    assert.equal(fx.ripple(t), null)
+    assert.equal(await fx.fly(t, ok), false)
+    assert.equal(await fx.fly(ok, t), false)
+    assert.equal(await fx.coins(t, ok, 4), 0)
+    assert.equal(await fx.coins(ok, t, 4), 0)
+  }
+  assert.deepEqual(fx.stats(), { dom: 0, particles: 0 })
+  // hình chữ nhật / điểm vẫn nhận bình thường
+  assert.ok(fx.floatText({ x: 100, y: 200 }, 'Chuẩn!'))
+  fx.destroy()
+})
+
+test('createVfx (DOM giả): trang ẩn thì clear() và không nhận hiệu ứng mới; hiện lại thì chạy tiếp', async () => {
+  const D = fakeDom()
+  const fx = createVfx({ host: D.host, reduced: () => false })
+  const a = D.box(150, 400, 90, 48)
+  const b = D.box(40, 60, 60, 40)
+  fx.burst(a, 'sparkle')
+  const flight = fx.fly(a, b)
+  const coinRun = fx.coins(a, b, 3)
+  assert.ok(fx.stats().dom > 0 && fx.stats().particles > 0)
+  D.setHidden(true)
+  assert.deepEqual(fx.stats(), { dom: 0, particles: 0 }, 'ẩn trang thì dọn sạch')
+  assert.equal(await flight, false, 'bay bị dọn giữa chừng → false')
+  assert.equal(await coinRun, 0, 'xu bị dọn giữa chừng không tính')
+  // đang ẩn: không hạt, không nút, không rung
+  assert.equal(fx.burst(a, 'sparkle'), 0)
+  assert.equal(fx.confetti(a), 0)
+  assert.equal(fx.floatText(a, 'X'), null)
+  assert.equal(fx.ripple(a), null)
+  assert.equal(fx.shake(a, 2), null)
+  assert.equal(fx.squash(a), null)
+  assert.equal(fx.pop(a), null)
+  assert.equal(await fx.fly(a, b), false)
+  assert.equal(await fx.coins(a, b, 4), 0)
+  assert.deepEqual(fx.stats(), { dom: 0, particles: 0 })
+  assert.equal(D.pendingRaf(), 0, 'không xin rAF khi ẩn')
+  assert.equal(a.getAnimations().length, 0)
+  // hiện lại
+  D.setHidden(false)
+  assert.equal(fx.burst(a, 'star'), particlePlan('star').n)
+  const again = fx.fly(a, b)
+  const fl = fx.layer.children.find(e => e.className === 'vfx-fly')
+  fl.getAnimations()[0].finish()
+  assert.equal(await again, true, 'bay hết hành trình → true')
+  fx.destroy()
+})
+
 test('vfx.js không phát sự kiện lên bus miền và không chạm DOM ở cấp module', () => {
   const src = read('src/ui/vfx.js')
   assert.ok(!/\bemit\s*\(/.test(src), 'vfx.js không được gọi emit()')

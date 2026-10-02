@@ -1,6 +1,6 @@
 // Khách gọi món (M5, màn gọi món): khách bán thân lớn đứng sau mặt quầy (mặt theo tâm trạng từ art.js phóng to + thân
 // áo vẽ SVG theo kiểu khách, nhún nhẹ khi chờ), bong bóng thoại có HÌNH MÓN to, huy hiệu ×n, ghi chú bằng hình
-// (note-icons.js) và một câu nói ngắn phía dưới. Chữ chỉ là phụ.
+// (note-icons.js) và một câu nói ngắn phía dưới (bubbleLine: câu trọn ý, không cắt giữa từ). Chữ chỉ là phụ.
 // Giữ testid của quầy cũ: speech-bubble (data-request = JSON yêu cầu thật); lời qua lại: seller-line / customer-line.
 // Hoạt ảnh chỉ theo SỰ KIỆN: enter() (khách tới), react('ok' | 'bad') (gật đầu / lắc đầu khi đọc lại đơn), lời mới
 // trong talk. update() với cùng dữ liệu không dựng lại gì.
@@ -106,13 +106,42 @@ export function requestText(request, recipes) {
   }).join('; ')
 }
 
-const sigOf = d => JSON.stringify([d.persona, d.gender, d.mood, d.name, d.regular, d.tag, d.speech, d.request, d.showSpeech !== false])
+// Độ dài tối đa (ký tự) của câu nói dưới bong bóng: một dòng ở 375px, hai dòng ở 320px.
+export const SAY_MAX = 34
+
+/**
+ * Câu nói ngắn dưới bong bóng (hình món đã nói đủ món, chữ chỉ là phụ):
+ * câu đầu nếu đủ ngắn ("Như mọi khi nha con!"); không thì lấp từng từ tới giới hạn (ưu tiên cắt ở dấu phẩy nếu đủ xa),
+ * kết bằng "…" và bỏ dấu câu ngay trước dấu lửng. Không cắt giữa từ (trừ một từ dài hơn giới hạn). Rỗng nếu không có lời.
+ */
+export function bubbleLine(speech, max = SAY_MAX) {
+  const s = String(speech || '').replace(/\s+/g, ' ').trim()
+  if (!s) return ''
+  if (s.length <= max) return s
+  const first = (s.match(/^.+?[.!?…](?=\s|$)/) || [s])[0].trim()
+  if (first.length <= max) return first
+  const tidy = t => t.replace(/[\s,;:.!?…–-]+$/, '') + '…'
+  // lấp từng từ tới giới hạn; nếu có dấu phẩy đủ xa (≥ 60% giới hạn) thì cắt ở đó cho trọn vế
+  let out = ''
+  let comma = ''
+  for (const w of first.split(' ')) {
+    const next = out ? out + ' ' + w : w
+    if (next.length > max - 1) break
+    out = next
+    if (/,$/.test(w)) comma = out
+  }
+  if (!out) return tidy(first.slice(0, max - 1))
+  return tidy(comma.length >= max * 0.6 ? comma : out)
+}
+
+const sigOf = d => JSON.stringify([d.persona, d.gender, d.mood, d.name, d.regular, d.tag, d.speech, d.say, d.request, d.showSpeech !== false])
 
 /**
  * createOrderBubble(data, opts) → { el, update(data), destroy(), enter(), react(kind), bubbleEl, figureEl }
  * data: {
  *   persona, mood ('vui'|'binh_thuong'|'buc'|'gian'), gender, name, regular (bool), tag (vd tên kiểu khách),
- *   request: [{ recipeId, qty, notes }], speech (câu khách nói), recipes,
+ *   request: [{ recipeId, qty, notes }], speech (câu khách nói; bong bóng chỉ hiện bản ngắn bubbleLine(speech)),
+ *   say (câu ngắn tự chọn thay cho bản rút gọn), recipes,
  *   talk: [{ who: 'ban' | 'khach', text }] (≤ 2 lời gần nhất, lời mới nảy vào), showSpeech (mặc định true)
  * }
  * opts: { vfx, sound, reduced }
@@ -167,8 +196,12 @@ export function createOrderBubble(data = {}, opts = {}) {
         l.qty > 1 ? h('span', { class: 'co-bubble-qty', 'aria-hidden': 'true' }, '×' + l.qty) : null,
         l.notes.length ? h('span', { class: 'co-bubble-notes' }, l.notes.map(n => noteIcon(n, { recipe: r }))) : null))
     }
-    say.textContent = cur.speech ? `“${cur.speech}”` : ''
-    say.hidden = !cur.speech || cur.showSpeech === false
+    const line = cur.say ? String(cur.say) : bubbleLine(cur.speech)
+    say.textContent = line ? `“${line}”` : ''
+    // câu đầy đủ vẫn đọc được (rê chuột / trình đọc màn hình) khi bong bóng chỉ hiện bản ngắn
+    if (cur.speech && line !== String(cur.speech).trim()) say.title = String(cur.speech)
+    else say.removeAttribute('title')
+    say.hidden = !line || cur.showSpeech === false
   }
 
   function paintTalk(talk, animate) {

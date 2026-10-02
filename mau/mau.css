@@ -52,15 +52,23 @@ html, body {
 .mau-logo svg { width: 100%; height: 100%; transform: translateY(3px) scale(1.08); }
 .mau-brand-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .mau-title { --g-tw: 1.6px; font-size: 23px; white-space: nowrap; letter-spacing: .03em; }
+/* Chữ không đặt thẳng lên vân gỗ (quy ước theme.css): dòng phụ nằm trên viên nền mực tối (tương phản ≈ 7:1). */
 .mau-note {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 1px 10px 0;
+  border-radius: 999px;
+  background: rgba(40, 22, 8, .58);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, .25), 0 1px 0 rgba(255, 220, 170, .2);
+  font-family: var(--g-font-display);
   font-size: 13px;
-  font-weight: 700;
-  line-height: 1.2;
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: .02em;
   color: #fde9c4;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-shadow: 0 1px 0 rgba(40, 22, 8, .7);
 }
 .mau-home { flex: none; padding-left: 12px; padding-right: 12px; text-decoration: none; }
 .mau-gear { position: relative; flex: none; }
@@ -125,7 +133,8 @@ html, body {
 .mau-tab[aria-selected="true"] {
   color: #fff;
   background: linear-gradient(180deg, var(--g-tomato-light) 0%, var(--g-tomato-light) 15%, #d93a2c 100%);
-  text-shadow: 0 2px 0 rgba(90, 20, 10, .6);
+  /* viền chữ đỏ sẫm mảnh: chữ trắng vẫn rõ trên nền cà chua */
+  text-shadow: 1.2px 0 0 var(--g-bad-dark), -1.2px 0 0 var(--g-bad-dark), 0 1.2px 0 var(--g-bad-dark), 0 -1.2px 0 var(--g-bad-dark), 0 2.5px 0 rgba(90, 20, 10, .7);
   box-shadow: inset 0 3px 0 rgba(255, 255, 255, .3), inset 0 -3px 0 rgba(90, 20, 10, .25), 0 3px 0 var(--g-tomato-dark);
 }
 .mau-tab[aria-selected="true"] .mau-tab-ico { transform: scale(1.1) rotate(-6deg); animation: mau-tab-pop .32s var(--g-ease-back) both; }
@@ -201,12 +210,15 @@ html, body {
   box-shadow: inset 0 3px 0 rgba(255, 220, 170, .3);
 }
 .mau-dock-label {
+  padding: 1px 10px 0;
+  border-radius: 999px;
+  background: rgba(40, 22, 8, .58);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, .25), 0 1px 0 rgba(255, 220, 170, .2);
   font-family: var(--g-font-display);
   font-weight: 800;
   font-size: 15px;
-  line-height: 1.1;
+  line-height: 1.15;
   color: #fff4d8;
-  text-shadow: 0 1px 0 rgba(40, 22, 8, .8);
   white-space: nowrap;
 }
 .mau-dock-again { flex: none; }
@@ -507,6 +519,7 @@ html, body {
   margin: 18px 4px 24px;
   padding: 26px 16px 18px;
   text-align: center;
+  animation: g-card-up .22s var(--g-ease-out) both;
 }
 .mau-done-stamp {
   display: inline-block;
@@ -522,32 +535,48 @@ html, body {
   letter-spacing: .06em;
   transform: rotate(-8deg);
   box-shadow: inset 0 0 0 2px rgba(216, 57, 43, .3);
+  animation: mau-done-stamp .2s cubic-bezier(.55, 0, .9, .45) .12s both;
 }
+@keyframes mau-done-stamp {
+  0% { opacity: 0; transform: rotate(-8deg) scale(1.4); }
+  100% { opacity: 1; transform: rotate(-8deg) scale(1); }
+}
+@keyframes mau-fade { from { opacity: 0; } to { opacity: 1; } }
 .mau-done-title { margin-top: 6px; font-family: var(--g-font-display); font-weight: 800; font-size: 23px; line-height: 1.1; }
 .mau-done-text { max-width: 300px; font-size: 15px; line-height: 1.4; color: var(--g-ink-soft); }
 .mau-done-again { margin-top: 6px; }
 
-/* thông báo ngắn (vd món hết hàng) */
+/* thông báo ngắn (vd món hết hàng): viên nhãn đỏ .g-pill--bad, viền mực, biểu tượng; ở đáy, ngay trên hàng nút
+   (mau.js đặt bottom theo hàng Đọc lại / Chốt), không nhận chạm */
 .mau-toast,
 .overlay-root > .mau-toast {
   position: absolute;
-  left: 50%;
-  top: calc(150px + var(--safe-top));
+  left: 12px;
+  right: 12px;
+  bottom: calc(16px + var(--safe-bottom));
   z-index: 60;
-  max-width: calc(100% - 32px);
-  padding: 8px 14px;
-  border: 2.5px solid var(--g-ink);
-  border-radius: 12px;
-  background: #fff0ec;
-  color: var(--g-bad-dark);
-  font-weight: 700;
+  width: fit-content;
+  max-width: calc(100% - 24px);
+  min-height: 44px;
+  margin: 0 auto;
+  padding: 4px 16px 3px 6px;
+  gap: 8px;
+  border-width: 3px;
+  background: linear-gradient(180deg, #e8483a 0%, #e8483a 30%, #b82c1f 100%);
   font-size: 15px;
-  text-align: center;
-  transform: translateX(-50%);
-  box-shadow: 0 4px 0 rgba(58, 38, 24, .3);
+  line-height: 1.2;
+  white-space: normal;
+  text-wrap: balance;
+  text-align: left;
+  text-shadow: 0 1px 0 rgba(90, 20, 10, .7);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .28), inset 0 -3px 0 rgba(90, 20, 10, .3), 0 4px 0 rgba(58, 38, 24, .4);
   pointer-events: none;
-  animation: g-fade-in .15s ease-out both;
+  animation: mau-toast-in .22s var(--g-ease-back) both;
 }
+.mau-toast .mau-toast-ico { display: block; flex: none; width: 30px; height: 30px; }
+.mau-toast .mau-toast-ico svg { width: 100%; height: 100%; }
+.mau-toast-text { min-width: 0; }
+@keyframes mau-toast-in { 0% { opacity: 0; transform: translateY(10px) scale(.92); } 100% { opacity: 1; transform: none; } }
 
 /* ---------- Thẻ Bếp: Thái ---------- */
 .mau-kitchen { position: relative; flex: 1 1 auto; min-height: 0; }
@@ -595,8 +624,9 @@ html, body {
 .mau-reveal-host { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; background: #6d4a2c; }
 .mau-reveal-host > .g-reveal { position: absolute; inset: 0; }
 .mau-dock--reveal { flex-direction: column; align-items: stretch; gap: 8px; }
-.mau-seg--grade { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); width: 100%; }
-.mau-seg--grade .mau-seg-btn { padding: 3px 3px 1px; font-size: 15px; white-space: normal; border-bottom: 5px solid transparent; }
+/* nút co theo nội dung (chữ dài "Tuyệt hảo" rộng hơn), không xuống dòng; phần dư chia đều */
+.mau-seg--grade { display: flex; width: 100%; }
+.mau-seg--grade .mau-seg-btn { flex: 1 1 auto; min-width: 44px; padding: 3px 6px 1px; font-size: 15px; white-space: nowrap; border-bottom: 5px solid transparent; }
 .mau-seg--grade .mau-seg-btn.grade-tuyet_hao { border-bottom-color: var(--g-gold); }
 .mau-seg--grade .mau-seg-btn.grade-ngon { border-bottom-color: var(--g-go); }
 .mau-seg--grade .mau-seg-btn.grade-duoc { border-bottom-color: var(--g-sky); }
@@ -735,6 +765,7 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   .mau-tab, .mau-toggle, .mau-stamp-btn, .mau-switch-knob { transition: none; }
   .mau-sheet-layer, .mau-settings.g-paper, .mau-toast, .mau-view, .mau-tab-ico { animation: none !important; }
+  .mau-done, .mau-done-stamp { animation: mau-fade .2s linear both !important; }
 }
 html.reduce-motion .mau-tab,
 html.reduce-motion .mau-toggle,
@@ -745,3 +776,6 @@ html.reduce-motion .mau-settings.g-paper,
 html.reduce-motion .mau-toast,
 html.reduce-motion .mau-view,
 html.reduce-motion .mau-tab-ico { animation: none !important; }
+/* thẻ Đã chốt và con dấu nhỏ: chỉ hiện dần, không phóng / nảy */
+html.reduce-motion .mau-done,
+html.reduce-motion .mau-done-stamp { animation: mau-fade .2s linear both !important; }

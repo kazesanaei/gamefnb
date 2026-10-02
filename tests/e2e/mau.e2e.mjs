@@ -3,11 +3,15 @@
 // --safe-bottom qua initCss như iphone-overlays.e2e): mở mau.html qua máy chủ tĩnh (khung 390×844 chạy dưới đường dẫn con
 // /gamefnb/ như GitHub Pages), không lỗi console / pageerror / requestfailed / HTTP ≥ 400; ở mỗi thẻ: mọi nút hiển thị
 // ≥ 44px, chữ hiển thị ≥ 13px, nút chính không bị che (elementFromPoint) và nằm trong vùng an toàn; font Baloo 2 nạp được.
-//  - Gọi món: chạy trọn luồng thật (món, số lượng, ghi chú, đọc lại, chốt order) → có con dấu ĐÃ CHỐT, phiếu mới lên dây.
+//  - Gọi món: chạm món HẾT → thông báo đỏ ở đáy ngay trên hàng nút, mở bảng chọn món thì tắt ngay; chạy trọn luồng thật
+//    (món, số lượng, ghi chú, đọc lại, chốt order) → con dấu ĐÃ CHỐT đập trên phiếu rồi phiếu bay lên dây; thẻ "Đã chốt"
+//    (con dấu nhỏ + nút Gọi món lại) chỉ hiện SAU khi phiếu bay xong (không bao giờ hai con dấu cùng lúc).
 //  - Bếp: Thái: thẻ "Bước 3/6 · Thái dưa leo!" → thái theo data-x của thai-guide-i → điểm ≥ 90, con dấu hạng hoan_hao,
-//    Dì Sáu phản ứng; nút xem nhanh dấu đổi đúng hạng.
+//    Dì Sáu phản ứng; nút xem nhanh dấu đổi đúng hạng. Ở 375×553: chạm (touchscreen.tap) lên thẻ bước ngay chỗ nút "Xong"
+//    của sân khấu → vào bước nhưng cú click ma KHÔNG rơi xuống nút Xong (bước chưa có step-result).
 //  - Ra món: dish-reveal có data-grade / data-q đúng bảng mẫu cho cả 5 hạng.
-//  - Giảm chuyển động (công tắc trong trang): không còn hoạt ảnh vô hạn đang chạy, vfx không còn hạt.
+//  - Giảm chuyển động: (1) công tắc trong trang; (2) test riêng mở trang với reducedMotion: 'reduce' của trình duyệt
+//    (prefers-reduced-motion) → công tắc bật sẵn, chạy trọn 3 luồng; cả hai: không còn hoạt ảnh vô hạn, vfx không còn hạt.
 //  - Lớp .vfx-layer không nhận chạm, ≤ 30 nút; trang không ghi bản lưu của game (localStorage 'bkn.save').
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -20,14 +24,14 @@ const VIEWPORTS = [
   { width: 390, height: 844, safe: true, basePath: '/gamefnb' },
   { width: 360, height: 600, safe: false, low: true },
   { width: 320, height: 568, safe: false },
-  { width: 375, height: 553, safe: true }
+  { width: 375, height: 553, safe: true, tap: true }
 ]
 const vpName = vp => `${vp.width}×${vp.height}${vp.safe ? ' (vùng an toàn)' : ''}`
 
-async function openMau(vp) {
+async function openMau(vp, { contextOptions = null } = {}) {
   const stray = []
   const g = await openGame({
-    viewport: { width: vp.width, height: vp.height }, name: 'mau', basePath: vp.basePath || '',
+    viewport: { width: vp.width, height: vp.height }, name: 'mau', basePath: vp.basePath || '', contextOptions,
     initCss: vp.safe ? `:root { --safe-top: ${SAFE_TOP}px !important; --safe-bottom: ${SAFE_BOTTOM}px !important; }` : '',
     onResponse: vp.basePath ? ({ url, status }) => {
       const p = url.split('?')[0]
@@ -36,6 +40,7 @@ async function openMau(vp) {
   })
   g.page.on('requestfailed', r => g.errors.push('requestfailed: ' + r.url() + ' ' + ((r.failure() || {}).errorText || '')))
   g.stray = stray
+  g.vp = vp
   g.safeTop = vp.safe ? SAFE_TOP : 0
   g.safeBottom = vp.safe ? SAFE_BOTTOM : 0
   await g.page.goto(g.url('mau.html'))
@@ -113,6 +118,23 @@ async function vfxOk(page, label) {
   assert.ok(v.stats.dom <= 30, `${label}: .vfx-layer có ${v.stats.dom} nút (> 30)`)
 }
 
+// Hoạt ảnh vô hạn đang chạy (CSS lẫn WAAPI) và số hạt vfx đang bay.
+function motionState(page) {
+  return page.evaluate(() => {
+    const list = document.getAnimations().filter(a => {
+      const t = a.effect && a.effect.getComputedTiming ? a.effect.getComputedTiming() : {}
+      return t.iterations === Infinity && a.playState === 'running'
+    })
+    return { n: list.length, names: list.slice(0, 5).map(a => (a.animationName || a.id || '?') + '@' + ((a.effect && a.effect.target && a.effect.target.className) || '')), particles: window.__mau.vfx.stats().particles }
+  })
+}
+
+async function assertStill(page, label) {
+  const r = await motionState(page)
+  assert.equal(r.n, 0, `${label}: còn hoạt ảnh vô hạn khi giảm chuyển động: ${r.names.join(', ')}`)
+  assert.equal(r.particles, 0, `${label}: vfx còn hạt khi giảm chuyển động`)
+}
+
 async function openTab(g, id) {
   await g.page.click(T('mau-tab-' + id))
   await g.page.waitForSelector(T('mau-view-' + id), { state: 'visible' })
@@ -134,9 +156,24 @@ async function orderFlow(g, label) {
   await settle(page)
   await assertAudit(g, label + ' Gọi món')
   await assertReach(g, [T('mau-tab-goi-mon'), T('mau-settings'), T('readback')], label + ' Gọi món')
-  // dòng 1: 2 bánh mì ốp la, không hành, cay
+  // chạm món HẾT (nút aria-disabled nên phải ép chạm): thông báo đỏ ở đáy, ngay trên hàng nút Đọc lại / Chốt, không nhận chạm
+  await page.locator(T('menu-item-tra_tac_mat_ong')).scrollIntoViewIfNeeded()
+  await page.click(T('menu-item-tra_tac_mat_ong'), { force: true })
+  await page.waitForSelector(T('mau-toast'), { state: 'visible' })
+  const toast = await page.evaluate(() => {
+    const t = document.querySelector('[data-testid="mau-toast"]')
+    const r = t.getBoundingClientRect()
+    const a = document.querySelector('[data-testid="readback"]').getBoundingClientRect()
+    return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, actionsTop: a.top, pe: getComputedStyle(t).pointerEvents, cls: t.className }
+  })
+  assert.ok(toast.bottom <= toast.actionsTop + 0.5, `${label}: thông báo HẾT phải nằm trên hàng nút (đáy ${Math.round(toast.bottom)} > ${Math.round(toast.actionsTop)})`)
+  assert.ok(toast.left >= -0.5 && toast.right <= g.vp.width + 0.5 && toast.top >= g.safeTop, label + ': thông báo HẾT nằm trong màn')
+  assert.equal(toast.pe, 'none', label + ': thông báo không nhận chạm')
+  assert.match(toast.cls, /g-pill--bad/, label + ': thông báo kiểu viên nhãn đỏ')
+  // dòng 1: 2 bánh mì ốp la, không hành, cay (mở bảng chọn món thì thông báo tắt ngay)
   await page.click(T('menu-item-banh_mi_op_la'))
   await page.waitForSelector(T('order-sheet'), { state: 'visible' })
+  assert.equal(await page.$$eval(T('mau-toast'), els => els.length), 0, label + ': mở bảng chọn món phải tắt thông báo HẾT')
   await settle(page)
   await assertAudit(g, label + ' bảng chọn món')
   await page.click(T('qty-plus'))
@@ -160,19 +197,34 @@ async function orderFlow(g, label) {
   await page.waitForSelector(`${T('confirm-order')}:not([disabled])`, { timeout: 8000 })
   await settle(page, 300)
   await assertReach(g, [T('confirm-order')], label + ' sau đọc lại')
-  // theo dõi con dấu ĐÃ CHỐT (nằm trên bản sao phiếu trong lớp hiệu ứng, tự gỡ sau khi bay)
+  // theo dõi con dấu ĐÃ CHỐT (nằm trên bản sao phiếu trong lớp hiệu ứng, tự gỡ sau khi bay) và thẻ "Đã chốt": thẻ chỉ
+  // được hiện sau khi bản sao phiếu đã đi hết (không lúc nào có hai con dấu, không có nút Gọi món lại dưới bản sao)
   await page.evaluate(() => {
     window.__stampSeen = false
-    const mo = new MutationObserver(() => { if (document.querySelector('.co-stamp')) window.__stampSeen = true })
+    window.__stampBoth = false
+    window.__againEarly = false
+    const check = () => {
+      const co = document.querySelector('.co-stamp')
+      if (!co) return
+      window.__stampSeen = true
+      if (document.querySelector('[data-testid="mau-order-stamp"]')) window.__stampBoth = true
+      if (document.querySelector('[data-testid="mau-order-again"]')) window.__againEarly = true
+    }
+    const mo = new MutationObserver(check)
     mo.observe(document.body, { childList: true, subtree: true })
     window.__stampMo = mo
   })
   await page.click(T('confirm-order'))
-  await page.waitForSelector(T('mau-order-stamp'), { state: 'visible' })
-  assert.equal((await page.textContent(T('mau-order-stamp'))).trim(), 'ĐÃ CHỐT')
   await page.waitForFunction(() => window.__stampSeen === true, null, { timeout: 3000 })
+  assert.equal(await page.$(T('mau-order-done')), null, label + ': thẻ Đã chốt chưa được hiện khi phiếu còn đập dấu')
   await vfxOk(page, label + ' lúc chốt')
+  await page.waitForSelector(T('mau-order-stamp'), { state: 'visible', timeout: 5000 })
+  assert.equal((await page.textContent(T('mau-order-stamp'))).trim(), 'ĐÃ CHỐT')
   await page.waitForSelector(T('mau-ticket-new'), { timeout: 5000 })
+  const seq = await page.evaluate(() => { window.__stampMo.disconnect(); return { both: window.__stampBoth, again: window.__againEarly, co: document.querySelectorAll('.co-stamp').length } })
+  assert.equal(seq.both, false, label + ': không được có hai con dấu ĐÃ CHỐT cùng lúc')
+  assert.equal(seq.again, false, label + ': nút Gọi món lại chỉ hiện sau khi phiếu bay xong')
+  assert.equal(seq.co, 0, label + ': bản sao phiếu đã gỡ khi thẻ Đã chốt hiện')
   const events = await page.evaluate(() => window.__mau.log.events.map(e => e.type))
   assert.ok(events.includes('mau.order.confirmed'), label + ': bus nhận sự kiện chốt order')
   await settle(page)
@@ -198,6 +250,7 @@ async function thaiFlow(g, label) {
   await settle(page, 300)
   await assertAudit(g, label + ' sân khấu Thái')
   await assertReach(g, [T('thai-done')], label + ' sân khấu Thái')
+  const doneAt = await page.$eval(T('thai-done'), e => { const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 } })
   // kéo dao tới vạch (data-x tính từ mép trái sân khấu), nhấc tay để cắt
   const stage = await (await page.$(T('minigame-stage'))).boundingBox()
   const food = await (await page.$('.thai-food')).boundingBox()
@@ -233,6 +286,27 @@ async function thaiFlow(g, label) {
   await settle(page)
   await assertAudit(g, label + ' sau xem dấu')
   // Thái lại: thẻ bước hiện lại
+  await page.click(T('mau-thai-again'))
+  await page.waitForSelector(T('step-hint'), { state: 'visible' })
+  if (g.vp.tap) await tapThroughCase(g, label, doneAt)
+}
+
+// Chạm thật (touchscreen.tap) lên thẻ bước, đúng chỗ nút "Xong" của sân khấu sẽ hiện dưới ngón tay: thẻ vào bước ngay ở
+// pointerdown; cú click trình duyệt tự sinh lúc nhấc ngón phải bị nuốt, không được bấm trúng nút Xong (kết thúc bước 0 nhát).
+async function tapThroughCase(g, label, at) {
+  const { page } = g
+  await settle(page, 500)
+  const under = await page.evaluate(([x, y]) => { const e = document.elementFromPoint(x, y); return !!(e && e.closest('[data-testid="step-hint"]')) }, [at.x, at.y])
+  assert.equal(under, true, label + ': điểm chạm phải nằm trên thẻ bước (che nút Xong)')
+  const before = await page.evaluate(() => window.__mau.log.events.filter(e => e.type === 'mau.step.result').length)
+  await page.touchscreen.tap(at.x, at.y)
+  await page.waitForSelector(T('thai-board'), { state: 'visible' })
+  await page.waitForSelector(T('step-hint'), { state: 'detached' })
+  await page.waitForTimeout(700)
+  assert.equal(await page.$(T('step-result')), null, label + ': chạm thẻ bước không được rơi xuống nút Xong (bước đã có step-result)')
+  const after = await page.evaluate(() => window.__mau.log.events.filter(e => e.type === 'mau.step.result').length)
+  assert.equal(after, before, label + ': chạm thẻ bước không được kết thúc bước')
+  assert.ok(await page.$(T('thai-done')), label + ': bước vẫn đang chơi (còn nút Xong)')
   await page.click(T('mau-thai-again'))
   await page.waitForSelector(T('step-hint'), { state: 'visible' })
 }
@@ -299,34 +373,29 @@ async function reducedFlow(g, label) {
   assert.equal(await page.evaluate(() => document.documentElement.classList.contains('reduce-motion')), true)
   await page.click(T('mau-settings-close'))
   await page.waitForSelector(T('mau-settings-layer'), { state: 'detached' })
-  const infinite = () => page.evaluate(() => {
-    const list = document.getAnimations().filter(a => {
-      const t = a.effect && a.effect.getComputedTiming ? a.effect.getComputedTiming() : {}
-      return t.iterations === Infinity && a.playState === 'running'
-    })
-    return { n: list.length, names: list.slice(0, 5).map(a => (a.animationName || a.id || '?') + '@' + ((a.effect && a.effect.target && a.effect.target.className) || '')) , particles: window.__mau.vfx.stats().particles }
-  })
+  await stillTabs(g, label)
+  // tắt lại
+  await page.click(T('mau-settings'))
+  await page.click(T('mau-sw-reduce'))
+  await page.click(T('mau-settings-close'))
+}
+
+// Mỗi thẻ (và dấu Hoàn hảo) khi giảm chuyển động: không hoạt ảnh vô hạn, không hạt.
+async function stillTabs(g, label) {
+  const { page } = g
   for (const t of MAU_TABS) {
     await openTab(g, t.id)
     if (t.id === 'ra-mon') { await page.click(T('mau-grade-tuyet_hao')); await page.waitForSelector(T('dish-reveal')) }
     if (t.id === 'goi-mon' && await page.$(T('mau-order-again'))) { await page.click(T('mau-order-again')); await page.waitForSelector(T('speech-bubble')) }
     await page.waitForTimeout(400)
-    const r = await infinite()
-    assert.equal(r.n, 0, `${label} ${t.id}: còn hoạt ảnh vô hạn khi giảm chuyển động: ${r.names.join(', ')}`)
-    assert.equal(r.particles, 0, `${label} ${t.id}: vfx còn hạt khi giảm chuyển động`)
+    await assertStill(page, `${label} ${t.id}`)
   }
   // dấu Hoàn hảo khi giảm chuyển động: không hạt, không chuyển động vô hạn
   await openTab(g, 'thai')
   await page.click(T('mau-stamp-hoan_hao'))
   await page.waitForSelector('.g-stamp.grade-hoan_hao')
   await page.waitForTimeout(400)
-  const r = await infinite()
-  assert.equal(r.n, 0, label + ' con dấu: còn hoạt ảnh vô hạn')
-  assert.equal(r.particles, 0, label + ' con dấu: còn hạt')
-  // tắt lại
-  await page.click(T('mau-settings'))
-  await page.click(T('mau-sw-reduce'))
-  await page.click(T('mau-settings-close'))
+  await assertStill(page, label + ' con dấu')
 }
 
 // ---------- Khung thấp ----------
@@ -386,3 +455,37 @@ for (const vp of VIEWPORTS) {
     }
   })
 }
+
+// Hệ thống bật giảm chuyển động (prefers-reduced-motion: reduce qua reducedMotion của Playwright), KHÔNG chạm công tắc:
+// trang tự bật chế độ giảm (lớp reduce-motion, công tắc đã bật), 3 luồng vẫn chạy trọn và không còn chuyển động vô hạn / hạt.
+test('Phòng mẫu 375×553 (vùng an toàn) khi hệ thống bật giảm chuyển động: công tắc bật sẵn, luồng chạy trọn, không hoạt ảnh vô hạn, không hạt', { timeout: 240000 }, async () => {
+  const vp = { width: 375, height: 553, safe: true, tap: true }
+  const label = vpName(vp) + ' reducedMotion'
+  const g = await openMau(vp, { contextOptions: { reducedMotion: 'reduce' } })
+  try {
+    const { page } = g
+    const env = await page.evaluate(() => ({
+      mq: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      cls: document.documentElement.classList.contains('reduce-motion'),
+      st: window.__mau.st.reduce
+    }))
+    assert.deepEqual(env, { mq: true, cls: true, st: true }, label + ': trang phải tự bật giảm chuyển động theo hệ thống')
+    await page.click(T('mau-settings'))
+    await page.waitForSelector(T('mau-sw-reduce'), { state: 'visible' })
+    assert.equal(await page.getAttribute(T('mau-sw-reduce'), 'aria-checked'), 'true', label + ': công tắc Giảm chuyển động bật sẵn')
+    await page.click(T('mau-settings-close'))
+    await page.waitForSelector(T('mau-settings-layer'), { state: 'detached' })
+    await assertStill(page, label + ' mở trang')
+    await orderFlow(g, label)
+    await assertStill(page, label + ' sau chốt')
+    await thaiFlow(g, label)
+    await assertStill(page, label + ' sau Thái')
+    await revealFlow(g, label)
+    await assertStill(page, label + ' sau ra món')
+    await stillTabs(g, label)
+    await vfxOk(page, label + ' cuối')
+    assert.deepEqual(g.errors, [], label + ': có lỗi console / trang / mạng')
+  } finally {
+    await g.close()
+  }
+})

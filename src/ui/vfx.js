@@ -4,7 +4,8 @@
 // - Chỉ animate transform/opacity (WAAPI) và vẽ canvas; will-change chỉ bật khi đang chạy.
 // - Lớp .vfx-layer (z-index 25 trong .overlay-root) luôn pointer-events:none; tạo lười ở lần gọi đầu.
 // - Tối đa VFX_LIMITS.dom nút trong lớp (kể cả canvas), tối đa VFX_LIMITS.particles hạt; canvas tạo lười, DPR ≤ 2,
-//   rAF chỉ chạy khi còn hạt; trang ẩn (visibilitychange) thì dọn sạch.
+//   rAF chỉ chạy khi còn hạt, hết hạt thì canvas rời lớp (đứng yên: stats().dom === 0); trang ẩn (visibilitychange)
+//   thì dọn sạch và không nhận hiệu ứng mới cho tới khi trang hiện lại; đích đã rời DOM thì bỏ qua hiệu ứng.
 // - Đầu mỗi hàm hỏi reduced(): giảm chuyển động thì chỉ đổi opacity / hiện thẳng, không hạt bay, không rung.
 // - KHÔNG phát sự kiện lên bus miền (app.js lưu sau mỗi sự kiện bus).
 // - Import trong Node an toàn: không chạm document/window ở cấp module.
@@ -280,10 +281,14 @@ function drawParticle(g, p) {
 
 // ---------- Hệ hiệu ứng gắn DOM ----------
 
+// Hình chữ nhật (tọa độ khung nhìn) của đích. Phần tử đã rời DOM (isConnected === false) hoặc không có hộp hiển thị
+// (display: none, getClientRects() rỗng) → null, để hiệu ứng không nổ ở góc trên-trái (0, 0).
 function rectOf(t) {
   if (!t) return null
   try {
     if (typeof t.getBoundingClientRect === 'function') {
+      if (t.isConnected === false) return null
+      if (typeof t.getClientRects === 'function' && t.getClientRects().length === 0) return null
       const r = t.getBoundingClientRect()
       return { left: r.left, top: r.top, width: r.width, height: r.height, point: false }
     }
@@ -312,11 +317,21 @@ function rectOf(t) {
  *   fly(from, to, { node, html, ms, arc, scale, bump }) "nhân bản rồi bay" theo cung Bézier → Promise<boolean>
  *   coins(from, to, n, { stagger, ms, bump }) xu bay tỏa ra rồi về đích → Promise<số xu đã bay>
  *   confetti(target, n = 36)                pháo giấy trên canvas → số mảnh đã tạo
- *   stats() → { dom, particles }            số nút trong lớp, số hạt canvas (canvas cũng ghi data-n)
+ *   stats() → { dom, particles }            số nút đang nằm trong lớp, số hạt canvas (canvas cũng ghi data-n)
  *   clear(), destroy()
  * }
  * target / from / to: phần tử, hình chữ nhật { left, top, width, height } hoặc điểm { x, y } (tọa độ khung nhìn).
  * reduced: hàm () → boolean (mặc định isReduced() của motion.js) hoặc giá trị boolean.
+ * Quy ước dọn:
+ * - Hết hạt thì canvas được gỡ khỏi lớp (giữ tham chiếu để dùng lại), nên đứng yên ~1 s sau hiệu ứng cuối thì
+ *   stats().dom === 0 và stats().particles === 0.
+ * - Đích là phần tử đã rời DOM hoặc không hiển thị → hiệu ứng không chạy (burst/confetti → 0, floatText/ripple → null,
+ *   fly → false, coins → 0).
+ * - Trang đang ẩn (document.visibilityState === 'hidden') → không nhận hiệu ứng mới (cùng giá trị trả như trên;
+ *   shake/squash/pop → null). Lúc trang chuyển sang ẩn thì clear().
+ * - fly/coins bị clear() / destroy() / hủy hoạt ảnh giữa chừng → Promise trả false / chỉ đếm xu đã tới đích.
+ * - Chỉ nút do vfx tự tạo mới vào pool. Nút module khác tự chèn vào lớp (vd bản sao phiếu) thì clear() chỉ gỡ ra,
+ *   không tái dùng, không hủy hoạt ảnh của nó.
  */
 export function createVfx({ host = null, reduced = null } = {}) {
   const red = () => {
@@ -338,7 +353,8 @@ export function createVfx({ host = null, reduced = null } = {}) {
   let raf = 0
   let lastTs = 0
   let frozen = 0
-  const pool = []                 // phần tử rảnh để dùng lại
+  const pool = []                 // phần tử rảnh để dùng lại (chỉ nút do vfx tự tạo)
+  const owned = new WeakSet()     // nút do vfx tự tạo (khác nút module khác chèn vào lớp)
   const live = new Set()          // hiệu ứng đang chạy trong lớp: { el, anim, end }
   const extern = new Map()        // phần tử ngoài lớp → Animation (rung, nảy…)
   const timers = new Set()
@@ -349,6 +365,14 @@ export function createVfx({ host = null, reduced = null } = {}) {
     return id
   }
   const win = () => (doc && doc.defaultView) || (typeof window !== 'undefined' ? window : null)
+
+  // Trang đang ẩn: không nhận hiệu ứng mới (rAF dừng khi ẩn, hạt sẽ đứng yên rồi bung ra lúc quay lại).
+  function pageHidden() {
+    const d = doc || (host && host.ownerDocument) || (typeof document !== 'undefined' ? document : null)
+    return !!d && d.visibilityState === 'hidden'
+  }
+  // Không nhận hiệu ứng mới: đã destroy() hoặc trang đang ẩn.
+  const blocked = () => destroyed || pageHidden()
 
   function onVisibility() {
     if (doc && doc.visibilityState === 'hidden') clear()
@@ -381,11 +405,15 @@ export function createVfx({ host = null, reduced = null } = {}) {
     return { x, y, w: r.width, h: r.height, cx: x + r.width / 2, cy: y + r.height / 2, point: r.point, W: L.width, H: L.height }
   }
 
-  // Lấy một nút từ pool (null nếu đã đủ VFX_LIMITS.dom nút trong lớp).
+  // Lấy một nút từ pool (null nếu đã đủ VFX_LIMITS.dom nút trong lớp, hoặc trang đang ẩn).
   function take(cls) {
-    if (!ensureLayer()) return null
+    if (blocked() || !ensureLayer()) return null
     if (layer.childElementCount >= VFX_LIMITS.dom) return null
-    const el = pool.pop() || doc.createElement('div')
+    let el = pool.pop()
+    if (!el) {
+      el = doc.createElement('div')
+      owned.add(el)
+    }
     el.className = cls
     el.removeAttribute('style')
     el.removeAttribute('data-kind')
@@ -396,24 +424,31 @@ export function createVfx({ host = null, reduced = null } = {}) {
     return el
   }
 
+  // Trả nút về pool. Nút lạ (module khác chèn vào lớp) thì chỉ gỡ khỏi lớp: không hủy hoạt ảnh, không xóa nội dung,
+  // không tái dùng — module chủ vẫn giữ tham chiếu tới nó.
   function give(el) {
     if (!el) return
+    if (!owned.has(el)) {
+      if (el.parentNode) el.parentNode.removeChild(el)
+      return
+    }
     try { if (typeof el.getAnimations === 'function') for (const a of el.getAnimations()) a.cancel() } catch { /* bỏ qua */ }
     if (el.parentNode) el.parentNode.removeChild(el)
     el.textContent = ''
-    if (pool.length < VFX_LIMITS.dom) pool.push(el)
+    if (pool.length < VFX_LIMITS.dom && !pool.includes(el)) pool.push(el)
   }
 
-  // Chạy WAAPI trên nút của lớp; xong (hoặc bị hủy, hoặc quá giờ an toàn) thì trả nút về pool. → Promise
+  // Chạy WAAPI trên nút của lớp; xong (hoặc bị hủy, hoặc quá giờ an toàn) thì trả nút về pool.
+  // → Promise<boolean>: true khi chạy hết (hoặc quá giờ an toàn), false khi bị hủy / clear() giữa chừng.
   function run(el, keyframes, opts) {
     return new Promise(resolve => {
       const rec = { el, anim: null, done: false, end: null }
-      rec.end = () => {
+      rec.end = (ok = true) => {
         if (rec.done) return
         rec.done = true
         live.delete(rec)
         give(el)
-        resolve(true)
+        resolve(ok !== false)
       }
       live.add(rec)
       let anim = null
@@ -421,12 +456,12 @@ export function createVfx({ host = null, reduced = null } = {}) {
         el.style.willChange = 'transform, opacity'
         anim = typeof el.animate === 'function' ? el.animate(keyframes, { fill: 'both', ...opts }) : null
       } catch { anim = null }
-      if (!anim) { rec.end(); return }
+      if (!anim) { rec.end(true); return }
       rec.anim = anim
       if (frozen) { try { anim.pause() } catch { /* bỏ qua */ } }
-      anim.addEventListener('finish', rec.end)
-      anim.addEventListener('cancel', rec.end)
-      later(rec.end, (opts.delay || 0) + (opts.duration || 0) + 700)
+      anim.addEventListener('finish', () => rec.end(true))
+      anim.addEventListener('cancel', () => rec.end(false))
+      later(() => rec.end(true), (opts.delay || 0) + (opts.duration || 0) + 700)
     })
   }
 
@@ -456,7 +491,7 @@ export function createVfx({ host = null, reduced = null } = {}) {
 
   // ----- canvas hạt -----
   function ensureCanvas() {
-    if (!ensureLayer()) return null
+    if (blocked() || !ensureLayer()) return null
     if (!canvas) {
       if (layer.childElementCount >= VFX_LIMITS.dom) return null
       const cv = doc.createElement('canvas')
@@ -465,11 +500,16 @@ export function createVfx({ host = null, reduced = null } = {}) {
       if (!g) return null
       canvas = cv
       c2d = g
+      owned.add(canvas)
       canvas.className = 'vfx-canvas'
       canvas.setAttribute('data-n', '0')
       shownN = 0
     }
-    if (canvas.parentNode !== layer) layer.insertBefore(canvas, layer.firstChild)
+    // canvas được gỡ khỏi lớp lúc hết hạt (idleCanvas): gắn lại ở đáy lớp, vẫn tính vào giới hạn số nút
+    if (canvas.parentNode !== layer) {
+      if (layer.childElementCount >= VFX_LIMITS.dom) return null
+      layer.insertBefore(canvas, layer.firstChild)
+    }
     const w = layer.clientWidth, h = layer.clientHeight
     const w0 = win()
     const r = Math.min(VFX_LIMITS.dpr, Math.max(1, (w0 && w0.devicePixelRatio) || 1))
@@ -512,7 +552,8 @@ export function createVfx({ host = null, reduced = null } = {}) {
     canvas.setAttribute('data-n', String(n))
   }
 
-  // Hết hạt: dừng rAF, nhả bộ nhớ canvas (iOS tốn RAM cho canvas lớn).
+  // Hết hạt: dừng rAF, nhả bộ nhớ canvas (iOS tốn RAM cho canvas lớn) và gỡ canvas khỏi lớp (giữ tham chiếu để dùng
+  // lại), để lớp về 0 nút khi đứng yên.
   function idleCanvas() {
     lastTs = 0
     if (canvas) {
@@ -520,6 +561,7 @@ export function createVfx({ host = null, reduced = null } = {}) {
       canvas.width = 0
       canvas.height = 0
       cw = 0; ch = 0
+      if (canvas.parentNode) canvas.parentNode.removeChild(canvas)
     }
   }
 
@@ -561,7 +603,7 @@ export function createVfx({ host = null, reduced = null } = {}) {
   }
 
   function burst(target, kind = 'sparkle', { n, colors } = {}) {
-    if (destroyed) return 0
+    if (blocked()) return 0
     const isRed = red()
     const plan = particlePlan(kind, isRed)
     const L = local(target)
@@ -589,7 +631,7 @@ export function createVfx({ host = null, reduced = null } = {}) {
   }
 
   function confetti(target, n = 36) {
-    if (destroyed || red()) return 0
+    if (blocked() || red()) return 0
     const L = local(target)
     if (!L) return 0
     const base = particlePlan('confetti', false)
@@ -601,7 +643,7 @@ export function createVfx({ host = null, reduced = null } = {}) {
   }
 
   function floatText(target, text, { tone = 'gold', size = '' } = {}) {
-    if (destroyed) return null
+    if (blocked()) return null
     const isRed = red()
     const L = local(target)
     if (!L) return null
@@ -638,7 +680,7 @@ export function createVfx({ host = null, reduced = null } = {}) {
   }
 
   function ripple(x, y) {
-    if (destroyed) return null
+    if (blocked()) return null
     const pt = typeof x === 'object' && x ? rectOf(x) : { left: Number(x), top: Number(y), width: 0, height: 0 }
     if (!pt || !Number.isFinite(pt.left) || !Number.isFinite(pt.top)) return null
     const L = local({ x: pt.left + pt.width / 2, y: pt.top + pt.height / 2 })
@@ -661,7 +703,7 @@ export function createVfx({ host = null, reduced = null } = {}) {
   }
 
   function shake(el, power = 1) {
-    if (destroyed || !el) return null
+    if (blocked() || !el) return null
     if (red()) return flashAlert(el)
     const p = Math.max(1, Math.min(3, Math.round(Number(power) || 1)))
     const amp = [2, 4, 6][p - 1]
@@ -673,7 +715,7 @@ export function createVfx({ host = null, reduced = null } = {}) {
   }
 
   function squash(el) {
-    if (destroyed || !el || red()) return null
+    if (blocked() || !el || red()) return null
     return animateExt(el, base => [
       { transform: `${base}scale(1, 1)`, transformOrigin: '50% 100%' },
       { transform: `${base}scale(1.12, .86)`, transformOrigin: '50% 100%', offset: 0.2 },
@@ -684,7 +726,7 @@ export function createVfx({ host = null, reduced = null } = {}) {
   }
 
   function pop(el) {
-    if (destroyed || !el) return null
+    if (blocked() || !el) return null
     if (red()) return animateExt(el, () => [{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: 'linear' })
     return animateExt(el, base => [
       { opacity: 0, transform: `${base}scale(.4)` },
@@ -695,7 +737,7 @@ export function createVfx({ host = null, reduced = null } = {}) {
 
   // Đích nảy nhẹ khi xu / mảnh bay tới (két, ví HUD).
   function bump(el) {
-    if (!el || red()) return null
+    if (blocked() || !el || red()) return null
     return animateExt(el, base => [
       { transform: `${base}scale(1)` },
       { transform: `${base}scale(1.15)`, offset: 0.4 },
@@ -742,7 +784,7 @@ export function createVfx({ host = null, reduced = null } = {}) {
   }
 
   function fly(from, to, { node = null, html = '', ms = 450, arc = 0.35, scale = null, bump: doBump = true } = {}) {
-    if (destroyed || red()) return Promise.resolve(false)
+    if (blocked() || red()) return Promise.resolve(false)
     const A = local(from), B = local(to)
     if (!A || !B) return Promise.resolve(false)
     const el = take('vfx-fly')
@@ -772,14 +814,15 @@ export function createVfx({ host = null, reduced = null } = {}) {
       kf.push({ offset: u, transform: `translate(${(pt.x - s.x).toFixed(1)}px, ${(pt.y - s.y).toFixed(1)}px) rotate(${rot.toFixed(2)}deg) scale(${sc.toFixed(3)})` })
     }
     const duration = Math.max(120, Math.min(1500, Number(ms) || 450))
-    return run(el, kf, { duration, easing: 'linear' }).then(() => {
-      if (doBump && to && typeof to.animate === 'function') bump(to)
-      return true
+    // bị clear() / hủy giữa chừng → false, không nảy đích
+    return run(el, kf, { duration, easing: 'linear' }).then(ok => {
+      if (ok && doBump && to && typeof to.animate === 'function') bump(to)
+      return ok
     })
   }
 
   function coins(from, to, n = 8, { stagger = 40, ms = 620, bump: doBump = true } = {}) {
-    if (destroyed || red()) return Promise.resolve(0)
+    if (blocked() || red()) return Promise.resolve(0)
     const A = local(from), B = local(to)
     if (!A || !B) return Promise.resolve(0)
     const count = Math.max(1, Math.min(12, Math.floor(Number(n) || 1)))
@@ -815,11 +858,13 @@ export function createVfx({ host = null, reduced = null } = {}) {
         }
         kf.push({ offset: u, opacity: u === 0 ? 0 : 1, transform: `translate(${(pt.x - s.x).toFixed(1)}px, ${(pt.y - s.y).toFixed(1)}px) scale(${sc.toFixed(3)})` })
       }
-      jobs.push(run(el, kf, { duration: dur, delay: i * Math.max(0, Number(stagger) || 0), easing: 'linear' }).then(() => {
-        if (doBump && to && typeof to.animate === 'function') bump(to)
+      jobs.push(run(el, kf, { duration: dur, delay: i * Math.max(0, Number(stagger) || 0), easing: 'linear' }).then(ok => {
+        if (ok && doBump && to && typeof to.animate === 'function') bump(to)
+        return ok
       }))
     }
-    return Promise.all(jobs).then(() => jobs.length)
+    // số xu đã tới đích (xu bị clear() / hủy giữa chừng không tính)
+    return Promise.all(jobs).then(list => list.filter(Boolean).length)
   }
 
   function stats() {
@@ -834,10 +879,11 @@ export function createVfx({ host = null, reduced = null } = {}) {
     parts = []
     frozen = 0
     idleCanvas()
-    for (const rec of [...live]) rec.end()
+    for (const rec of [...live]) rec.end(false)
     for (const [el, anim] of [...extern]) { try { anim.cancel() } catch { /* bỏ qua */ } extern.delete(el) }
     for (const id of timers) clearTimeout(id)
     timers.clear()
+    // nút của vfx về pool; nút lạ (module khác chèn vào) chỉ gỡ khỏi lớp, không tái dùng
     if (layer) {
       for (const el of [...layer.children]) if (el !== canvas) give(el)
     }

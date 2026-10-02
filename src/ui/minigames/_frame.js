@@ -47,6 +47,8 @@ export function buildFrame2(stage, { icon = '', title = '', sub = '', steps = nu
   const foot = h('div', { class: 'mg-foot g-foot2' })
   const fx = h('div', { class: 'mg-fx', 'aria-hidden': 'true' })
   stage.classList.add('g-frame2')
+  // sân khấu dùng lại cho bước mới: bỏ dấu "đã có kết quả" của bước trước (stamp.js gắn; css/fx.css ẩn thẻ hướng dẫn)
+  stage.classList.remove('has-result')
   stage.append(head, area, foot, fx)
 
   function setSteps(st) {

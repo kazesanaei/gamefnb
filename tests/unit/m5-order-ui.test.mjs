@@ -255,3 +255,408 @@ test('mã thành phần: chuỗi hiển thị tiếng Việt có dấu, giữ te
     assert.deepEqual(props.filter(p => p !== 'transform' && p !== 'opacity'), [], `@keyframes ${kf[1]} đổi thuộc tính khác transform/opacity`)
   }
 })
+
+// ---------- DOM giả tối giản (đủ cho h(), noteIcon() và các thành phần gọi món; không cần trình duyệt) ----------
+function fakeDom() {
+  const kebab = k => String(k).replace(/[A-Z]/g, c => '-' + c.toLowerCase())
+  const docListeners = new Map()
+  let doc = null
+  class FNode {
+    constructor() { this.ownerDocument = doc; this.parentNode = null; this.childNodes = [] }
+    get isConnected() { let n = this; while (n.parentNode) n = n.parentNode; return n === doc.documentElement }
+    get firstChild() { return this.childNodes[0] || null }
+    get nextSibling() { const p = this.parentNode; return p ? p.childNodes[p.childNodes.indexOf(this) + 1] || null : null }
+    get children() { return this.childNodes.filter(c => c instanceof FEl) }
+    get childElementCount() { return this.children.length }
+    get lastElementChild() { const c = this.children; return c[c.length - 1] || null }
+    get parentElement() { return this.parentNode instanceof FEl ? this.parentNode : null }
+    appendChild(c) { return this.insertBefore(c, null) }
+    insertBefore(c, ref) {
+      if (c.parentNode) c.parentNode.removeChild(c)
+      const i = ref ? this.childNodes.indexOf(ref) : -1
+      if (i < 0) this.childNodes.push(c)
+      else this.childNodes.splice(i, 0, c)
+      c.parentNode = this
+      return c
+    }
+    removeChild(c) { const i = this.childNodes.indexOf(c); if (i >= 0) this.childNodes.splice(i, 1); c.parentNode = null; return c }
+    remove() { if (this.parentNode) this.parentNode.removeChild(this) }
+    replaceWith(n) { const p = this.parentNode; if (p) { p.insertBefore(n, this); p.removeChild(this) } }
+    append(...ns) { for (const n of ns) this.appendChild(typeof n === 'string' ? doc.createTextNode(n) : n) }
+    get textContent() { return this.childNodes.map(c => c.textContent).join('') }
+    set textContent(v) {
+      for (const c of [...this.childNodes]) this.removeChild(c)
+      if (v !== '' && v !== null && v !== undefined) this.appendChild(doc.createTextNode(String(v)))
+    }
+  }
+  class FText extends FNode {
+    constructor(s) { super(); this.data = String(s) }
+    get textContent() { return this.data }
+    set textContent(v) { this.data = String(v) }
+    [Symbol.for('nodejs.util.inspect.custom')]() { return JSON.stringify(this.data) }
+    cloneNode() { return new FText(this.data) }
+  }
+  class FEl extends FNode {
+    constructor(tag) {
+      super()
+      const self = this
+      this.tagName = String(tag).toUpperCase()
+      this.attrs = new Map()
+      this.html = ''
+      this.hidden = false
+      this.disabled = false
+      this.title = ''
+      this.listeners = {}
+      this.anims = []
+      this.style = { cssText: '', setProperty(k, v) { this[k] = v }, removeProperty(k) { delete this[k] } }
+      this.dataset = new Proxy({}, {
+        get: (_, k) => self.attrs.get('data-' + kebab(k)),
+        set: (_, k, v) => { self.attrs.set('data-' + kebab(k), String(v)); return true },
+        deleteProperty: (_, k) => { self.attrs.delete('data-' + kebab(k)); return true },
+        has: (_, k) => self.attrs.has('data-' + kebab(k))
+      })
+      const put = s => { self.className = [...s].join(' ') }
+      this.classList = {
+        add: (...c) => { const s = self.cls(); c.forEach(x => s.add(x)); put(s) },
+        remove: (...c) => { const s = self.cls(); c.forEach(x => s.delete(x)); put(s) },
+        toggle: (c, on) => { const s = self.cls(); const want = on === undefined ? !s.has(c) : !!on; if (want) s.add(c); else s.delete(c); put(s); return want },
+        contains: c => self.cls().has(c)
+      }
+    }
+    // in gọn khi assert báo lỗi (cây DOM giả có vòng tham chiếu)
+    [Symbol.for('nodejs.util.inspect.custom')]() { return `<${this.tagName.toLowerCase()} class="${this.className}">` }
+    cls() { return new Set(this.className.split(/\s+/).filter(Boolean)) }
+    get className() { return this.attrs.get('class') || '' }
+    set className(v) { this.attrs.set('class', String(v)) }
+    setAttribute(k, v) { this.attrs.set(k, String(v)) }
+    getAttribute(k) { return this.attrs.has(k) ? this.attrs.get(k) : null }
+    hasAttribute(k) { return this.attrs.has(k) }
+    removeAttribute(k) { this.attrs.delete(k) }
+    set innerHTML(v) { this.textContent = ''; this.html = String(v) }
+    get innerHTML() { return this.html }
+    addEventListener(t, f) { (this.listeners[t] = this.listeners[t] || []).push(f) }
+    removeEventListener(t, f) { this.listeners[t] = (this.listeners[t] || []).filter(x => x !== f) }
+    click() { for (const f of this.listeners.click || []) f({ type: 'click', target: this }) }
+    cloneNode(deep) {
+      const c = new FEl(this.tagName)
+      for (const [k, v] of this.attrs) c.attrs.set(k, v)
+      c.html = this.html
+      if (deep) for (const ch of this.childNodes) c.appendChild(ch.cloneNode(true))
+      return c
+    }
+    matches(sel) {
+      return sel.split(',').some(s0 => {
+        const s = s0.trim()
+        if (s.startsWith('.')) return this.cls().has(s.slice(1))
+        const m = /^\[([\w-]+)(?:="([^"]*)")?\]$/.exec(s)
+        if (m) return m[2] === undefined ? this.attrs.has(m[1]) : this.attrs.get(m[1]) === m[2]
+        return this.tagName === s.toUpperCase()
+      })
+    }
+    querySelectorAll(sel) {
+      const out = []
+      const walk = n => { for (const c of n.children) { if (c.matches(sel)) out.push(c); walk(c) } }
+      walk(this)
+      return out
+    }
+    querySelector(sel) { return this.querySelectorAll(sel)[0] || null }
+    // bố cục giả: phần tử còn trong DOM và không ẩn thì có khung 100×50, rời DOM thì khung rỗng ở (0,0) như trình duyệt
+    getBoundingClientRect() {
+      return this.isConnected && !this.hidden ? { left: 10, top: 10, right: 110, bottom: 60, width: 100, height: 50 }
+        : { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 }
+    }
+    animate() { const a = { cancelled: false, onfinish: null, cancel() { this.cancelled = true }, addEventListener() {} }; this.anims.push(a); return a }
+    getAnimations() { return this.anims.filter(a => !a.cancelled) }
+    get offsetWidth() { return 100 }
+  }
+  doc = {
+    visibilityState: 'visible',
+    createElement: t => new FEl(t),
+    createTextNode: s => new FText(s),
+    addEventListener(t, f) { if (!docListeners.has(t)) docListeners.set(t, []); docListeners.get(t).push(f) },
+    removeEventListener(t, f) { docListeners.set(t, (docListeners.get(t) || []).filter(x => x !== f)) },
+    dispatch(t) { for (const f of [...(docListeners.get(t) || [])]) f({ type: t }) },
+    listenerCount: t => (docListeners.get(t) || []).length
+  }
+  doc.documentElement = new FEl('html')
+  doc.body = doc.documentElement.appendChild(new FEl('body'))
+  return { doc, Node: FNode }
+}
+
+// Gắn DOM giả vào globalThis trong lúc chạy fn, rồi trả lại như cũ.
+async function withDom(fn) {
+  const { doc, Node } = fakeDom()
+  const saved = { document: Object.getOwnPropertyDescriptor(globalThis, 'document'), Node: Object.getOwnPropertyDescriptor(globalThis, 'Node') }
+  Object.defineProperty(globalThis, 'document', { configurable: true, writable: true, value: doc })
+  Object.defineProperty(globalThis, 'Node', { configurable: true, writable: true, value: Node })
+  try {
+    return await fn(doc)
+  } finally {
+    for (const k of ['document', 'Node']) {
+      if (saved[k]) Object.defineProperty(globalThis, k, saved[k])
+      else delete globalThis[k]
+    }
+  }
+}
+
+// vfx giả: lớp hiệu ứng thật trong DOM giả, ghi lại mọi lời gọi; clear() gom mọi nút trong lớp như vfx.js (gỡ khỏi lớp).
+function fakeVfx(doc) {
+  const layer = doc.createElement('div')
+  layer.className = 'vfx-layer'
+  doc.body.appendChild(layer)
+  const log = []
+  return {
+    layer, log,
+    shake: el => { log.push('shake'); return null },
+    burst: (el, kind) => { log.push('burst:' + kind + (el.isConnected ? '' : ':roi-dom')); return 6 },
+    pop() {}, squash() {},
+    fly(from, to, opts = {}) {
+      log.push('fly' + (from.isConnected ? '' : ':roi-dom'))
+      const f = doc.createElement('div')
+      f.className = 'vfx-fly'
+      layer.appendChild(f)
+      if (opts.node) f.appendChild(opts.node.cloneNode(true))
+      const a = f.animate()
+      return new Promise(resolve => {
+        const id = setTimeout(() => { f.remove(); resolve(true) }, opts.ms || 450)
+        a.cancel = () => { a.cancelled = true; clearTimeout(id); f.remove(); log.push('fly-huy'); resolve(true) }
+      })
+    },
+    clear() { for (const c of [...layer.children]) c.remove(); log.push('clear') }
+  }
+}
+
+const flush = async () => { for (let i = 0; i < 4; i++) await new Promise(r => setImmediate(r)) }
+const TWO_LINES = [
+  { recipeId: 'banh_mi_op_la', qty: 2, notes: ['khong_hanh', 'cay'] },
+  { recipeId: 'tra_tac', qty: 1, notes: ['it_duong'] }
+]
+
+// Dựng phiếu 2 dòng đã đọc lại, gắn vào body, kèm đích bay (dây phiếu) và vfx giả.
+function padRig(doc, createOrderPad, opts = {}) {
+  const vfx = fakeVfx(doc)
+  const sounds = []
+  const pad = createOrderPad({ draft: TWO_LINES, recipes: RECIPES, canConfirm: true }, { vfx, sound: s => sounds.push(s), reduced: false, ...opts })
+  doc.body.appendChild(pad.el)
+  doc.body.appendChild(pad.actionsEl)
+  const target = doc.body.appendChild(doc.createElement('div'))
+  // bản sao tĩnh là con trực tiếp của lớp (bản bay của vfx cũng chứa một bản nhân của nó)
+  const ghost = () => vfx.layer.children.find(c => c.classList.contains('co-pad-ghost')) || null
+  return { vfx, sounds, pad, target, ghost }
+}
+
+test('chốt order: chạy trọn thì dấu đập, hạt sao, phiếu bay tới đích rồi tự gỡ bản sao; không để lại bộ nghe', async t => {
+  const { createOrderPad, PAD_TIMING } = (await loaded).mods['order-pad']
+  await withDom(async doc => {
+    t.mock.timers.enable({ apis: ['setTimeout'] })
+    const { vfx, sounds, pad, target, ghost } = padRig(doc, createOrderPad)
+    let res = null
+    pad.stamp({ target }).then(v => { res = v })
+    assert.ok(ghost(), 'có bản sao phiếu trong lớp hiệu ứng')
+    assert.ok(ghost().querySelector('.co-stamp'), 'con dấu nằm trên bản sao')
+    assert.equal(doc.listenerCount('visibilitychange'), 1)
+    t.mock.timers.tick(PAD_TIMING.stampIn)
+    assert.deepEqual(vfx.log, ['shake', 'burst:star'])
+    t.mock.timers.tick(PAD_TIMING.stampHold)
+    assert.deepEqual(vfx.log, ['shake', 'burst:star', 'fly'])
+    assert.equal(ghost(), null, 'bản sao tĩnh gỡ ngay khi bản bay đã nhân bản')
+    t.mock.timers.tick(PAD_TIMING.fly)
+    await flush()
+    assert.equal(res, true)
+    assert.deepEqual(sounds, ['stamp', 'whoosh'])
+    assert.equal(vfx.layer.childElementCount, 0)
+    assert.equal(doc.listenerCount('visibilitychange'), 0, 'gỡ bộ nghe visibilitychange')
+  })
+})
+
+test('chốt order tự dọn: vfx.clear() giữa chừng (đổi thẻ / rời màn) → không hạt, không âm, không bay, không gỡ nút của vfx', async t => {
+  const { createOrderPad, PAD_TIMING } = (await loaded).mods['order-pad']
+  await withDom(async doc => {
+    t.mock.timers.enable({ apis: ['setTimeout'] })
+    const { vfx, sounds, pad, target, ghost } = padRig(doc, createOrderPad)
+    let res = null
+    pad.stamp({ target }).then(v => { res = v })
+    const g = ghost()
+    t.mock.timers.tick(100)
+    vfx.clear()
+    // vfx cấp lại đúng nút đó cho một hiệu ứng khác (như take() lấy từ pool)
+    g.className = 'vfx-ring'
+    vfx.layer.appendChild(g)
+    t.mock.timers.tick(PAD_TIMING.stampIn + PAD_TIMING.stampHold + PAD_TIMING.fly)
+    await flush()
+    assert.equal(res, false)
+    assert.deepEqual(vfx.log, ['clear'], 'không rung, không hạt, không bay sau khi vfx đã dọn')
+    assert.deepEqual(sounds, ['stamp'], 'không phát whoosh')
+    assert.ok(g.isConnected && g.className === 'vfx-ring', 'không gỡ nút đang thuộc vfx')
+    assert.equal(doc.listenerCount('visibilitychange'), 0)
+  })
+})
+
+test('chốt order tự dọn: destroy() hủy ngay (gỡ bản sao, Promise → false); keepOnDestroy cho chuỗi sống qua destroy()', async t => {
+  const { createOrderPad, PAD_TIMING } = (await loaded).mods['order-pad']
+  await withDom(async doc => {
+    t.mock.timers.enable({ apis: ['setTimeout'] })
+    const a = padRig(doc, createOrderPad)
+    let res = null
+    a.pad.stamp({ target: a.target }).then(v => { res = v })
+    t.mock.timers.tick(100)
+    a.pad.destroy()
+    await flush()
+    assert.equal(res, false, 'Promise kết thúc ngay khi hủy')
+    assert.equal(a.ghost(), null, 'bản sao bị gỡ ngay')
+    t.mock.timers.tick(2000)
+    await flush()
+    assert.deepEqual(a.vfx.log, [])
+    assert.deepEqual(a.sounds, ['stamp'])
+    // giữ qua destroy: bên gọi dựng lại cả panel ngay sau khi chốt
+    a.vfx.layer.remove()
+    const b = padRig(doc, createOrderPad)
+    let res2 = null
+    b.pad.stamp({ target: b.target, keepOnDestroy: true }).then(v => { res2 = v })
+    t.mock.timers.tick(100)
+    b.pad.destroy()
+    t.mock.timers.tick(PAD_TIMING.stampIn + PAD_TIMING.stampHold)
+    t.mock.timers.tick(PAD_TIMING.fly)   // hẹn giờ của bản bay đặt trong lúc tick trước: tick riêng
+    await flush()
+    assert.equal(res2, true)
+    assert.deepEqual(b.vfx.log, ['shake', 'burst:star', 'fly'])
+  })
+})
+
+test('chốt order tự dọn: đích rời DOM → không bay; trang ẩn → dừng ngay; đang bay mà hủy → hủy cả nút bay', async t => {
+  const { createOrderPad, PAD_TIMING } = (await loaded).mods['order-pad']
+  await withDom(async doc => {
+    t.mock.timers.enable({ apis: ['setTimeout'] })
+    // đích bị gỡ (bấm "Gọi món lại", dây phiếu dựng lại)
+    const a = padRig(doc, createOrderPad)
+    let r1 = null
+    a.pad.stamp({ target: a.target }).then(v => { r1 = v })
+    t.mock.timers.tick(300)
+    a.target.remove()
+    t.mock.timers.tick(PAD_TIMING.stampHold + PAD_TIMING.fly)
+    await flush()
+    assert.equal(r1, false)
+    assert.deepEqual(a.vfx.log, ['shake', 'burst:star'], 'không bay tới đích đã rời DOM')
+    assert.deepEqual(a.sounds, ['stamp'])
+    assert.equal(a.ghost(), null)
+    a.pad.destroy(); a.vfx.layer.remove()
+    // trang ẩn
+    const b = padRig(doc, createOrderPad)
+    let r2 = null
+    b.pad.stamp({ target: b.target }).then(v => { r2 = v })
+    t.mock.timers.tick(100)
+    doc.visibilityState = 'hidden'
+    doc.dispatch('visibilitychange')
+    await flush()
+    assert.equal(r2, false)
+    assert.equal(b.ghost(), null)
+    t.mock.timers.tick(2000)
+    assert.deepEqual(b.vfx.log, [])
+    doc.visibilityState = 'visible'
+    b.pad.destroy(); b.vfx.layer.remove()
+    // đang bay thì phiếu bị hủy: nút bay bị hủy theo (vfx tự trả nút về pool khi hoạt ảnh bị hủy)
+    const c = padRig(doc, createOrderPad)
+    let r3 = null
+    c.pad.stamp({ target: c.target }).then(v => { r3 = v })
+    t.mock.timers.tick(PAD_TIMING.stampIn + PAD_TIMING.stampHold + 100)
+    assert.equal(c.vfx.layer.querySelectorAll('.vfx-fly').length, 1)
+    c.pad.destroy()
+    await flush()
+    assert.equal(r3, false)
+    assert.ok(c.vfx.log.includes('fly-huy'))
+    assert.equal(c.vfx.layer.querySelectorAll('.vfx-fly').length, 0)
+  })
+})
+
+test('phiếu: hàng nút mang lớp is-idle khi phiếu trống (màn thấp thu gọn), bỏ khi có dòng; update giống hệt không dựng lại dòng', async () => {
+  const { createOrderPad } = (await loaded).mods['order-pad']
+  await withDom(async doc => {
+    const pad = createOrderPad({ draft: [], recipes: RECIPES }, { reduced: false })
+    doc.body.appendChild(pad.el)
+    assert.equal(pad.actionsEl.classList.contains('is-idle'), true)
+    assert.equal(pad.actionsEl.querySelector('[data-testid="readback"]').disabled, true)
+    pad.update({ draft: TWO_LINES })
+    assert.equal(pad.actionsEl.classList.contains('is-idle'), false)
+    const li0 = pad.lineEl(0)
+    pad.update({ draft: TWO_LINES.map(l => ({ ...l })) })
+    assert.equal(pad.lineEl(0), li0, 'cùng dữ liệu: giữ nguyên nút dòng')
+    pad.destroy()
+  })
+})
+
+test('bảng thực đơn: ul > li > button — thẻ món vẫn là NÚT (không role ghi đè), testid giữ nguyên, chạm gọi đúng callback', async () => {
+  const { createMenuBoard } = (await loaded).mods['menu-board']
+  await withDom(async doc => {
+    const picks = []
+    const outs = []
+    const menu = ['banh_mi_op_la', 'tra_tac', 'banh_mi_trung_ga_ta', 'tra_tac_mat_ong']
+    const board = createMenuBoard({ recipes: RECIPES, menu, left: { banh_mi_trung_ga_ta: 2, tra_tac_mat_ong: 0 } },
+      { reduced: false, onPick: id => picks.push(id), onOut: id => outs.push(id) })
+    doc.body.appendChild(board.el)
+    const grid = board.el.querySelector('.co-menu-grid')
+    assert.equal(grid.tagName, 'UL')
+    assert.equal(grid.getAttribute('role'), 'list')
+    assert.deepEqual(grid.children.map(c => c.tagName), ['LI', 'LI', 'LI', 'LI'])
+    for (const [i, id] of menu.entries()) {
+      const li = grid.children[i]
+      assert.equal(li.children.length, 1)
+      const btn = li.children[0]
+      assert.equal(btn.tagName, 'BUTTON')
+      assert.equal(btn.getAttribute('role'), null, id + ': nút không bị role ghi đè')
+      assert.equal(btn.dataset.testid, 'menu-item-' + id)
+      assert.equal(board.itemEl(id), btn)
+    }
+    assert.equal(board.itemEl('tra_tac_mat_ong').getAttribute('aria-disabled'), 'true')
+    assert.equal(board.itemEl('banh_mi_trung_ga_ta').dataset.left, '2')
+    assert.equal(board.el.querySelector('[data-testid="rare-left-banh_mi_trung_ga_ta"]').textContent, '★ còn 2')
+    board.itemEl('tra_tac').click()
+    board.itemEl('tra_tac_mat_ong').click()
+    assert.deepEqual(picks, ['tra_tac'])
+    assert.deepEqual(outs, ['tra_tac_mat_ong'])
+    // cùng dữ liệu: giữ nguyên ô; đổi số phần còn của món hiếm: chỉ ô đó dựng lại, đúng chỗ
+    const cells = [...grid.children]
+    board.update({ recipes: RECIPES, menu, left: { banh_mi_trung_ga_ta: 2, tra_tac_mat_ong: 0 } })
+    assert.deepEqual([...grid.children], cells)
+    board.update({ recipes: RECIPES, menu, left: { banh_mi_trung_ga_ta: 1, tra_tac_mat_ong: 0 } })
+    assert.equal(grid.children[0], cells[0])
+    assert.notEqual(grid.children[2], cells[2])
+    assert.equal(grid.children[2].children[0].dataset.left, '1')
+    board.destroy()
+  })
+})
+
+test('bong bóng khách: chỉ hiện câu ngắn trọn ý (không cắt giữa từ, không ",…"), câu đầy đủ để ở title', async () => {
+  const { bubbleLine, SAY_MAX, createOrderBubble } = (await loaded).mods['order-bubble']
+  assert.equal(bubbleLine('Như mọi khi nha con! Làm cho cô 2 ổ ốp la không hành, cay, với 1 ly trà tắc ít ngọt nha!'), 'Như mọi khi nha con!')
+  assert.equal(bubbleLine('Cho em ly trà tắc!'), 'Cho em ly trà tắc!')
+  assert.equal(bubbleLine(''), '')
+  assert.equal(bubbleLine(null), '')
+  const samples = [
+    'Lấy cho cô 2 ổ ốp la không hành, cay, với 1 ly trà tắc ít ngọt nha!',
+    'Cháu ơi, cho cô 2 cái bánh mì ốp la không hành hoa, có ớt, và 1 cốc trà quất bớt đường nhé!',
+    'Làm cho cô 2 ổ bánh mì trứng không hành, cay, với 1 ly trà tắc ít ngọt nha!',
+    'Bán cho cô 2 cái bánh mì ốp la, không hành, có ớt với!'
+  ]
+  for (const s of samples) {
+    const b = bubbleLine(s)
+    assert.ok(b.length <= SAY_MAX, `${b}: dài ${b.length}`)
+    assert.ok(b.endsWith('…'), b)
+    assert.ok(!/[,;:.!?]…$/.test(b), b + ': còn dấu câu trước dấu lửng')
+    const body = b.slice(0, -1)
+    assert.ok(s.startsWith(body), b + ': không phải phần đầu câu')
+    assert.ok(/[\s,]/.test(s[body.length]), b + ': cắt giữa từ')
+  }
+  await withDom(async doc => {
+    const full = 'Như mọi khi nha con! Làm cho cô 2 ổ ốp la không hành, cay, với 1 ly trà tắc ít ngọt nha!'
+    const bub = createOrderBubble({ persona: 'co_chu', mood: 'vui', name: 'Thu', regular: true, request: TWO_LINES, speech: full, recipes: RECIPES }, { reduced: false })
+    doc.body.appendChild(bub.el)
+    const say = bub.el.querySelector('.co-bubble-say')
+    assert.equal(say.textContent, '“Như mọi khi nha con!”')
+    assert.equal(say.title, full)
+    assert.deepEqual(JSON.parse(bub.bubbleEl.dataset.request), TWO_LINES)
+    assert.equal(bub.bubbleEl.dataset.testid, 'speech-bubble')
+    bub.update({ persona: 'co_chu', mood: 'vui', request: TWO_LINES, speech: full, say: 'Nhanh nha con!', recipes: RECIPES })
+    assert.equal(say.textContent, '“Nhanh nha con!”')
+    bub.destroy()
+  })
+})

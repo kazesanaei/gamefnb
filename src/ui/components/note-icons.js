@@ -119,20 +119,24 @@ function opLa(kind) {
   return s
 }
 
-// Viên đường: hai khối lập phương trắng chồng lệch, có hạt đường.
-function cube(x, y, s, [top, left, right]) {
-  const a = [x, y], b = [x + s, y + s * 0.5], c = [x, y + s], d = [x - s, y + s * 0.5]
-  const c2 = [x, y + s * 2.05], b2 = [x + s, y + s * 1.55], d2 = [x - s, y + s * 1.55]
-  return `<path d="M${P(a)}L${P(b)}L${P(c)}L${P(d)}Z" fill="${top}" stroke="none"/>` +
-    `<path d="M${P(d)}L${P(c)}L${P(c2)}L${P(d2)}Z" fill="${left}" stroke="none"/>` +
-    `<path d="M${P(c)}L${P(b)}L${P(b2)}L${P(c2)}Z" fill="${right}" stroke="none"/>` +
-    `<path d="M${P(d)}L${P(c)}L${P(b)} M${P(c)}L${P(c2)}" fill="none" stroke-width="1.6"/>` +
-    `<path d="M${P(a)}L${P(b)}L${P(b2)}L${P(c2)}L${P(d2)}L${P(d)}Z" fill="none"/>`
-}
+// Muỗng đường: muỗng bạc nằm nghiêng, cán gỗ chĩa xuống trái, đường trắng vun thành ngọn cao hơn miệng muỗng, hạt
+// tinh thể lấp lánh và vài hạt rơi (khác hẳn viên đá: không phải khối vuông, không xanh, có cán muỗng).
 function duong() {
-  const sugar = ['#ffffff', '#f4ede0', '#ddd1bb']
-  return cube(31, 8, 10, sugar) + cube(18, 18, 11, sugar) +
-    dots([[18, 21.5], [14.5, 30], [21, 33.5], [31, 11], [28.5, 19.5], [34, 21]], '#c9bba3', 0.9)
+  const rim = 'M13.5 25 C13.5 20.3 20.3 17 29 17 C37.7 17 44.5 20.3 44.5 25 C44.5 29.7 37.7 33 29 33 C20.3 33 13.5 29.7 13.5 25Z'
+  const mound = 'M14.6 24.6 C15.5 17.5 21 7.8 28.6 6.8 C36.4 7.6 42.3 17 43.4 24.4 C38 28.6 20.5 28.8 14.6 24.6Z'
+  return '<g transform="rotate(-16 29 25)">' +
+    inkLine('M14.6 27 L1.8 33.2', '#c98a40', 5, 3) +
+    '<path d="M12.6 26.9 L4 31.1" fill="none" stroke="#efc68a" stroke-width="1.4"/>' +
+    tone3({ outline: rim, base: '#dfe7ef', dark: '#a9b7c6',
+      shade: 'M13.5 25 C13.5 29.7 20.3 33 29 33 C37.7 33 44.5 29.7 44.5 25 C42.5 28.4 36.5 30.4 29 30.4 C21.5 30.4 15.5 28.4 13.5 25Z' }) +
+    tone3({ outline: mound, base: '#ffffff', dark: '#ebe2d1',
+      shade: 'M31.5 8.2 C37.4 10.6 42.4 17.6 43.4 24.4 C40.6 26.6 35.4 27.8 30 28.2 C34.6 22.6 34.8 14.6 31.5 8.2Z',
+      shine: hilite(23.2, 14.5, 2.4, 4.4, 0.9, 20) }) +
+    dots([[21, 22.4, 1.1], [27.2, 19.6, 1.1], [32.2, 15.2, 1], [36.6, 21.4, 1.1], [26, 11.4, 0.9], [30.4, 24.6, 1]], '#bfae8e') +
+    '</g>' +
+    // tinh thể 4 cánh lấp lánh + hạt đường rơi
+    '<path d="M38.5 1.2 L39.6 4.6 L43 5.7 L39.6 6.8 L38.5 10.2 L37.4 6.8 L34 5.7 L37.4 4.6Z" fill="#ffe680" stroke-width="1.4"/>' +
+    '<path d="M11 8.5 L13 10.5 L11 12.5 L9 10.5Z M6.2 15.2 L7.8 16.8 L6.2 18.4 L4.6 16.8Z" fill="#fff" stroke-width="1.3"/>'
 }
 
 // Viên đá lạnh: khối bo tròn xanh nhạt, vệt sáng trong.

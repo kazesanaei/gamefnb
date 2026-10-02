@@ -373,6 +373,8 @@ function mountLook2(stage, step, ctx) {
     else popLabel(board, label, xBoard, Math.max(16, p.y - KNIFE_OFFSET_PX - 16), sc >= 80 ? 'is-good' : 'is-off')
     feedback(ctx, sc >= 100 ? 'cut' : 'chop')
     food.classList.add('is-cut')
+    // đã vào nhịp: thẻ hướng dẫn mờ đi để chữ nổi "Chuẩn!" (bay lên trên mép quả) không đè lên chữ (css/fx.css)
+    stage.classList.add('is-cutting')
     const split = splitAt(xBoard, pose.face)
     const isRed = reduced()
     // dừng hình 60 ms rồi lát tách trượt và vụn bắn ra (giảm chuyển động: đặt thẳng vị trí mới, không vụn)

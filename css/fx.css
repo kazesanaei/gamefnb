@@ -270,15 +270,18 @@
   white-space: nowrap;
   box-shadow: 0 2px 0 rgba(58, 38, 24, .25);
 }
-/* Trong lớp hiệu ứng của sân khấu: giữa vùng chơi, hơi cao */
-.mg-fx > .g-stamp { position: absolute; left: 50%; top: 38%; margin: -59px 0 0 -59px; }
+/* Trong lớp hiệu ứng của sân khấu: giữa vùng chơi, hơi cao, nhưng luôn nằm DƯỚI bong bóng Dì Sáu (bong bóng ở 60px, cao
+   ≤ 56px → tâm dấu ≥ 175px). Khung thấp: xem @container g-fx bên dưới (dấu neo theo mép trên thanh chân). */
+.mg-fx > .g-stamp { position: absolute; left: 50%; top: max(38%, 175px); margin: -59px 0 0 -59px; }
 
 /* ======================================================================
-   3. Dì Sáu phản ứng (góc trên-phải, dưới đầu sân khấu)
+   3. Dì Sáu phản ứng (góc trên-phải, ngay dưới hàng chấm bước)
    ====================================================================== */
+/* top = lề trên sân khấu (12px, kitchen.css .mg-stage) + đầu màn 44px + 4px: nằm đúng chỗ thẻ hướng dẫn .mg-sub, mà thẻ
+   này được ẩn khi đã có kết quả bước (mục 4) — không đè hàng chấm bước, không đè chữ. */
 .g-disau-react {
   position: absolute;
-  top: 50px;
+  top: calc(var(--g-stage-pt, 12px) + 48px);
   right: 8px;
   z-index: 4;
   display: flex;
@@ -311,6 +314,7 @@
   font-weight: 800;
   font-size: 15px;
   line-height: 1.25;
+  text-wrap: balance;
   box-shadow: 0 3px 0 rgba(58, 38, 24, .28);
   transform-origin: 100% 40%;
   animation: g-react-pop .25s var(--g-ease-back, ease-out) .05s both;
@@ -372,7 +376,7 @@
   border: 2.5px solid var(--g-ink, #3a2618);
   border-radius: 50%;
   background: #efe3c8;
-  color: #7d6c5a;
+  color: #5c4a3a;
   font-family: var(--g-font-display, system-ui);
   font-weight: 800;
   font-size: 14px;
@@ -460,6 +464,20 @@
   pointer-events: none;
   box-shadow: 0 2px 0 rgba(58, 38, 24, .22);
 }
+/* Đã có kết quả bước (con dấu / Dì Sáu trong .mg-fx): thẻ hướng dẫn hết việc → ẩn (giữ chỗ để thớt không nhảy), để dấu và
+   bong bóng không đè lên chữ. Lớp .has-result do stamp.js gắn (trình duyệt chưa có :has); :has() tự nhận khi có. Bước Thái
+   kiểu mới: sau nhát đầu (.is-cutting) thẻ cũng mờ đi để chữ nổi "Chuẩn!" không đè lên chữ hướng dẫn. */
+.mg-stage.g-frame2.has-result .mg-area > .mg-sub.g-sub2,
+.mg-stage.g-frame2.g-thai2.is-cutting .mg-area > .mg-sub.g-sub2 {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .15s ease-out, visibility 0s linear .15s;
+}
+.mg-stage.g-frame2:has(> .mg-fx > :is(.g-stamp, .g-disau-react)) .mg-area > .mg-sub.g-sub2 {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .15s ease-out, visibility 0s linear .15s;
+}
 .mg-stage.g-frame2 > .mg-foot.g-foot2 { min-height: 48px; }
 .g-foot2 .g-pill { font-variant-numeric: tabular-nums; }
 /* lớp hiệu ứng của sân khấu: con dấu, Dì Sáu, chữ nổi — không bao giờ nhận chạm */
@@ -469,20 +487,25 @@
 @media (max-width: 400px) {
   .g-head2.is-crowded .g-head2-title { display: none; }
 }
-/* sân khấu thấp (panel Bếp ~300px): bỏ thẻ hướng dẫn (thẻ bước vừa nói rồi) để thớt to hơn; con dấu lệch trái, thấp
-   xuống và nhỏ lại, Dì Sáu gọn bên phải để hai thứ không chồng nhau */
+/* sân khấu thấp (panel Bếp ~300px): bỏ thẻ hướng dẫn (thẻ bước vừa nói rồi) để thớt to hơn; con dấu lệch trái, nhỏ lại và
+   NEO THEO MÉP TRÊN THANH CHÂN (--g-foot-h: thanh chân 48px + đệm 4/6px của sân khấu bếp; +8px chừa góc xoay −8°), Dì Sáu
+   gọn bên phải. Khung rất thấp (≤ 290px) thì dấu sát mép trái và bong bóng chừa hẳn bề ngang của dấu: hai thứ không chồng. */
 .mg-stage.g-frame2 .mg-area.g-area2 { container-type: size; container-name: g-area; }
 @container g-area (max-height: 210px) {
   .mg-stage.g-frame2 .mg-area > .mg-sub.g-sub2 { display: none; }
 }
 @container g-fx (max-height: 380px) {
-  .mg-fx > .g-stamp { left: 30%; top: 60%; margin: -48px 0 0 -48px; width: 96px; }
+  .mg-fx > .g-stamp { left: 30%; top: auto; bottom: calc(var(--g-foot-h, 58px) + 8px); margin: 0 0 0 -48px; width: 96px; }
   .mg-fx > .g-stamp .g-stamp-ink { width: 96px; height: 96px; }
   .mg-fx > .g-stamp .g-stamp-label { font-size: 13px; }
   .mg-fx > .g-stamp .g-stamp-score { font-size: 17px; }
   .mg-fx > .g-disau-react { max-width: 66%; }
   .mg-fx > .g-disau-react .g-disau-face { flex-basis: 40px; width: 40px; height: 40px; }
   .mg-fx > .g-disau-react .g-disau-bubble { font-size: 13px; padding: 4px 9px 3px; }
+}
+@container g-fx (max-height: 290px) {
+  .mg-fx > .g-stamp { left: 14px; margin: 0; }
+  .mg-fx > .g-disau-react { max-width: calc(100% - 136px); }
 }
 
 /* ======================================================================
@@ -721,6 +744,7 @@
   font-size: 15px;
   line-height: 1.3;
   text-align: left;
+  text-wrap: pretty;
   box-shadow: 0 3px 0 rgba(58, 38, 24, .3);
 }
 .g-reveal .k-bubble.g-reveal-bubble::before {
@@ -735,42 +759,162 @@
   background: var(--g-paper, #fffaf0);
   transform: rotate(45deg) skew(8deg, 8deg);
 }
+/* "Chạm để tiếp": viên thuốc nền mực trong mờ (chữ kem trên nền tối ≥ 5,9:1 dù tia sáng phía sau sáng đến đâu) */
 .g-reveal-tap {
-  color: rgba(255, 250, 240, .95);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 2px 12px 1px 14px;
+  border-radius: 999px;
+  background: rgba(58, 38, 24, .74);
+  color: #fffaf0;
   font-family: var(--g-font-display, system-ui);
   font-weight: 800;
   font-size: 14px;
-  text-shadow: 0 1px 0 rgba(58, 38, 24, .7), 0 0 4px rgba(58, 38, 24, .5);
+  line-height: 1.1;
+  white-space: nowrap;
+  box-shadow: 0 0 0 2px rgba(255, 250, 240, .3);
   animation: g-fade-in .3s ease-out both;
   animation-delay: var(--at, 0ms);
 }
+.g-reveal-tap b { font-size: 1.35em; line-height: .8; }
 /* chạm để bỏ qua: hiện thẳng mọi phần (tia sáng và nhịp nhún vẫn chạy) */
 .g-reveal.is-skipped :is(.g-reveal-name, .g-reveal-dish-wrap, .g-reveal-badge, .g-reveal-gradeline, .g-reveal-star,
-  .g-reveal-flawless, .g-reveal-lvup, .g-reveal-disau, .g-reveal-tap) { animation: none !important; }
+  .g-reveal-flawless, .g-reveal-lvup, .g-reveal-disau, .g-reveal-tap, .g-reveal-smoke) { animation: none !important; }
 
-/* Khung thấp (vd panel Bếp ~300–520px): món bên trái, chữ bên phải, Dì Sáu gọn */
+/* Dòng lên cấp: không xuống dòng (mũi tên đỏ là biểu tượng, chữ thu gọn bằng dấu … nếu quá hẹp) */
+.g-reveal-lvup { grid-area: lv; max-width: 100%; white-space: nowrap; }
+.g-reveal-lvup-ico { flex: none; display: block; width: 14px; height: 14px; margin-top: -1px; }
+.g-reveal-lvup-ico svg { display: block; width: 100%; height: 100%; }
+.g-reveal-lvup > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* Hạng thấp có hình riêng (không chỉ đổi màu nền): Kém — món xỉn màu, ruy băng tên vàng đất; Hỏng — món sạm lại, vệt cháy,
+   khói bốc lên, ruy băng tên xám nâu. Bộ lọc tĩnh (không animate filter). */
+.g-reveal.grade-kem .g-reveal-dish { filter: saturate(.62) brightness(.96); }
+.g-reveal.grade-hong .g-reveal-dish { filter: grayscale(.4) sepia(.35) brightness(.78) contrast(1.05); }
+.g-reveal-soot {
+  position: absolute;
+  inset: 22% 14% 24%;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse 22% 16% at 30% 58%, rgba(32, 20, 12, .62), rgba(32, 20, 12, 0) 72%),
+    radial-gradient(ellipse 18% 13% at 62% 44%, rgba(32, 20, 12, .55), rgba(32, 20, 12, 0) 72%),
+    radial-gradient(ellipse 14% 10% at 80% 66%, rgba(32, 20, 12, .5), rgba(32, 20, 12, 0) 72%);
+  pointer-events: none;
+  animation: g-bob 2.4s ease-in-out 1.2s infinite;
+}
+.g-reveal-smoke {
+  position: absolute;
+  left: 22%;
+  top: -7%;
+  z-index: 1;
+  display: block;
+  width: 52%;
+  aspect-ratio: 1;
+  opacity: .92;
+  pointer-events: none;
+  animation: g-reveal-smoke .7s ease-out both;
+  animation-delay: var(--at, 0ms);
+}
+.g-reveal-smoke svg { display: block; width: 100%; height: 100%; }
+.g-reveal.grade-kem .g-reveal-title {
+  --g-ribbon-bg: linear-gradient(180deg, #f6e4bd, #dcb67c 65%, #c99c5c);
+  --g-ribbon-tail-l: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 38'%3E%3Cpath d='M24 1.5H1.5L9 19L1.5 36.5H24Z' fill='%23a77d45'/%3E%3Cpath d='M24 1.5H1.5L9 19L1.5 36.5H24' fill='none' stroke='%233a2618' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M24 4V12L18 4Z' fill='%233a2618' opacity='.35'/%3E%3C/svg%3E");
+  --g-ribbon-tail-r: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 38'%3E%3Cpath d='M0 1.5H22.5L15 19L22.5 36.5H0Z' fill='%23a77d45'/%3E%3Cpath d='M0 1.5H22.5L15 19L22.5 36.5H0' fill='none' stroke='%233a2618' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M0 4V12L6 4Z' fill='%233a2618' opacity='.35'/%3E%3C/svg%3E");
+}
+.g-reveal.grade-hong .g-reveal-title {
+  --g-ribbon-bg: linear-gradient(180deg, #e2d9cf, #b3a597 65%, #978878);
+  --g-ribbon-text-shadow: 0 1px 0 rgba(255, 255, 255, .4);
+  --g-ribbon-tail-l: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 38'%3E%3Cpath d='M24 1.5H1.5L9 19L1.5 36.5H24Z' fill='%23786a5d'/%3E%3Cpath d='M24 1.5H1.5L9 19L1.5 36.5H24' fill='none' stroke='%233a2618' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M24 4V12L18 4Z' fill='%233a2618' opacity='.35'/%3E%3C/svg%3E");
+  --g-ribbon-tail-r: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 38'%3E%3Cpath d='M0 1.5H22.5L15 19L22.5 36.5H0Z' fill='%23786a5d'/%3E%3Cpath d='M0 1.5H22.5L15 19L22.5 36.5H0' fill='none' stroke='%233a2618' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M0 4V12L6 4Z' fill='%233a2618' opacity='.35'/%3E%3C/svg%3E");
+}
+
+/* Khung thấp (vd panel Bếp ~230–560px): món bên trái, chữ bên phải (lưới); dòng lên cấp một hàng riêng bên dưới (khung rất
+   thấp: vào cột chữ), Dì Sáu gọn.
+   Cỡ món = phần chiều cao còn lại sau các hàng khác (--g-rv-rest, cộng thêm khi có dòng lên cấp) để không bao giờ tràn.
+   Biến đặt trên .g-reveal-col (con của khung chứa): container query không áp được lên chính phần tử khung chứa. */
 @container g-reveal (max-height: 560px) {
-  .g-reveal-col { gap: 6px; padding-top: 26px; }
-  .g-reveal-main { flex-direction: row; gap: 12px; max-width: 100%; }
-  .g-reveal-hero { flex: 0 1 auto; width: min(42cqw, 46cqh, 200px); }
-  .g-reveal-info { flex: 0 1 auto; min-width: 0; align-items: flex-start; }
+  .g-reveal-col { --g-rv-rest: 178px; --g-rv-lv: 36px; gap: 6px; padding-top: 22px; padding-bottom: 8px; }
+  .g-reveal-main {
+    display: grid;
+    grid-template-columns: auto minmax(0, max-content);
+    grid-template-areas: "hero info" "lv lv";
+    justify-content: center;
+    align-items: center;
+    gap: 6px 12px;
+    width: 100%;
+  }
+  .g-reveal-hero { grid-area: hero; width: max(72px, min(42cqw, calc(100cqh - var(--g-rv-rest)), 200px)); }
+  .g-reveal.has-lvup .g-reveal-hero { width: max(72px, min(42cqw, calc(100cqh - var(--g-rv-rest) - var(--g-rv-lv)), 200px)); }
+  .g-reveal-info { grid-area: info; min-width: 0; align-items: flex-start; }
+  /* min-width 0: dòng lên cấp (trải hai cột) không được nong cột món ra */
+  .g-reveal-lvup { justify-self: center; min-width: 0; }
   .g-reveal-gradeline { justify-content: flex-start; }
   .g-reveal-grade { font-size: 28px; }
   .g-reveal-q { font-size: 26px; }
   .g-reveal-flawless { height: 32px; margin: 2px 22px 0; padding: 1px 10px 0; font-size: 14px; }
-  .g-reveal-lvup { min-height: 26px; padding: 2px 10px 1px; font-size: 13px; white-space: normal; }
+  .g-reveal-lvup { min-height: 28px; padding: 2px 12px 1px; font-size: 14px; }
+}
+/* khung thấp mà hẹp (vd 390×844 có vùng an toàn: ~500px cao): chữ hạng nhỏ lại một chút để "Tuyệt hảo 96%" giữ một dòng */
+@container g-reveal (max-height: 560px) and (max-width: 420px) {
+  .g-reveal-hero { width: max(72px, min(40cqw, calc(100cqh - var(--g-rv-rest)), 200px)); }
+  .g-reveal.has-lvup .g-reveal-hero { width: max(72px, min(40cqw, calc(100cqh - var(--g-rv-rest) - var(--g-rv-lv)), 200px)); }
+  .g-reveal-grade { font-size: 25px; }
+  .g-reveal-q { font-size: 23px; }
 }
 @container g-reveal (max-height: 400px) {
-  .g-reveal-col { gap: 4px; padding: 24px 10px 6px; }
+  .g-reveal-col { --g-rv-rest: 150px; --g-rv-lv: 30px; gap: 4px; padding: 16px 10px 6px; }
   .g-reveal-title { font-size: 17px; }
-  .g-reveal-hero { width: min(40cqw, 46cqh, 150px); }
+  .g-reveal-hero { width: max(72px, min(40cqw, calc(100cqh - var(--g-rv-rest)), 150px)); }
+  .g-reveal.has-lvup .g-reveal-hero { width: max(72px, min(40cqw, calc(100cqh - var(--g-rv-rest) - var(--g-rv-lv)), 150px)); }
   .g-reveal-grade { --g-tw: 1.5px; font-size: 24px; }
   .g-reveal-q { --g-tw: 1.5px; font-size: 22px; }
   .g-reveal-star { width: 22px; height: 22px; }
   .g-reveal-flawless { height: 30px; margin-top: 2px; font-size: 13px; }
+  .g-reveal-lvup { min-height: 26px; padding: 1px 10px 0; font-size: 13px; }
+  .g-reveal-disau { margin-top: 0; }
   .g-reveal-face { flex-basis: 40px; width: 40px; height: 40px; }
-  .g-reveal .k-bubble.g-reveal-bubble { margin-bottom: 2px; padding: 5px 10px; font-size: 13px; }
-  .g-reveal-tap { display: none; }
+  .g-reveal .k-bubble.g-reveal-bubble {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+    margin-bottom: 2px;
+    padding: 5px 10px;
+    font-size: 13px;
+  }
+  .g-reveal-tap { min-height: 24px; padding: 1px 10px 0 12px; font-size: 13px; }
+}
+@container g-reveal (max-height: 400px) and (max-width: 340px) {
+  .g-reveal-grade { font-size: 22px; }
+  .g-reveal-q { font-size: 20px; }
+}
+/* Khung rất thấp (≤ 260px, vd Ra món ở 375×553 có vùng an toàn): ruy băng tên thấp hơn, món nhỏ lại theo chỗ còn lại,
+   bong bóng tối đa 2 dòng, gợi ý chạm vẫn còn (viên nhỏ 13px). */
+@container g-reveal (max-height: 260px) {
+  .g-reveal-col { --g-rv-rest: 124px; --g-rv-lv: 0px; gap: 3px; padding: 6px 8px 4px; }
+  /* món nhỏ nên cột chữ đủ rộng: dòng lên cấp vào cột chữ, dưới "Không tì vết" — không tốn thêm một hàng */
+  .g-reveal-main { grid-template-areas: "hero info" "hero lv"; row-gap: 2px; align-items: start; }
+  .g-reveal-hero { align-self: center; }
+  .g-reveal-lvup { justify-self: start; }
+  .g-reveal-title { height: 30px; margin: 0 22px; padding: 1px 12px 0; font-size: 15px; }
+  .g-reveal-title::before, .g-reveal-title::after { top: 4px; width: 18px; height: 30px; }
+  .g-reveal-title::before { left: -20px; }
+  .g-reveal-title::after { right: -20px; }
+  .g-reveal-main { column-gap: 10px; }
+  .g-reveal-info { gap: 2px; }
+  .g-reveal-grade { font-size: 22px; }
+  .g-reveal-q { font-size: 20px; }
+  .g-reveal-star { width: 20px; height: 20px; }
+  .g-reveal-flawless { height: 26px; margin: 1px 20px 0; padding: 0 8px; }
+  .g-reveal-flawless::before, .g-reveal-flawless::after { top: 3px; width: 16px; height: 26px; }
+  .g-reveal-flawless::before { left: -18px; }
+  .g-reveal-flawless::after { right: -18px; }
+  .g-reveal-lvup { min-height: 24px; }
+  .g-reveal-face { flex-basis: 34px; width: 34px; height: 34px; }
+  .g-reveal .k-bubble.g-reveal-bubble { -webkit-line-clamp: 2; margin-bottom: 0; padding: 4px 9px; line-height: 1.25; }
+  .g-reveal-tap { min-height: 22px; }
 }
 
 /* Thẻ bước ở khung thấp */
@@ -910,6 +1054,7 @@
   100% { opacity: 1; transform: rotate(-10deg); }
 }
 @keyframes g-reveal-star { 0% { opacity: 0; transform: scale(.2) rotate(-40deg); } 100% { opacity: 1; transform: none; } }
+@keyframes g-reveal-smoke { 0% { opacity: 0; transform: translateY(18%) scale(.7); } 100% { opacity: .92; transform: none; } }
 @keyframes g-reveal-slide { 0% { opacity: 0; transform: translateX(-40px) scale(.9); } 100% { opacity: 1; transform: none; } }
 
 /* ======================================================================

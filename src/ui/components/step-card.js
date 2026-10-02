@@ -1,6 +1,8 @@
 // Thẻ vào bước (M5): thay thẻ gợi ý chữ .k-hint. Ruy băng "Bước k/N", hình nguyên liệu TO (~45% bề ngang) nảy vào,
 // động từ cỡ 28px ("Thái dưa leo!"), tay mẫu diễn cử chỉ lặp, nút "Chạm để bắt đầu" và vạch đếm ngược tự chạy.
 // Chạm bất kỳ đâu trên thẻ (pointerdown) là vào bước ngay; không chạm thì tự vào sau autoMs (mặc định 1.100 ms).
+// Cú click trình duyệt tự sinh lúc nhấc ngón của chính lần chạm đó bị nuốt (guardNextClick) để không rơi xuống nút
+// "Xong" của sân khấu vừa dựng dưới ngón tay (preventDefault ở pointerdown KHÔNG chặn được click trên màn cảm ứng).
 // Bản gọn (full = false, từ lần nấu thứ 3): chỉ một ruy băng nhỏ trôi qua đầu sân khấu, không chờ.
 // stepCardModel thuần (test Node); createStepCard dựng DOM (chỉ gọi trong trình duyệt). Import trong Node an toàn.
 import { h, svgBox } from '../dom.js'
@@ -16,6 +18,53 @@ export const GESTURE_BY_TYPE = Object.freeze({
 })
 
 export const STEP_CARD_AUTO_MS = 1100
+// Chặn click ma: chờ click tối đa CLICK_GUARD_MS sau khi nhấc ngón, và không quá CLICK_GUARD_MAX_MS kể từ lúc chạm.
+export const CLICK_GUARD_MS = 450
+export const CLICK_GUARD_MAX_MS = 4000
+
+/**
+ * guardNextClick(target, { pointerId, afterUpMs, maxMs }) → off()
+ * Nuốt đúng MỘT cú click kế tiếp (pha capture trên target — nên là window) do lần chạm đang diễn ra sinh ra: gọi
+ * preventDefault + stopPropagation để click không tới phần tử mới nằm dưới ngón tay. Hết chặn khi đã nuốt 1 click, khi
+ * afterUpMs trôi qua sau lúc nhấc ngón (pointerup/pointercancel cùng pointerId) mà chưa có click (vuốt, nhấn giữ), khi có
+ * lần chạm mới (pointerdown khác) hoặc quá maxMs. Click từ bàn phím sau đó không bị ảnh hưởng. Chỉ cần EventTarget.
+ */
+// Pha capture dạng đối tượng (không dùng `true`: EventTarget của Node không gỡ được bộ nghe đăng ký bằng `true`).
+const CAPTURE = Object.freeze({ capture: true })
+export function guardNextClick(target, { pointerId = null, afterUpMs = CLICK_GUARD_MS, maxMs = CLICK_GUARD_MAX_MS } = {}) {
+  if (!target || typeof target.addEventListener !== 'function') return () => {}
+  let done = false
+  let tid = 0
+  const same = e => pointerId === null || pointerId === undefined || e.pointerId === undefined || e.pointerId === pointerId
+  function off() {
+    if (done) return
+    done = true
+    if (tid) { clearTimeout(tid); tid = 0 }
+    target.removeEventListener('click', onClick, CAPTURE)
+    target.removeEventListener('pointerup', onUp, CAPTURE)
+    target.removeEventListener('pointercancel', onUp, CAPTURE)
+    target.removeEventListener('pointerdown', onDown, CAPTURE)
+  }
+  function onClick(e) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation()
+    off()
+  }
+  function onUp(e) {
+    if (!same(e)) return
+    if (tid) clearTimeout(tid)
+    tid = setTimeout(off, afterUpMs)
+  }
+  // lần chạm mới (ngón khác, hoặc ngón cũ đã nhấc rồi chạm lại) → thôi chặn để click của nó đi bình thường
+  function onDown() { off() }
+  target.addEventListener('click', onClick, CAPTURE)
+  target.addEventListener('pointerup', onUp, CAPTURE)
+  target.addEventListener('pointercancel', onUp, CAPTURE)
+  target.addEventListener('pointerdown', onDown, CAPTURE)
+  tid = setTimeout(off, maxMs)
+  return off
+}
 
 // Từ nối thường đứng sau động từ chính; cắt ở đây cho động từ gọn ("Chế nước sôi vào phin" → "Chế nước sôi!").
 const CUT_WORDS = ['vào', 'cho', 'lên']
@@ -128,8 +177,16 @@ export function createStepCard(model, { full = true, onStart = null, autoMs = ST
       m.hint ? h('p', { class: 'g-step-card-hint' }, m.hint) : null,
       go,
       autoMs > 0 ? bar : null))
-    // Chạm bất kỳ đâu (kể cả nút) là vào bước ngay; chặn hành vi mặc định để lần chạm không rơi xuống sân khấu bên dưới.
-    el.addEventListener('pointerdown', e => { if (e.button > 0) return; e.preventDefault(); start() })
+    // Chạm bất kỳ đâu (kể cả nút) là vào bước ngay. Thẻ thôi nhận chạm ngay lúc đó và sân khấu được dựng dưới ngón tay,
+    // nên cú click trình duyệt sinh ra lúc nhấc ngón phải được nuốt (guardNextClick) — nếu không nó rơi trúng nút "Xong".
+    el.addEventListener('pointerdown', e => {
+      if (e.button > 0 || started || destroyed) return
+      e.preventDefault()
+      const doc = el.ownerDocument
+      guardNextClick((doc && doc.defaultView) || doc, { pointerId: e.pointerId })
+      start()
+    })
+    // bàn phím (Enter/Space trên nút) không có pointerdown: vào bước bằng click
     go.addEventListener('click', () => start())
   }
 

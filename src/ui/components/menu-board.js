@@ -2,6 +2,7 @@
 // hình món to ở giữa đĩa, tên chữ Baloo, giá trên tem tròn. Món hiếm: viền vàng lấp lánh chậm + nhãn "★ còn n".
 // Hết hàng: dán băng chéo "HẾT" (lớp is-out, aria-disabled; chạm vẫn báo cho người chơi biết).
 // Giữ testid của quầy cũ: menu-item-<id> (data-left với món hiếm), rare-left-<id> (chữ đúng "★ còn n").
+// Cấu trúc ul.co-menu-grid > li.co-menu-cell > button.co-menu-card: thẻ món là NÚT thật với trình đọc màn hình.
 // Hoạt ảnh chỉ chạy theo SỰ KIỆN (chạm): update() với cùng dữ liệu không dựng lại thẻ, không phát lại gì.
 // Thuần ở cấp module (import trong Node được); DOM chỉ tạo khi gọi createMenuBoard.
 import { h } from '../dom.js'
@@ -76,11 +77,12 @@ export function createMenuBoard(data = {}, opts = {}) {
   const { onPick = null, onOut = null, vfx = null } = opts
   const sound = typeof opts.sound === 'function' ? opts.sound : () => {}
   const reduced = () => (typeof opts.reduced === 'function' ? !!opts.reduced() : opts.reduced === undefined || opts.reduced === null ? isReduced() : !!opts.reduced)
-  const grid = h('div', { class: 'co-menu-grid', role: 'list' })
+  // danh sách thật (ul > li > button): thẻ món vẫn là NÚT với trình đọc màn hình; role="list" giữ ngữ nghĩa khi bỏ dấu đầu dòng
+  const grid = h('ul', { class: 'co-menu-grid', role: 'list' })
   const el = h('section', { class: 'co-menu g-wood', 'aria-label': opts.title || 'Thực đơn' },
     h('div', { class: 'co-menu-sign', 'aria-hidden': 'true' }, h('span', null, opts.title || 'Thực đơn')),
     grid)
-  const nodes = new Map()   // id → { sig, el, art, item }
+  const nodes = new Map()   // id → { sig, cell (li), el (nút), art, item }
   let destroyed = false
   let recipes = {}
 
@@ -97,7 +99,7 @@ export function createMenuBoard(data = {}, opts = {}) {
     const label = `${item.name}, ${item.priceText}` + (item.rare ? (item.out ? ', hết hàng' : item.left !== null ? `, còn ${item.left} phần` : '') : '')
     const node = h('button', {
       class: ['co-menu-card', item.rare ? 'is-rare' : '', item.out ? 'is-out' : ''],
-      type: 'button', role: 'listitem', testid: 'menu-item-' + item.id,
+      type: 'button', testid: 'menu-item-' + item.id,
       dataset: item.rare && item.left !== null ? { left: String(item.left) } : undefined,
       'aria-label': label,
       'aria-disabled': item.out ? 'true' : undefined
@@ -111,7 +113,7 @@ export function createMenuBoard(data = {}, opts = {}) {
     item.rare ? h('span', { class: 'co-twinkle co-twinkle--b', 'aria-hidden': 'true' }) : null,
     item.out ? h('span', { class: 'co-menu-tape', 'aria-hidden': 'true' }, h('span', null, 'HẾT')) : null)
     node.addEventListener('click', () => tap(item.id))
-    return { node, art }
+    return { cell: h('li', { class: 'co-menu-cell' }, node), node, art }
   }
 
   function tap(id) {
@@ -139,20 +141,20 @@ export function createMenuBoard(data = {}, opts = {}) {
       seen.add(item.id)
       let rec = nodes.get(item.id)
       if (!rec || rec.sig !== item.sig) {
-        const { node, art } = card(item)
-        if (rec) rec.el.replaceWith(node)
-        rec = { sig: item.sig, el: node, art, item }
+        const { cell, node, art } = card(item)
+        if (rec) rec.cell.replaceWith(cell)
+        rec = { sig: item.sig, cell, el: node, art, item }
         nodes.set(item.id, rec)
       } else {
         rec.item = item
       }
       // giữ đúng thứ tự mà không gỡ thẻ đang đứng yên (tránh mất trạng thái nhấn / cuộn)
       const want = prev ? prev.nextSibling : grid.firstChild
-      if (want !== rec.el) grid.insertBefore(rec.el, want)
-      prev = rec.el
+      if (want !== rec.cell) grid.insertBefore(rec.cell, want)
+      prev = rec.cell
     }
     for (const [id, rec] of [...nodes]) {
-      if (!seen.has(id)) { rec.el.remove(); nodes.delete(id) }
+      if (!seen.has(id)) { rec.cell.remove(); nodes.delete(id) }
     }
   }
 

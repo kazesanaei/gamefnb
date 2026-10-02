@@ -174,6 +174,10 @@ const SVG_LOW = `<svg viewBox="0 0 32 32" aria-hidden="true"><g stroke="${INK}" 
   '<path d="M11 7h10M11 10.5h6" stroke="#a5672b" stroke-width="2" stroke-linecap="round"/></g></svg>'
 const SVG_AGAIN = `<svg viewBox="0 0 32 32" aria-hidden="true"><g fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">` +
   '<path d="M25 16a9 9 0 1 1-3-6.7"/><path d="M23.5 3.5v6.5H17"/></g></svg>'
+// biển báo tròn có dấu chấm than (thông báo món HẾT)
+const SVG_OUT = `<svg viewBox="0 0 32 32" aria-hidden="true"><g stroke="${INK}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">` +
+  '<circle cx="16" cy="16" r="13" fill="#fff4d8"/><path d="M16 8.5v9.5" stroke-width="3.6" stroke="#b82c1f"/>' +
+  '<circle cx="16" cy="23.2" r="1.6" fill="#b82c1f" stroke="#b82c1f"/></g></svg>'
 
 // ---------- Trang ----------
 
@@ -289,14 +293,27 @@ export function boot(doc = document) {
       h('span', { class: 'mau-chrome-text' }, 'Phần trên màn Ca bán: HUD, phố, thanh 4 khâu, dây phiếu'))
   }
 
+  // Thông báo ngắn (vd chạm món HẾT): viên nhãn đỏ có viền mực + biểu tượng, nằm ở đáy ngay trên hàng nút `above`
+  // (Đọc lại / Chốt) nếu hàng đó đang hiện, không thì sát đáy vùng an toàn. Tự tắt sau TOAST_MS; mở bảng chọn món,
+  // đổi thẻ hay dựng lại lượt thì tắt ngay (không đè lên bảng vừa mở).
+  const TOAST_MS = 1700
   let toastTimer = 0
-  function toast(text, tone = 'bad') {
-    let t = overlay.querySelector('.mau-toast')
-    if (!t) { t = h('div', { class: 'mau-toast', role: 'status', 'aria-live': 'polite' }); overlay.appendChild(t) }
-    t.dataset.tone = tone
-    t.textContent = text
+  function hideToast() {
     clearTimeout(toastTimer)
-    toastTimer = setTimeout(() => t.remove(), 1700)
+    toastTimer = 0
+    overlay.querySelectorAll('.mau-toast').forEach(e => e.remove())
+  }
+  function toast(text, { above = null } = {}) {
+    hideToast()
+    const t = h('div', { class: 'mau-toast g-pill g-pill--bad', role: 'status', 'aria-live': 'polite', 'data-testid': 'mau-toast' },
+      svgBox(SVG_OUT, 'mau-toast-ico'), h('span', { class: 'mau-toast-text' }, text))
+    const a = above && above.isConnected && !above.hidden ? above.getBoundingClientRect() : null
+    if (a && a.height) {
+      const box = overlay.getBoundingClientRect()
+      t.style.bottom = Math.max(8, Math.round(box.bottom - a.top + 8)) + 'px'
+    }
+    overlay.appendChild(t)
+    toastTimer = setTimeout(hideToast, TOAST_MS)
   }
 
   // Nhóm nút chọn một (nút có aria-pressed): [{ v, label, testid, aria?, cls? }] → { el, set(v), btns }
@@ -448,6 +465,7 @@ export function boot(doc = document) {
 
     function openSheet(id, editIndex) {
       if (sheet || o.confirmed) return
+      hideToast()
       const line = editIndex !== null ? o.draft[editIndex] : null
       const rare = R[id].source === 'hiem'
       sheet = createOrderSheet({
@@ -504,22 +522,17 @@ export function boot(doc = document) {
       })
     }
 
+    // Nhịp chốt: con dấu ĐÃ CHỐT đập lên bản sao phiếu (lớp hiệu ứng) → phiếu bay lên dây bếp → phiếu mới nảy trên dây →
+    // thẻ "Đã chốt" (con dấu nhỏ đập vào, lời nhắn, nút Gọi món lại) mới hiện. Trong lúc phiếu còn đập dấu / đang bay,
+    // panel chỉ còn bóng thoại của khách: màn chỉ có MỘT con dấu, và không có nút nào nằm dưới bản sao phiếu để bấm nhầm.
     function doConfirm() {
       if (!o.readbackDone || o.confirmed) return
       o.confirmed = true
+      const round = o
       const target = slot
       // nhân bản phiếu rồi bay (stamp() nhân bản ngay trong lời gọi) → panel vẽ lại tự do bên dưới
       const flight = c.pad.stamp({ target })
       bus.emit('mau.order.confirmed', { lines: o.draft.length })
-      flight.then(() => {
-        if (!target || !target.isConnected) return
-        const t = ticketEl('#08', R.banh_mi_op_la, 'green', { 'data-testid': 'mau-ticket-new' })
-        t.appendChild(h('span', { class: 'mau-ticket-ok', 'aria-hidden': 'true' }, '✓'))
-        target.replaceWith(t)
-        slot = null
-        vfx.pop(t)
-        count.textContent = 'Phiếu 2/3'
-      })
       o.draft = []
       o.talk = []
       o.readbackDone = false
@@ -528,6 +541,24 @@ export function boot(doc = document) {
       c.pad.actionsEl.hidden = true
       c.menu.el.hidden = true
       c.bubble.update(customer())
+      // Promise của stamp() luôn kết thúc: true = bay tới dây; false = giảm chuyển động (không bay), đổi thẻ hay trang ẩn
+      // giữa chừng. Lượt đã bị dựng lại (start()) thì bỏ qua.
+      const land = () => {
+        if (o !== round || !c) return
+        if (target && target.isConnected) {
+          const t = ticketEl('#08', R.banh_mi_op_la, 'green', { 'data-testid': 'mau-ticket-new' })
+          t.appendChild(h('span', { class: 'mau-ticket-ok', 'aria-hidden': 'true' }, '✓'))
+          target.replaceWith(t)
+          slot = null
+          vfx.pop(t)
+          count.textContent = 'Phiếu 2/3'
+        }
+        showDone()
+      }
+      flight.then(land, land)
+    }
+
+    function showDone() {
       const again = h('button', { class: 'g-btn g-btn--primary mau-done-again', type: 'button', 'data-testid': 'mau-order-again', onclick: () => { sound('click'); start() } },
         svgBox(SVG_AGAIN, 'g-ico'), 'Gọi món lại')
       const done = h('section', { class: 'mau-done g-paper g-paper--lined', 'data-testid': 'mau-order-done' },
@@ -538,10 +569,12 @@ export function boot(doc = document) {
       panel.appendChild(done)
       // cuộn để thẻ "Đã chốt" (con dấu + nút Gọi món lại) nằm trọn trong panel, kể cả màn thấp
       panel.scrollTop = Math.max(0, done.offsetTop + done.offsetHeight + 12 - panel.clientHeight)
+      bus.emit('mau.order.done', {})
     }
 
     function start() {
       closeSheet(false)
+      hideToast()
       if (c) {
         c.bubble.destroy(); c.menu.destroy(); c.pad.destroy()
         c = null
@@ -556,7 +589,7 @@ export function boot(doc = document) {
       const menu = createMenuBoard({ recipes: R, menu: S.menu, left: leftNow() }, {
         vfx, sound, reduced,
         onPick: id => openSheet(id, null),
-        onOut: () => toast(((DATA.STRINGS && DATA.STRINGS.rare) || {}).outOfStock || 'Hết nguyên liệu hiếm cho món này')
+        onOut: () => toast(((DATA.STRINGS && DATA.STRINGS.rare) || {}).outOfStock || 'Hết nguyên liệu hiếm cho món này', { above: c && c.pad.actionsEl })
       })
       const pad = createOrderPad(padData(), {
         vfx, sound, reduced,
@@ -575,7 +608,7 @@ export function boot(doc = document) {
 
     return {
       enter() { if (!c) start() },
-      leave() { closeSheet(false) },
+      leave() { closeSheet(false); hideToast() },
       refresh() {},
       restart: start
     }

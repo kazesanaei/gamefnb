@@ -184,3 +184,83 @@ test('Thái kiểu mới: lát tách đều 8px, tư thế dưa leo có hình th
   assert.ok(x0 >= 0 && y0 >= 0 && x1 <= 64 && y1 <= 64 && x1 > x0 && y1 > y0)
   assert.ok(PROP_META.thot_lon && PROP_META.dao_lon && PROP_META.dao_lon.tip, 'cần mốc thớt và mũi dao')
 })
+
+// Chặn click ma của thẻ bước (sửa lỗi vòng kiểm chứng: chạm thẻ bằng tay thì click rơi xuống nút "Xong" của sân khấu mới).
+const ev = (type, extra = {}) => Object.assign(new Event(type, { cancelable: true, bubbles: true }), extra)
+const sleep = ms => new Promise(r => setTimeout(r, ms))
+
+test('guardNextClick: nuốt đúng MỘT click của lần chạm vào bước, click sau đó đi bình thường', async () => {
+  const { guardNextClick } = await import('../../src/ui/components/step-card.js')
+  const win = new EventTarget()
+  let clicks = 0
+  guardNextClick(win, { pointerId: 7, afterUpMs: 30, maxMs: 500 })
+  // nút "Xong" (EventTarget của Node không có cây phần tử: bộ chặn ở pha capture của window chạy trước nút trong trình duyệt,
+  // ở đây đăng ký sau để giữ đúng thứ tự đó)
+  win.addEventListener('click', () => { clicks++ })
+  win.dispatchEvent(ev('pointerup', { pointerId: 7 }))
+  const c1 = ev('click')
+  win.dispatchEvent(c1)
+  assert.equal(c1.defaultPrevented, true, 'click của chính lần chạm bị chặn')
+  assert.equal(clicks, 0, 'không tới nút bên dưới')
+  const c2 = ev('click')
+  win.dispatchEvent(c2)
+  assert.equal(c2.defaultPrevented, false, 'click kế tiếp không bị chặn')
+  assert.equal(clicks, 1)
+})
+
+test('guardNextClick: lần chạm mới hoặc hết hạn sau khi nhấc ngón thì thôi chặn; ngón khác nhấc không tính', async () => {
+  const { guardNextClick } = await import('../../src/ui/components/step-card.js')
+  // lần chạm mới (pointerdown) → thôi chặn: click của nó tới nút
+  const a = new EventTarget()
+  guardNextClick(a, { pointerId: 1, afterUpMs: 30, maxMs: 500 })
+  a.dispatchEvent(ev('pointerdown', { pointerId: 2 }))
+  const ca = ev('click')
+  a.dispatchEvent(ca)
+  assert.equal(ca.defaultPrevented, false)
+  // nhấc ngón mà không có click (vuốt / nhấn giữ) → sau afterUpMs thì thôi chặn
+  const b = new EventTarget()
+  guardNextClick(b, { pointerId: 1, afterUpMs: 20, maxMs: 500 })
+  b.dispatchEvent(ev('pointerup', { pointerId: 1 }))
+  await sleep(40)
+  const cb = ev('click')
+  b.dispatchEvent(cb)
+  assert.equal(cb.defaultPrevented, false)
+  // ngón khác nhấc lên không làm hết hạn sớm; click của ngón đang chạm vẫn bị chặn
+  const c = new EventTarget()
+  guardNextClick(c, { pointerId: 1, afterUpMs: 20, maxMs: 500 })
+  c.dispatchEvent(ev('pointerup', { pointerId: 9 }))
+  await sleep(40)
+  const cc = ev('click')
+  c.dispatchEvent(cc)
+  assert.equal(cc.defaultPrevented, true)
+  // quá maxMs thì tự gỡ; off() gỡ ngay; target thiếu thì không lỗi
+  const d = new EventTarget()
+  guardNextClick(d, { maxMs: 20 })
+  await sleep(40)
+  const cd = ev('click')
+  d.dispatchEvent(cd)
+  assert.equal(cd.defaultPrevented, false)
+  const e = new EventTarget()
+  const off = guardNextClick(e, { maxMs: 500 })
+  off()
+  const ce = ev('click')
+  e.dispatchEvent(ce)
+  assert.equal(ce.defaultPrevented, false)
+  assert.equal(typeof guardNextClick(null), 'function')
+})
+
+test('con dấu và màn ra món gọi âm bằng tên viết thẳng sound(\'…\') (audio.test kiểm được), không qua hàm bọc', async () => {
+  const { readFileSync } = await import('node:fs')
+  const { SOUND_NAMES } = await import('../../src/ui/audio.js')
+  const root = new URL('../../src/ui/components/', import.meta.url)
+  const need = { 'stamp.js': ['stamp', 'sparkle'], 'dish-reveal.js': ['tick', 'whoosh', 'stamp', 'fanfare', 'error', 'ding'] }
+  for (const [file, names] of Object.entries(need)) {
+    const text = readFileSync(new URL(file, root), 'utf8')
+    const used = new Set([...text.matchAll(/\bsound\(\s*'([a-z_]+)'\s*\)/g)].map(m => m[1]))
+    for (const n of names) {
+      assert.ok(used.has(n), `${file}: thiếu sound('${n}')`)
+      assert.ok(SOUND_NAMES.includes(n), `${file}: âm ${n} không có trong SOUND_NAMES`)
+    }
+    assert.ok(!/\bplay1?\(\s*'/.test(text), `${file}: còn gọi âm qua hàm bọc play()/play1()`)
+  }
+})

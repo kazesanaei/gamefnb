@@ -164,6 +164,7 @@
   font-style: italic;
   text-align: center;
   color: var(--g-ink-soft);
+  text-wrap: balance;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -228,7 +229,10 @@
 }
 .co-menu-sign::before { left: 9px; }
 .co-menu-sign::after { right: 9px; }
-.co-menu-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 10px; }
+.co-menu-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 10px; margin: 0; padding: 0; list-style: none; }
+/* ô danh sách bọc nút thẻ món (ul > li > button: thẻ vẫn là nút với trình đọc màn hình) */
+.co-menu-cell { display: flex; min-width: 0; margin: 0; padding: 0; }
+.co-menu-cell > .co-menu-card { flex: 1 1 auto; width: 100%; }
 
 .co-menu-card {
   --co-dish: 84px;
@@ -289,10 +293,17 @@
   padding-top: 10px;
   border: 3px solid var(--g-ink);
   border-radius: 50%;
-  background: radial-gradient(circle at 34% 28%, #ff9f87 0 20%, var(--g-tomato) 62%, #c3301f 100%);
+  /* đốm sáng nhỏ dồn lên góc (không nằm sau con số); nền đỏ đậm để chữ trắng đủ tương phản */
+  background:
+    radial-gradient(circle at 25% 19%, rgba(255, 176, 150, .95) 0 9%, rgba(255, 176, 150, 0) 15%),
+    radial-gradient(circle at 50% 46%, #c8331f 0 52%, #9f2414 100%);
   color: #fff;
   line-height: 1;
-  text-shadow: 0 2px 0 rgba(90, 20, 10, .55);
+  /* viền mực 1,5px quanh chữ + bóng đáy */
+  text-shadow:
+    1.5px 0 0 var(--g-ink), -1.5px 0 0 var(--g-ink), 0 1.5px 0 var(--g-ink), 0 -1.5px 0 var(--g-ink),
+    1px 1px 0 var(--g-ink), -1px 1px 0 var(--g-ink), 1px -1px 0 var(--g-ink), -1px -1px 0 var(--g-ink),
+    0 2.5px 0 var(--g-ink);
   box-shadow: 0 3px 0 var(--g-ink);
   transform: rotate(10deg);
   pointer-events: none;
@@ -305,7 +316,7 @@
   border-radius: 50%;
 }
 .co-price b { font-size: 20px; }
-.co-price small { font-size: 13px; margin-left: 1px; }
+.co-price small { font-size: 14px; margin-left: 1px; }
 
 /* món hiếm: viền vàng, ánh lóe chậm, sao lấp lánh, nhãn ★ còn n */
 .co-menu-card.is-rare {
@@ -362,6 +373,8 @@
 .co-menu-card.is-out .co-price { filter: grayscale(.8); opacity: .7; }
 .co-menu-card.is-out .co-twinkle,
 .co-menu-card.is-out .co-menu-glint { display: none; }
+/* nhãn "★ còn 0" xám theo thẻ (không hút mắt như món còn hàng) */
+.co-menu-card.is-out .co-menu-left { border-color: #8d7a68; background: #e7dccb; color: var(--g-ink-soft); box-shadow: none; }
 .co-menu-tape {
   position: absolute;
   left: -6px;
@@ -720,7 +733,7 @@
   font-weight: 800;
   font-size: 27px;
   line-height: 1;
-  color: var(--g-tomato);
+  color: var(--g-tomato-dark);
   transform: rotate(-6deg);
   pointer-events: none;
 }
@@ -946,19 +959,35 @@
   .co-sheet-actions .g-btn--big { min-height: 54px; }
   .co-pad-actions .g-btn { min-height: 52px; }
 }
-/* màn rất thấp (panel ~300px, iPhone có vùng an toàn): thu khách, bong bóng, thẻ món; câu nói còn một dòng */
+/* màn rất thấp (panel ~300px, iPhone có vùng an toàn): thu khách, bong bóng (ghi chú đứng cạnh món), biển và thẻ
+   món, hàng nút khi phiếu trống — để tâm hàng thẻ món đầu lộ ra trên hàng nút dính đáy ngay khi mở */
 @media (max-height: 600px) {
-  .co-cust { --co-fig: 84px; padding-top: 28px; }
-  .co-bubble { padding: 6px 8px 5px; }
-  .co-bubble-art { width: 52px; height: 52px; }
-  .co-bubble[data-n="2"] .co-bubble-art { width: 48px; height: 48px; }
+  .co-cust { --co-fig: 74px; --co-counter: 16px; padding-top: 18px; }
+  .co-bubble { padding: 5px 8px 4px; margin-bottom: calc(var(--co-counter) + 8px); }
+  .co-bubble::after { bottom: 22px; }
+  .co-bubble-dishes { gap: 2px 12px; }
+  .co-bubble-dish { flex-direction: row; align-items: flex-end; }
+  .co-bubble-art { width: 48px; height: 48px; }
+  .co-bubble[data-n="2"] .co-bubble-art { width: 46px; height: 46px; }
+  /* huy hiệu ×n nhỏ lại, nhích lên trên để không đè ghi chú đứng cạnh món */
+  .co-bubble-qty, .co-bubble[data-n="3"] .co-bubble-qty, .co-bubble[data-n="4"] .co-bubble-qty {
+    top: -9px; right: auto; left: 24px; min-width: 32px; height: 26px; font-size: 16px; line-height: 21px;
+  }
+  .co-bubble-notes { flex-wrap: nowrap; gap: 0; margin: 0 0 0 -2px; max-width: none; }
   .co-bubble-notes .co-note-ico { width: 26px; height: 26px; }
-  .co-bubble-say { -webkit-line-clamp: 1; margin-top: 2px; }
-  .co-menu { margin-top: 24px; padding-top: 26px; padding-bottom: 10px; }
+  .co-bubble-say { -webkit-line-clamp: 1; margin-top: 1px; font-size: 13px; }
+  .co-menu { margin-top: 16px; padding-top: 20px; padding-bottom: 10px; }
+  .co-menu-sign { top: -15px; min-width: 120px; padding: 2px 18px 0; font-size: 17px; }
   .co-menu-grid { gap: 12px 8px; }
-  .co-menu-card { --co-dish: 66px; padding-top: 6px; padding-bottom: 8px; }
-  .co-menu-name { font-size: 15px; margin-top: 2px; }
+  .co-menu-card { --co-dish: 60px; padding-top: 5px; padding-bottom: 7px; }
+  .co-menu-name { font-size: 15px; margin-top: 1px; }
   .co-menu-left { margin-top: 3px; }
+  .co-price { top: -9px; right: -7px; width: 44px; height: 44px; padding-top: 9px; }
+  .co-price b { font-size: 18px; }
+  /* phiếu trống: hai nút đang tắt, hàng nút gọn lại (vẫn ≥ 44px) */
+  .co-pad-actions.is-idle { padding-top: 6px; padding-bottom: 6px; }
+  .co-pad-actions.is-idle .g-btn { min-height: 46px; padding-top: 5px; padding-bottom: 4px; font-size: 17px; }
+  .co-pad-actions.is-idle .g-btn svg { width: 24px; height: 24px; }
   .co-sheet-head { padding-bottom: 4px; }
   .co-sheet-title { font-size: 21px; }
   .co-sheet-body { gap: 8px; }

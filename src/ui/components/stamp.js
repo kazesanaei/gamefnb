@@ -111,6 +111,18 @@ export function createStamp({ score = 0, label = '', note = '' } = {}) {
 const wait = ms => new Promise(r => setTimeout(r, ms))
 
 /**
+ * Đánh dấu sân khấu (buildFrame2, .mg-stage.g-frame2) đã có kết quả bước: lớp .has-result ẩn thẻ hướng dẫn .mg-sub để con
+ * dấu và Dì Sáu không đè lên chữ (css/fx.css; trình duyệt có :has() thì CSS tự nhận, lớp này cho trình duyệt cũ).
+ * buildFrame2 gỡ lớp này mỗi khi dựng bước mới trên cùng sân khấu.
+ */
+function markResult(el) {
+  try {
+    const stage = el.closest && el.closest('.mg-stage.g-frame2')
+    if (stage) stage.classList.add('has-result')
+  } catch { /* bỏ qua */ }
+}
+
+/**
  * playStamp(el, { vfx, sound, reduced, shake, starTo }) → Promise (xong khi dấu đã đập và dừng hình xong, ~300 ms).
  * - Dấu đập: phóng 1,6 → 1, xoay −8°, 220 ms (WAAPI trên .g-stamp-ink); chạm mặt thì âm 'stamp' và dừng hình 60 ms.
  * - Hoàn hảo: 10–14 hạt vàng + âm 'sparkle' (+ sao bay về starTo nếu có, vd chấm bước hiện tại). Tốt: 4 hạt. Đạt: không hạt.
@@ -118,13 +130,23 @@ const wait = ms => new Promise(r => setTimeout(r, ms))
  * - Giảm chuyển động: dấu hiện bằng opacity 150 ms, không hạt, không rung (vẫn có âm và dừng hình).
  * vfx: hệ hiệu ứng (createVfx); sound: hàm (tên âm) → void, vd app.sound. Thiếu thì bỏ qua phần đó.
  */
-export async function playStamp(el, { vfx = null, sound = null, reduced = null, shake = null, starTo = null } = {}) {
+export async function playStamp(el, { vfx = null, sound: soundFn = null, reduced = null, shake = null, starTo = null } = {}) {
   if (!el) return
   const red = typeof reduced === 'function' ? !!reduced() : (reduced === null || reduced === undefined ? isReduced() : !!reduced)
   const key = el.dataset ? el.dataset.grade : 'dat'
   const ink = (el.querySelector && el.querySelector('.g-stamp-ink')) || el
-  const play = name => { try { if (typeof sound === 'function') sound(name) } catch { /* bỏ qua */ } }
+  // Trang đang ẩn (chuyển ứng dụng/thẻ): không phát âm, không bắn hạt — tránh âm vang khi người chơi đã đi chỗ khác và hiệu
+  // ứng dồn lại tới lúc quay về. Tên âm viết thẳng trong lời gọi sound('…') để test âm (audio.test) kiểm được.
+  const hidden = () => {
+    const d = el.ownerDocument
+    return !!(d && d.visibilityState === 'hidden')
+  }
+  const sound = name => {
+    if (hidden() || typeof soundFn !== 'function') return
+    try { soundFn(name) } catch { /* bỏ qua */ }
+  }
   el.classList.toggle('is-reduced', red)
+  markResult(el)
   let anim = null
   try {
     if (typeof ink.animate === 'function') {
@@ -140,18 +162,18 @@ export async function playStamp(el, { vfx = null, sound = null, reduced = null, 
   } catch { anim = null }
   if (anim) await Promise.race([anim.finished.catch(() => {}), wait(red ? 220 : 320)])
   if (!el.isConnected) return
-  play('stamp')
+  sound('stamp')
   // dừng hình (không phải chuyển động nên giữ cả khi giảm chuyển động)
   if (vfx && typeof vfx.hitstop === 'function') await vfx.hitstop(60)
   else await wait(60)
-  if (!el.isConnected || red || !vfx) {
-    if (key === 'hoan_hao') play('sparkle')
+  if (!el.isConnected || red || !vfx || hidden()) {
+    if (key === 'hoan_hao') sound('sparkle')
     return
   }
   try {
     if (key === 'hoan_hao') {
       vfx.burst(el, 'sparkle', { n: 10 + Math.floor(Math.random() * 5) })
-      play('sparkle')
+      sound('sparkle')
       if (starTo && typeof vfx.fly === 'function') {
         // sao nhỏ bay từ biểu tượng sao trên dấu về chấm bước
         const r = (ink.querySelector('.g-stamp-shape') || el).getBoundingClientRect()

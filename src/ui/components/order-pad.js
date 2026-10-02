@@ -5,6 +5,7 @@
 //   readback(result) — sáng lần lượt từng dòng (120 ms mỗi dòng) rồi đánh ✓ / ✗;
 //   stamp({ target }) — NHÂN BẢN phiếu vào lớp hiệu ứng, con dấu "ĐÃ CHỐT" đập xuống (1,8 → 1, xoay −8°, 200 ms, rung
 //   khung 2px, âm stamp) rồi phiếu thu nhỏ bay cong 450 ms tới đích (dây phiếu). Bên gọi vẽ lại panel ngay được.
+//   Chuỗi chốt tự dọn: trang ẩn, vfx.clear(), đích rời DOM hoặc destroy() đều dừng hẳn (không hạt, không âm, không bay).
 // Giữ testid cũ: draft, order-line-<i>, order-line-remove-<i>, (li data-index), caught-list, readback, confirm-order.
 // update() với cùng dữ liệu không dựng lại dòng nào, không phát lại hiệu ứng.
 // Thuần ở cấp module (import trong Node được).
@@ -69,7 +70,8 @@ const LABELS = Object.freeze({
 
 /**
  * createOrderPad(data, opts) → { el, update(data), destroy(), lineEl(i), artEl(i), paperEl, actionsEl, readback(result) → Promise,
- *   stamp({ target, text }) → Promise<boolean>, reveal(i, { smooth }) }
+ *   stamp({ target, text, keepOnDestroy }) → Promise<boolean>, reveal(i, { smooth }) }
+ * destroy() hủy luôn chuỗi chốt đang chạy (trừ chuỗi gọi với keepOnDestroy: true).
  * actionsEl (hàng nút Đọc lại / Chốt) mặc định nằm cuối phiếu; bên gọi nên chuyển nó ra làm con cuối của khâu Order để
  * hàng nút dính đáy vùng cuộn suốt (position: sticky).
  * data: {
@@ -186,6 +188,8 @@ export function createOrderPad(data = {}, opts = {}) {
     paintChecks()
     // nút
     readBtn.disabled = model.empty
+    // phiếu trống: hàng nút gọn lại (css) để màn thấp còn chỗ cho thẻ món
+    actions.classList.toggle('is-idle', model.empty)
     okBtn.disabled = !cur.canConfirm || model.empty
     okBtn.title = okBtn.disabled ? L.readFirst : ''
     okBtn.classList.toggle('g-btn--shine', !okBtn.disabled)
@@ -279,12 +283,27 @@ export function createOrderPad(data = {}, opts = {}) {
     return g
   }
 
+  // Chuỗi chốt đang chạy (mỗi lần stamp() một mục): { keep, abort() }. destroy() hủy các chuỗi không giữ.
+  const jobs = new Set()
+
+  // Phần tử còn trong DOM và có kích thước (đích hợp lệ cho hạt / bay; phần tử rời DOM đo ra (0,0) ở góc màn).
+  const onScreen = n => {
+    if (!n || !n.isConnected || typeof n.getBoundingClientRect !== 'function') return false
+    const r = n.getBoundingClientRect()
+    return r.width > 0 || r.height > 0
+  }
+  // Đích bay: phần tử thì phải còn trên màn; hình chữ nhật / điểm { x, y } thì nhận luôn.
+  const targetOk = t => !!t && (typeof t.getBoundingClientRect === 'function' ? onScreen(t) : true)
+
   /**
    * Chốt order: nhân bản phiếu → con dấu ĐÃ CHỐT đập xuống → rung khung 2px → phiếu bay cong tới target.
-   * Gọi TRƯỚC khi bên gọi đổi trạng thái / vẽ lại panel. Trả Promise<boolean> (true nếu có bay).
+   * Gọi TRƯỚC khi bên gọi đổi trạng thái / vẽ lại panel. Trả Promise<boolean> (true nếu có bay tới đích).
    * Giảm chuyển động: dấu hiện bằng độ mờ, giữ một nhịp rồi mờ đi, không bay.
+   * Tự dọn: chuỗi dừng (gỡ bản sao, không hạt, không âm, Promise → false) khi trang ẩn, khi vfx.clear() đã gom bản sao
+   * (đổi thẻ / rời màn), khi đích rời DOM, hoặc khi destroy() phiếu. keepOnDestroy: true cho chuỗi sống qua destroy()
+   * (bên gọi dựng lại cả panel ngay sau khi chốt) — các điều kiện dừng còn lại vẫn áp dụng.
    */
-  function stamp({ target = null, text = STAMP_TEXT } = {}) {
+  function stamp({ target = null, text = STAMP_TEXT, keepOnDestroy = false } = {}) {
     if (destroyed) return Promise.resolve(false)
     const red = reduced()
     let layer = null
@@ -294,37 +313,79 @@ export function createOrderPad(data = {}, opts = {}) {
     const mark = h('div', { class: 'co-stamp', 'aria-hidden': 'true' }, h('span', null, text))
     host.appendChild(mark)
     sound('stamp')
-    const cleanup = () => { if (ghost) ghost.remove(); else mark.remove() }
-    if (red || typeof mark.animate !== 'function') {
-      if (typeof mark.animate === 'function') mark.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: 'linear' })
-      return new Promise(resolve => {
-        setTimeout(() => {
+    const doc = el.ownerDocument || null
+    // bản sao còn là của phiếu: vẫn nằm trong lớp hiệu ứng và chưa bị vfx.clear() gom vào pool / cấp cho hiệu ứng khác
+    const ghostOk = () => !ghost || (!!layer && ghost.parentNode === layer && ghost.classList.contains('co-pad-ghost'))
+    const pageHidden = () => !!doc && doc.visibilityState === 'hidden'
+    return new Promise(resolve => {
+      const job = { keep: !!keepOnDestroy, done: false, ids: new Set(), flyEl: null, abort: null }
+      const alive = () => !job.done && (!destroyed || job.keep) && ghostOk() && mark.isConnected && !pageHidden()
+      const onVis = () => { if (pageHidden()) job.abort() }
+      const finish = ok => {
+        if (job.done) return
+        job.done = true
+        jobs.delete(job)
+        for (const id of job.ids) clearTimeout(id)
+        job.ids.clear()
+        if (doc && typeof doc.removeEventListener === 'function') doc.removeEventListener('visibilitychange', onVis)
+        // chỉ gỡ bản sao khi nó còn là của phiếu; nút đã về pool của vfx thì để vfx quản
+        if (ghost) { if (ghostOk()) ghost.remove() } else mark.remove()
+        resolve(ok)
+      }
+      job.abort = () => {
+        // đang bay: hủy hoạt ảnh của nút bay (vfx tự trả nút về pool khi hoạt ảnh bị hủy)
+        const f = job.flyEl
+        job.flyEl = null
+        if (f && layer && f.parentNode === layer && f.classList.contains('vfx-fly') && typeof f.getAnimations === 'function') {
+          try { for (const a of f.getAnimations()) a.cancel() } catch { /* bỏ qua */ }
+        }
+        finish(false)
+      }
+      // hẹn giờ riêng của chuỗi: tới nhịp mà điều kiện không còn (rời màn, trang ẩn…) thì dừng hẳn
+      const step = (fn, ms) => {
+        const id = setTimeout(() => {
+          job.ids.delete(id)
+          if (job.done) return
+          if (!alive()) { job.abort(); return }
+          fn()
+        }, ms)
+        job.ids.add(id)
+      }
+      jobs.add(job)
+      if (doc && typeof doc.addEventListener === 'function') doc.addEventListener('visibilitychange', onVis)
+
+      if (red || typeof mark.animate !== 'function') {
+        if (typeof mark.animate === 'function') mark.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: 'linear' })
+        step(() => {
           if (ghost && typeof ghost.animate === 'function') {
             const a = ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: 'forwards' })
-            a.onfinish = () => { cleanup(); resolve(false) }
-            setTimeout(() => { cleanup(); resolve(false) }, 400)
-          } else { cleanup(); resolve(false) }
+            a.onfinish = () => finish(false)
+            step(() => finish(false), 400)
+          } else finish(false)
         }, PAD_TIMING.reducedHold)
-      })
-    }
-    mark.animate([
-      { transform: 'translate(-50%, -50%) rotate(-8deg) scale(1.8)', opacity: 0 },
-      { transform: 'translate(-50%, -50%) rotate(-8deg) scale(1.8)', opacity: 0.9, offset: 0.15 },
-      { transform: 'translate(-50%, -50%) rotate(-8deg) scale(1)', opacity: 1 }
-    ], { duration: PAD_TIMING.stampIn, easing: 'cubic-bezier(.55, 0, .9, .45)' })
-    return new Promise(resolve => {
-      setTimeout(() => {
-        if (vfx) {
+        return
+      }
+      mark.animate([
+        { transform: 'translate(-50%, -50%) rotate(-8deg) scale(1.8)', opacity: 0 },
+        { transform: 'translate(-50%, -50%) rotate(-8deg) scale(1.8)', opacity: 0.9, offset: 0.15 },
+        { transform: 'translate(-50%, -50%) rotate(-8deg) scale(1)', opacity: 1 }
+      ], { duration: PAD_TIMING.stampIn, easing: 'cubic-bezier(.55, 0, .9, .45)' })
+      step(() => {
+        if (vfx && onScreen(mark)) {
           vfx.shake(host, 1)
           vfx.burst(mark, 'star', { n: 6 })
         }
       }, PAD_TIMING.stampIn)
-      setTimeout(() => {
-        if (!ghost || !target || !vfx) { cleanup(); resolve(false); return }
+      step(() => {
+        if (!ghost || !vfx || !targetOk(target) || !onScreen(ghost)) { finish(false); return }
         sound('whoosh')
+        const before = layer.lastElementChild
         const flight = vfx.fly(ghost, target, { node: ghost, ms: PAD_TIMING.fly, arc: 0.35 })
-        cleanup()   // bản bay đã được nhân bản xong (đồng bộ) trong vfx.fly
-        flight.then(ok => resolve(!!ok), () => resolve(false))
+        const last = layer.lastElementChild
+        if (last && last !== before && last.classList.contains('vfx-fly')) job.flyEl = last
+        // bản bay đã được nhân bản xong (đồng bộ) trong vfx.fly → gỡ bản sao tĩnh ngay
+        if (ghostOk()) ghost.remove()
+        flight.then(ok => { job.flyEl = null; finish(!!ok) }, () => { job.flyEl = null; finish(false) })
       }, PAD_TIMING.stampIn + PAD_TIMING.stampHold)
     })
   }
@@ -342,7 +403,9 @@ export function createOrderPad(data = {}, opts = {}) {
     lineEl: i => (rows[i] ? rows[i].li : null),
     artEl: i => (rows[i] ? rows[i].art : null),
     destroy() {
+      if (destroyed) return
       destroyed = true
+      for (const j of [...jobs]) if (!j.keep) j.abort()
       for (const id of timers) clearTimeout(id)
       timers.clear()
       el.remove()
