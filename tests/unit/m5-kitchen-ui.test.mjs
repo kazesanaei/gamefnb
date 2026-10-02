@@ -203,6 +203,30 @@ test('chế độ tập trung: service.js bật .is-focus (khung < 760px, tab B�
   assert.ok(start.indexOf('syncFocus()') > 0 && start.indexOf('syncFocus()') < start.indexOf('playStep('))
 })
 
+// Vòng sửa F (hồi quy): thông báo bị hoãn không thả ra đè màn ra món; cú chạm Ra món chia task ngắn; không ép bố cục mỗi khung.
+test('ra món: thông báo nổi chờ bảng đóng, chế độ tập trung giữ tới khi bảng đóng, việc của cú chạm chia nhiều task', () => {
+  const svc = read('src/ui/screens/service.js')
+  assert.match(svc, /onReveal: on =>/, 'màn ca bán nhận tín hiệu bảng ra món mở / đóng')
+  assert.match(svc, /const holdingToasts = \(\) => focusOn \|\| revealOpen/)
+  assert.match(svc, /if \(holdingToasts\(\) && !\(opts && opts\.now\)/, 'thông báo thường chờ khi tập trung hoặc bảng ra món mở')
+  // applyFocus không đọc clientHeight mỗi khung hình (ép bố cục): đo lại khi màn đổi cỡ (ResizeObserver)
+  const apply = svc.slice(svc.indexOf('function applyFocus()'), svc.indexOf('const holdingToasts'))
+  assert.doesNotMatch(apply, /el\.clientHeight/)
+  assert.match(svc, /new ResizeObserver\(/)
+  const k = read('src/ui/screens/kitchen.js')
+  const fw = k.slice(k.indexOf('function focusWanted()'), k.indexOf('function syncFocus()'))
+  assert.match(fw, /ui\.layerKind === 'reveal'/, 'bảng ra món còn hiện: vẫn muốn tập trung')
+  const fin = k.slice(k.indexOf('async function onFinish()'), k.indexOf('function showReveal()'))
+  assert.ok(fin.indexOf('revealNotice(true)') >= 0 && fin.indexOf('revealNotice(true)') < fin.indexOf('finishDish('), 'báo giữ thông báo trước khi chấm món')
+  assert.ok(fin.indexOf('nextTask(') > fin.indexOf('finishDish('), 'bảng ra món / dây phiếu dựng ở task sau')
+  assert.doesNotMatch(fin.slice(0, fin.indexOf('nextTask(')), /\brender\(\)/, 'không vẽ lại dây phiếu trong task của cú chạm')
+  const close = k.slice(k.indexOf('function afterReveal()'), k.indexOf('function revealNotice('))
+  assert.ok(close.indexOf('revealNotice(false)') > close.indexOf('syncFocus()'), 'thả thông báo sau khi đã tắt chế độ tập trung')
+  // bảng ra món dựng thử (ẩn) một lần mỗi trang, không mang testid
+  assert.match(k, /let revealWarmed = false/)
+  assert.match(k, /for \(const a of \['data-testid', 'role', 'aria-label'\]\) rv\.el\.removeAttribute\(a\)/)
+})
+
 test('kitchen.js: dùng app.vfx (không tự tạo vfx), giữ lớp móc và testid cho e2e / hướng dẫn', () => {
   const k = read('src/ui/screens/kitchen.js')
   assert.doesNotMatch(k, /createVfx\(/)

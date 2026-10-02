@@ -497,6 +497,39 @@
 /* bước chọn: danh sách các bước chưa cần, ẩn để kệ đủ chỗ (thẻ trên Thớt vẫn có) */
 .k-main[data-view="chon"] .k-card-steps { display: none; }
 
+/* Khối đầu bảng + thẻ công thức của bước Chọn (.k-chon-top, kitchen.js renderChon): khung cao giữ bố cục cột như cũ. */
+.k-chon-top { display: contents; }
+/* Khung thấp (≤ 640px: 360×600, 320×568, iPhone 375×553 có thanh Safari; chế độ tập trung đã bật): vừa mở bước Chọn phải
+   thấy và bấm được ít nhất một hàng kệ, không phải tự vuốt tìm. Nút "‹ Phiếu" đứng cạnh thẻ công thức (bỏ hình + tên món
+   ở đầu bảng — phiếu "Đang làm" trên dây phiếu đầu màn đã ghi tên món), thẻ gọn: hình 30px, nhãn phụ (ghi chú thêm món,
+   "còn n" của hàng hiếm) dán ở chân hình thay vì thêm một hàng dưới hình. */
+@media (max-height: 640px) {
+  .k-main[data-view="chon"] { gap: 6px; padding-top: 6px; }
+  .k-main[data-view="chon"] > .k-chon-top { display: flex; align-items: flex-start; gap: 6px; }
+  .k-main[data-view="chon"] > .k-chon-top > .k-board-head { flex: none; position: relative; }
+  .k-main[data-view="chon"] > .k-chon-top > .k-board-head > :not(.k-back):not(.k-wait-dot) { display: none; }
+  /* chấm màu chờ của phiếu: góc trên-phải nút "‹ Phiếu" */
+  .k-main[data-view="chon"] > .k-chon-top > .k-board-head > .k-wait-dot { position: absolute; right: -4px; top: -4px; pointer-events: none; }
+  .k-main[data-view="chon"] > .k-chon-top > .k-board-head > .k-back { padding: 4px 8px; }
+  .k-main[data-view="chon"] > .k-chon-top > .k-card { flex: 1 1 auto; min-width: 0; padding: 3px 8px 4px; }
+  .k-main[data-view="chon"] > .k-chon-top .k-card-notes { margin-bottom: 0; }
+  .k-main[data-view="chon"] > .k-chon-top .k-card-ings { gap: 2px 6px; margin-top: 0; }
+  /* hình và nhãn phụ chồng chung một ô lưới: ô rộng bằng cái rộng hơn (nhãn không đè sang món bên cạnh), nhãn dán chân hình */
+  .k-main[data-view="chon"] > .k-chon-top .k-card-ing {
+    display: grid; grid-template: "a" auto / auto; justify-items: center; align-items: start; min-width: 32px;
+  }
+  .k-main[data-view="chon"] > .k-chon-top .k-card-ing.has-tag { padding-bottom: 10px; }
+  .k-main[data-view="chon"] > .k-chon-top .k-card-ing > * { grid-area: a; }
+  .k-main[data-view="chon"] > .k-chon-top .k-card-art { width: 30px; height: 30px; }
+  .k-main[data-view="chon"] > .k-chon-top .k-card-art[data-qty]::after { right: -10px; top: -5px; min-width: 20px; line-height: 14px; }
+  .k-main[data-view="chon"] > .k-chon-top .k-card-ing.is-rare .k-card-art::before { left: -6px; top: -5px; width: 16px; height: 16px; line-height: 12px; }
+  .k-main[data-view="chon"] > .k-chon-top .k-card-opt, .k-main[data-view="chon"] > .k-chon-top .k-card-left {
+    align-self: end; z-index: 1; transform: translateY(10px); max-width: none; padding: 0 3px; line-height: 14px; white-space: nowrap;
+  }
+  .k-main[data-view="chon"] > .k-chon-top .k-card-left-pre { display: none; }
+  .k-main[data-view="chon"] > .k-chon-top .k-card-tip { margin-top: 1px; line-height: 1.25; }
+}
+
 /* ----- Hoạt ảnh (chỉ transform / opacity) ----- */
 @keyframes k-blink-op { 50% { opacity: .25; } }
 @keyframes k-up { from { transform: translateY(24px); opacity: 0; } }

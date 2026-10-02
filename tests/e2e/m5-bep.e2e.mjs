@@ -637,3 +637,100 @@ for (const c of [
     }
   })
 }
+
+// ---------- (g) Thông báo bị hoãn chờ màn ra món đóng (hồi quy vòng sửa F) ----------
+
+for (const frame of ['360x600', '390x844']) {
+  const low = FRAMES[frame].vp.height < FOCUS_MAX_H
+  test(`(g) ra món ${frame}: thông báo nổi${low ? ' (chế độ tập trung giữ tới khi bảng đóng)' : ''} không hiện đè màn ra món, hiện sau khi bảng đóng`, { timeout: 180000 }, async () => {
+    const g = await openFrame(frame, `m5-thong-bao-ra-mon-${frame}`)
+    const { page, errors } = g
+    try {
+      // Cà phê sữa đá Tuyệt hảo: lần ra món này đẩy tiến độ chuỗi "Dì Sáu dặn" (thông báo nổi do chính lần ra món sinh ra)
+      const { state } = cookShiftSave({ recipeId: 'ca_phe_sua_da' }, 'all', { tickets: 3, cooks: 5 })
+      await openCook(g, state)
+      await page.evaluate(() => {
+        const P = window.__tb = { during: [], focusDuring: [], seen: false }
+        const loop = () => {
+          const rv = document.querySelector('[data-testid="dish-reveal"]')
+          if (rv) {
+            P.seen = true
+            P.focusDuring.push(document.querySelector('[data-testid="screen-service"]').classList.contains('is-focus'))
+            for (const t of document.querySelectorAll('.toast-stack .toast:not(.hide)')) P.during.push(t.textContent.slice(0, 60))
+          }
+          requestAnimationFrame(loop)
+        }
+        requestAnimationFrame(loop)
+      })
+      await page.tap(T('finish-dish'))
+      await page.waitForSelector(T('dish-reveal'))
+      await page.waitForTimeout(400)
+      await g.shot('thong-bao-ra-mon')
+      await page.waitForSelector(T('dish-reveal'), { state: 'detached', timeout: 5000 })
+      const p = await page.evaluate(() => window.__tb)
+      assert.ok(p.seen, 'đầu dò thấy màn ra món')
+      assert.deepEqual([...new Set(p.during)], [], 'không có thông báo nổi nào hiện trong lúc màn ra món còn mở')
+      assert.ok(p.focusDuring.every(v => v === low), `chế độ tập trung ${low ? 'giữ' : 'không bật'} suốt lúc màn ra món mở`)
+      // bảng đóng: thông báo đang chờ thả ra, chế độ tập trung tắt (về dây phiếu)
+      await page.waitForSelector('.toast-stack .toast', { timeout: 2000 })
+      assert.equal(await page.evaluate(() => document.querySelector('[data-testid="screen-service"]').classList.contains('is-focus')), false)
+      await g.shot('thong-bao-sau-ra-mon')
+      assert.deepEqual(errors, [], 'có lỗi console/trang')
+    } finally {
+      await g.close()
+    }
+  })
+}
+
+// ---------- (h) Bước Chọn ở khung thấp: vừa mở đã thấy một hàng kệ (hồi quy vòng sửa F) ----------
+
+for (const c of [
+  { frame: '375x553', recipeId: 'banh_trang_tron_tay_ninh' },
+  { frame: '375x553', recipeId: 'banh_mi_op_la' },
+  { frame: '320x568', recipeId: 'banh_trang_tron_tay_ninh' },
+  { frame: '360x600', recipeId: 'banh_trang_tron_tay_ninh' }
+]) {
+  test(`(h) bước Chọn ${c.frame}${FRAMES[c.frame].safe ? ' vùng an toàn' : ''} ${c.recipeId}: vừa mở đã bấm được ít nhất một hàng kệ, nút "‹ Phiếu" và thẻ công thức không khuất`, { timeout: 180000 }, async () => {
+    const g = await openFrame(c.frame, `m5-chon-thap-${c.frame}-${c.recipeId}`)
+    const { page, errors } = g
+    try {
+      const { state, ticket } = cookShiftSave({ recipeId: c.recipeId }, null, { tickets: FRAMES[c.frame].tickets, cooks: 5 })
+      await seedSave(page, state)
+      await page.goto(g.url('/'))
+      await page.waitForSelector(T('screen-service'))
+      await resolveIncidentIfShown(g, { waitMs: 300 })
+      await page.tap(T('tab-kitchen'))
+      await page.waitForSelector(T('ticket-' + ticket.id))
+      if (!(await page.$(T('cook-line-0')))) await page.tap(T('ticket-' + ticket.id))
+      await page.tap(T('cook-line-0'))
+      await page.waitForSelector(`${S('chon')} .mg-foot`)
+      await page.waitForTimeout(400)
+      const m = await page.evaluate(() => {
+        const st = document.querySelector('[data-testid="minigame-stage"][data-type="chon"]')
+        const foot = st.querySelector('.mg-foot').getBoundingClientRect()
+        const panel = document.querySelector('[data-testid="panel-kitchen"]').getBoundingClientRect()
+        const cells = [...st.querySelectorAll('.chon-cell')]
+        const hit = cells.filter(e => {
+          const r = e.getBoundingClientRect()
+          const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+          return r.top >= panel.top - 0.5 && r.bottom <= foot.top + 0.5 && !!at && e.contains(at)
+        })
+        const R = sel => { const e = document.querySelector(sel); if (!e) return null; const r = e.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, h: r.height, w: r.width } }
+        return {
+          cols: Number((st.querySelector('.chon-shelf') || {}).dataset?.cols) || 4, cells: cells.length, hit: hit.length,
+          back: R('[data-testid="kitchen-back"]'), card: R('[data-testid="recipe-card"]'), panelTop: panel.top,
+          focus: document.querySelector('[data-testid="screen-service"]').classList.contains('is-focus'), docSW: document.documentElement.scrollWidth, vw: innerWidth
+        }
+      })
+      await g.shot('chon-vua-mo')
+      assert.equal(m.focus, true, 'chế độ tập trung bật')
+      assert.ok(m.hit >= m.cols, `vừa mở chỉ bấm được ${m.hit}/${m.cells} ô kệ (cần ít nhất một hàng ${m.cols} ô)`)
+      assert.ok(m.back && m.back.top >= m.panelTop - 0.5 && m.back.h >= 44 - 0.5 && m.back.w >= 44 - 0.5, `nút "‹ Phiếu" trong khung, vùng chạm ≥ 44px (${JSON.stringify(m.back)})`)
+      assert.ok(m.card && m.card.top >= m.panelTop - 0.5, 'thẻ công thức không bị cuộn khuất')
+      assert.ok(m.docSW <= m.vw + 1, 'trang không tràn ngang')
+      assert.deepEqual(errors, [], 'có lỗi console/trang')
+    } finally {
+      await g.close()
+    }
+  })
+}
