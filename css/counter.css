@@ -1,9 +1,11 @@
-/* Màn gọi món M5 (bản mẫu Đợt 0, Đợt 2 ráp vào quầy): khách bán thân + bong bóng có hình món, bảng thực đơn gỗ,
-   bảng chọn số lượng / ghi chú có hình, phiếu order giấy có con dấu ĐÃ CHỐT.
+/* Màn gọi món M5 (bản mẫu Đợt 0, Đợt 2 ráp vào quầy thật): khách bán thân + bong bóng có hình món, bảng thực đơn gỗ,
+   bảng chọn số lượng / ghi chú có hình, phiếu order giấy có con dấu ĐÃ CHỐT; cuối tệp là phần riêng của quầy thật
+   (src/ui/screens/counter.js + counter-order.js: bong bóng chữ, lời Dì Sáu, quầy trống, viền sáng hướng dẫn, bố cục theo
+   chiều cao panel .co-fit-low / .co-fit-tiny).
    Thành phần: src/ui/components/{order-bubble,menu-board,order-sheet,order-pad,note-icons}.js.
    Quy ước: chỉ lớp tiền tố co- (cùng lớp g- của css/theme.css); KHÔNG viết luật cho lớp cũ của quầy (.menu-item,
    .draft, .sheet…) vì index.html nạp mọi tệp css. Hoạt ảnh chỉ đổi transform/opacity; lớp trang trí
-   pointer-events: none; hoạt ảnh lặp tắt khi giảm chuyển động (cuối tệp). Chữ hiển thị ≥ 13px, vùng chạm ≥ 44px. */
+   pointer-events: none; hoạt ảnh lặp tắt khi giảm chuyển động. Chữ hiển thị ≥ 13px, vùng chạm ≥ 44px. */
 
 /* ---------- Biểu tượng ghi chú (note-icons.js) ---------- */
 .co-note-ico { display: inline-block; flex: none; width: 28px; height: 28px; line-height: 0; }
@@ -1025,3 +1027,251 @@ html.reduce-motion .co-menu-card,
 html.reduce-motion .co-note-chip,
 html.reduce-motion .co-note-check { transition: none; }
 html.reduce-motion .co-line.is-reading::before { animation: none !important; opacity: .8; transform: none; }
+
+/* =====================================================================================================================
+   Quầy thật (M5 Đợt 2, gói Q-A): src/ui/screens/counter.js + counter-order.js ráp các thành phần trên vào panel Quầy
+   (div.counter trong vùng cuộn .panel-counter). Panel gắn lớp bố cục theo CHIỀU CAO vùng cuộn (counter.js fitOf):
+   .co-fit-low (thấp: 360×600, 320×568, iPhone có thanh Safari) và thêm .co-fit-tiny (rất thấp: iPhone SE có vùng an toàn,
+   panel ~190px) — khách + bong bóng thu gọn để hàng thẻ món đầu lộ trên hàng nút dính đáy ngay khi mở.
+   ===================================================================================================================== */
+
+/* khách bán thân bộ hình mới (people.js, viewBox 96 × 112) */
+.co-cust-body[data-art="v2"] { aspect-ratio: 96 / 112; }
+.co-cust-area { gap: 0; }
+
+/* bong bóng chữ: từ ngày 3 lời khách là đề bài (nguyên văn, chữ thẳng, dễ đọc); khâu sau: câu mới nhất của khách */
+.co-bubble[data-mode="text"],
+.co-bubble[data-mode="talk"] { padding: 9px 13px 8px; }
+.co-bubble[data-mode="text"] .co-bubble-say,
+.co-bubble[data-mode="talk"] .co-bubble-say {
+  display: block;
+  margin: 0;
+  overflow: visible;
+  -webkit-line-clamp: none;
+  font-style: normal;
+  font-weight: 650;
+  font-size: 16px;
+  line-height: 1.32;
+  text-align: left;
+  text-wrap: pretty;
+  color: var(--g-ink);
+}
+/* khâu sau Order: khách đứng gọn hơn để chừa chỗ cho bảng giá, két, QR */
+.co-cust-wrap[data-mode="talk"] .co-cust { --co-fig: 82px; --co-counter: 16px; padding-top: 24px; }
+.co-cust-wrap[data-mode="talk"] .co-bubble { margin-bottom: calc(var(--co-counter) + 8px); }
+.co-cust-wrap[data-mode="talk"] .co-bubble-say { font-size: 15px; }
+.co-cust-wrap[data-mode="talk"] .co-bubble::after { bottom: 20px; }
+
+/* lời Dì Sáu cho khách hướng dẫn (ngày 1): mặt tròn + bong bóng giấy vàng, đuôi chỉ sang mặt */
+.co-tutor { display: flex; align-items: flex-start; gap: 9px; margin-top: 10px; }
+.co-tutor-face {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  border: 3px solid var(--g-ink);
+  border-radius: 50%;
+  overflow: hidden;
+  background: #fff7e6;
+  box-shadow: 0 3px 0 rgba(58, 38, 24, .35);
+}
+.co-tutor-face svg { display: block; width: 100%; height: 100%; }
+.co-tutor-text {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-top: 2px;
+  padding: 7px 12px 6px;
+  border: 2.5px solid var(--g-ink);
+  border-radius: 14px;
+  background: #fff6c8;
+  color: var(--g-ink);
+  font-family: var(--g-font-display);
+  font-weight: 800;
+  font-size: 15px;
+  line-height: 1.28;
+  box-shadow: 0 3px 0 rgba(58, 38, 24, .28);
+}
+.co-tutor-text::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: -8px;
+  width: 11px;
+  height: 11px;
+  border-left: 2.5px solid var(--g-ink);
+  border-bottom: 2.5px solid var(--g-ink);
+  background: #fff6c8;
+  transform: rotate(45deg) skew(8deg, 8deg);
+}
+
+/* mặt khách nhỏ cạnh tên trên phiếu order (gật / đổi mặt khi đọc lại) */
+.co-pad-head { align-items: center; }
+.co-pad-who { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+.co-pad-who > .co-pad-sub { flex: 1 1 auto; }
+.co-pad-face {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border: 2.5px solid var(--g-ink);
+  border-radius: 50%;
+  overflow: hidden;
+  background: #fff7e6;
+  transform-origin: 50% 85%;
+}
+.co-pad-face svg { display: block; width: 100%; height: 100%; }
+
+/* khâu Order: thực đơn, phiếu, hàng nút là con trực tiếp (hàng nút dính đáy vùng cuộn) */
+.co-order { gap: 0; }
+.co-pad-actions { flex-direction: row; }
+.co-order > .co-menu { margin-top: 22px; }
+.co-order > .co-pad { margin-top: 30px; }
+
+/* viền sáng hướng dẫn ngày 1 (counter.js glowOn): vòng vàng nhịp opacity, không đè bóng 3D của nút */
+.co-glow { overflow: visible !important; }
+.co-glow.g-btn--shine::after { content: none; }
+.co-glow-ring {
+  position: absolute;
+  inset: -7px;
+  z-index: 4;
+  border: 3px solid var(--g-star);
+  border-radius: calc(var(--g-radius) + 7px);
+  box-shadow: 0 0 0 2px rgba(58, 38, 24, .55), 0 0 14px 4px rgba(255, 210, 63, .75);
+  pointer-events: none;
+  animation: co-glow 1.2s ease-in-out infinite;
+}
+.co-menu-card > .co-glow-ring { border-radius: 25px; }
+.co-note-chip > .co-glow-ring { border-radius: 23px; }
+
+/* quầy trống: Dì Sáu sau quầy + tấm giấy lời nhắn */
+.co-idle { gap: 0; padding: 16px 0 18px; }
+.co-idle-scene { position: relative; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 330px; }
+.co-idle-bob { display: block; width: 132px; transform-origin: 50% 100%; animation: co-breathe 2.8s ease-in-out infinite; }
+.co-idle-art { display: block; width: 100%; aspect-ratio: 96 / 112; }
+.co-idle-art svg { display: block; width: 100%; height: 100%; }
+.co-idle-counter { position: relative; z-index: 1; width: 100%; height: 24px; margin-top: -26px; padding: 0; border-radius: 9px; }
+.co-idle-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  max-width: 340px;
+  margin-top: 16px;
+  padding: 14px 16px 16px;
+  text-align: center;
+}
+.co-idle-title { margin: 0; font-family: var(--g-font-display); font-weight: 800; font-size: 22px; line-height: 1.15; color: var(--g-tomato-dark); }
+.co-idle-text { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.35; color: var(--g-ink-soft); text-wrap: balance; }
+.co-idle-go { margin-top: 10px; }
+
+/* bảng sửa dòng: "Xóa dòng" + "Sửa dòng" vừa một hàng, nhãn không xuống dòng */
+.co-btn-add-label { white-space: nowrap; }
+.co-sheet-actions .co-btn-remove { padding-left: 14px; padding-right: 14px; font-size: 18px; white-space: nowrap; }
+
+@keyframes co-glow { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(1.025); } }
+
+/* ---------- Bố cục theo chiều cao panel ---------- */
+.co-fit-low .co-cust { --co-fig: 76px; --co-counter: 16px; padding-top: 18px; }
+.co-fit-low .co-bubble { margin-bottom: calc(var(--co-counter) + 8px); padding: 5px 8px 4px; }
+.co-fit-low .co-cust-wrap .co-bubble::after { top: calc(50% - 10px); bottom: auto; }
+.co-fit-low .co-bubble-dishes { gap: 2px 12px; }
+.co-fit-low .co-bubble-dish { flex-direction: row; align-items: flex-end; }
+.co-fit-low .co-bubble-art { width: 50px; height: 50px; }
+.co-fit-low .co-bubble[data-n="2"] .co-bubble-art { width: 46px; height: 46px; }
+.co-fit-low .co-bubble-qty { top: -9px; right: auto; left: 26px; min-width: 32px; height: 26px; font-size: 16px; line-height: 21px; }
+.co-fit-low .co-bubble-notes { flex-wrap: nowrap; gap: 0; margin: 0 0 0 -2px; max-width: none; }
+.co-fit-low .co-bubble-notes .co-note-ico { width: 26px; height: 26px; }
+.co-fit-low .co-bubble-say { -webkit-line-clamp: 1; margin-top: 1px; font-size: 13px; }
+.co-fit-low .co-bubble[data-mode="text"],
+.co-fit-low .co-bubble[data-mode="talk"] { padding: 6px 10px 5px; }
+.co-fit-low .co-bubble[data-mode="text"] .co-bubble-say,
+.co-fit-low .co-bubble[data-mode="talk"] .co-bubble-say { margin: 0; font-size: 14px; line-height: 1.28; }
+.co-fit-low .co-cust-name b { font-size: 14px; }
+.co-fit-low .co-talk { margin-top: 6px; }
+.co-fit-low .co-talk-line { padding: 3px 9px; font-size: 13px; }
+.co-fit-low .co-tutor { margin-top: 8px; }
+.co-fit-low .co-tutor-face { flex-basis: 36px; width: 36px; height: 36px; }
+.co-fit-low .co-tutor-text { padding: 5px 10px 4px; font-size: 14px; }
+.co-fit-low .co-order > .co-menu { margin-top: 16px; padding-top: 20px; padding-bottom: 10px; }
+.co-fit-low .co-menu-sign { top: -15px; min-width: 120px; padding: 2px 18px 0; font-size: 17px; }
+.co-fit-low .co-menu-grid { gap: 12px 8px; }
+.co-fit-low .co-menu-card { --co-dish: 60px; padding-top: 5px; padding-bottom: 7px; }
+.co-fit-low .co-menu-name { margin-top: 1px; font-size: 15px; }
+.co-fit-low .co-menu-left { margin-top: 3px; }
+.co-fit-low .co-price { top: -9px; right: -7px; width: 44px; height: 44px; padding-top: 9px; }
+.co-fit-low .co-price b { font-size: 18px; }
+.co-fit-low .co-order > .co-pad { margin-top: 26px; }
+.co-fit-low .co-pad-actions { padding-top: 8px; padding-bottom: 8px; }
+.co-fit-low .co-pad-actions .g-btn { min-height: 50px; font-size: 18px; }
+.co-fit-low .co-pad-actions.is-idle .g-btn { min-height: 46px; padding-top: 5px; padding-bottom: 4px; font-size: 17px; }
+.co-fit-low .co-pad-actions.is-idle .g-btn svg { width: 24px; height: 24px; }
+.co-fit-low .co-cust-wrap[data-mode="talk"] .co-cust { --co-fig: 64px; --co-counter: 14px; padding-top: 14px; }
+.co-fit-low .co-idle { flex-direction: row; align-items: center; justify-content: center; gap: 10px; padding: 12px 0; }
+.co-fit-low .co-idle-scene { flex: none; width: 96px; }
+.co-fit-low .co-idle-bob { width: 88px; }
+.co-fit-low .co-idle-counter { height: 18px; margin-top: -18px; border-radius: 7px; }
+.co-fit-low .co-idle-card { flex: 1 1 auto; min-width: 0; align-items: flex-start; margin-top: 0; padding: 10px 12px 12px; text-align: left; }
+.co-fit-low .co-idle-title { font-size: 19px; }
+.co-fit-low .co-idle-text { font-size: 14px; text-wrap: pretty; }
+.co-fit-low .co-idle-go { margin-top: 6px; min-height: 46px; padding: 6px 14px 5px; font-size: 17px; }
+
+/* rất thấp: bỏ mái bạt và biển "Thực đơn", khách 52px, thẻ món nhỏ — tâm hàng thẻ đầu nằm trên hàng nút dính đáy */
+.co-fit-tiny { gap: 6px; padding-top: 4px; }
+.co-fit-tiny .co-cust { --co-fig: 50px; --co-counter: 12px; padding-top: 4px; column-gap: 4px; }
+.co-fit-tiny .co-cust::before {
+  top: -10px;
+  background:
+    radial-gradient(90% 70% at 30% 35%, #fff6e3 0%, rgba(255, 246, 227, 0) 70%),
+    linear-gradient(180deg, #f6e2bd 0%, #f1d7a8 100%);
+}
+.co-fit-tiny .co-cust::after { display: none; }
+.co-fit-tiny .co-cust-name { bottom: -4px; padding: 0 7px; border-width: 2px; }
+.co-fit-tiny .co-cust-name b { font-size: 13px; }
+.co-fit-tiny .co-cust-name small { display: none; }
+.co-fit-tiny .co-bubble { margin-bottom: 3px; padding: 4px 8px 3px; border-radius: 16px; }
+.co-fit-tiny .co-cust-wrap .co-bubble::after { top: calc(50% - 8px); bottom: auto; left: -10px; width: 16px; height: 16px; }
+.co-fit-tiny .co-bubble-art { width: 42px; height: 42px; }
+.co-fit-tiny .co-bubble[data-n="2"] .co-bubble-art,
+.co-fit-tiny .co-bubble[data-n="3"] .co-bubble-art { width: 38px; height: 38px; }
+.co-fit-tiny .co-bubble-notes .co-note-ico { width: 24px; height: 24px; }
+.co-fit-tiny .co-bubble[data-mode="icons"] .co-bubble-say { display: none; }
+.co-fit-tiny .co-bubble[data-mode="text"],
+.co-fit-tiny .co-bubble[data-mode="talk"] { padding: 4px 9px 3px; }
+.co-fit-tiny .co-bubble[data-mode="text"] .co-bubble-say,
+.co-fit-tiny .co-bubble[data-mode="talk"] .co-bubble-say { font-size: 13px; line-height: 1.26; }
+.co-fit-tiny .co-cust-counter { border-radius: 6px; }
+.co-fit-tiny .co-tutor { margin-top: 6px; gap: 7px; }
+.co-fit-tiny .co-tutor-face { flex-basis: 32px; width: 32px; height: 32px; border-width: 2.5px; }
+.co-fit-tiny .co-tutor-text { margin-top: 0; padding: 4px 9px 3px; font-size: 13px; }
+.co-fit-tiny .co-tutor-text::before { top: 9px; }
+.co-fit-tiny .co-order > .co-menu { margin-top: 4px; padding: 6px 8px 8px; }
+.co-fit-tiny .co-menu-sign { display: none; }
+.co-fit-tiny .co-menu-grid { gap: 10px 8px; }
+.co-fit-tiny .co-menu-card { --co-dish: 44px; padding: 4px 4px 5px; border-radius: 15px; }
+.co-fit-tiny .co-menu-name { font-size: 14px; line-height: 1.1; }
+.co-fit-tiny .co-menu-left { min-height: 20px; margin-top: 2px; font-size: 13px; }
+.co-fit-tiny .co-price { top: -8px; right: -6px; width: 40px; height: 40px; padding-top: 8px; }
+.co-fit-tiny .co-price b { font-size: 16px; }
+.co-fit-tiny .co-price small { font-size: 13px; }
+.co-fit-tiny .co-menu-tape span { font-size: 18px; }
+.co-fit-tiny .co-order > .co-pad { margin-top: 24px; }
+.co-fit-tiny .co-pad-actions { gap: 8px; padding-top: 6px; padding-bottom: 6px; }
+.co-fit-tiny .co-pad-actions .g-btn { min-height: 46px; font-size: 17px; }
+.co-fit-tiny .co-pad-actions.is-idle { padding-top: 5px; padding-bottom: 5px; }
+.co-fit-tiny .co-pad-actions.is-idle .g-btn { min-height: 44px; padding-top: 4px; padding-bottom: 3px; }
+.co-fit-tiny .co-cust-wrap[data-mode="talk"] .co-cust { --co-fig: 52px; --co-counter: 12px; padding-top: 6px; }
+.co-fit-tiny .co-idle { gap: 8px; padding: 6px 0; }
+.co-fit-tiny .co-idle-scene { width: 72px; }
+.co-fit-tiny .co-idle-bob { width: 66px; }
+.co-fit-tiny .co-idle-counter { height: 14px; margin-top: -14px; }
+.co-fit-tiny .co-idle-card { padding: 8px 10px 10px; }
+.co-fit-tiny .co-idle-title { font-size: 17px; }
+.co-fit-tiny .co-idle-text { font-size: 13px; }
+.co-fit-tiny .co-idle-go { margin-top: 4px; min-height: 44px; }
+
+/* ---------- Giảm chuyển động (phần quầy thật) ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .co-glow-ring, .co-idle-bob { animation: none !important; }
+}
+html.reduce-motion .co-glow-ring,
+html.reduce-motion .co-idle-bob { animation: none !important; }

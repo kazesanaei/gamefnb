@@ -1,13 +1,16 @@
 // M5 Đợt 0 — nền móng hiệu ứng: hàm thuần của src/ui/vfx.js (easing, Bézier, kế hoạch hạt, mô phỏng hạt),
 // giới hạn VFX_LIMITS, import vfx.js / motion.js trong Node không chạm DOM, isReduced(app) theo Cài đặt,
 // và quy ước css/theme.css (font Baloo 2 tự lưu, chỉ biến --g-*, chỉ lớp g- / vfx-, giảm chuyển động).
+// M5 Đợt 2 (gói Q-G, cuối tệp): luồng xu (coinCount, coinShares, lịch bay coinFlight có dừng giữa đường 120 ms, onArrive
+// từng xu), bộ đếm số countValue / countUp cho ví HUD, chống chồng chữ nổi (floatRise, floatSlot, floatText).
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  VFX_LIMITS, VFX_KINDS, GRAVITY, easeOutBack, easeOutCubic, bezier, particlePlan, spawnParticles, stepParticles, createVfx
+  VFX_LIMITS, VFX_KINDS, GRAVITY, easeOutBack, easeOutCubic, bezier, particlePlan, spawnParticles, stepParticles, createVfx,
+  COIN_LIMITS, COIN_TIMING, coinCount, coinShares, coinFlight, countValue, countUp, isCounting, FLOAT_MS, floatRise, floatSlot
 } from '../../src/ui/vfx.js'
 import { isReduced, EASE } from '../../src/ui/motion.js'
 import { SOUND_NAMES } from '../../src/ui/audio.js'
@@ -573,5 +576,443 @@ test('app.vfx theo công tắc "Giảm chuyển động" ngay lúc chạy (reduc
   fx.clear()
   s.reducedMotion = false
   assert.equal(fx.confetti(a), 36, 'tắt lại: pháo giấy như thường')
+  fx.destroy()
+})
+
+// ---------- M5 Đợt 2 (gói Q-G): luồng xu, bộ đếm ví HUD, chống chồng chữ nổi ----------
+
+const sleep = ms => new Promise(r => setTimeout(r, ms))
+const flush = async () => { for (let i = 0; i < 5; i++) await Promise.resolve() }
+
+test('coinCount: 6–12 xu theo số tiền (tăng theo log, không giảm khi tiền tăng), trần cứng 12; 0 / âm / lỗi → 0', () => {
+  assert.deepEqual({ ...COIN_LIMITS }, { min: 6, max: 12, lo: 5000, hi: 200000 })
+  assert.ok(Object.isFrozen(COIN_LIMITS) && Object.isFrozen(COIN_TIMING))
+  assert.equal(coinCount(1000), 6)
+  assert.equal(coinCount(5000), 6)
+  assert.equal(coinCount(20000), 8)
+  assert.equal(coinCount(50000), 10)
+  assert.equal(coinCount(200000), 12)
+  assert.equal(coinCount(5e7), 12, 'có trần')
+  for (const bad of [0, -5000, NaN, null, undefined, 'abc']) assert.equal(coinCount(bad), 0, String(bad))
+  let prev = 0
+  for (let a = 1000; a <= 400000; a += 1000) {
+    const n = coinCount(a)
+    assert.ok(n >= 6 && n <= 12, a + ' → ' + n)
+    assert.ok(n >= prev, 'không giảm khi tiền tăng: ' + a)
+    prev = n
+  }
+  // xu tip: dải riêng nhỏ hơn; max lớn hơn 12 vẫn bị kẹp ở 12
+  assert.equal(coinCount(5000, { min: 3, max: 6 }), 3)
+  assert.ok(coinCount(100000, { min: 3, max: 6 }) <= 6)
+  assert.equal(coinCount(1e9, { max: 40 }), 12)
+})
+
+test('coinShares: các phần cộng lại đúng số tiền, là bội của unit, phần lẻ dồn vào xu cuối', () => {
+  for (const [amt, n, unit] of [[25000, 9, 1], [25000, 9, 1000], [15000, 6, 500], [7, 3, 1], [3, 5, 1], [99999, 12, 1000], [-7000, 3, 1000]]) {
+    const s = coinShares(amt, n, unit)
+    assert.equal(s.length, n)
+    assert.equal(s.reduce((a, b) => a + b, 0), amt, `${amt}/${n}`)
+    for (const v of s.slice(0, -1)) assert.equal(Math.abs(v) % unit, 0, `phần ${v} không là bội của ${unit}`)
+    assert.ok(s.every(v => Math.sign(v) === Math.sign(amt) || v === 0))
+  }
+  assert.deepEqual(coinShares(25000, 9, 1000), [3000, 3000, 3000, 3000, 3000, 3000, 3000, 2000, 2000])
+  assert.deepEqual(coinShares(0, 3), [0, 0, 0])
+  assert.deepEqual(coinShares(5000, 0), [])
+  assert.ok(!coinShares(-3, 3).some(v => Object.is(v, -0)), 'không có -0')
+})
+
+test('coinFlight (lịch xu): so le 40 ms (cả đàn trễ ≤ 480 ms), DỪNG GIỮA ĐƯỜNG đúng 120 ms tại điểm tỏa, tỏa ra như quạt, khung cuối đúng đích', () => {
+  const rand = seeded(11)
+  const from = { x: 200, y: 520 }, to = { x: 330, y: 28 }
+  const plan = coinFlight(8, { from, to, rand })
+  assert.equal(plan.length, 8)
+  const move = COIN_TIMING.out + COIN_TIMING.fly
+  for (const c of plan) {
+    assert.equal(c.delay, c.index * COIN_TIMING.stagger, 'so le 40 ms')
+    assert.equal(c.duration, move + COIN_TIMING.hold)
+    assert.equal(c.arriveAt, c.delay + c.duration)
+    const f = c.frames
+    assert.equal(f[0].offset, 0)
+    assert.equal(f[f.length - 1].offset, 1)
+    for (let i = 1; i < f.length; i++) assert.ok(f[i].offset > f[i - 1].offset, 'offset tăng dần')
+    assert.equal(f[0].opacity, 0, 'xu hiện dần từ nguồn')
+    assert.deepEqual([f[0].x, f[0].y], [from.x, from.y])
+    assert.deepEqual([f[f.length - 1].x, f[f.length - 1].y], [to.x, to.y], 'khung cuối đúng đích')
+    // hai khung liền nhau cùng đứng ở điểm tỏa, cách nhau đúng 120 ms
+    let held = null
+    for (let i = 1; i < f.length; i++) {
+      if (near(f[i].x, f[i - 1].x) && near(f[i].y, f[i - 1].y) && near(f[i].x, c.mid.x) && near(f[i].y, c.mid.y)) held = (f[i].offset - f[i - 1].offset) * c.duration
+    }
+    assert.ok(held !== null && Math.abs(held - 120) < 1e-6, 'dừng giữa đường 120 ms: ' + held)
+    // điểm tỏa ở gần nguồn (48–84 px, hai vòng xen kẽ), lệch lên trên
+    const r = Math.hypot(c.mid.x - from.x, c.mid.y - from.y)
+    assert.ok(r >= 48 && r <= 84, 'bán kính tỏa ' + r)
+    assert.ok(c.mid.y < from.y + 1e-9 || Math.abs(c.mid.x - from.x) > 30, 'tỏa lên hoặc sang ngang, không rơi xuống')
+  }
+  // tỏa ra như quạt: góc trải rộng > 1,6 rad, xu liền nhau không cùng hướng (không xếp hàng thẳng)
+  const angs = plan.map(c => Math.atan2(c.mid.y - from.y, c.mid.x - from.x))
+  assert.ok(Math.max(...angs) - Math.min(...angs) > 1.6, 'cung tỏa hẹp quá')
+  assert.equal(new Set(plan.map(c => Math.round(c.mid.x))).size, 8, 'mỗi xu một điểm tỏa')
+  assert.ok(Math.abs(angs[1] - angs[0]) > 0.1, 'xu thứ hai không bay cùng hướng xu đầu')
+  // 12 xu: độ trễ tự co để cả đàn không quá 480 ms; n kẹp [0, 12]
+  const big = coinFlight(40, { from, to, rand })
+  assert.equal(big.length, 12)
+  assert.ok(big[11].delay <= COIN_TIMING.spread)
+  assert.deepEqual(coinFlight(0, { from, to }), [])
+  // ms là thời gian chuyển động, không tính hold; hold 0 thì không có khung đứng yên
+  const fast = coinFlight(1, { from, to, ms: 450, hold: 0, rand })
+  assert.equal(fast[0].duration, 450)
+  assert.equal(coinFlight(1, { from, to, ms: 99999 })[0].duration, 1500 + 120, 'ms kẹp ≤ 1500')
+})
+
+test('countValue: from → to theo easeOutCubic, làm tròn theo step, luôn nằm giữa hai đầu; t ≥ 1 đúng to; lỗi an toàn', () => {
+  assert.equal(countValue(10000, 35000, 0), 10000)
+  assert.equal(countValue(10000, 35000, 1), 35000)
+  assert.equal(countValue(10000, 35000, 7), 35000)
+  assert.equal(countValue(10000, 35000, NaN), 35000, 't lỗi → số cuối (không kẹt)')
+  assert.equal(countValue(10000, 35000, -1), 10000)
+  let prev = -Infinity
+  for (let i = 0; i <= 50; i++) {
+    const v = countValue(10000, 35000, i / 50, 100)
+    assert.ok(v >= prev, 'đơn điệu')
+    assert.ok(v >= 10000 && v <= 35000)
+    assert.equal(v % 100, 0, 'bội của step')
+    prev = v
+  }
+  assert.ok(countValue(0, 1000, 0.5) > 500, 'easeOutCubic: nửa thời gian đã quá nửa đường')
+  // đếm xuống cũng được
+  assert.ok(countValue(5000, 1000, 0.5) < 5000 && countValue(5000, 1000, 0.5) > 1000)
+  assert.equal(countValue(null, 800, 0.5), 800, 'from lỗi → coi như to')
+  assert.equal(countValue(300, 'x', 0.5), 300, 'to lỗi → giữ from')
+})
+
+test('countUp (rời): giảm chuyển động → ghi ngay số cuối + một nhịp sáng; không giảm → đếm dần đơn điệu tới đúng to; không đụng data-*', async () => {
+  const fmt = v => v.toLocaleString('vi-VN') + 'đ'
+  const el = { textContent: '1.000đ', dataset: { amount: '9000' } }
+  const glows = []
+  const h = countUp(el, 1000, 9000, 600, fmt, { reduced: true, glow: e => glows.push(e) })
+  assert.equal(el.textContent, fmt(9000), 'cập nhật ngay')
+  assert.equal(glows.length, 1, 'một nhịp sáng')
+  assert.equal(isCounting(el), false)
+  assert.equal(await h.done, true)
+  assert.equal(el.dataset.amount, '9000', 'không đụng data-amount')
+  // không giảm chuyển động (Node: không có rAF → hẹn giờ 16 ms)
+  const seen = []
+  const el2 = { textContent: '' }
+  const h2 = countUp(el2, 0, 5000, 120, v => { seen.push(v); return String(v) }, { reduced: false, glow: () => glows.push('x') })
+  assert.equal(isCounting(el2), true)
+  assert.equal(await h2.done, true)
+  assert.equal(el2.textContent, '5000')
+  assert.equal(seen[0], 0)
+  assert.equal(seen[seen.length - 1], 5000)
+  assert.ok(seen.length >= 3, 'có các số ở giữa: ' + seen.join(','))
+  for (let i = 1; i < seen.length; i++) assert.ok(seen[i] >= seen[i - 1], 'đơn điệu')
+  assert.equal(glows.length, 1, "glow 'auto': đếm thường thì không nhịp sáng")
+  assert.equal(isCounting(el2), false)
+})
+
+test('countUp: gọi lại trên cùng phần tử thì nối tiếp từ số đang hiện (xu tới liên tiếp), bộ cũ dừng (done → false); finish() / cancel()', async () => {
+  const el = { textContent: '' }
+  const nums = []
+  const fmt = v => { nums.push(v); return String(v) }
+  const h1 = countUp(el, 0, 1000, 400, fmt, { reduced: false })
+  await sleep(80)
+  const mid = h1.value
+  assert.ok(mid > 0 && mid < 1000, 'đang đếm dở: ' + mid)
+  const at = nums.length
+  const h2 = countUp(el, null, 3000, 100, fmt, { reduced: false })
+  assert.equal(await h1.done, false, 'bộ cũ bị thay')
+  assert.equal(nums[at], mid, 'nối tiếp từ số đang hiện, không giật về 0')
+  assert.equal(await h2.done, true)
+  assert.equal(el.textContent, '3000')
+  for (let i = 1; i < nums.length; i++) assert.ok(nums[i] >= nums[i - 1], 'không giật lùi')
+  // finish(): nhảy tới số cuối; cancel(): giữ số đang hiện
+  const h3 = countUp(el, 3000, 9000, 1000, null, { reduced: false })
+  h3.finish()
+  assert.equal(el.textContent, '9000')
+  assert.equal(await h3.done, true)
+  const h4 = countUp(el, 9000, 20000, 1000, null, { reduced: false })
+  h4.cancel()
+  assert.equal(await h4.done, false)
+  assert.equal(el.textContent, '9000')
+  // bộ đếm cũ đã xong: from = null đếm tiếp từ số nó ghi lần cuối (chữ chưa bị ai ghi đè)…
+  const seen6 = []
+  await countUp(el, null, 9400, 60, v => { seen6.push(v); return String(v) }, { reduced: false }).done
+  assert.equal(seen6[0], 9000, 'tiếp từ số đã hiện, không nhảy cóc')
+  // …còn chữ đã bị bên khác ghi đè (vd HUD tự cập nhật) thì không tin số cũ: hiện thẳng số cuối
+  el.textContent = '12345'
+  const seen7 = []
+  await countUp(el, null, 15000, 60, v => { seen7.push(v); return String(v) }, { reduced: false }).done
+  assert.deepEqual(seen7, [15000])
+  // giảm chuyển động + from = null: chữ đổi thì vẫn có một nhịp sáng
+  const glows = []
+  countUp(el, null, 16000, 600, null, { reduced: true, glow: () => glows.push(1) })
+  assert.equal(el.textContent, '16000')
+  assert.equal(glows.length, 1)
+  countUp(el, null, 16000, 600, null, { reduced: true, glow: () => glows.push(1) })
+  assert.equal(glows.length, 1, 'số không đổi thì không chớp sáng')
+  // không có bộ đếm cũ và from = null → hiện thẳng số cuối; to lỗi → không ghi
+  const el5 = { textContent: '?' }
+  await countUp(el5, null, 700, 600, null, { reduced: false }).done
+  assert.equal(el5.textContent, '700')
+  assert.equal(await countUp(el5, 0, NaN, 600, null, { reduced: false }).done, false)
+  assert.equal(el5.textContent, '700')
+  assert.doesNotThrow(() => countUp(null, 0, 10, 50, null, { reduced: false }))
+})
+
+test('floatRise khớp đường bay của chữ nổi (10 → −46 px trong 820 ms; giảm chuyển động đứng yên)', () => {
+  assert.deepEqual({ ...FLOAT_MS }, { normal: 820, reduced: 700 })
+  assert.equal(floatRise(0), 10)
+  assert.ok(near(floatRise(0.18 * 820), -4))
+  assert.ok(near(floatRise(0.32 * 820), -10))
+  assert.ok(near(floatRise(0.8 * 820), -34))
+  assert.equal(floatRise(820), -46)
+  assert.equal(floatRise(5000), -46)
+  assert.equal(floatRise(300, true), 0)
+  let prev = Infinity
+  for (let a = 0; a <= 820; a += 10) { assert.ok(floatRise(a) <= prev + 1e-9); prev = floatRise(a) }
+})
+
+// Mô phỏng: hai chữ nổi (tâm-đáy x, y; rộng w, cao h; hiện lúc t) có chồng lên nhau ở thời điểm nào không (bước 10 ms).
+function floatsOverlap(a, b, { gap = 0, live = 0.88 } = {}) {
+  const t0 = Math.max(a.t, b.t)
+  const end = Math.min(a.t + FLOAT_MS.normal * live, b.t + FLOAT_MS.normal * live)
+  if (Math.abs(a.x - b.x) >= (a.w + b.w) / 2) return null
+  for (let T = t0; T < end; T += 10) {
+    const ba = a.y + floatRise(T - a.t), bb = b.y + floatRise(T - b.t)
+    if (ba > bb - b.h - gap && ba - a.h < bb + gap) return T
+  }
+  return null
+}
+
+test('floatSlot: chữ nổi liên tiếp gần cùng chỗ ("Giữa ly!" hai lần ở bước Thả đá) được dời lên, so le, không chồng suốt lúc bay', () => {
+  const W = 90, Hh = 24
+  // không có chữ nào / chữ ở xa / chữ đã mờ: giữ nguyên chỗ
+  assert.deepEqual(floatSlot([], { x: 200, y: 300, w: W, h: Hh, text: 'A' }, { now: 0 }), { x: 200, y: 300, lift: 0, merge: null })
+  const far = [{ x: 40, y: 300, w: W, h: Hh, t: 0, text: 'B' }]
+  assert.equal(floatSlot(far, { x: 300, y: 300, w: W, h: Hh, text: 'A' }, { now: 100 }).lift, 0)
+  const faded = [{ x: 200, y: 300, w: W, h: Hh, t: 0, text: 'B' }]
+  assert.equal(floatSlot(faded, { x: 200, y: 300, w: W, h: Hh, text: 'A' }, { now: 760 }).lift, 0, 'chữ đang mờ hẳn không tính')
+  // lỗi ghi nhận: thả hai viên đá cách nhau 300 ms, cùng chữ "Giữa ly!" cùng chỗ
+  for (const dt of [170, 250, 300, 400, 500]) {
+    const first = { x: 200, y: 300, w: W, h: Hh, t: 1000, text: 'Giữa ly!' }
+    const s = floatSlot([first], { x: 200, y: 300, w: W, h: Hh, text: 'Giữa ly!' }, { now: 1000 + dt })
+    assert.equal(s.merge, null, dt + ' ms: không gộp (mỗi viên một chữ)')
+    const second = { x: s.x, y: s.y, w: W, h: Hh, t: 1000 + dt }
+    assert.equal(floatsOverlap(first, second), null, dt + ' ms: hai chữ chồng nhau')
+    if (s.lift) {
+      assert.ok(s.y < 300, 'dời LÊN trên')
+      assert.notEqual(s.x, 200, 'so le ngang')
+    }
+  }
+  // ba chữ dồn dập (mỗi 120 ms): đôi một không chồng
+  const list = []
+  for (let i = 0; i < 3; i++) {
+    const s = floatSlot(list, { x: 200, y: 400, w: W, h: Hh, text: 'Chuẩn ' + i }, { now: i * 120 })
+    assert.equal(s.merge, null)
+    list.push({ x: s.x, y: s.y, w: W, h: Hh, t: i * 120, text: 'Chuẩn ' + i })
+  }
+  for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) assert.equal(floatsOverlap(list[i], list[j]), null, `chữ ${i} và ${j} chồng nhau`)
+  assert.ok(list[1].y < list[0].y && list[2].y < list[1].y, 'xếp tầng lên trên')
+  assert.ok(list[1].x !== list[2].x, 'so le trái / phải')
+  // giảm chuyển động: chữ đứng yên → tầng trên cách đủ một chiều cao chữ
+  const r = floatSlot([{ x: 200, y: 300, w: W, h: Hh, t: 0, text: 'A', reduced: true }], { x: 200, y: 300, w: W, h: Hh, text: 'B' }, { now: 50, reduced: true })
+  assert.ok(near(r.y, 300 - Hh - 4), 'giảm chuyển động: dời lên đúng một tầng ' + r.y)
+})
+
+test('floatSlot: trùng chữ trùng chỗ trong 160 ms → gộp vào chữ cũ; hết chỗ phía trên → gộp thay vì đè', () => {
+  const old = { x: 200, y: 300, w: 90, h: 24, t: 0, text: 'Giữa ly!' }
+  const m = floatSlot([old], { x: 204, y: 296, w: 90, h: 24, text: 'Giữa ly!' }, { now: 100 })
+  assert.equal(m.merge, old)
+  assert.ok(near(m.y + floatRise(0), old.y + floatRise(100)), 'chữ gộp hiện đúng chỗ chữ cũ đang đứng')
+  // khác chữ thì không gộp kiểu "×2" mà dời lên
+  assert.equal(floatSlot([old], { x: 200, y: 300, w: 90, h: 24, text: 'Hơi lệch' }, { now: 100 }).merge, null)
+  // sát mép trên (minY): không còn chỗ dời lên → gộp
+  const top = { x: 200, y: 50, w: 90, h: 24, t: 0, text: 'A' }
+  const s = floatSlot([top], { x: 200, y: 52, w: 90, h: 24, text: 'B' }, { now: 200, minY: 40 })
+  assert.equal(s.merge, top)
+})
+
+test('createVfx (DOM giả): floatText liên tiếp cùng chỗ không đè nhau (dời lên, so le); trùng hẳn → "×2"; clear() quên chữ cũ', async () => {
+  const D = fakeDom()
+  const fx = createVfx({ host: D.host, reduced: () => false })
+  const at = { x: 200, y: 420 }
+  const a = fx.floatText(at, 'Giữa ly!', { tone: 'good', size: 'small' })
+  await sleep(200)
+  const b = fx.floatText(at, 'Giữa ly!', { tone: 'good', size: 'small' })
+  assert.ok(a && b && a !== b)
+  const ya = parseFloat(a.style.top), yb = parseFloat(b.style.top)
+  assert.ok(yb < ya - 15, `chữ sau phải dời lên trên: ${ya} → ${yb}`)
+  assert.notEqual(a.style.left, b.style.left, 'so le ngang')
+  assert.equal(b.textContent, 'Giữa ly!')
+  // trùng chữ, trùng chỗ, cùng lúc → gộp: chữ cũ rời lớp, chữ mới ghi "×2"
+  const c1 = fx.floatText({ x: 120, y: 700 }, 'Chuẩn!')
+  const before = fx.stats().dom
+  const c2 = fx.floatText({ x: 120, y: 700 }, 'Chuẩn!')
+  assert.equal(c2.textContent, 'Chuẩn! ×2')
+  assert.equal(fx.stats().dom, before, 'gộp: không thêm nút')
+  assert.ok(c1 === c2 || c1.parentNode === null)
+  assert.equal(fx.floatText({ x: 120, y: 700 }, 'Chuẩn!').textContent, 'Chuẩn! ×3')
+  // clear(): chữ cũ không còn làm chữ mới phải dời
+  fx.clear()
+  const d = fx.floatText(at, 'Giữa ly!', { size: 'small' })
+  assert.equal(parseFloat(d.style.top), ya, 'sau clear() chữ về đúng chỗ gốc')
+  fx.destroy()
+})
+
+// Ghi lại khung WAAPI của mọi hoạt ảnh trong DOM giả.
+function recordAnims(D) {
+  const orig = D.El.prototype.animate
+  D.El.prototype.animate = function (kf, opts) { const a = orig.call(this); a.kf = kf; a.opts = opts; return a }
+  return () => { D.El.prototype.animate = orig }
+}
+
+test('createVfx (DOM giả): coins theo số tiền — số xu theo coinCount, so le, dừng giữa đường, onArrive mỗi xu, tổng cuối đúng số tiền', async () => {
+  const D = fakeDom()
+  const undo = recordAnims(D)
+  try {
+    const fx = createVfx({ host: D.host, reduced: () => false })
+    const src = D.box(120, 560, 120, 60)
+    const wallet = D.box(250, 10, 110, 30)
+    const calls = []
+    const run = fx.coins(src, wallet, { amount: 25000, unit: 1000, onArrive: i => calls.push(i) })
+    const flying = fx.layer.children.filter(e => e.className === 'vfx-coin')
+    assert.equal(flying.length, coinCount(25000), 'số xu theo số tiền')
+    const anims = flying.map(e => e.getAnimations()[0])
+    for (const [i, an] of anims.entries()) {
+      assert.equal(an.opts.delay, i * 40, 'so le 40 ms')
+      assert.equal(an.opts.duration, COIN_TIMING.out + COIN_TIMING.hold + COIN_TIMING.fly)
+      for (const k of an.kf) assert.deepEqual(Object.keys(k).filter(p => !['offset', 'opacity', 'transform'].includes(p)), [], 'chỉ transform / opacity')
+    }
+    assert.equal(calls.length, 0, 'chưa xu nào tới')
+    // xu tới lần lượt
+    for (const an of anims) an.finish()
+    await flush()
+    assert.equal(await run, flying.length)
+    assert.equal(calls.length, flying.length, 'mỗi xu một lần onArrive')
+    assert.deepEqual(calls.map(c => c.index), [...calls.keys()])
+    for (let i = 1; i < calls.length; i++) assert.ok(calls[i].sum >= calls[i - 1].sum, 'tổng tăng dần')
+    assert.equal(calls.filter(c => c.last).length, 1)
+    assert.equal(calls[calls.length - 1].last, true)
+    assert.equal(calls[calls.length - 1].sum, 25000, 'tổng cuối đúng số tiền')
+    assert.ok(calls.every(c => c.share % 1000 === 0 && c.amount === 25000 && c.count === flying.length && !c.cut && !c.skipped))
+    assert.ok(wallet.getAnimations().length <= 1, 'ví nảy (một hoạt ảnh nảy, cái sau thay cái trước)')
+    // API cũ vẫn chạy: coins(from, to, n) không có tiền
+    const old = fx.coins(src, wallet, 3)
+    const three = fx.layer.children.filter(e => e.className === 'vfx-coin')
+    assert.equal(three.length, 3)
+    for (const e of three) e.getAnimations()[0].finish()
+    assert.equal(await old, 3)
+    fx.destroy()
+  } finally { undo() }
+})
+
+test('createVfx (DOM giả): coins không bay được (giảm chuyển động, đích ẩn) → 0 xu nhưng onArrive giao gộp một lần; clear() giữa chừng → giao nốt (cut)', async () => {
+  const D = fakeDom()
+  const src = D.box(120, 560, 120, 60)
+  const wallet = D.box(250, 10, 110, 30)
+  // giảm chuyển động
+  const red = createVfx({ host: D.host, reduced: () => true })
+  const calls = []
+  const p = red.coins(src, wallet, { amount: 12000, onArrive: i => calls.push(i) })
+  assert.equal(calls.length, 0, 'không gọi đồng bộ trong lời gọi coins')
+  assert.equal(await p, 0)
+  await flush()
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].sum, 12000)
+  assert.equal(calls[0].last, true)
+  assert.equal(calls[0].skipped, true)
+  assert.equal(red.stats().dom, 0)
+  red.destroy()
+  // đích ẩn
+  const fx = createVfx({ host: D.host, reduced: () => false })
+  const hidden = D.box(10, 10, 40, 40)
+  hidden.hiddenBox = true
+  const c2 = []
+  assert.equal(await fx.coins(src, hidden, 4, { amount: 3000, onArrive: i => c2.push(i) }), 0)
+  await flush()
+  assert.equal(c2.length, 1)
+  assert.equal(c2[0].sum, 3000)
+  // clear() giữa chừng: 2 xu đã tới, phần còn lại giao gộp trong lần cuối (cut)
+  const c3 = []
+  const run = fx.coins(src, wallet, 5, { amount: 10000, onArrive: i => c3.push(i) })
+  const coinsEl = fx.layer.children.filter(e => e.className === 'vfx-coin')
+  coinsEl[0].getAnimations()[0].finish()
+  coinsEl[1].getAnimations()[0].finish()
+  await flush()
+  assert.equal(c3.length, 2)
+  fx.clear()
+  assert.equal(await run, 2, 'chỉ đếm xu đã tới')
+  await flush()
+  assert.equal(c3.length, 3)
+  const last = c3[2]
+  assert.equal(last.cut, true)
+  assert.equal(last.last, true)
+  assert.equal(last.sum, 10000, 'tổng vẫn đúng số tiền')
+  assert.equal(last.share, 10000 - c3[1].sum)
+  assert.deepEqual(fx.stats(), { dom: 0, particles: 0 })
+  // onArrive lỗi không làm hỏng luồng xu
+  const bad = fx.coins(src, wallet, 2, { amount: 2000, onArrive: () => { throw new Error('x') } })
+  for (const e of fx.layer.children.filter(x => x.className === 'vfx-coin')) e.getAnimations()[0].finish()
+  assert.equal(await bad, 2)
+  fx.destroy()
+})
+
+test('createVfx (DOM giả): vfx.countUp — giảm chuyển động: số ngay + nhịp sáng chỉ đổi opacity; đếm thường: counting(el), clear() nhảy tới số cuối', async () => {
+  const D = fakeDom()
+  const undo = recordAnims(D)
+  try {
+    const wallet = D.box(250, 10, 110, 30)
+    wallet.dataset = { amount: '45000' }
+    const fmt = v => v + 'đ'
+    const red = createVfx({ host: D.host, reduced: () => true })
+    red.countUp(wallet, 20000, 45000, 600, fmt)
+    assert.equal(wallet.textContent, '45000đ', 'cập nhật ngay')
+    const g = red.layer.children.find(e => e.getAttribute('data-kind') === 'glow')
+    assert.ok(g, 'có một nhịp sáng trong lớp hiệu ứng')
+    const kf = g.getAnimations()[0].kf
+    assert.ok(kf.every(k => !('transform' in k)), 'giảm chuyển động: nhịp sáng chỉ đổi opacity')
+    assert.ok(kf.some(k => k.opacity > 0.5), 'có sáng lên')
+    assert.equal(wallet.dataset.amount, '45000')
+    red.destroy()
+    // đếm thường
+    const fx = createVfx({ host: D.host, reduced: () => false })
+    const h = fx.countUp(wallet, 45000, 60000, 600, fmt)
+    assert.equal(fx.counting(wallet), true)
+    assert.equal(wallet.textContent, '45000đ', 'bắt đầu từ số cũ')
+    assert.equal(fx.layer.children.filter(e => e.getAttribute('data-kind') === 'glow').length, 0, 'đếm thường: không nhịp sáng')
+    D.frames(2)
+    fx.clear()
+    assert.equal(wallet.textContent, '60000đ', 'clear() cho bộ đếm nhảy tới số cuối')
+    assert.equal(await h.done, true)
+    assert.equal(fx.counting(wallet), false)
+    // trang ẩn: ghi thẳng số cuối, không nhịp sáng
+    D.setHidden(true)
+    fx.countUp(wallet, 60000, 70000, 600, fmt)
+    assert.equal(wallet.textContent, '70000đ')
+    assert.equal(fx.stats().dom, 0)
+    D.setHidden(false)
+    // nhịp sáng gọi thẳng; đích ẩn → null
+    assert.ok(fx.glow(wallet))
+    const hid = D.box(0, 0, 10, 10)
+    hid.hiddenBox = true
+    assert.equal(fx.glow(hid), null)
+    fx.destroy()
+  } finally { undo() }
+})
+
+test('createVfx không có DOM: countUp / counting / glow / coins có onArrive vẫn an toàn', async () => {
+  const fx = createVfx({ host: null, reduced: () => false })
+  for (const fn of ['countUp', 'counting', 'glow']) assert.equal(typeof fx[fn], 'function', 'thiếu ' + fn)
+  assert.equal(fx.glow({ x: 1, y: 1 }), null)
+  const el = { textContent: '' }
+  const h = fx.countUp(el, 0, 300, 60)
+  assert.equal(await h.done, true)
+  assert.equal(el.textContent, '300')
+  const got = []
+  assert.equal(await fx.coins({ x: 0, y: 0 }, { x: 10, y: 10 }, { amount: 5000, onArrive: i => got.push(i) }), 0)
+  await flush()
+  assert.equal(got.length, 1)
+  assert.equal(got[0].sum, 5000)
   fx.destroy()
 })

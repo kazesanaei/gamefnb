@@ -781,3 +781,252 @@ test('art-v2 đạo cụ: mã nguồn props.js không dùng tên biến chứa t
     assert.ok(!src.includes(w), `props.js chứa "${w}"`)
   }
 })
+
+// ---------- Đợt 2, gói Q-F: hình người (src/ui/art/people.js) và cảnh quầy (src/ui/art/scene.js) ----------
+const QF_PEOPLE_MAX = 6144       // người bán thân / mặt tròn ≤ 6 KB
+const QF_SCENE_MAX = 6144        // hình cảnh lớn ≤ 6 KB
+const QF_ICON_MAX = 3584         // biểu tượng 64 ≤ 3,5 KB
+const QF_FORBID = /url\(|href|<use\b|<image\b|base64|gradient|<filter\b|filter=|clip-?path|<mask\b|mask=|<pattern\b|<style\b|<script\b|\bon\w+=/i
+const QF_BAD = /undefined|NaN|null|Infinity|\[object/
+
+// Kiểm một SVG theo quy chuẩn vẽ: khung, đúng một viewBox, không phần tử cấm / giá trị lỗi, thẻ cân bằng, viền mực, dung
+// lượng, tọa độ làm tròn 1 chữ số, không chữ trong hình.
+function qfCheckSvg(id, s, vb, max) {
+  assert.equal(typeof s, 'string', id)
+  assert.ok(s.startsWith('<svg') && s.endsWith('</svg>'), `${id}: khung svg`)
+  assert.equal((s.match(/viewBox=/g) || []).length, 1, `${id}: một viewBox`)
+  assert.ok(s.includes(`viewBox="${vb}"`), `${id}: viewBox phải là ${vb}`)
+  assert.ok(!QF_FORBID.test(s), `${id}: phần tử cấm`)
+  assert.ok(!QF_BAD.test(s), `${id}: giá trị lỗi`)
+  assert.ok(!/<text\b/.test(s), `${id}: không vẽ chữ trong hình (chữ, số là HTML)`)
+  const open = (s.match(/<(svg|g|text)\b/g) || []).length
+  const close = (s.match(/<\/(svg|g|text)>/g) || []).length
+  assert.equal(open, close, `${id}: thẻ svg/g/text cân bằng`)
+  assert.ok(s.includes(`stroke="${kit.INK}" stroke-width="3"`), `${id}: viền mực ${kit.INK} dày 3`)
+  assert.ok(Buffer.byteLength(s) <= max, `${id}: ${Buffer.byteLength(s)} B > ${max} B`)
+  for (const m of s.matchAll(/\s(?:d|points|cx|cy|x|y|r|rx|ry|width|height|transform)="([^"]*)"/g)) {
+    const bad = m[1].replace(/scale\([^)]*\)/g, '').match(/\d*\.\d{2,}/g)
+    assert.equal(bad, null, `${id}: số quá 1 chữ số thập phân ${bad} trong "${m[1].slice(0, 60)}"`)
+  }
+}
+
+test('art-v2 người: đủ 6 kiểu khách × 4 tâm trạng (bán thân 96 × 112 và mặt tròn 64), khớp kiểu khách trong dữ liệu', async () => {
+  const P = await import('../../src/ui/art/people.js')
+  const { PERSONAS } = await import('../../src/data/customers.js')
+  const { MOODS } = await import('../../src/ui/art.js')
+  assert.deepEqual([...P.PEOPLE_MOODS], [...MOODS], 'cùng bộ tâm trạng với art.js')
+  assert.deepEqual([...P.PERSONA_KEYS].sort(), ['co_chu', 'co_chu_nam', 'cong_nhan', 'hoc_sinh', 'kho_tinh', 'van_phong'])
+  for (const p of Object.keys(PERSONAS)) assert.ok(P.PERSONA_KEYS.includes(p), `thiếu kiểu khách ${p}`)
+  for (const T of [P.BUSTS, P.HEADS]) {
+    assert.deepEqual(Object.keys(T).sort(), [...P.PERSONA_KEYS].sort())
+    for (const k of P.PERSONA_KEYS) assert.deepEqual(Object.keys(T[k]).sort(), [...P.PEOPLE_MOODS].sort(), k)
+  }
+  assert.deepEqual(P.PEOPLE_META.bust.vb, [96, 112])
+  assert.deepEqual(P.PEOPLE_META.face.vb, [64, 64])
+  for (const k of P.PERSONA_KEYS) {
+    for (const m of P.PEOPLE_MOODS) {
+      qfCheckSvg(`BUSTS.${k}.${m}`, P.BUSTS[k][m], '0 0 96 112', QF_PEOPLE_MAX)
+      qfCheckSvg(`HEADS.${k}.${m}`, P.HEADS[k][m], '0 0 64 64', QF_PEOPLE_MAX)
+    }
+    // 4 tâm trạng là 4 hình khác nhau; mặt tròn là chính hình bán thân thu về khung 64.
+    assert.equal(new Set(P.PEOPLE_MOODS.map(m => P.BUSTS[k][m])).size, 4, `${k}: 4 tâm trạng khác hình`)
+    assert.ok(P.HEADS[k].vui.includes(`transform="${P.PEOPLE_META.face.transform}"`), `${k}: mặt tròn cắt từ hình bán thân`)
+  }
+  // 6 kiểu khách khác hình nhau ở cùng tâm trạng.
+  assert.equal(new Set(P.PERSONA_KEYS.map(k => P.BUSTS[k].binh_thuong)).size, 6)
+})
+
+test('art-v2 người: biểu cảm rõ (vui cười híp mắt, bực nhăn mày, giận đỏ mặt có khói) và thân áo khác nhau theo kiểu', async () => {
+  const P = await import('../../src/ui/art/people.js')
+  for (const k of P.PERSONA_KEYS) {
+    const B = P.BUSTS[k]
+    // vui: mắt híp (cung, không có tròng mắt ellipse) + miệng mở có lưỡi
+    assert.ok(/M35 47Q39 42 43 47/.test(B.vui) && !/<ellipse cx="39" cy="45.4" rx="2.8"/.test(B.vui), `${k}: vui mắt híp`)
+    assert.ok(B.vui.includes('fill="#9b3a30"') && B.vui.includes('fill="#f08a80"'), `${k}: vui miệng cười mở`)
+    // bực: mày nhíu xuống giữa + nét cau giữa hai mày + vệt rối bực bội
+    assert.ok(B.buc.includes('M34.6 37.2L43.2 40.6') && B.buc.includes('stroke="#6e5340"'), `${k}: bực nhăn mày`)
+    // giận: da đỏ hơn bình thường, nghiến răng, khói nhỏ hai bên đầu
+    assert.ok(B.gian.includes('<rect x="40.8" y="54.6"'), `${k}: giận nghiến răng`)
+    assert.ok((B.gian.match(/fill="#f3f1ee"/g) || []).length >= 3, `${k}: giận có khói`)
+    const skin = s => s.match(/<path d="M24 42A24 23[^"]*" fill="(#[0-9a-f]{6})"/)[1]
+    const red = c => parseInt(c.slice(1, 3), 16) - (parseInt(c.slice(3, 5), 16) + parseInt(c.slice(5, 7), 16)) / 2
+    assert.ok(red(skin(B.gian)) > red(skin(B.binh_thuong)) + 10, `${k}: giận đỏ mặt`)
+  }
+  // Thân áo: mỗi kiểu một màu áo nền khác nhau (hoặc chi tiết khác: sơ mi trắng học sinh có khăn quàng, văn phòng có cà vạt).
+  assert.ok(P.BUSTS.hoc_sinh.vui.includes('#e2453a'), 'học sinh: khăn quàng đỏ')
+  assert.ok(P.BUSTS.cong_nhan.vui.includes('#f28a1e') && P.BUSTS.cong_nhan.vui.includes('#f7c22c'), 'công nhân: áo gile cam, mũ bảo hộ vàng')
+  assert.ok(P.BUSTS.van_phong.vui.includes('#2f5fb3'), 'văn phòng: cà vạt')
+  assert.ok(P.BUSTS.kho_tinh.vui.includes('#363b48'), 'khó tính: áo vest tối')
+  assert.ok(P.BUSTS.co_chu_nam.vui.includes('#5f7f9f'), 'chú: áo thun có cổ')
+})
+
+test('art-v2 người: bust()/head() dự phòng an toàn, biến thể nữ, dáng riêng cho khách quen / khách lạ / người bán', async () => {
+  const P = await import('../../src/ui/art/people.js')
+  const { REGULARS } = await import('../../src/data/customers.js')
+  const { STRANGERS, STALLS } = await import('../../src/data/rare.js')
+  assert.equal(P.bust('hoc_sinh', 'vui'), P.BUSTS.hoc_sinh.vui)
+  assert.equal(P.bust('co_chu', 'gian', { gender: 'nam' }), P.BUSTS.co_chu_nam.gian, 'cô chú nam → chú')
+  assert.equal(P.head('kho_tinh', 'buc'), P.HEADS.kho_tinh.buc)
+  assert.equal(P.bust('khong_co', 'vui'), P.BUSTS.hoc_sinh.vui, 'kiểu lạ → học sinh')
+  assert.equal(P.bust('cong_nhan', 'la_lam'), P.BUSTS.cong_nhan.binh_thuong, 'tâm trạng lạ → bình thường')
+  assert.equal(P.bust('constructor', undefined, null), P.BUSTS.hoc_sinh.binh_thuong, 'không lấy thuộc tính kế thừa')
+  assert.equal(P.bust(undefined, 'vui', { who: 'toString' }), P.BUSTS.hoc_sinh.vui)
+  assert.equal(P.bust('van_phong', 'vui'), P.bust('van_phong', 'vui'), 'ổn định (bộ nhớ đệm)')
+  // Ghi đè trực tiếp không lẫn bộ nhớ đệm: da, mũ ('none' bỏ mũ).
+  assert.notEqual(P.bust('hoc_sinh', 'vui', { skin: 'dam' }), P.BUSTS.hoc_sinh.vui)
+  assert.ok(!P.bust('cong_nhan', 'vui', { hat: 'none' }).includes('#f7c22c') && P.BUSTS.cong_nhan.vui.includes('#f7c22c'))
+  // Biến thể nữ khác hình kiểu mặc định (tóc), vẫn đúng quy chuẩn.
+  for (const k of ['hoc_sinh', 'cong_nhan', 'van_phong', 'kho_tinh']) {
+    for (const m of P.PEOPLE_MOODS) {
+      const s = P.bust(k, m, { gender: 'nu' })
+      assert.notEqual(s, P.BUSTS[k][m], `${k} nữ khác hình`)
+      qfCheckSvg(`${k}.nu.${m}`, s, '0 0 96 112', QF_PEOPLE_MAX)
+      qfCheckSvg(`${k}.nu.${m}.head`, P.head(k, m, { gender: 'nu' }), '0 0 64 64', QF_PEOPLE_MAX)
+    }
+  }
+  // Mọi khách quen, khách lạ, người bán trong dữ liệu đều có dáng riêng, khớp kiểu khách và giới tính.
+  const people = [...Object.values(REGULARS), ...STRANGERS, ...STALLS.map(s => ({ ...s, id: s.id }))]
+  for (const c of people) {
+    const w = P.WHO_LOOKS[c.id]
+    assert.ok(w, `thiếu dáng riêng cho ${c.id}`)
+    assert.equal(w.persona, c.persona, `${c.id}: kiểu khách`)
+    assert.equal(w.gender, c.gender, `${c.id}: giới tính`)
+    for (const m of P.PEOPLE_MOODS) {
+      const s = P.bust(c.persona, m, { who: c.id, gender: c.gender })
+      assert.notEqual(s, P.bust(c.persona, m, { gender: c.gender }), `${c.id}: khác khách thường`)
+      qfCheckSvg(`${c.id}.${m}`, s, '0 0 96 112', QF_PEOPLE_MAX)
+      qfCheckSvg(`${c.id}.${m}.head`, P.head(c.persona, m, { who: c.id, gender: c.gender }), '0 0 64 64', QF_PEOPLE_MAX)
+    }
+  }
+  assert.equal(new Set(Object.keys(P.WHO_LOOKS).map(id => P.bust(P.WHO_LOOKS[id].persona, 'vui', { who: id }))).size, Object.keys(P.WHO_LOOKS).length, 'mỗi người một dáng')
+  // Cô Thu như Phòng mẫu: kính, áo tím, chuỗi ngọc.
+  const thu = P.bust('co_chu', 'vui', { who: 'co_thu', gender: 'nu' })
+  assert.ok(thu.includes('#8a5fb0') && /<circle cx="39" cy="45.4" r="6.2" fill="none"/.test(thu) && thu.includes('fill="#fffaf0" stroke-width="1.1"'), 'Cô Thu: áo tím, kính, chuỗi ngọc')
+  // Phụ kiện lạ bị bỏ qua, không lỗi.
+  assert.equal(P.bust('hoc_sinh', 'vui', { acc: ['khong_co'] }), P.bust('hoc_sinh', 'vui', { acc: [] }))
+  assert.equal(P.lookOf('co_chu', { gender: 'nam' }).key, 'co_chu_nam')
+  assert.equal(P.personaKey('co_chu', 'nam'), 'co_chu_nam')
+  assert.equal(P.personaKey('la', null), 'hoc_sinh')
+})
+
+test('art-v2 người: Dì Sáu đủ 4 mặt (khóa như DI_SAU cũ) + 4 tư thế bán thân; Anh Khoa, Cô Hạnh bán thân', async () => {
+  const P = await import('../../src/ui/art/people.js')
+  const { DI_SAU, ANH_KHOA, CO_HANH } = await import('../../src/ui/art.js')
+  assert.deepEqual(Object.keys(P.DI_SAU_FACES).sort(), Object.keys(DI_SAU).sort())
+  assert.deepEqual(Object.keys(P.DI_SAU_POSES).sort(), ['che_mat', 'lau_mo_hoi', 'ngon_cai', 'vo_tay'])
+  assert.deepEqual({ ...P.DI_SAU_POSE_MOOD }, { ngon_cai: 'tu_hao', vo_tay: 'vui', lau_mo_hoi: 'lo', che_mat: 'tiec' })
+  for (const [k, s] of Object.entries(P.DI_SAU_FACES)) {
+    qfCheckSvg(`DI_SAU_FACES.${k}`, s, '0 0 64 64', QF_PEOPLE_MAX)
+    assert.ok(s.includes('stroke="#2b2b2b"'), `${k}: khăn rằn trắng đen`)
+  }
+  assert.equal(new Set(Object.values(P.DI_SAU_FACES)).size, 4, 'Dì Sáu: 4 mặt khác nhau')
+  for (const [k, s] of Object.entries(P.DI_SAU_POSES)) {
+    qfCheckSvg(`DI_SAU_POSES.${k}`, s, '0 0 96 112', QF_PEOPLE_MAX)
+    assert.ok(/<g transform="translate\([\d. -]+\)(?: rotate\(-?[\d.]+\))?(?: scale\(-1 1\))?">/.test(s), `${k}: có bàn tay`)
+  }
+  assert.equal(new Set(Object.values(P.DI_SAU_POSES)).size, 4, 'Dì Sáu: 4 tư thế khác nhau')
+  for (const k of Object.keys(ANH_KHOA)) {
+    qfCheckSvg(`ANH_KHOA_FACES.${k}`, P.ANH_KHOA_FACES[k], '0 0 64 64', QF_PEOPLE_MAX)
+    qfCheckSvg(`ANH_KHOA_BUSTS.${k}`, P.ANH_KHOA_BUSTS[k], '0 0 96 112', QF_PEOPLE_MAX)
+  }
+  for (const k of Object.keys(CO_HANH)) {
+    qfCheckSvg(`CO_HANH_FACES.${k}`, P.CO_HANH_FACES[k], '0 0 64 64', QF_PEOPLE_MAX)
+    qfCheckSvg(`CO_HANH_BUSTS.${k}`, P.CO_HANH_BUSTS[k], '0 0 96 112', QF_PEOPLE_MAX)
+  }
+  assert.notEqual(P.ANH_KHOA_BUSTS.vui, P.ANH_KHOA_BUSTS.huong_dan)
+})
+
+test('art-v2 cảnh: đủ hình cảnh quầy và biểu tượng (4 khâu, 2 tab, HUD, xu tip); viewBox khớp SCENE_META, đúng quy chuẩn', async () => {
+  const S = await import('../../src/ui/art/scene.js')
+  const { BALANCE } = await import('../../src/data/balance.js')
+  const need = ['xe_mat_truoc', 'mai_bat', 'dien_thoai', 'may_pos', 'man_led', 'ket_tien', 'may_in_phieu', 'kep_phieu', 'hu_tip']
+  assert.deepEqual(Object.keys(S.SCENE).sort(), need.sort())
+  assert.deepEqual(Object.keys(S.SCENE_META).sort(), need.sort(), 'SCENE và SCENE_META cùng bộ khóa')
+  for (const [id, s] of Object.entries(S.SCENE)) {
+    const [w, h] = S.SCENE_META[id].vb
+    qfCheckSvg(id, s, `0 0 ${w} ${h}`, QF_SCENE_MAX)
+  }
+  const icons = ['dong_xu', 'hud_vi', 'hud_sao', 'hud_gio', 'khau_order', 'khau_thanh_toan', 'khau_tinh_tien', 'khau_lam_do', 'tab_quay', 'tab_bep']
+  assert.deepEqual(Object.keys(S.SCENE_ICONS).sort(), icons.sort())
+  for (const [id, s] of Object.entries(S.SCENE_ICONS)) {
+    qfCheckSvg(id, s, '0 0 64 64', QF_ICON_MAX)
+    const g = s.match(/<ellipse cx="[\d.]+" cy="([\d.]+)" rx="[\d.]+" ry="[\d.]+" fill="#3a2618" opacity="\.15" stroke="none"\/>/)
+    assert.ok(g && Number(g[1]) >= 55 && Number(g[1]) <= 60, `${id}: bóng đất y≈58`)
+    assert.ok(/fill="#fff" opacity="\.\d"|stroke="#fff"/.test(s), `${id}: điểm sáng trắng`)
+  }
+  assert.equal(new Set(Object.values(S.SCENE_ICONS)).size, icons.length, 'không biểu tượng nào trùng')
+  assert.deepEqual(Object.keys(S.STAGE_ICONS), [...BALANCE.stageFlow], 'biểu tượng theo đúng 4 khâu')
+  for (const id of [...Object.values(S.STAGE_ICONS), ...Object.values(S.TAB_ICONS), ...Object.values(S.HUD_ICONS)]) assert.ok(S.SCENE_ICONS[id], id)
+  assert.notEqual(S.SCENE_ICONS.tab_bep, S.SCENE_ICONS.khau_lam_do, 'tab Bếp khác biểu tượng khâu Làm đồ')
+  assert.equal(S.scene('may_pos'), S.SCENE.may_pos)
+  assert.equal(S.scene('hud_sao'), S.SCENE_ICONS.hud_sao)
+  assert.equal(S.scene('khong_co'), '')
+  assert.equal(S.scene('constructor'), '')
+})
+
+test('art-v2 cảnh: điểm mốc / ô chèn HTML nằm trong hộp vẽ; két 7 ngăn không chồng nhau; QR vừa màn hình điện thoại', async () => {
+  const S = await import('../../src/ui/art/scene.js')
+  const M = S.SCENE_META
+  const inBox = (id, r) => {
+    const [w, h] = M[id].vb
+    assert.ok(r.x >= 0 && r.y >= 0 && r.x + (r.w || 0) <= w && r.y + (r.h || 0) <= h, `${id}: ô ${JSON.stringify(r)} ngoài hộp ${w}×${h}`)
+  }
+  inBox('xe_mat_truoc', M.xe_mat_truoc.sign); inBox('xe_mat_truoc', M.xe_mat_truoc.glass)
+  assert.ok(M.xe_mat_truoc.top > 0 && M.xe_mat_truoc.top < M.xe_mat_truoc.vb[1] / 2, 'mặt quầy ở nửa trên hình')
+  assert.ok(M.xe_mat_truoc.open[0] >= M.xe_mat_truoc.glass.x + M.xe_mat_truoc.glass.w && M.xe_mat_truoc.open[1] <= M.xe_mat_truoc.vb[0], 'khoảng trống quầy không đè tủ kính')
+  inBox('dien_thoai', M.dien_thoai.screen); inBox('dien_thoai', M.dien_thoai.qr); inBox('dien_thoai', M.dien_thoai.note)
+  const sc = M.dien_thoai.screen, q = M.dien_thoai.qr
+  assert.ok(q.x >= sc.x && q.y >= sc.y && q.x + q.w <= sc.x + sc.w && q.y + q.h <= sc.y + sc.h, 'QR nằm trong màn hình')
+  assert.ok(Math.abs(q.w / q.h - 100 / 118) < 0.01, 'QR giữ tỉ lệ 100 × 118')
+  inBox('may_pos', M.may_pos.led); inBox('may_pos', M.may_pos.pad); inBox('man_led', M.man_led.led)
+  assert.equal(M.ket_tien.slots.length, 7, 'két 7 ngăn')
+  for (const s of M.ket_tien.slots) inBox('ket_tien', s)
+  M.ket_tien.slots.forEach((a, i) => M.ket_tien.slots.forEach((b, j) => {
+    if (i < j) assert.ok(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y, `ngăn ${i} chồng ngăn ${j}`)
+  }))
+  inBox('may_in_phieu', { ...M.may_in_phieu.slot, h: 0 })
+  for (const p of [M.kep_phieu.jaw, M.kep_phieu.hang]) inBox('kep_phieu', { x: p[0], y: p[1] })
+  const t = M.hu_tip.mouth
+  inBox('hu_tip', { x: t.cx - t.rx, y: t.cy - t.ry, w: 2 * t.rx, h: 2 * t.ry })
+  assert.equal(M.mai_bat.vb[0] % M.mai_bat.stripe, 0, 'mái bạt: số sọc chẵn khít bề ngang (lặp được)')
+  assert.ok(isDeepFrozen(M) && Object.isFrozen(M.ket_tien.slots[0]))
+})
+
+test('art-v2 cảnh: phoneQr đặt QR giả vào màn hình (không lồng <svg>, không kế thừa viền), từ chối chuỗi lạ', async () => {
+  const S = await import('../../src/ui/art/scene.js')
+  const { fakeQrSvg } = await import('../../src/ui/art.js')
+  const s = S.phoneQr(fakeQrSvg(1))
+  assert.ok(s.startsWith('<svg') && s.endsWith('</svg>'))
+  assert.equal((s.match(/<svg\b/g) || []).length, 1, 'không lồng svg')
+  assert.equal((s.match(/viewBox=/g) || []).length, 1)
+  assert.ok(s.includes('QR GAME'), 'giữ chữ QR GAME')
+  assert.ok(!QF_FORBID.test(s) && !QF_BAD.test(s))
+  const phone = S.SCENE.dien_thoai.slice(0, -'</svg>'.length)
+  assert.ok(s.startsWith(phone) && s.slice(phone.length).startsWith(`<g transform="translate(${S.SCENE_META.dien_thoai.qr.x} ${S.SCENE_META.dien_thoai.qr.y}) scale(.64)">`),
+    'QR là nhóm riêng sau nhóm viền mực (không kế thừa nét viền)')
+  assert.equal((s.match(/<(svg|g|text)\b/g) || []).length, (s.match(/<\/(svg|g|text)>/g) || []).length)
+  for (const bad of [undefined, null, '', 'abc', '<svg viewBox="0 0 10 10"><image href="x"/></svg>', '<svg viewBox="0 0 10 10"><a href="x"/></svg>',
+    '<svg viewBox="0 0 10 10"><svg viewBox="0 0 1 1"></svg></svg>', '<svg><rect/></svg>', 42]) {
+    assert.equal(S.phoneQr(bad), S.SCENE.dien_thoai, `từ chối ${String(bad).slice(0, 30)}`)
+  }
+})
+
+test('art-v2 người, cảnh: đóng băng sâu; mã nguồn không chứa từ cấm; tổng src/ui/art/* ≤ 320 KB', async () => {
+  const P = await import('../../src/ui/art/people.js')
+  const S = await import('../../src/ui/art/scene.js')
+  for (const o of [P.BUSTS, P.HEADS, P.PEOPLE_META, P.WHO_LOOKS, P.DI_SAU_FACES, P.DI_SAU_POSES, P.DI_SAU_POSE_MOOD, P.ANH_KHOA_FACES,
+    P.ANH_KHOA_BUSTS, P.CO_HANH_FACES, P.CO_HANH_BUSTS, P.CLOTH, P.PEOPLE_MOODS, P.PERSONA_KEYS, P.EXTRA_MOODS,
+    S.SCENE, S.SCENE_ICONS, S.SCENE_META, S.STAGE_ICONS, S.TAB_ICONS, S.HUD_ICONS]) assert.ok(isDeepFrozen(o))
+  assert.throws(() => { 'use strict'; P.BUSTS.hoc_sinh.vui = '' })
+  assert.throws(() => { 'use strict'; S.SCENE_META.ket_tien.slots[0].x = 0 })
+  assert.equal(P.mix('#000000', '#ffffff', 0.5), '#808080')
+  for (const f of ['people.js', 'scene.js']) {
+    const src = readFileSync(path.join(ROOT, 'src', 'ui', 'art', f), 'utf8').toLowerCase()
+    for (const w of ['grab', 'napas', 'ipos', 'momo', 'fabi', 'vnpay', 'zalopay', 'vietqr', 'baemin', 'shopeefood', 'michelin', 'cooking mama']) {
+      assert.ok(!src.includes(w), `${f} chứa "${w}"`)
+    }
+  }
+  const dir = path.join(ROOT, 'src', 'ui', 'art')
+  const total = readdirSync(dir).filter(n => n.endsWith('.js')).reduce((n, f) => n + readFileSync(path.join(dir, f)).length, 0)
+  assert.ok(total <= 320 * 1024, `tổng src/ui/art/* = ${total} B > 320 KB`)
+})

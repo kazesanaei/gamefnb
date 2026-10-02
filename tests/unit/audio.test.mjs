@@ -278,3 +278,118 @@ test('trò chơi mới gọi đúng âm thao tác của nó (bằng tên viết 
   }
   if (missing.length) t.diagnostic('chưa có trò chơi: ' + missing.join(', '))
 })
+
+// ---------- M5 Đợt 2 (gói Q-G): 3 âm Quầy (keng, ting, coin2) ----------
+
+// Mỗi dao động kèm nút âm lượng dựng ngay sau nó (tone(): createOscillator rồi createGain) → âm lượng đỉnh.
+const peakOf = (nodes, osc) => {
+  const g = nodes[nodes.indexOf(osc) + 1]
+  return g && g.kind === 'gain' ? Math.max(...g.gain.calls.filter(c => c[0] === 'exp').map(c => c[1])) : 0
+}
+
+test('âm Quầy Đợt 2 có trong SOUND_NAMES: keng (máy tính tiền), ting (QR về), coin2 (xu tip); giữ đủ âm cũ, không trùng', () => {
+  for (const n of ['keng', 'ting', 'coin2']) assert.ok(SOUND_NAMES.includes(n), 'thiếu âm ' + n)
+  for (const n of ['click', 'coin', 'cash', 'ding', 'bell', 'chop', 'sizzle', 'pour', 'error', 'nudge', 'chest', 'paper',
+    'stamp', 'sparkle', 'fanfare', 'tick', 'whoosh', 'crack', 'stir', 'peel', 'shake', 'plop']) assert.ok(SOUND_NAMES.includes(n), 'mất âm cũ ' + n)
+  assert.ok(SOUND_NAMES.length >= 25, 'đủ 22 âm cũ + 3 âm Quầy')
+  assert.equal(new Set(SOUND_NAMES).size, SOUND_NAMES.length)
+  assert.ok(Object.isFrozen(SOUND_NAMES))
+})
+
+test('keng: tiếng cần gạt ngắn rồi chuông kim loại ~2,35kHz ngân ≥ 0,7 s, có bồi âm không điều hòa', () => {
+  const env = recordingEnv()
+  const nodes = env.play('keng')
+  const click = nodes.filter(n => n.kind === 'noise')
+  assert.ok(click.length >= 1 && click.every(n => n.dur <= 0.08), 'tiếng cạch ngắn')
+  assert.ok(Math.min(...click.map(n => n.at)) <= Math.min(...nodes.filter(n => n.kind === 'osc').map(n => n.at)), 'cạch trước, chuông sau')
+  const bells = nodes.filter(n => n.kind === 'osc' && firstSet(n.frequency) > 1500)
+  const main = bells.find(o => near(firstSet(o.frequency), 2349))
+  assert.ok(main, 'nốt chuông chính ≈ 2,35kHz')
+  assert.ok(main.end - main.at >= 0.7, 'chuông ngân ≥ 0,7 s')
+  const f0 = firstSet(main.frequency)
+  const ratios = bells.map(o => firstSet(o.frequency) / f0)
+  assert.ok(ratios.some(r => Math.abs(r - Math.round(r)) > 0.2), 'có bồi âm không điều hòa (tiếng kim loại): ' + ratios.map(r => r.toFixed(2)).join(','))
+})
+
+test('ting: không có tiếng ồn, nốt mồi thấp rồi nốt chính cao ~2,64kHz ngân, khác âm ding / coin', () => {
+  const env = recordingEnv()
+  const nodes = env.play('ting')
+  assert.equal(nodes.filter(n => n.kind === 'noise').length, 0, 'ting trong, không ồn')
+  const osc = nodes.filter(n => n.kind === 'osc').sort((a, b) => a.at - b.at)
+  const lead = osc[0]
+  const main = osc.find(o => near(firstSet(o.frequency), 2637))
+  assert.ok(main, 'nốt chính ≈ 2,64kHz')
+  assert.ok(lead.at < main.at && firstSet(lead.frequency) < firstSet(main.frequency), 'đi lên: nốt mồi thấp trước')
+  assert.ok(main.end - main.at >= 0.5, 'ngân ≥ 0,5 s')
+  // mỗi loại tiền một âm riêng: tần số chính khác ding (Đô6) và coin (Mi6 → La6)
+  const mains = name => env.play(name).filter(n => n.kind === 'osc').map(n => Math.round(firstSet(n.frequency)))
+  const tingSet = mains('ting')
+  for (const other of ['ding', 'coin']) {
+    const o = mains(other)
+    assert.ok(!tingSet.every(f => o.some(x => Math.abs(x - f) / f < 0.06)), 'ting trùng âm ' + other)
+  }
+})
+
+test('coin2: 4 tiếng xu chạm so le trong 0,25 s, cao ≥ 3kHz, nhỏ dần — khác âm coin của tiền thường', () => {
+  const env = recordingEnv()
+  const nodes = env.play('coin2')
+  const high = nodes.filter(n => n.kind === 'osc' && firstSet(n.frequency) >= 3000)
+  const starts = [...new Set(high.map(o => Math.round((o.at - 2) * 1000)))].sort((a, b) => a - b)
+  assert.ok(starts.length >= 4, 'ít nhất 4 tiếng xu: ' + starts.join(','))
+  assert.ok(starts[starts.length - 1] - starts[0] <= 250, 'so le trong 0,25 s')
+  // tiếng chính của từng lần chạm (nốt thấp nhất trong nhóm cao) nhỏ dần
+  const peaks = starts.map(ms => {
+    const group = high.filter(o => Math.round((o.at - 2) * 1000) === ms)
+    const lowest = group.sort((a, b) => firstSet(a.frequency) - firstSet(b.frequency))[0]
+    return peakOf(nodes, lowest)
+  })
+  for (let i = 1; i < peaks.length; i++) assert.ok(peaks[i] < peaks[i - 1], 'nhỏ dần: ' + peaks.join(','))
+  assert.ok(nodes.some(n => n.kind === 'noise'), 'có tiếng gõ kim loại')
+  const coin = env.play('coin').filter(n => n.kind === 'osc')
+  assert.ok(coin.every(o => firstSet(o.frequency) < 3000), 'coin cũ trầm hơn — hai âm tiền phân biệt được')
+})
+
+test('keng / ting / coin2 lệch cao độ ngẫu nhiên mỗi lần phát, luôn trong ±4%', () => {
+  const env = recordingEnv()
+  const base = { keng: 2349, ting: 2637, coin2: 3520 }
+  for (const [name, f] of Object.entries(base)) {
+    const seen = new Set()
+    for (let i = 0; i < 30; i++) {
+      const osc = env.play(name).filter(n => n.kind === 'osc')
+      const main = osc.find(o => near(firstSet(o.frequency), f))
+      assert.ok(main, `${name}: nốt chính ngoài ±4% của ${f}Hz`)
+      seen.add(Math.round(firstSet(main.frequency)))
+    }
+    assert.ok(seen.size > 5, name + ': cao độ phải đổi giữa các lần phát')
+  }
+})
+
+test('mọi nút âm lượng của từng nốt im lặng ngay từ lúc tạo (trước mốc bắt đầu) — không lọt một mẫu to "tách" khi nguồn bắt đầu lệch dưới một mẫu', () => {
+  const gains = []
+  const mkParam = v => {
+    const p = { calls: [], _v: v }
+    Object.defineProperty(p, 'value', { get() { return this._v }, set(x) { this.calls.push(['value', x]); this._v = x } })
+    p.setValueAtTime = function (x, t) { this.calls.push(['set', x, t]); this._v = x }
+    p.linearRampToValueAtTime = function (x, t) { this.calls.push(['lin', x, t]) }
+    p.exponentialRampToValueAtTime = function (x, t) { this.calls.push(['exp', x, t]) }
+    return p
+  }
+  class AC {
+    constructor() { this.state = 'running'; this.currentTime = 3; this.sampleRate = 8000; this.destination = {} }
+    resume() { return Promise.resolve() }
+    createGain() { const g = { connect: x => x, gain: mkParam(1) }; gains.push(g); return g }
+    createOscillator() { return { connect: x => x, type: 'sine', frequency: mkParam(440), start() {}, stop() {} } }
+    createBiquadFilter() { return { connect: x => x, type: 'lowpass', frequency: mkParam(350), Q: mkParam(1) } }
+    createBufferSource() { return { connect: x => x, buffer: null, start() {} } }
+    createBuffer(ch, len) { const data = new Float32Array(len); return { getChannelData: () => data, length: len } }
+  }
+  const audio = createAudio(() => ({ sound: true, volume: 1 }), { window: { AudioContext: AC }, navigator: {} })
+  audio.unlock()
+  for (const name of SOUND_NAMES) {
+    const from = gains.length
+    assert.equal(audio.play(name), true, name)
+    const mine = gains.slice(from === 0 ? 1 : from)   // bỏ nút âm lượng tổng (tạo cùng AudioContext)
+    assert.ok(mine.length >= 1, name)
+    for (const g of mine) assert.deepEqual(g.gain.calls[0], ['value', 0.0001], `${name}: nút âm lượng phải im lặng trước mốc bắt đầu`)
+  }
+})

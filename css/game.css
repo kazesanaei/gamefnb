@@ -153,32 +153,7 @@
   .hud > .hud-cell:first-child { flex-direction: column; align-items: flex-start; gap: 0; line-height: 1.2; }
 }
 
-.street {
-  flex: none; display: flex; align-items: flex-end; gap: 8px; padding: 6px 12px 4px; min-height: 102px;
-  background: linear-gradient(180deg, #ffe6b0 0%, #f7dca7 70%, #d9b98a 70%, #d9b98a 100%);
-}
-.queue { flex: 1; display: flex; align-items: flex-end; gap: 8px; min-width: 0; }
-.queue-empty { font-size: 14px; padding-bottom: 20px; }
-.q-cust { display: flex; flex-direction: column; align-items: center; width: 78px; position: relative; }
-.q-face { position: relative; width: 62px; height: 62px; }
-.q-face .ring { position: absolute; inset: 0; width: 100%; height: 100%; }
-.q-face .face-img { position: absolute; left: 7px; top: 7px; width: 48px; height: 48px; }
-.q-name { font-size: 14px; font-weight: 700; max-width: 78px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.q-tag { position: absolute; top: -6px; right: -4px; font-size: 13px; font-weight: 800; background: var(--brick); color: #fff; border-radius: 999px; padding: 0 6px; white-space: nowrap; }
-/* M4: khách lấy đơn đặt trước của sự kiện ngày */
-.q-tag.is-order { background: #1f4e7a; }
-.qr-speaker-off { color: var(--bad); font-weight: 700; }
-.at-counter .q-face { transform: scale(1.06); }
-.ring-bg { stroke: rgba(59, 42, 31, .12); }
-.ring-fg { transition: stroke-dashoffset .25s linear, stroke .3s; }
-.waiting { flex: none; display: flex; flex-direction: column; align-items: flex-end; max-width: 45%; }
-.wait-title { font-size: 14px; font-weight: 800; color: var(--brick-dark); }
-.wait-row { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
-.w-cust { display: flex; flex-direction: column; align-items: center; width: 62px; }
-.w-face { position: relative; width: 42px; height: 42px; }
-.w-face .ring { position: absolute; inset: 0; width: 100%; height: 100%; }
-.w-face .face-img { position: absolute; left: 6px; top: 6px; width: 30px; height: 30px; }
-.w-name { font-size: 14px; max-width: 62px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Dải phố, hàng khách, khách chờ món: css/street.css (M5 Đợt 2, gắn ngay sau tệp này) */
 
 .progress4 { flex: none; display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: var(--paper); border-bottom: 1px solid var(--line); min-height: 34px; }
 .p4-who { font-size: 14px; font-weight: 800; color: var(--brick-dark); max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -412,6 +387,7 @@
 .qr-status { padding: 8px 10px; border-radius: 10px; font-weight: 800; }
 .qr-status.waiting { background: #f4ece0; color: var(--muted); }
 .qr-status.arrived { background: var(--green-soft); color: var(--green-ink); }
+.qr-speaker-off { color: var(--bad); font-weight: 700; }
 
 /* Phiếu thu */
 .receipt-wrap { display: flex; flex-direction: column; gap: 8px; }
@@ -471,13 +447,8 @@
 .counter > :last-child { margin-bottom: 0; }
 .act-bar .rail-full-note { margin: 0; }
 
-/* Màn thấp (vd 360×740): thu dải phố và dây phiếu để panel thao tác đủ chỗ */
+/* Màn thấp (vd 360×740): thu dải phố (css/street.css) và dây phiếu để panel thao tác đủ chỗ */
 @media (max-height: 760px) {
-  .street { min-height: 84px; padding-top: 4px; }
-  .q-face { width: 52px; height: 52px; }
-  .q-face .face-img { left: 6px; top: 6px; width: 40px; height: 40px; }
-  .w-face { width: 36px; height: 36px; }
-  .w-face .face-img { left: 5px; top: 5px; width: 26px; height: 26px; }
   .ticket-rail { min-height: 56px; }
   .numpad-key { min-height: 44px; }
   .numpad-grid { gap: 4px; }
@@ -500,14 +471,10 @@
 /* thông báo đang nổi lúc bật chế độ tập trung (thông báo mới chờ tới khi thoát): sát mép trên, phủ HUD thay vì vùng nấu */
 .overlay-root.is-cook-focus > .toast-stack { top: calc(4px + var(--safe-top)); }
 
-/* ---------- M4: món hiếm ở quầy, khách lạ ở hàng chờ ---------- */
+/* ---------- M4: món hiếm ở quầy (khách lạ ở hàng chờ: css/street.css) ---------- */
 .menu-item.is-rare { border-color: #f0d68a; background: #fffbea; position: relative; }
 .menu-item.is-out { opacity: .55; }
 .menu-rare { grid-column: 2; font-size: 14px; font-weight: 800; color: #9a6a00; }
 .sheet-rare { margin-left: auto; font-size: 14px; font-weight: 700; }
-.q-stranger { position: absolute; left: -2px; top: -4px; width: 22px; height: 22px; border-radius: 50%; background: #ffd23f;
-  color: var(--ink); font-size: 14px; font-weight: 900; line-height: 22px; text-align: center; box-shadow: 0 0 0 2px #fff; }
-.q-cust.is-stranger .q-name { color: #9a6a00; font-weight: 800; }
-.q-tag.is-stranger { background: #c98a00; }
 .ss-stranger { color: #9a6a00; font-weight: 800; }
 .complaint-rare { color: var(--brick-dark); font-weight: 700; }

@@ -4,6 +4,8 @@
 // M5: stamp (con dấu "cộp"), sparkle (lấp lánh), fanfare (kèn mừng ra món), tick (tích đếm số), whoosh (vút bay).
 // M5 Đợt 1 (âm thao tác của 5 trò mới): crack (đập trứng "cạch"), stir (muỗng chạm thành tô), peel (gọt vỏ "sột"),
 // shake (đá lách cách khi lắc), plop (thả đá "tõm").
+// M5 Đợt 2 (Quầy): keng (chuông máy tính tiền khi đủ tiền / thối đúng), ting (tiền chuyển khoản QR về),
+// coin2 (xu tip rơi vào hũ — khác âm coin của tiền thường, mỗi loại tiền một âm riêng).
 // Âm M5 lệch cao độ ngẫu nhiên khoảng ±4% mỗi lần phát để nghe không lặp đều (âm giao diện, được dùng Math.random).
 // Giao diện luôn gọi bằng tên viết thẳng sound('…') để test âm (tests/unit/audio.test.mjs) quét được.
 // AudioContext chỉ tạo sau thao tác đầu tiên của người chơi; trình duyệt chặn âm thanh thì im lặng, không báo lỗi.
@@ -11,7 +13,8 @@
 
 export const SOUND_NAMES = Object.freeze(['click', 'coin', 'cash', 'ding', 'bell', 'chop', 'sizzle', 'pour', 'error', 'nudge', 'chest', 'paper',
   'stamp', 'sparkle', 'fanfare', 'tick', 'whoosh',
-  'crack', 'stir', 'peel', 'shake', 'plop'])
+  'crack', 'stir', 'peel', 'shake', 'plop',
+  'keng', 'ting', 'coin2'])
 // Âm thao tác M5 Đợt 1 (dap → crack, xoay → stir, got → peel, lac → shake, bay → plop).
 export const ACTION_SOUNDS = Object.freeze({ dap: 'crack', xoay: 'stir', got: 'peel', lac: 'shake', bay: 'plop' })
 
@@ -25,6 +28,9 @@ const NOISE_SEC = 1.5
 function tone(ac, dest, t0, n) {
   const osc = ac.createOscillator()
   const gain = ac.createGain()
+  // im lặng cả TRƯỚC thời điểm bắt đầu (mặc định 1): nguồn bắt đầu lệch dưới một mẫu so với mốc âm lượng thì không bị
+  // lọt một mẫu to (tiếng "tách")
+  gain.gain.value = 0.0001
   osc.type = n.type || 'sine'
   const s = t0 + (n.at || 0)
   const attack = n.attack ?? 0.008
@@ -60,6 +66,7 @@ function noise(ac, dest, t0, buffer, n) {
   if (n.filter && n.filter.f2) flt.frequency.exponentialRampToValueAtTime(n.filter.f2, s + n.d)
   if (n.filter && n.filter.q) flt.Q.setValueAtTime(n.filter.q, s)
   const gain = ac.createGain()
+  gain.gain.value = 0.0001
   const attack = n.attack ?? 0.004
   gain.gain.setValueAtTime(0.0001, s)
   if (n.env === 'swell') {
@@ -221,6 +228,46 @@ const RECIPES = {
       noise(ac, d, t, buf, { d: 0.06, v: 0.06, filter: { type: 'lowpass', f: 1200 * j, q: 0.8 }, attack: 0.002 }),
       noise(ac, d, t, buf, { d: 0.05, v: 0.035, at: 0.05, filter: { type: 'bandpass', f: 2600 * j, q: 1.6 }, attack: 0.004 })
     ]
+  },
+  // ---------- M5 Đợt 2: Quầy ----------
+  // chuông máy tính tiền "keng": tiếng cần gạt "cạch" (ồn dải 1,8kHz 35ms + gõ trầm) rồi chuông kim loại nhỏ ~2,35kHz
+  // có bồi âm không điều hòa (× 1,52 và × 2,76), ngân ~0,85 giây; búa chuông nảy đập lần hai rất sát cho tiếng dày.
+  keng: (ac, d, t, buf) => {
+    const j = jitter()
+    const f = 2349 * j
+    return [
+      noise(ac, d, t, buf, { d: 0.035, v: 0.16, filter: { type: 'bandpass', f: 1800 * j, q: 1.4 }, attack: 0.001 }),
+      tone(ac, d, t, { f: 320 * j, f2: 180 * j, d: 0.06, type: 'triangle', v: 0.09, attack: 0.001, glide: 0.05 }),
+      tone(ac, d, t, { f, d: 0.85, type: 'sine', v: 0.11, at: 0.04, attack: 0.002 }),
+      tone(ac, d, t, { f: f * 1.52, d: 0.55, type: 'sine', v: 0.04, at: 0.04, attack: 0.002 }),
+      tone(ac, d, t, { f: f * 2.76, d: 0.32, type: 'sine', v: 0.035, at: 0.04, attack: 0.002 }),
+      tone(ac, d, t, { f, d: 0.5, type: 'triangle', v: 0.045, at: 0.075, attack: 0.002 })
+    ]
+  },
+  // tiền QR về "ting": nốt mồi La6 ngắn rồi nốt chính Mi7 trong, ngân 0,6 giây, bồi âm bậc 2 và 3 mỏng (không có tiếng ồn)
+  ting: (ac, d, t) => {
+    const j = jitter()
+    const f = 2637 * j
+    return [
+      tone(ac, d, t, { f: 1760 * j, d: 0.1, type: 'sine', v: 0.06, attack: 0.003 }),
+      tone(ac, d, t, { f, d: 0.6, type: 'sine', v: 0.11, at: 0.07, attack: 0.003 }),
+      tone(ac, d, t, { f: f * 2, d: 0.22, type: 'sine', v: 0.03, at: 0.07, attack: 0.003 }),
+      tone(ac, d, t, { f: f * 3, d: 0.08, type: 'sine', v: 0.012, at: 0.07, attack: 0.002 })
+    ]
+  },
+  // xu tip rơi vào hũ "lẻng xẻng": 4 tiếng xu chạm nhau nhỏ dần, so le (0 → 200ms), mỗi tiếng một cao độ quanh 3,5kHz
+  // kèm tiếng gõ ồn cao rất ngắn; dưới cùng là tiếng hũ ngân nhẹ.
+  coin2: (ac, d, t, buf) => {
+    const j = jitter()
+    const hits = [[0, 1, 0.1], [0.085, 1.06, 0.07], [0.15, 0.97, 0.05], [0.2, 1.03, 0.03]]
+    const out = []
+    for (const [at, k, v] of hits) {
+      out.push(tone(ac, d, t, { f: 3520 * k * j, d: 0.12, type: 'sine', v, at, attack: 0.001 }))
+      out.push(tone(ac, d, t, { f: 3520 * k * 1.48 * j, d: 0.07, type: 'sine', v: v * 0.45, at, attack: 0.001 }))
+      out.push(noise(ac, d, t, buf, { d: 0.012, v: v * 0.8, at, filter: { type: 'highpass', f: 5000 * j, q: 0.8 }, attack: 0.001 }))
+    }
+    out.push(tone(ac, d, t, { f: 1318 * j, d: 0.35, type: 'triangle', v: 0.035, at: 0.02, attack: 0.004 }))
+    return out
   }
 }
 

@@ -1,12 +1,18 @@
-// Khách gọi món (M5, màn gọi món): khách bán thân lớn đứng sau mặt quầy (mặt theo tâm trạng từ art.js phóng to + thân
-// áo vẽ SVG theo kiểu khách, nhún nhẹ khi chờ), bong bóng thoại có HÌNH MÓN to, huy hiệu ×n, ghi chú bằng hình
-// (note-icons.js) và một câu nói ngắn phía dưới (bubbleLine: câu trọn ý, không cắt giữa từ). Chữ chỉ là phụ.
-// Giữ testid của quầy cũ: speech-bubble (data-request = JSON yêu cầu thật); lời qua lại: seller-line / customer-line.
+// Khách gọi món (M5, màn gọi món): khách bán thân lớn đứng sau mặt quầy (hình bán thân bust() của src/ui/art/people.js
+// theo kiểu khách, giới tính và dáng riêng của khách quen / khách lạ; dự phòng: mặt art.js + thân áo bustSvg bên dưới),
+// nhún nhẹ khi chờ, kèm bong bóng thoại. Ba kiểu bong bóng (data.mode):
+//   'icons' (mặc định, quầy thật dùng cho ngày 1–2): HÌNH MÓN to, huy hiệu ×n, ghi chú bằng hình (note-icons.js) và một
+//           câu nói ngắn phía dưới (bubbleLine: câu trọn ý, không cắt giữa từ). Chữ chỉ là phụ;
+//   'text'  (quầy thật từ ngày 3 — luật cũ bỏ dải hình món, người chơi phải nghe hiểu lời khách): nguyên văn câu khách nói;
+//   'talk'  (các khâu sau Order): câu mới nhất của khách (data.speech), không có testid speech-bubble / data-request.
+// Giữ testid của quầy cũ: speech-bubble (data-request = JSON yêu cầu thật, chỉ ở 'icons' / 'text'), request-icons (dải hình
+// món), customer-line (câu khách ở kiểu 'talk'); lời qua lại: seller-line / customer-line.
 // Hoạt ảnh chỉ theo SỰ KIỆN: enter() (khách tới), react('ok' | 'bad') (gật đầu / lắc đầu khi đọc lại đơn), lời mới
 // trong talk. update() với cùng dữ liệu không dựng lại gì.
 // Thuần ở cấp module (import trong Node được).
 import { h } from '../dom.js'
 import { face } from '../art.js'
+import { bust } from '../art/people.js'
 import { INK, r1 } from '../art/kit.js'
 import { isReduced, EASE } from '../motion.js'
 import { dishArt } from './menu-board.js'
@@ -134,13 +140,34 @@ export function bubbleLine(speech, max = SAY_MAX) {
   return tidy(comma.length >= max * 0.6 ? comma : out)
 }
 
-const sigOf = d => JSON.stringify([d.persona, d.gender, d.mood, d.name, d.regular, d.tag, d.speech, d.say, d.request, d.showSpeech !== false])
+/** Kiểu bong bóng hợp lệ: 'icons' | 'text' | 'talk' (lạ → 'icons'). */
+export function bubbleMode(mode) {
+  return mode === 'text' || mode === 'talk' ? mode : 'icons'
+}
+
+/**
+ * SVG khách đứng ở quầy: bán thân mới (people.js, viewBox 96 × 112, dáng riêng theo who) hoặc — khi không dựng được —
+ * bán thân cũ bustSvg (64 × 88). → { svg, v2 }.
+ */
+export function figureSvg(persona, mood, { gender = null, who = null } = {}) {
+  try {
+    const o = {}
+    if (gender) o.gender = gender
+    if (who) o.who = who
+    const s = bust(persona, mood, o)
+    if (typeof s === 'string' && s.startsWith('<svg')) return { svg: s, v2: true }
+  } catch { /* dùng hình cũ */ }
+  return { svg: bustSvg(persona, mood, gender), v2: false }
+}
+
+const sigOf = d => JSON.stringify([d.persona, d.gender, d.who, d.mood, d.name, d.regular, d.tag, d.speech, d.say, d.request, d.showSpeech !== false, bubbleMode(d.mode)])
 
 /**
  * createOrderBubble(data, opts) → { el, update(data), destroy(), enter(), react(kind), bubbleEl, figureEl }
  * data: {
- *   persona, mood ('vui'|'binh_thuong'|'buc'|'gian'), gender, name, regular (bool), tag (vd tên kiểu khách),
- *   request: [{ recipeId, qty, notes }], speech (câu khách nói; bong bóng chỉ hiện bản ngắn bubbleLine(speech)),
+ *   persona, mood ('vui'|'binh_thuong'|'buc'|'gian'), gender, who (id khách quen / khách lạ: dáng riêng), name,
+ *   regular (bool), tag (vd tên kiểu khách), mode ('icons' | 'text' | 'talk', xem đầu tệp),
+ *   request: [{ recipeId, qty, notes }], speech (câu khách nói; kiểu 'icons' chỉ hiện bản ngắn bubbleLine(speech)),
  *   say (câu ngắn tự chọn thay cho bản rút gọn), recipes,
  *   talk: [{ who: 'ban' | 'khach', text }] (≤ 2 lời gần nhất, lời mới nảy vào), showSpeech (mặc định true)
  * }
@@ -153,7 +180,7 @@ export function createOrderBubble(data = {}, opts = {}) {
   const bob = h('span', { class: 'co-cust-bob' }, body)
   const nameTag = h('span', { class: 'co-cust-name' })
   const figure = h('div', { class: 'co-cust-figure' }, bob, nameTag)
-  const dishes = h('div', { class: 'co-bubble-dishes' })
+  const dishes = h('div', { class: 'co-bubble-dishes', testid: 'request-icons' })
   const say = h('p', { class: 'co-bubble-say' })
   const bubble = h('div', { class: 'co-bubble', testid: 'speech-bubble', role: 'group' }, dishes, say)
   const talkBox = h('div', { class: 'co-talk', 'aria-live': 'polite', hidden: true })
@@ -170,25 +197,42 @@ export function createOrderBubble(data = {}, opts = {}) {
 
   function paintFace() {
     const mood = moodOverride || cur.mood || 'binh_thuong'
-    const k = [cur.persona, mood, cur.gender].join('|')
+    const k = [cur.persona, mood, cur.gender, cur.who].join('|')
     if (k === faceSig) return
     faceSig = k
-    body.innerHTML = bustSvg(cur.persona, mood, cur.gender)
+    const f = figureSvg(cur.persona, mood, { gender: cur.gender || null, who: cur.who || null })
+    body.dataset.art = f.v2 ? 'v2' : 'v1'
+    body.innerHTML = f.svg
   }
 
   function paint() {
     paintFace()
     const R = cur.recipes || {}
+    const mode = bubbleMode(cur.mode)
     nameTag.textContent = ''
     if (cur.name) nameTag.appendChild(h('b', null, cur.name))
     if (cur.regular) nameTag.appendChild(h('small', { class: 'co-cust-regular' }, 'Khách quen'))
     else if (cur.tag) nameTag.appendChild(h('small', null, cur.tag))
     nameTag.hidden = !cur.name && !cur.tag && !cur.regular
-    const lines = requestLines(cur.request)
-    bubble.dataset.request = JSON.stringify(cur.request || [])
+    el.dataset.mode = mode
+    bubble.dataset.mode = mode
+    const lines = mode === 'icons' ? requestLines(cur.request) : []
+    // yêu cầu thật chỉ gắn khi khách đang gọi món (e2e đọc data-request ở khâu Order)
+    if (mode === 'talk') {
+      delete bubble.dataset.testid
+      delete bubble.dataset.request
+      bubble.removeAttribute('role')
+    } else {
+      bubble.dataset.testid = 'speech-bubble'
+      bubble.dataset.request = JSON.stringify(cur.request || [])
+      bubble.setAttribute('role', 'group')
+    }
     bubble.dataset.n = String(lines.length)
-    bubble.setAttribute('aria-label', 'Khách gọi: ' + (requestText(lines, R) || 'chưa gọi món'))
+    // kiểu 'icons': nhãn đọc màn hình kể đủ món; kiểu chữ: đọc nguyên văn lời khách (không lộ yêu cầu đã chuẩn hóa)
+    if (mode === 'icons') bubble.setAttribute('aria-label', 'Khách gọi: ' + (requestText(lines, R) || 'chưa gọi món'))
+    else bubble.removeAttribute('aria-label')
     dishes.textContent = ''
+    dishes.hidden = mode !== 'icons'
     for (const l of lines) {
       const r = R[l.recipeId]
       dishes.appendChild(h('div', { class: 'co-bubble-dish' },
@@ -196,12 +240,17 @@ export function createOrderBubble(data = {}, opts = {}) {
         l.qty > 1 ? h('span', { class: 'co-bubble-qty', 'aria-hidden': 'true' }, '×' + l.qty) : null,
         l.notes.length ? h('span', { class: 'co-bubble-notes' }, l.notes.map(n => noteIcon(n, { recipe: r }))) : null))
     }
-    const line = cur.say ? String(cur.say) : bubbleLine(cur.speech)
+    const full = String(cur.speech || '').replace(/\s+/g, ' ').trim()
+    const line = mode !== 'icons' ? full : cur.say ? String(cur.say) : bubbleLine(cur.speech)
     say.textContent = line ? `“${line}”` : ''
     // câu đầy đủ vẫn đọc được (rê chuột / trình đọc màn hình) khi bong bóng chỉ hiện bản ngắn
-    if (cur.speech && line !== String(cur.speech).trim()) say.title = String(cur.speech)
+    if (mode === 'icons' && cur.speech && line !== full) say.title = full
     else say.removeAttribute('title')
+    if (mode === 'talk' && line) say.dataset.testid = 'customer-line'
+    else delete say.dataset.testid
     say.hidden = !line || cur.showSpeech === false
+    // kiểu 'talk' chưa có lời: ẩn hẳn bong bóng (chỉ còn khách đứng chờ)
+    bubble.hidden = mode === 'talk' && !line
   }
 
   function paintTalk(talk, animate) {

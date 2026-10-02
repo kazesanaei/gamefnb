@@ -5,8 +5,10 @@
 // thu; Bếp: dây phiếu, dòng món, chọn nguyên liệu, Thớt, giao món; phiếu chấm) — tự hiện lần đầu, không chen vào mini-game;
 // khi tour hoặc bảng Hướng dẫn (nút "?" trên HUD) đang mở thì ca TẠM DỪNG (setPaused: kiên nhẫn khách, giờ ca đứng yên),
 // đồng hồ bước Chọn đứng yên, phiếu chấm chưa tắt.
+// M5 Đợt 2 (bước 0): phần dựng phiếu chấm chuyển sang components/score-sheet.js, phần dựng hộp tình huống và hộp phàn nàn
+// sang components/incident-view.js (tệp này giữ luồng: hàng đợi phiếu, sheetSettled, khi nào mở hộp, gọi lõi, âm, lưu).
 import { h, svgBox } from '../dom.js'
-import { face, billSvg, DI_SAU } from '../art.js'
+import { face, DI_SAU } from '../art.js'
 import { incidentDue, openIncident, resolveIncident } from '../../core/incidents.js'
 import { isShiftOver, endShift, setPaused } from '../../core/shift.js'
 import { beginCounter } from '../../core/order.js'
@@ -17,16 +19,16 @@ import { createProgress4 } from '../components/progress4.js'
 import { createTicketRail } from '../components/ticket-rail.js'
 import { createRing, moodFor } from '../components/patience.js'
 import { mountCounter } from './counter.js'
-import { formatVND, starString } from '../format.js'
+import { renderScoreSheet } from '../components/score-sheet.js'
+import { createIncidentBox, renderComplaint } from '../components/incident-view.js'
+import { formatVND } from '../format.js'
 import { questDef, questText } from '../../core/quests.js'
 import { chainDefs } from '../../core/chains.js'
 import { icon } from '../art.js'
 import { npcFace } from '../components/meta-ui.js'
 
-const ORDER_CODES = ['sai_mon', 'thieu_mon', 'thua_mon', 'sai_so_luong', 'sai_ghi_chu']
-// Phiếu chấm tách 2 hàng theo khâu (đặc tả mục 3.11): Báo tổng (khâu Thanh toán) và Thối tiền (khâu Tính tiền).
-export const TOTAL_CODES = ['bao_du', 'bao_thieu']
-export const CHANGE_CODES = ['thoi_thieu', 'thoi_du', 'qr_gia']
+// Mã lỗi theo hàng của phiếu chấm và hàm dựng phiếu: components/score-sheet.js (xuất lại ở đây, giữ API cũ của màn).
+export { TOTAL_CODES, CHANGE_CODES, renderScoreSheet } from '../components/score-sheet.js'
 const SHEET_MS = 2000
 const END_DELAY_MS = 1200
 // M5: chế độ tập trung khi nấu chỉ bật ở khung thấp hơn chừng này (px).
@@ -445,98 +447,25 @@ export default {
     }
     offs.push(app.bus.on('ticket.clipped', () => checkIncident()))
 
-    function incidentArt(view) {
-      const sh = app.state.shift
-      if (view.id === 'khach_mo_hang') return svgBox(billSvg((view.detail && view.detail.bill) || 500000), 'incident-art is-bill')
-      // M4: tình huống chạy theo dữ liệu khai báo hình minh họa (tờ tiền, hoặc khuôn mặt theo kiểu khách)
-      if (view.art && view.art.bill) return svgBox(billSvg(view.art.bill), 'incident-art is-bill')
-      if (view.art && view.art.persona) return svgBox(face(view.art.persona, 'binh_thuong', view.art.gender || null), 'incident-art')
-      const c = view.detail && view.detail.customerId && sh && sh.customers[view.detail.customerId]
-      if (c) return svgBox(face(c.persona, 'binh_thuong', c.gender), 'incident-art')
-      const rg = view.detail && view.detail.regularId && app.data.REGULARS && app.data.REGULARS[view.detail.regularId]
-      if (rg) return svgBox(face(rg.persona, 'vui', rg.gender), 'incident-art')
-      return svgBox(DI_SAU.lo, 'incident-art')
-    }
-
-    // M4: thêm nhãn tiền thưởng, tiền mất, tiền chi (sổ sự kiện), phần Dì Sáu đỡ giùm, hàng hiếm, mảnh công thức, bếp chậm
-    function effectChips(eff) {
-      const out = []
-      if (eff.money > 0) out.push(['good', '+' + formatVND(eff.money) + ' tiền bán', 'money'])
-      if (eff.gain > 0) out.push(['good', '+' + formatVND(eff.gain) + ' tiền thưởng', 'gain'])
-      if (eff.capped > 0) out.push(['info', `Hôm nay đủ mức thưởng sự kiện, ${formatVND(eff.capped)} không cộng`, 'capped'])
-      if (eff.cost > 0) out.push(['bad', '−' + formatVND(eff.cost) + ' giá vốn', 'cost'])
-      if (eff.fine > 0) out.push(['bad', '−' + formatVND(eff.fine) + ' mất tiền', 'fine'])
-      if (eff.spend > 0) out.push(['bad', '−' + formatVND(eff.spend) + ' chi mua', 'spend'])
-      if (eff.spared > 0) out.push(['info', `Dì Sáu đỡ giùm ${formatVND(eff.spared)}`, 'spared'])
-      if (eff.refund > 0) out.push(['bad', '−' + formatVND(eff.refund) + ' hoàn khách', 'refund'])
-      if (eff.rep > 0) out.push(['good', `+${eff.rep} danh tiếng`, 'rep'])
-      for (const x of eff.rare || []) out.push(['good', `+${x.n} phần ${x.name}`, 'rare'])
-      if (eff.fragment) out.push(['good', `+${eff.fragment.n} mảnh công thức ${eff.fragment.name}`, 'fragment'])
-      if (eff.spoons > 0) out.push(['good', `+${eff.spoons} Muỗng Vàng (kho hoặc mức hàng hiếm hôm nay đã đủ)`, 'spoons'])
-      if (eff.waitMul && eff.waitMul < 1) out.push(['bad', 'Bếp chậm hơn tới cuối ca', 'wait'])
-      if (eff.bonus > 0) out.push(['good', `Ca sau thêm ${eff.bonus} khách`, 'bonus'])
-      if (eff.debt) out.push(['info', `Sổ ghi nợ: ${eff.debt.name} ${formatVND(eff.debt.amount)}`, 'debt'])
-      if (eff.starLoss > 0) out.push(['bad', `−${eff.starLoss} sao khi nhận món`, 'star'])
-      if (!out.length) out.push(['info', 'Không tốn gì', 'none'])
-      return h('div', { class: 'incident-effects', testid: 'incident-effects' },
-        out.map(([k, t, key]) => h('span', { class: 'incident-fx ' + k, dataset: { fx: key } }, t)))
-    }
-
     async function showIncident(view) {
       app.sound('nudge')
       app.vibrate(20)
       const tips = Array.isArray(app.data.TIPS) ? app.data.TIPS : []
-      const cfgI = app.data.INCIDENT_CONFIG || {}
       const done = await app.modal({
         testid: 'incident-modal', className: 'incident-modal',
         render: close => {
-          const box = h('div', { class: 'incident', dataset: { incident: view.id } })
-          // thay nội dung hộp (bỏ qua mục rỗng: Element.append(null) sẽ in chữ "null")
-          const fillBox = (...nodes) => { box.textContent = ''; for (const n of nodes) if (n) box.appendChild(n) }
-          const ask = () => {
-            fillBox(
-              h('div', { class: 'incident-head' }, incidentArt(view),
-                h('div', { class: 'incident-titles' },
-                  h('span', { class: 'incident-kicker' },
-                    (view.when === 'mo_hang' ? (cfgI.introOpening || 'Tình huống đầu ca') : (cfgI.intro || 'Tình huống giữa hai khách')) +
-                    (view.positive ? ' · ' + (cfgI.positiveTag || 'chuyện vui') : '')),
-                  h('h2', { class: 'modal-title incident-title' }, view.name))),
-              h('p', { class: 'incident-text', testid: 'incident-text' }, view.text),
-              view.note ? h('p', { class: 'incident-note' }, view.note) : null,
-              h('p', { class: 'incident-pause small muted' }, 'Khách đang chờ cũng tạm dừng, cứ bình tĩnh chọn.'),
-              h('div', { class: 'choice-list incident-choices' }, view.choices.map(c => h('button', {
-                class: ['choice', 'incident-choice', c.safe ? 'is-safe' : '', c.green ? 'is-green' : ''], type: 'button', testid: 'incident-choice-' + c.id,
-                disabled: !c.available, dataset: { safe: String(c.safe), choice: c.id },
-                onclick: () => choose(c)
-              },
-              h('b', null, c.label),
-              h('small', null, c.available ? c.cost : c.reason),
-              // M4: lựa chọn "xanh" nhờ hiện vật (vd Loa báo tiền)
-              c.hint && c.available ? h('small', { class: 'choice-hint', testid: 'incident-hint-' + c.id }, c.hint) : null,
-              c.safe ? h('span', { class: 'safe-badge' }, cfgI.safeLabel || 'An toàn') : null))))
-          }
-          const choose = c => {
-            const r = resolveIncident(app.state, c.id, app.ctx)
-            if (!r.ok) { app.toast('Chưa chọn được cách này.', { kind: 'bad' }); return }
-            app.sound(r.effects.money > 0 || r.effects.gain > 0 ? 'coin' : 'paper')
-            app.saveNow()
-            const tip = r.tipId ? tips.find(t => t.id === r.tipId) : null
-            fillBox(
-              h('div', { class: 'incident-head' }, incidentArt(view),
-                h('div', { class: 'incident-titles' },
-                  h('span', { class: 'incident-kicker' }, 'Đã chọn: ' + c.label),
-                  h('h2', { class: 'modal-title incident-title' }, view.name))),
-              h('div', { class: 'incident-result', testid: 'incident-result', dataset: { choice: c.id } },
-                h('p', { class: 'incident-text' }, r.text),
-                effectChips(r.effects),
-                tip ? h('div', { class: 'incident-tip', testid: 'incident-tip' }, h('b', null, 'Mẹo nghề: ' + tip.title), h('p', null, tip.text)) : null),
-              h('div', { class: 'modal-actions' },
-                h('button', { class: 'btn btn-primary', type: 'button', testid: 'incident-ok', onclick: () => close(r) }, 'Bán tiếp')))
-            const ok = box.querySelector('[data-testid="incident-ok"]')
-            if (ok) setTimeout(() => ok.focus({ preventScroll: true }), 30)
-          }
-          ask()
-          return box
+          // phần dựng hộp (câu hỏi, kết quả): components/incident-view.js
+          const box = createIncidentBox(app, view, {
+            onChoose: c => {
+              const r = resolveIncident(app.state, c.id, app.ctx)
+              if (!r.ok) { app.toast('Chưa chọn được cách này.', { kind: 'bad' }); return }
+              app.sound(r.effects.money > 0 || r.effects.gain > 0 ? 'coin' : 'paper')
+              app.saveNow()
+              const tip = r.tipId ? tips.find(t => t.id === r.tipId) : null
+              box.showResult(c, r, tip, () => close(r))
+            }
+          })
+          return box.el
         }
       })
       if (done && !destroyed) app.save()
@@ -574,29 +503,8 @@ export default {
       const result = await app.modal({
         title: S.screens.complaint,
         testid: 'complaint-modal',
-        render: close => {
-          let apology = null
-          const step2 = h('div', { class: 'complaint-step', hidden: true },
-            h('p', { class: 'modal-text' }, 'Giờ xử lý sao cho khách vui lòng?'),
-            remakeOk ? null : h('p', { class: 'small complaint-rare', testid: 'complaint-remake-blocked' }, (S.rare && S.rare.remakeBlocked) || 'Hết nguyên liệu hiếm, chỉ hoàn tiền được'),
-            h('div', { class: 'modal-actions' },
-              h('button', { class: 'btn btn-primary', type: 'button', testid: 'complaint-remake', disabled: !remakeOk, onclick: () => close({ apology, action: 'remake' }) }, S.buttons.remake),
-              h('button', { class: 'btn btn-secondary', type: 'button', testid: 'complaint-refund', onclick: () => close({ apology, action: 'refund' }) }, `${S.buttons.refund} (${formatVND(refund)})`)))
-          const step1 = h('div', { class: 'complaint-step' },
-            h('p', { class: 'modal-text' }, 'Chọn câu nói với khách:'),
-            h('div', { class: 'choice-list' }, aps.map(a => h('button', {
-              class: 'choice', type: 'button', testid: 'complaint-apology-' + a.i,
-              onclick: () => { apology = a.i; step1.hidden = true; step2.hidden = false }
-            }, a.text))))
-          return h('div', { class: 'complaint' },
-            h('div', { class: 'npc-talk' }, svgBox(face(customer.persona, 'gian', customer.gender), 'npc-face'),
-              h('div', { class: 'bubble' }, h('b', null, customer.name), h('p', null, says || 'Món này không đúng rồi!'))),
-            h('ul', { class: 'complaint-items' }, items.map(it => {
-              const r = R[it.line.recipeId]
-              return h('li', null, (it.kind === 'sai_mon' ? 'Sai món, khách gọi: ' : 'Món hỏng: ') + `${it.line.qty} × ${r ? r.name : it.line.recipeId}`)
-            })),
-            step1, step2)
-        }
+        // phần dựng hộp (câu khách nói, món bị phàn nàn, 2 bước chọn): components/incident-view.js
+        render: close => renderComplaint(app, customer, { says, aps, items, refund, remakeOk, close })
       })
       if (!result || destroyed) return
       const r = resolveComplaint(app.state, customer.id, { apologyIndex: result.apology, action: result.action }, app.ctx)
@@ -729,62 +637,3 @@ export function sheetSettled(node) {
   } catch { /* trình duyệt cũ: chỉ xem độ mờ */ }
   return Number(getComputedStyle(node).opacity) >= 0.9
 }
-
-// Phiếu chấm từng khách: trượt lên 2 giây, không chặn thao tác.
-// M4: dòng tip trên phiếu chấm: có tip thì "+5.000đ"; khách 5 sao mà không có tip thì ghi rõ lý do (hóa đơn khách thực
-// trả dưới 20.000đ, hoặc khách trả bằng ảnh chuyển khoản giả nên chưa trả tiền thật).
-function tipLine(app, sheet) {
-  const L = app.data.STRINGS.labels || {}
-  if (sheet.tip > 0) return h('div', { class: 'ss-tip', testid: 'score-sheet-tip', dataset: { tip: sheet.tip } }, 'Tip: +' + formatVND(sheet.tip))
-  if (sheet.stars !== 5 || sheet.bill === undefined || sheet.bill === null) return null
-  const min = Number(app.data.BALANCE && app.data.BALANCE.tipMinBill) || 20000
-  const fake = (sheet.counterErrors || []).includes('qr_gia')
-  if (!fake && !(Number(sheet.bill) < min)) return null
-  const text = fake ? (L.tipNotPaid || 'Tip 0 (khách chưa trả tiền thật)')
-    : (L.tipBelowMin || 'Tip 0 (hóa đơn dưới {min})').replace('{min}', formatVND(min))
-  return h('div', { class: 'ss-tip is-zero', testid: 'score-sheet-tip', dataset: { tip: 0 } }, text)
-}
-
-export function renderScoreSheet(app, sheet) {
-  const S = app.data.STRINGS
-  const counterErr = sheet.counterErrors || []
-  const kitchenErr = sheet.kitchenErrors || []
-  const orderBad = counterErr.some(c => ORDER_CODES.includes(c))
-  const totalBad = counterErr.some(c => TOTAL_CODES.includes(c))
-  const changeBad = counterErr.some(c => CHANGE_CODES.includes(c))
-  const kitchenBad = kitchenErr.length > 0 || (sheet.dishes || []).some(d => d.grade === 'hong' || d.grade === 'kem')
-  const waitBad = (sheet.penalties || []).some(p => p.source === 'cho')
-  const ratio = sheet.waitRatio
-  const speed = ratio === null || ratio === undefined ? '' : (ratio <= 0.5 ? S.speedLabels.nhanh : (ratio <= 0.75 ? S.speedLabels.on : S.speedLabels.cham))
-  const row = (label, bad, extra = '') => h('li', { class: bad ? 'bad' : 'ok' },
-    h('span', null, label), h('b', null, (bad ? 'Sai' : 'Đạt') + (extra ? ' · ' + extra : '')))
-  const labels = []
-  // modifier riêng (err-tag--quay/--bep): tên '.counter'/'.kitchen' là class bố cục của panel Quầy/Bếp, dùng chung thì
-  // nhãn bị nhiễm kiểu panel (chữ màu mực trên nền gạch, cao lệch nhau)
-  if (counterErr.length) labels.push(h('span', { class: 'err-tag err-tag--quay', testid: 'score-sheet-tag-quay' }, S.labels.counterError))
-  if (kitchenErr.length || kitchenBad) labels.push(h('span', { class: 'err-tag err-tag--bep', testid: 'score-sheet-tag-bep' }, S.labels.kitchenError))
-  const errNames = [...counterErr, ...kitchenErr].map(c => S.errors[c] || c)
-  // M3: phạt do tình huống trong ca (vd từ chối đổi món) — không phải lỗi quầy/bếp nhưng ghi rõ vì sao mất sao
-  const incidentPen = (sheet.penalties || []).filter(p => p.source === 'tinh_huong')
-  return h('div', { class: 'score-sheet', testid: 'score-sheet', dataset: { customerId: sheet.customerId, stars: sheet.stars }, 'aria-live': 'polite' },
-    h('div', { class: 'ss-head' },
-      h('b', null, sheet.name),
-      h('span', { class: 'ss-stars', 'aria-label': sheet.stars + ' sao' }, starString(sheet.stars))),
-    sheet.tutorial ? h('div', { class: 'muted small' }, S.messages.tutorialNoPenalty) : null,
-    h('ul', { class: 'ss-rows' },
-      row('Order', orderBad),
-      row('Báo tổng', totalBad),
-      row('Thối tiền', changeBad),
-      row('Bếp', kitchenBad, (sheet.dishes || []).map(d => S.grades[d.grade] || '').filter(Boolean).join(', ')),
-      row('Thời gian chờ', waitBad, speed)),
-    labels.length ? h('div', { class: 'ss-tags' }, labels) : null,
-    errNames.length ? h('div', { class: 'ss-errors small' }, errNames.join(' · ')) : null,
-    incidentPen.length ? h('div', { class: 'ss-errors small', testid: 'score-sheet-incident' },
-      incidentPen.map(p => `${S.errors[p.code] || p.code}: −${p.stars} sao`).join(' · ')) : null,
-    tipLine(app, sheet),
-    // M4: khách lạ: quà quê theo số sao (trao cuối ca)
-    sheet.stranger ? h('div', { class: 'ss-tip ss-stranger', testid: 'score-sheet-stranger' },
-      sheet.stars >= 3 ? '★ Khách lạ hẹn gửi quà quê lúc cuối ca' : '★ Khách lạ cảm ơn rồi đi') : null,
-    sheet.review ? h('p', { class: 'ss-review' }, '“' + sheet.review + '”') : null)
-}
-

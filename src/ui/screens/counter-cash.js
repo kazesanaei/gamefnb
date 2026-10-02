@@ -1,0 +1,316 @@
+// Quầy, khâu 3 (Tính tiền) — trả tiền mặt: mặt quầy gỗ với tờ tiền khách đưa (to, xòe) và phiếu số liệu (Tổng, Khách đưa,
+// Đã thối, Cần thối, Đang thối dư), khay inox đựng tiền thối, ngăn kéo két mở 7 ngăn, thẻ "két không đủ tiền lẻ" (hộp chọn
+// cách xử lý tự mở) và nút "Đưa tiền thối" dính đáy.
+// M5 Đợt 2 (gói Q-B): giao diện mới, luật / tiền / điểm giữ nguyên (lõi trayAdd / trayRemove / giveChange). Mọi hàm nhận ctx
+// chung của panel Quầy (counter.js: makeCtx). Import trong Node được: không chạm DOM ở cấp module.
+// Hiệu ứng chỉ chạy theo SỰ KIỆN (thao tác), không trong renderCash: chụp vị trí + nhân bản phần tử nguồn TRƯỚC khi đổi state,
+// panel vẽ lại tự do, rồi bản sao bay ở lớp hiệu ứng (src/ui/vfx.js):
+//   - chạm ngăn két → tờ tiền bay vào khay (đích nảy khi chạm), chạm chồng trong khay → tờ bay về ngăn két;
+//   - đưa tiền thối → tiền trong khay bay sang khách; xong giao dịch → tiền khách đưa bay vào két, két nảy rồi đóng lại;
+//     thối đúng thêm tiếng "cash" (cạch + keng) và xu bay về ví trên HUD; mỗi xu chạm ví phát sự kiện DOM 'vfx-coin' (detail
+//     của onArrive trong vfx.coins + source: 'tien_mat') trên phần tử [data-testid="hud-wallet"] để HUD đếm số; thối thiếu bị
+//     đòi bù → khay rung.
+// Giảm chuyển động: không bay, không nảy (số liệu cập nhật ngay); âm thanh giữ nguyên.
+import { h } from '../dom.js'
+import { DI_SAU } from '../art.js'
+import { trayAdd, trayRemove, giveChange, changeOptions, resolveNoChange, changeRemaining } from '../../core/order.js'
+import { drawerTotal } from '../../core/money.js'
+import { renderDrawer, renderTray, renderGivenCash } from '../components/cash-drawer.js'
+import { isReduced } from '../motion.js'
+import { formatVND } from '../format.js'
+
+export const NO_CHANGE_LABELS = {
+  xin_tien_le: ['Xin khách tiền lẻ', 'Khách có thể có tiền lẻ, nhưng sẽ hơi sốt ruột.'],
+  moi_qr: ['Mời khách chuyển khoản QR', 'Khách quét mã, khỏi cần thối.'],
+  lam_tron: ['Làm tròn có lợi cho khách', 'Thối dư tối đa 5.000đ cho chẵn tiền.']
+}
+
+/** Nhịp hiệu ứng tiền mặt (ms). */
+export const CASH_FX = Object.freeze({ bill: 340, toCustomer: 420, toDrawer: 300, lidBump: 180, lidClose: 240 })
+
+// Panel Quầy (ctx) đang mở hộp "Két không đủ tiền lẻ": không mở chồng hộp thứ hai.
+const noChangeOpen = new WeakSet()
+
+// Dòng "Cần thối" (và cảnh báo thối dư): ngày 1–3 hoặc bật Hỗ trợ tính tiền.
+export function showChangeHint(ctx) {
+  const s = ctx.sh()
+  return s.day <= 3 || !!ctx.app.state.settings.assistCash
+}
+
+export function renderCash(ctx, customer, c) {
+  const { app, S } = ctx
+  const s = ctx.sh()
+  const due = changeRemaining(app.state)
+  const trayAmt = drawerTotal(c.tray)
+  const hint = showChangeHint(ctx)
+  const wrap = h('div', { class: 'cs-cash' })
+  wrap.appendChild(h('div', { class: 'cs-mat', 'aria-label': 'Nắp két' }, renderGivenCash(c.given)))
+  wrap.appendChild(h('div', { class: 'cs-facts' },
+    h('div', { class: 'cs-fact is-total' }, h('span', { class: 'cs-fact-k' }, 'Tổng'), h('b', { class: 'cs-fact-v', testid: 'amount-due' }, formatVND(c.amountDue))),
+    c.changePaid > 0 ? h('div', { class: 'cs-fact' }, h('span', { class: 'cs-fact-k' }, 'Đã thối'), h('b', { class: 'cs-fact-v' }, formatVND(c.changePaid))) : null,
+    hint ? h('div', { class: 'cs-fact is-due', testid: 'change-hint', dataset: { amount: due } },
+      h('span', { class: 'cs-fact-k' }, c.changePaid > 0 ? 'Cần thối bù' : 'Cần thối'), h('b', { class: 'cs-fact-v' }, formatVND(due))) : null,
+    // ngày đầu (đang hiện "Cần thối"): khay nhiều hơn số cần thối → cảnh báo đỏ trước khi đưa
+    hint && trayAmt > due ? h('div', { class: 'cs-over', testid: 'change-over', role: 'status' }, 'Đang thối dư ', h('b', null, formatVND(trayAmt - due))) : null))
+  wrap.appendChild(renderTray(c.tray, {
+    emptyText: due === 0 ? 'Không cần thối tiền' : null,
+    onReturn: (b, el) => returnBill(ctx, b, el)
+  }))
+  wrap.appendChild(renderDrawer(s.drawer, { onTake: (b, el) => takeBill(ctx, b, el) }))
+  const opts = changeOptions(app.state, app.ctx)
+  if (opts.length) {
+    wrap.appendChild(h('div', { class: 'cs-nochange', testid: 'no-change' },
+      h('span', { class: 'cs-nochange-ico', 'aria-hidden': 'true' }, '!'),
+      h('span', { class: 'cs-nochange-text' }, S.messages.noChange),
+      h('button', { class: 'g-btn g-btn--gold g-btn--small cs-nochange-btn', type: 'button', testid: 'no-change-open', onclick: () => openNoChange(ctx, true) }, 'Chọn cách xử lý')))
+    const key = c.customerId + ':' + c.changeOptionsUsed.length + ':' + c.changePaid
+    if (ctx.ui.noChangeKey !== key) { ctx.ui.noChangeKey = key; setTimeout(() => openNoChange(ctx, false), 0) }
+  }
+  const exact = due === 0 && trayAmt === 0
+  wrap.appendChild(h('div', { class: 'act-bar cs-act' }, h('button', {
+    class: ['g-btn', 'g-btn--go', 'g-btn--block', 'cs-give', exact ? 'is-exact' : ''], type: 'button', testid: 'give-change',
+    dataset: { exact: exact ? 'true' : 'false' },
+    onclick: () => doGiveChange(ctx, customer)
+  }, exact ? 'Không cần thối' : (c.changePaid > 0 ? 'Đưa tiền thối bù' : 'Đưa tiền thối'))))
+  return wrap
+}
+
+// ---------- Tờ tiền giữa két và khay ----------
+
+// Chạm ngăn két: lấy 1 tờ vào khay (lõi trayAdd), tờ tiền bay từ ngăn vào chồng tương ứng trong khay.
+function takeBill(ctx, b, slotEl) {
+  const { app } = ctx
+  const from = measureOf(slotEl && slotEl.querySelector('.cs-bill'))
+  if (!trayAdd(app.state, b)) return
+  app.sound('paper')
+  app.save()
+  ctx.rerender()
+  flyBill(ctx, from, ctx.el.querySelector(`[data-testid="tray-${b}"] .cs-bill`))
+}
+
+// Chạm chồng trong khay: trả 1 tờ về két (lõi trayRemove), tờ tiền bay về đúng ngăn.
+function returnBill(ctx, b, stackEl) {
+  const { app } = ctx
+  const from = measureOf(stackEl && stackEl.querySelector('.cs-bill'))
+  if (!trayRemove(app.state, b)) return
+  app.sound('paper')
+  app.save()
+  ctx.rerender()
+  flyBill(ctx, from, ctx.el.querySelector(`[data-testid="drawer-${b}"] .cs-bill`))
+}
+
+// Vị trí (tọa độ khung nhìn) + phần tử nguồn để nhân bản; null nếu không thấy / không hiển thị.
+function measureOf(node) {
+  if (!node || typeof node.getBoundingClientRect !== 'function' || !node.isConnected) return null
+  const r = node.getBoundingClientRect()
+  if (!r.width || !r.height) return null
+  return { node, rect: { left: r.left, top: r.top, width: r.width, height: r.height } }
+}
+
+// Tâm phần tử nằm trong phần nhìn thấy của panel Quầy (trên thanh nút dính đáy)? Đích khuất thì không bay (khỏi bay
+// xuyên qua thanh tab ra ngoài màn).
+function inPanelView(ctx, el) {
+  const sc = ctx.root
+  if (!el || !sc || typeof sc.getBoundingClientRect !== 'function') return false
+  const a = el.getBoundingClientRect(), b = sc.getBoundingClientRect()
+  const bar = ctx.el.querySelector('.act-bar')
+  const bottom = bar && !bar.contains(el) ? Math.min(b.bottom, bar.getBoundingClientRect().top) : b.bottom
+  const cy = a.top + a.height / 2
+  return a.width > 0 && cy > b.top && cy < bottom
+}
+
+// Bản sao tờ tiền bay tới đích; đích (tờ trên cùng của chồng mới) ẩn tới khi bản sao chạm tới rồi nảy (vfx.fly tự nảy đích).
+// Giảm chuyển động / trang ẩn / đích khuất / không có đích: không bay, đích hiện luôn (vfx.fly cũng trả false ngay).
+function flyBill(ctx, from, target) {
+  const fx = ctx.app.vfx
+  if (!fx || !from || !target || isReduced(ctx.app) || !inPanelView(ctx, target)) return
+  target.style.opacity = '0'
+  const show = () => { target.style.opacity = '' }
+  let job = null
+  try { job = fx.fly(from.rect, target, { node: from.node, ms: CASH_FX.bill, arc: 0.28 }) } catch { job = null }
+  if (!job || typeof job.then !== 'function') { show(); return }
+  job.then(show, show)
+}
+
+// ---------- Đưa tiền thối ----------
+
+// "Đưa tiền thối": lời người bán, khách phản hồi theo kết quả (đúng, thiếu bị đòi bù, dư được trả lại).
+export function doGiveChange(ctx, customer) {
+  const { app } = ctx
+  const c0 = ctx.counter()
+  // chụp TRƯỚC khi đổi state: tiền trong khay, tiền khách đưa, két (panel vẽ lại thì các phần tử này mất / đổi)
+  const shot = {
+    tray: [...ctx.el.querySelectorAll('[data-testid="tray"] .cs-tray-stack')].map(measureOf).filter(Boolean),
+    given: measureOf(ctx.el.querySelector('[data-testid="given-cash"] .cs-given-bills')),
+    drawer: measureOf(ctx.el.querySelector('[data-testid="drawer"]'))
+  }
+  const sale = c0 ? Number(c0.amountDue) || 0 : 0
+  const res = giveChange(app.state, app.ctx)
+  if (!res.ok) return
+  const said = res.given > 0 ? `Dạ thối mình ${formatVND(res.given)} ạ.` : 'Dạ mình đưa vừa đủ ạ, cảm ơn nhiều!'
+  ctx.say('ban', said)
+  if (res.correct) {
+    app.sound('cash')
+    ctx.say('khach', ctx.lineOf('change_ok', customer) || ctx.lineOf('thanks', customer))
+    if (res.given > 0) app.toast(res.optimal ? 'Thối đúng · Thối gọn' : 'Thối đúng', { kind: 'good', duration: 1400 })
+  } else if (res.diff < 0 && res.detected) {
+    app.sound('error')
+    app.vibrate(60)
+    ctx.say('khach', res.line)
+    app.toast(`Thối thiếu ${formatVND(-res.diff)}. Khách đòi thối bù.`, { kind: 'bad' })
+  } else if (res.diff > 0 && res.returned) {
+    ctx.say('khach', res.line)
+    app.toast('Khách thật thà trả lại tiền thối dư.', { kind: 'info' })
+  } else {
+    ctx.say('khach', ctx.lineOf('thanks', customer))
+  }
+  app.save()
+  ctx.rerender()
+  playGive(ctx, shot, res, sale)
+}
+
+// Chuỗi hiệu ứng sau khi đưa tiền thối (panel đã vẽ lại).
+function playGive(ctx, shot, res, sale) {
+  const { app } = ctx
+  const fx = app.vfx
+  if (!fx) return
+  const reduced = isReduced(app)
+  // tiền trong khay sang tay khách (bay lên phía khách ở đầu panel)
+  if (!reduced && shot.tray.length && res.given > 0) {
+    const cust = ctx.el.querySelector('.cust-wrap')
+    const cr = cust ? cust.getBoundingClientRect() : null
+    shot.tray.forEach((t, i) => {
+      const to = cr && cr.height ? { x: cr.left + cr.width * 0.3, y: cr.top + cr.height * 0.45 } : { x: t.rect.left + t.rect.width / 2, y: 0 }
+      try { fx.fly(t.rect, to, { node: t.node, ms: CASH_FX.toCustomer + i * 50, arc: 0.3, scale: 0.6, bump: false }) } catch { /* bỏ qua */ }
+    })
+  }
+  if (!res.done) {
+    // thối thiếu, khách đòi bù: khay (mới) rung
+    const tray = ctx.el.querySelector('[data-testid="tray"]')
+    if (tray) { try { fx.shake(tray, 2) } catch { /* bỏ qua */ } }
+    return
+  }
+  // xong giao dịch: tiền khách đưa vào két, két nảy (thối đúng) rồi đóng; thối đúng thì xu bay về ví HUD
+  const wallet = ctx.el.ownerDocument && ctx.el.ownerDocument.querySelector('[data-testid="hud-wallet"]')
+  const coins = () => {
+    if (!res.correct || !wallet || sale <= 0) return
+    const from = shot.drawer ? shot.drawer.rect : (shot.given ? shot.given.rect : null)
+    if (!from) return
+    // mỗi xu chạm ví: báo cho HUD bằng sự kiện DOM 'vfx-coin' trên chính phần tử ví (không phát lên bus miền) để HUD đếm số
+    const onArrive = info => {
+      try { wallet.dispatchEvent(new CustomEvent('vfx-coin', { detail: { ...info, source: 'tien_mat' } })) } catch { /* bỏ qua */ }
+    }
+    try { fx.coins(from, wallet, { amount: sale, unit: 1000, onArrive }) } catch { /* bỏ qua */ }
+  }
+  if (reduced || !shot.drawer) { coins(); return }
+  const lid = drawerGhost(ctx, shot.drawer)
+  const land = () => {
+    if (lid) lid.close(res.correct)
+    coins()
+  }
+  if (shot.given) {
+    let job = null
+    try {
+      job = fx.fly(shot.given.rect, centerOf(shot.drawer.rect, shot.given.rect), { node: shot.given.node, ms: CASH_FX.toDrawer, arc: 0.18, scale: 0.7, bump: false })
+    } catch { job = null }
+    if (job && typeof job.then === 'function') job.then(land, land)
+    else land()
+  } else {
+    land()
+  }
+}
+
+// Điểm giữa két (đích tiền khách đưa bay vào), dạng hình chữ nhật cỡ bằng xấp tiền để vfx.fly giữ tỉ lệ.
+function centerOf(rect, size) {
+  const w = size ? size.width * 0.7 : 40, hgt = size ? size.height * 0.7 : 24
+  return { left: rect.left + rect.width / 2 - w / 2, top: rect.top + rect.height * 0.42 - hgt / 2, width: w, height: hgt }
+}
+
+// Bản sao két đứng tại chỗ cũ ở lớp hiệu ứng (panel đã sang phiếu thu): nảy 1 → 1,05 → 1 khi nhận tiền (thối đúng) rồi trượt
+// xuống mờ đi như đóng ngăn kéo. Tự dọn khi xong, khi vfx.clear() gỡ khỏi lớp, hoặc quá giờ an toàn.
+function drawerGhost(ctx, shot) {
+  const fx = ctx.app.vfx
+  let layer = null
+  try { layer = fx.layer } catch { layer = null }
+  const doc = layer && layer.ownerDocument
+  if (!layer || !doc || doc.visibilityState === 'hidden') return null
+  const L = layer.getBoundingClientRect()
+  const wrap = doc.createElement('div')
+  wrap.className = 'cs-fx-drawer'
+  wrap.style.left = `${(shot.rect.left - L.left).toFixed(1)}px`
+  wrap.style.top = `${(shot.rect.top - L.top).toFixed(1)}px`
+  wrap.style.width = `${shot.rect.width.toFixed(1)}px`
+  wrap.style.height = `${shot.rect.height.toFixed(1)}px`
+  const copy = shot.node.cloneNode(true)
+  for (const e of [copy, ...copy.querySelectorAll('[data-testid],[id]')]) { e.removeAttribute('data-testid'); e.removeAttribute('id') }
+  for (const e of [copy, ...copy.querySelectorAll('.glow, .vfx-alert')]) e.classList.remove('glow', 'vfx-alert')
+  wrap.appendChild(copy)
+  layer.appendChild(wrap)
+  let done = false
+  const end = () => { if (done) return; done = true; if (wrap.parentNode) wrap.parentNode.removeChild(wrap) }
+  const safety = setTimeout(end, 2000)
+  return {
+    close(bump) {
+      if (done) return
+      if (typeof wrap.animate !== 'function') { clearTimeout(safety); end(); return }
+      const B = CASH_FX.lidBump, C = CASH_FX.lidClose
+      const total = (bump ? B : 0) + C
+      const kf = []
+      kf.push({ transform: 'translateY(0) scale(1)', opacity: 1, offset: 0 })
+      if (bump) {
+        kf.push({ transform: 'translateY(0) scale(1.05)', opacity: 1, offset: (B * 0.45) / total })
+        kf.push({ transform: 'translateY(0) scale(1)', opacity: 1, offset: B / total })
+      }
+      kf.push({ transform: 'translateY(18px) scale(.97)', opacity: 0, offset: 1 })
+      try {
+        const a = wrap.animate(kf, { duration: total, easing: 'ease-out', fill: 'both' })
+        a.addEventListener('finish', end)
+        a.addEventListener('cancel', end)
+      } catch { end() }
+    }
+  }
+}
+
+// ---------- Két không đủ tiền lẻ ----------
+
+// Hộp "Két không đủ tiền lẻ": xin tiền lẻ / mời chuyển khoản / làm tròn có lợi cho khách. manual: người chơi tự bấm mở.
+export async function openNoChange(ctx, manual) {
+  const { app } = ctx
+  if (noChangeOpen.has(ctx) || ctx.destroyed()) return
+  const c = ctx.counter()
+  if (!c || c.stage !== 'tinh_tien') return
+  const options = changeOptions(app.state, app.ctx)
+  if (!options.length) return
+  noChangeOpen.add(ctx)
+  const choice = await app.modal({
+    title: 'Két không đủ tiền lẻ',
+    text: `Cần thối ${formatVND(changeRemaining(app.state))} mà két không gom đủ tờ. Mình xử lý sao đây?`,
+    icon: DI_SAU.lo,
+    testid: 'no-change-modal',
+    render: close => h('div', { class: 'choice-list' }, options.map(o => h('button', {
+      class: 'choice', type: 'button', testid: 'no-change-' + o, onclick: () => close(o)
+    }, h('b', null, NO_CHANGE_LABELS[o][0]), h('small', null, NO_CHANGE_LABELS[o][1])))),
+    actions: [{ label: 'Để con xem lại két', value: null, kind: 'ghost', testid: 'no-change-cancel' }]
+  })
+  noChangeOpen.delete(ctx)
+  if (!choice || ctx.destroyed()) return
+  const r = resolveNoChange(app.state, choice, app.ctx)
+  if (!r.ok) return
+  const customer = ctx.customerOf(ctx.counter())
+  if (choice === 'xin_tien_le') {
+    ctx.say('ban', 'Mình có tiền lẻ không ạ? Két em hết tiền lẻ rồi.')
+    if (r.success) {
+      ctx.say('khach', ctx.lineOf('no_small_change_yes', customer) || 'Có, đưa vừa đủ luôn.')
+      app.toast(r.undone ? 'Khách trả lại tiền thối, lấy lại tờ lớn và đưa vừa đủ tiền.' : 'Khách đưa vừa đủ tiền.', { kind: 'good' })
+    } else { ctx.say('khach', ctx.lineOf('no_small_change_no', customer) || 'Không có tiền lẻ rồi.'); app.toast('Khách không có tiền lẻ.', { kind: 'bad' }) }
+  } else if (choice === 'moi_qr') {
+    ctx.say('ban', 'Mình chuyển khoản giúp em được không ạ?')
+    ctx.say('khach', ctx.lineOf('qr_ok', customer) || 'Được, để quét mã.')
+    if (r.undone) app.toast('Khách trả lại tiền thối và lấy lại tiền mặt, sẽ chuyển khoản trọn hóa đơn.', { kind: 'info', duration: 2600 })
+  } else if (choice === 'lam_tron') {
+    if (r.success) app.toast(`Làm tròn: thối ${formatVND(r.newDue)} (dư ${formatVND(r.extra)} cho khách).`, { kind: 'info' })
+    else app.toast('Két vẫn không đủ tiền để làm tròn.', { kind: 'bad' })
+  }
+  app.save()
+  ctx.rerender()
+}

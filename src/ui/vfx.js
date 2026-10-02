@@ -1,5 +1,6 @@
 // Hệ hiệu ứng (VFX) dùng chung cho giao diện M5: hạt vẽ trên canvas (lấp lánh, vụn, giọt, dầu, khói, sao, vỏ, xu,
-// pháo giấy), chữ nổi, gợn chạm, rung, nảy, squash, dừng hình, "nhân bản rồi bay" và xu bay về ví.
+// pháo giấy), chữ nổi (chống chồng), gợn chạm, rung, nảy, squash, dừng hình, "nhân bản rồi bay", luồng xu về két / ví
+// HUD (Đợt 2: dừng giữa đường, số xu theo số tiền, onArrive từng xu) và bộ đếm số countUp cho ví HUD.
 // Luật:
 // - Chỉ animate transform/opacity (WAAPI) và vẽ canvas; will-change chỉ bật khi đang chạy.
 // - Lớp .vfx-layer (z-index 25 trong .overlay-root) luôn pointer-events:none; tạo lười ở lần gọi đầu.
@@ -175,6 +176,368 @@ export function stepParticles(list, dt, g = GRAVITY) {
   return out
 }
 
+// ---------- Luồng xu (tiền vào két / ví HUD) ----------
+
+const num0 = v => (Number.isFinite(Number(v)) ? Number(v) : 0)
+const clampN = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
+const lerp = (a, b, t) => a + (b - a) * t
+const nowMs = () => (typeof performance !== 'undefined' && performance && typeof performance.now === 'function' ? performance.now() : Date.now())
+
+// Số xu theo số tiền: ít nhất min, trần max (trần cứng 12), tăng theo log từ lo đến hi (đồng).
+export const COIN_LIMITS = Object.freeze({ min: 6, max: 12, lo: 5000, hi: 200000 })
+// Nhịp bay của một xu (ms): tỏa ra (out), DỪNG GIỮA ĐƯỜNG (hold), bay về đích (fly); xu sau phát trễ stagger,
+// tổng độ trễ của cả đàn không quá spread (12 xu vẫn kết thúc gọn).
+export const COIN_TIMING = Object.freeze({ out: 170, hold: 120, fly: 400, stagger: 40, spread: 480 })
+
+/**
+ * coinCount(amount, { min, max, lo, hi }) → số xu nên bay cho số tiền amount (đồng).
+ * amount ≤ 0 hoặc lỗi → 0. amount ≤ lo → min; amount ≥ hi → max; ở giữa tăng theo log (không giảm khi tiền tăng).
+ * Trần cứng COIN_LIMITS.max (12) dù truyền max lớn hơn. Vd mặc định: 5.000đ → 6, 20.000đ → 8, 50.000đ → 10, 200.000đ → 12.
+ */
+export function coinCount(amount, { min = COIN_LIMITS.min, max = COIN_LIMITS.max, lo = COIN_LIMITS.lo, hi = COIN_LIMITS.hi } = {}) {
+  const a = Number(amount)
+  if (!Number.isFinite(a) || a <= 0) return 0
+  const top = clampN(Math.floor(num0(max)) || COIN_LIMITS.max, 1, COIN_LIMITS.max)
+  const bot = clampN(Math.floor(num0(min)) || 1, 1, top)
+  const L = num0(lo) > 0 ? num0(lo) : COIN_LIMITS.lo
+  const Hh = num0(hi) > L ? num0(hi) : L * 40
+  if (a <= L) return bot
+  if (a >= Hh) return top
+  const t = Math.log(a / L) / Math.log(Hh / L)
+  return clampN(bot + Math.round((top - bot) * t), bot, top)
+}
+
+/**
+ * coinShares(amount, n, unit = 1) → mảng n phần tiền (bội của unit) cộng lại ĐÚNG bằng amount; phần lẻ dưới một unit dồn
+ * vào xu cuối. Dùng để ví HUD đếm lên theo từng xu tới đích. n ≤ 0 → []; amount âm → các phần âm.
+ */
+export function coinShares(amount, n, unit = 1) {
+  const count = Math.max(0, Math.floor(num0(n)))
+  if (!count) return []
+  const a = num0(amount)
+  if (!a) return new Array(count).fill(0)
+  const sign = a < 0 ? -1 : 1
+  const abs = Math.abs(a)
+  const u = num0(unit) > 0 ? num0(unit) : 1
+  const units = Math.floor(abs / u)
+  const base = Math.floor(units / count)
+  const extra = units - base * count
+  const out = []
+  for (let i = 0; i < count; i++) out.push((base + (i < extra ? 1 : 0)) * u)
+  out[count - 1] += abs - units * u
+  return out.map(v => (v === 0 ? 0 : sign * v))
+}
+
+// Thứ tự phát xu theo góc: từ giữa ra hai bên xen kẽ (đàn xu bung ra như quạt, không quét một chiều).
+function fanOrder(count) {
+  const c = (count - 1) / 2
+  return [...Array(count).keys()].sort((a, b) => Math.abs(a - c) - Math.abs(b - c) || a - b)
+}
+
+/**
+ * coinFlight(n, { from, to, ms, hold, stagger, rand }) → lịch bay của n xu (n kẹp trong [0, 12]):
+ * [{ index, delay, duration, arriveAt, mid, ctrl, frames: [{ offset, x, y, scale, opacity }] }]
+ * - Mỗi xu: tỏa ra từ from tới điểm mid (cách 48–84 px, hai vòng xen kẽ) trên cung quạt ±1,25 rad quanh hướng lên
+ *   (easeOutCubic), ĐỨNG YÊN tại mid trong
+ *   hold ms (mặc định 120), rồi bay cong Bézier (điểm kéo ctrl) về to, nhanh dần (easeInQuad), co lại 0,65.
+ * - ms: thời gian chuyển động (tỏa ra + bay về, mặc định 570, kẹp 200–1500), KHÔNG tính hold; duration = ms + hold.
+ * - delay = index × stagger, stagger tự giảm để cả đàn trễ tối đa COIN_TIMING.spread ms. arriveAt = delay + duration.
+ * - frames: offset tăng dần trong [0, 1]; khung đầu ở from (mờ, nhỏ), khung cuối đúng to. Tọa độ cùng hệ với from / to.
+ */
+export function coinFlight(n, { from = null, to = null, ms = null, hold = COIN_TIMING.hold, stagger = COIN_TIMING.stagger, rand = Math.random } = {}) {
+  const count = clampN(Math.floor(num0(n)), 0, COIN_LIMITS.max)
+  if (!count) return []
+  const R = typeof rand === 'function' ? rand : Math.random
+  const s = { x: num0(from && from.x), y: num0(from && from.y) }
+  const e = { x: num0(to && to.x), y: num0(to && to.y) }
+  const base = COIN_TIMING.out + COIN_TIMING.fly
+  const move = ms === null || ms === undefined || !Number.isFinite(Number(ms)) ? base : clampN(Number(ms), 200, 1500)
+  const out = Math.round(move * COIN_TIMING.out / base)
+  const fly = move - out
+  const hd = clampN(Number.isFinite(Number(hold)) && hold !== null ? Number(hold) : COIN_TIMING.hold, 0, 400)
+  const dur = out + hd + fly
+  const st = count > 1 ? Math.min(Math.max(0, num0(stagger)), COIN_TIMING.spread / (count - 1)) : 0
+  const order = fanOrder(count)
+  const K1 = 4, K2 = 10
+  const res = []
+  for (let i = 0; i < count; i++) {
+    const u = count === 1 ? 0.5 : order[i] / (count - 1)
+    const ang = UP + (u - 0.5) * 2.5 + (R() - 0.5) * 0.16
+    const r = (i % 2 ? 72 : 48) + R() * 12      // hai vòng xen kẽ: xu liền nhau không đè lên nhau lúc dừng
+    const m = { x: s.x + Math.cos(ang) * r, y: s.y + Math.sin(ang) * r }
+    const side = m.x >= s.x ? 1 : -1
+    const c = { x: (m.x + e.x) / 2 + side * (18 + R() * 30), y: Math.min(m.y, e.y) - 40 - R() * 36 }
+    const frames = [{ offset: 0, x: s.x, y: s.y, scale: 0.45, opacity: 0 }]
+    for (let k = 1; k <= K1; k++) {
+      const v = easeOutCubic(k / K1)
+      frames.push({ offset: (out * k) / K1 / dur, x: lerp(s.x, m.x, v), y: lerp(s.y, m.y, v), scale: 0.45 + 0.65 * v, opacity: 1 })
+    }
+    // dừng giữa đường: đứng yên tại mid trong hd ms (chỉ co nhẹ 1,1 → 1)
+    if (hd > 0) frames.push({ offset: (out + hd) / dur, x: m.x, y: m.y, scale: 1, opacity: 1 })
+    for (let k = 1; k <= K2; k++) {
+      const v = easeInQuad(k / K2)
+      const pt = bezier(m, c, e, v)
+      frames.push({ offset: k === K2 ? 1 : (out + hd + (fly * k) / K2) / dur, x: k === K2 ? e.x : pt.x, y: k === K2 ? e.y : pt.y, scale: 1 - 0.35 * v, opacity: 1 })
+    }
+    const delay = Math.round(i * st)
+    res.push({ index: i, delay, duration: dur, arriveAt: delay + dur, mid: m, ctrl: c, frames })
+  }
+  return res
+}
+
+/**
+ * countValue(from, to, t, step = 1) → số hiển thị ở tiến độ t ∈ [0, 1] khi đếm từ from lên (hoặc xuống) to:
+ * easeOutCubic, làm tròn theo step, luôn nằm giữa from và to; t ≤ 0 → from, t ≥ 1 (hoặc lỗi) → đúng to.
+ * from lỗi → coi như to; to lỗi → from (hoặc 0).
+ */
+export function countValue(from, to, t, step = 1) {
+  const bRaw = Number(to)
+  const aRaw = Number(from)
+  if (!Number.isFinite(bRaw)) return Number.isFinite(aRaw) ? aRaw : 0
+  const a = Number.isFinite(aRaw) && from !== null ? aRaw : bRaw
+  const x = Number(t)
+  if (!Number.isFinite(x) || x >= 1) return bRaw
+  if (x <= 0) return a
+  const st = num0(step) > 0 ? num0(step) : 1
+  const v = Math.round((a + (bRaw - a) * easeOutCubic(x)) / st) * st
+  return clampN(v, Math.min(a, bRaw), Math.max(a, bRaw))
+}
+
+// Bộ đếm số đang chạy trên từng phần tử (countUp): phần tử → bộ đếm (WeakMap, không giữ phần tử đã rời trang).
+const COUNTERS = new WeakMap()
+
+/** isCounting(el) → true khi el đang có bộ đếm countUp chạy (vd HUD bỏ qua lần ghi số của chính nó lúc này). */
+export function isCounting(el) {
+  return !!el && typeof el === 'object' && COUNTERS.has(el)
+}
+
+/**
+ * countUp(el, from, to, ms = 600, fmt = String, { reduced, step, glow, onDone }) → { done, value, finish(), cancel() }
+ * Đếm chữ của el từ from tới to trong ms (easeOutCubic qua countValue), mỗi khung ghi el.textContent = fmt(số).
+ * KHÔNG đụng data-* của el (vd data-amount của ví HUD vẫn do HUD ghi số thật).
+ * - from null/undefined: tiếp từ số đang hiện của bộ đếm cũ trên el (xu tới liên tiếp → đếm nối, không giật lùi), hoặc
+ *   số bộ đếm đã ghi lần cuối nếu chữ trên el chưa bị bên khác ghi đè; không biết số đang hiện thì hiện thẳng to.
+ *   Gọi lại trên cùng el thì bộ đếm cũ dừng tại chỗ (done của nó → false).
+ * - reduced (mặc định isReduced(); nhận boolean hoặc hàm): cập nhật ngay + một nhịp sáng (glow), không đếm.
+ * - glow: 'auto' (mặc định: chỉ khi giảm chuyển động), true (cả khi đếm xong), false (không); hàm (el) → vẽ nhịp sáng.
+ *   Bản rời này không có lớp hiệu ứng nên chỉ gọi glow khi glow là hàm; vfx.countUp tự vẽ nhịp sáng trong .vfx-layer.
+ * - done: Promise<boolean> — true khi đã ghi số cuối (chạy hết hoặc finish()), false khi bị cancel() / bộ đếm mới thay.
+ * - Trang ẩn (rAF dừng) vẫn kết thúc nhờ hẹn giờ an toàn ms + 250.
+ */
+export function countUp(el, from, to, ms = 600, fmt = null, opts = {}) {
+  const o = opts && typeof opts === 'object' ? opts : {}
+  let red
+  try {
+    red = typeof o.reduced === 'function' ? !!o.reduced() : (o.reduced === null || o.reduced === undefined ? isReduced() : !!o.reduced)
+  } catch { red = false }
+  return startCount(el, from, to, ms, fmt, { ...o, reduced: red, glow: typeof o.glow === 'function' ? o.glow : null, glowMode: glowModeOf(o.glow) })
+}
+
+const glowModeOf = g => (g === false ? 'never' : g === true ? 'always' : 'auto')
+
+// Số mà bộ đếm ghi lần cuối lên từng phần tử (kèm chữ đã ghi): from = null mà không còn bộ đếm chạy thì đếm tiếp từ số
+// này — chỉ khi chữ trên phần tử vẫn đúng là chữ bộ đếm đã ghi (bên khác ghi đè rồi thì không tin nữa).
+const SHOWN = new WeakMap()
+function shownValue(el) {
+  const s = el && typeof el === 'object' ? SHOWN.get(el) : null
+  return s && el.textContent === s.text ? s.value : null
+}
+
+function startCount(el, from, to, ms, fmt, { reduced = false, step = 1, glow = null, glowMode = 'auto', onDone = null } = {}) {
+  const target = Number(to)
+  const f = typeof fmt === 'function' ? fmt : v => String(v)
+  const isEl = !!el && typeof el === 'object'
+  const write = v => {
+    if (!isEl) return
+    try {
+      el.textContent = f(v)
+      SHOWN.set(el, { value: v, text: el.textContent })
+    } catch { /* định dạng lỗi: bỏ qua */ }
+  }
+  const prev = isEl ? COUNTERS.get(el) : null
+  let start = Number(from)
+  if (from === null || from === undefined || !Number.isFinite(start)) start = prev ? prev.value : (shownValue(el) ?? target)
+  if (prev) prev.stop()
+  let cur = Number.isFinite(start) ? start : target
+  let over = false
+  let rafId = null            // { raf: id } hoặc { timer: id } (không có rAF, vd Node)
+  let safety = 0
+  let resolve = null
+  const done = new Promise(r => { resolve = r })
+  const win = (el && el.ownerDocument && el.ownerDocument.defaultView) || (typeof window !== 'undefined' ? window : null)
+  const hasRaf = !!win && typeof win.requestAnimationFrame === 'function'
+  const caf = () => {
+    if (!rafId) return
+    try {
+      if (rafId.raf !== undefined) { if (typeof win.cancelAnimationFrame === 'function') win.cancelAnimationFrame(rafId.raf) } else clearTimeout(rafId.timer)
+    } catch { /* bỏ qua */ }
+    rafId = null
+  }
+  const raf = cb => (hasRaf ? { raf: win.requestAnimationFrame(cb) } : { timer: setTimeout(cb, 16) })
+  const doGlow = () => {
+    if (typeof glow !== 'function') return
+    try { glow(el) } catch { /* bỏ qua */ }
+  }
+  const settle = ok => {
+    over = true
+    caf()
+    if (safety) { clearTimeout(safety); safety = 0 }
+    if (isEl && COUNTERS.get(el) === handle) COUNTERS.delete(el)
+    resolve(ok)
+    if (ok && typeof onDone === 'function') { try { onDone(target) } catch { /* bỏ qua */ } }
+  }
+  const handle = {
+    done,
+    get value() { return cur },
+    // nhảy tới số cuối ngay (dọn lớp, rời màn, trang ẩn)
+    finish() {
+      if (over) return
+      cur = target
+      write(target)
+      if (glowMode === 'always') doGlow()
+      settle(true)
+    },
+    // dừng tại chỗ (giữ số đang hiện)
+    cancel() { if (!over) settle(false) },
+    stop() { if (!over) settle(false) }
+  }
+  if (!Number.isFinite(target)) { settle(false); return handle }
+  const dur = clampN(num0(ms), 0, 3000)
+  if (reduced || dur <= 0 || cur === target) {
+    const before = isEl ? el.textContent : null
+    cur = target
+    write(target)
+    const changed = start !== target || (isEl && el.textContent !== before)
+    if (changed && (glowMode === 'always' || (glowMode === 'auto' && reduced))) doGlow()
+    over = true
+    Promise.resolve().then(() => settle(true))
+    return handle
+  }
+  if (isEl) COUNTERS.set(el, handle)
+  const a = cur
+  const t0 = nowMs()
+  write(a)
+  const tick = () => {
+    rafId = null
+    if (over) return
+    const p = (nowMs() - t0) / dur
+    if (p >= 1) { handle.finish(); return }
+    const v = countValue(a, target, p, step)
+    if (v !== cur) { cur = v; write(v) }
+    rafId = raf(tick)
+  }
+  rafId = raf(tick)
+  safety = setTimeout(() => { safety = 0; handle.finish() }, dur + 250)
+  return handle
+}
+
+// ---------- Chữ nổi: chuyển động và chống chồng ----------
+
+// Thời gian sống của chữ nổi (ms) và đường bay lên: [phần thời gian, translateY px, scale, opacity] (khung WAAPI).
+export const FLOAT_MS = Object.freeze({ normal: 820, reduced: 700 })
+const RISE = Object.freeze([[0, 10, 0.55, 0], [0.18, -4, 1.14, 1], [0.32, -10, 1, 1], [0.8, -34, 1, 1], [1, -46, 0.96, 0]])
+const FLOAT_LIVE = 0.88         // chữ đã mờ quá nửa (88% đời, pha mờ dần bắt đầu ở 80%) thì không còn tính là vướng
+const FLOAT_MERGE_MS = 160      // cùng chữ, gần như cùng chỗ, cách nhau < 160 ms → gộp "×2"
+const FLOAT_MERGE_PX = 16
+const FLOAT_SAMPLE_MS = 50
+
+/** floatRise(age, reduced) → độ dời dọc (px, âm là lên) của chữ nổi ở tuổi age ms. Giảm chuyển động: luôn 0. */
+export function floatRise(age, reduced = false) {
+  if (reduced) return 0
+  const u = clamp01(num0(age) / FLOAT_MS.normal)
+  for (let i = 1; i < RISE.length; i++) {
+    const [o0, y0] = RISE[i - 1]
+    const [o1, y1] = RISE[i]
+    if (u <= o1) return y0 + ((y1 - y0) * (u - o0)) / (o1 - o0)
+  }
+  return RISE[RISE.length - 1][1]
+}
+
+/**
+ * floatSlot(active, cand, { now, minY, gap, zig, maxLift, reduced }) → { x, y, lift, merge }
+ * Chọn chỗ cho chữ nổi mới cand { x, y, w, h, text } (x, y: tâm-đáy của chữ, tọa độ lớp) để KHÔNG đè chữ đang bay.
+ * active: chữ đang bay [{ x, y, w, h, t (ms lúc hiện), text, reduced }]. Hai chữ bay lên theo cùng đường floatRise
+ * nhưng lệch tuổi, nên xét chồng ở mọi thời điểm cả hai còn hiện (lấy mẫu 50 ms), không chỉ lúc mới hiện.
+ * - Cùng chữ, cách < 16 px, hiện chưa tới 160 ms → gộp: merge = chữ cũ, (x, y) = chỗ chữ cũ đang đứng (bên gọi thay chữ cũ
+ *   bằng "chữ ×2" ở đó).
+ * - Vướng → dời lên vừa đủ để đáy chữ mới luôn cao hơn đỉnh chữ vướng gap px (mặc định 4), so le ngang ±zig px (14),
+ *   lặp tối đa maxLift (4) tầng; lift = số tầng đã dời.
+ * - Dời lên tới quá mép trên minY (40) hoặc hết tầng → gộp vào chữ đang vướng gần nhất (merge, lift 0).
+ */
+export function floatSlot(active, cand, { now = 0, minY = 40, gap = 4, zig = 14, maxLift = 4, reduced = false } = {}) {
+  const c = {
+    x: num0(cand && cand.x), y: num0(cand && cand.y),
+    w: Math.max(1, num0(cand && cand.w)), h: Math.max(1, num0(cand && cand.h)),
+    text: String((cand && cand.text) ?? '')
+  }
+  const t = num0(now)
+  const lifeC = (reduced ? FLOAT_MS.reduced : FLOAT_MS.normal) * FLOAT_LIVE
+  const live = []
+  for (const e of active && typeof active[Symbol.iterator] === 'function' ? active : []) {
+    if (!e) continue
+    const age = Math.max(0, t - num0(e.t))
+    const life = (e.reduced ? FLOAT_MS.reduced : FLOAT_MS.normal) * FLOAT_LIVE
+    if (age >= life) continue
+    live.push({ e, age, life, w: Math.max(1, num0(e.w)), h: Math.max(1, num0(e.h)), x: num0(e.x), y: num0(e.y) })
+  }
+  const riseC = tau => floatRise(tau, reduced)
+  const riseE = (L, tau) => floatRise(L.age + tau, !!L.e.reduced)
+  const mergeInto = L => ({ x: L.x, y: L.y + riseE(L, 0) - riseC(0), lift: 0, merge: L.e })
+  if (!live.length) return { x: c.x, y: c.y, lift: 0, merge: null }
+
+  let twin = null
+  for (const L of live) {
+    if (L.e.text !== c.text || L.age >= FLOAT_MERGE_MS) continue
+    if (Math.abs(L.x - c.x) > FLOAT_MERGE_PX || Math.abs(L.y - c.y) > FLOAT_MERGE_PX) continue
+    if (!twin || L.age < twin.age) twin = L
+  }
+  if (twin) return mergeInto(twin)
+
+  // Khoảng dời dọc (≤ 0) để chữ mới ở (x, y) nằm hẳn trên chữ L suốt lúc cả hai còn hiện; 0 khi không vướng.
+  const needFor = (L, x, y) => {
+    if (Math.abs(L.x - x) >= (L.w + c.w) / 2) return 0
+    let clash = false
+    let need = 0
+    for (let tau = 0; tau < lifeC && L.age + tau < L.life; tau += FLOAT_SAMPLE_MS) {
+      const botE = L.y + riseE(L, tau), topE = botE - L.h
+      const botC = y + riseC(tau), topC = botC - c.h
+      if (botC > topE - gap && topC < botE + gap) clash = true
+      need = Math.min(need, topE - gap - botC)
+    }
+    return clash ? need : 0
+  }
+  let x = c.x, y = c.y
+  let first = null
+  for (let k = 0; k <= maxLift; k++) {
+    let need = 0
+    for (const L of live) {
+      const d = needFor(L, x, y)
+      if (d < need) need = d
+      if (d < 0 && !first) first = L
+    }
+    if (need >= 0) return { x, y, lift: k, merge: null }
+    if (k === maxLift) break
+    y += need
+    x = c.x + (k % 2 === 0 ? zig : -zig)
+    if (y < minY) break
+  }
+  // không còn chỗ phía trên: gộp vào chữ vướng gần chỗ định đặt nhất
+  let near = first || live[0]
+  let best = Infinity
+  for (const L of live) {
+    const d = Math.hypot(L.x - c.x, L.y + riseE(L, 0) - (c.y + riseC(0)))
+    if (d < best) { best = d; near = L }
+  }
+  return mergeInto(near)
+}
+
+// Kích thước ước lượng của chữ nổi (không đo DOM để khỏi ép trình duyệt tính bố cục giữa lúc chơi): Baloo 2 đậm 800,
+// cỡ 26px (small 18, big 32), mỗi ký tự ~0,6em, cao = cỡ chữ + viền mực.
+function floatBox(text, size) {
+  const fs = size === 'small' ? 18 : size === 'big' ? 32 : 26
+  return { w: Math.round(String(text).length * fs * 0.6 + 8), h: fs + 6 }
+}
+
 // ---------- Vẽ hạt lên canvas ----------
 
 function drawParticle(g, p) {
@@ -309,13 +672,21 @@ function rectOf(t) {
  * createVfx({ host, reduced }) → {
  *   layer                                   div.vfx-layer (tạo lười khi đọc lần đầu, gắn vào host = app.overlay)
  *   burst(target, kind, { n, colors })      nổ hạt trên canvas tại tâm đích → số hạt đã tạo
- *   floatText(target, text, { tone, size }) chữ nổi bay lên (tone: gold | good | bad | info | sky) → phần tử
+ *   floatText(target, text, { tone, size }) chữ nổi bay lên (tone: gold | good | bad | info | sky) → phần tử; chữ trước
+ *                                           còn bay gần đó thì chữ mới dời lên trên, so le ngang (floatSlot), trùng chữ
+ *                                           trùng chỗ trong 160 ms thì gộp thành "chữ ×2" — không bao giờ đè nhau
  *   ripple(x, y)                            gợn chạm tại tọa độ khung nhìn (giữ khi giảm chuyển động, chỉ opacity)
  *   shake(el, power 1..3)                   rung ngang 2/4/6 px giảm dần (giảm chuyển động: chớp viền đỏ tĩnh)
  *   squash(el), pop(el)                     nảy squash 420 ms gốc ở đáy / bật vào easeOutBack (WAAPI)
  *   hitstop(ms)                             dừng hình 60–90 ms (Promise), giữ cả khi giảm chuyển động
  *   fly(from, to, { node, html, ms, arc, scale, bump }) "nhân bản rồi bay" theo cung Bézier → Promise<boolean>
- *   coins(from, to, n, { stagger, ms, bump }) xu bay tỏa ra rồi về đích → Promise<số xu đã bay>
+ *   coins(from, to, n, { stagger, ms, hold, bump, amount, unit, onArrive, scale }) luồng xu: tỏa ra, dừng giữa đường
+ *                                           120 ms, bay về đích; số xu theo amount (coinCount, có trần); onArrive mỗi xu
+ *                                           để HUD đếm lên → Promise<số xu đã bay>
+ *   countUp(el, from, to, ms = 600, fmt)    đếm chữ số của el (ví HUD) → { done, value, finish(), cancel() }; giảm chuyển
+ *                                           động: cập nhật ngay + một nhịp sáng; clear() cho nhảy tới số cuối
+ *   counting(el)                            el đang có bộ đếm chạy (HUD đừng ghi đè chữ lúc này)
+ *   glow(target)                            một nhịp sáng ôm đích (giảm chuyển động: chỉ opacity) → phần tử | null
  *   confetti(target, n = 36)                pháo giấy trên canvas → số mảnh đã tạo
  *   stats() → { dom, particles }            số nút đang nằm trong lớp, số hạt canvas (canvas cũng ghi data-n)
  *   clear(), destroy()
@@ -329,7 +700,8 @@ function rectOf(t) {
  *   fly → false, coins → 0).
  * - Trang đang ẩn (document.visibilityState === 'hidden') → không nhận hiệu ứng mới (cùng giá trị trả như trên;
  *   shake/squash/pop → null). Lúc trang chuyển sang ẩn thì clear().
- * - fly/coins bị clear() / destroy() / hủy hoạt ảnh giữa chừng → Promise trả false / chỉ đếm xu đã tới đích.
+ * - fly/coins bị clear() / destroy() / hủy hoạt ảnh giữa chừng → Promise trả false / chỉ đếm xu đã tới đích (onArrive của
+ *   coins vẫn giao nốt phần tiền còn lại, cut: true); bộ đếm countUp nhảy tới số cuối.
  * - Chỉ nút do vfx tự tạo mới vào pool. Nút module khác tự chèn vào lớp (vd bản sao phiếu) thì clear() chỉ gỡ ra,
  *   không tái dùng, không hủy hoạt ảnh của nó.
  */
@@ -642,40 +1014,74 @@ export function createVfx({ host = null, reduced = null } = {}) {
     return addParticles(plan, { x: L.cx, y: oy, w: Math.max(L.w, 80), h: 10 }, n, null)
   }
 
+  // Chữ nổi đang bay (chống chồng): { el, rec, x, y, w, h, t, text, n, reduced }.
+  const floats = new Set()
+
+  // Bỏ ngay một chữ nổi (khi gộp vào chữ mới): kết thúc hoạt ảnh, trả nút về pool.
+  function dropFloat(entry) {
+    floats.delete(entry)
+    for (const rec of live) {
+      if (rec.el === entry.el) { rec.end(false); return }
+    }
+  }
+
   function floatText(target, text, { tone = 'gold', size = '' } = {}) {
     if (blocked()) return null
     const isRed = red()
     const L = local(target)
     if (!L) return null
+    const base = String(text ?? '').slice(0, 40)
+    // điểm (ngón tay): đặt cao hơn ngón 48px; phần tử: ở phần trên của phần tử
+    const W = L.W || 0, H = L.H || 0
+    const fitX = v => Math.max(56, Math.min((W || v + 56) - 56, v))
+    const fitY = v => Math.max(40, Math.min((H || v + 10) - 10, v))
+    const x0 = fitX(L.point ? L.x : L.cx)
+    const y0 = fitY(L.point ? L.y - 48 : L.y + Math.min(L.h * 0.3, 48))
+    // chống chồng: chữ trước còn bay gần đó thì dời chữ mới lên trên (so le ngang), hoặc gộp "×2" khi trùng hẳn
+    const box = floatBox(base, size)
+    const t = nowMs()
+    // tuổi thật của chữ đang bay lấy theo thời gian của chính hoạt ảnh (đúng cả khi dừng hình hitstop làm chữ đứng lại)
+    for (const e of floats) {
+      const ct = e.rec && e.rec.anim ? Number(e.rec.anim.currentTime) : NaN
+      if (Number.isFinite(ct)) e.t = t - ct
+    }
+    const slot = floatSlot(floats, { x: x0, y: y0, w: box.w, h: box.h, text: base }, { now: t, minY: 40, reduced: isRed })
+    let n = 1
+    if (slot.merge) {
+      if (slot.merge.text === base) n = (slot.merge.n || 1) + 1
+      dropFloat(slot.merge)
+    }
     const el = take('vfx-text')
     if (!el) return null
-    el.textContent = String(text ?? '').slice(0, 40)
+    el.textContent = n > 1 ? `${base} ×${n}` : base
     el.setAttribute('data-tone', String(tone || 'gold'))
     if (size) el.setAttribute('data-size', String(size))
-    // điểm (ngón tay): đặt cao hơn ngón 48px; phần tử: ở phần trên của phần tử
-    let x = L.point ? L.x : L.cx
-    let y = L.point ? L.y - 48 : L.y + Math.min(L.h * 0.3, 48)
-    x = Math.max(56, Math.min((L.W || x + 56) - 56, x))
-    y = Math.max(40, Math.min((L.H || y + 10) - 10, y))
+    const x = fitX(slot.x)
+    const y = fitY(slot.y)
     el.style.left = `${x}px`
     el.style.top = `${y}px`
+    const entry = { el, x, y, w: box.w, h: box.h, t, text: base, n, reduced: isRed }
+    floats.add(entry)
     const T = 'translate(-50%, -100%)'
+    let job
     if (isRed) {
-      run(el, [
+      job = run(el, [
         { opacity: 0, transform: T },
         { opacity: 1, transform: T, offset: 0.15 },
         { opacity: 1, transform: T, offset: 0.75 },
         { opacity: 0, transform: T }
-      ], { duration: 700, easing: 'linear' })
+      ], { duration: FLOAT_MS.reduced, easing: 'linear' })
     } else {
-      run(el, [
-        { opacity: 0, transform: `${T} translateY(10px) scale(.55)` },
-        { opacity: 1, transform: `${T} translateY(-4px) scale(1.14)`, offset: 0.18 },
-        { opacity: 1, transform: `${T} translateY(-10px) scale(1)`, offset: 0.32 },
-        { opacity: 1, transform: `${T} translateY(-34px) scale(1)`, offset: 0.8 },
-        { opacity: 0, transform: `${T} translateY(-46px) scale(.96)` }
-      ], { duration: 820, easing: 'linear' })
+      // gộp: chữ "×2" hiện ngay chỗ chữ cũ, không nảy từ nhỏ lại từ đầu
+      const kf = RISE.map(([o, dy, sc, op], i) => ({
+        opacity: n > 1 && i === 0 ? 1 : op,
+        transform: `${T} translateY(${dy}px) scale(${n > 1 && i === 0 ? 0.9 : sc})`,
+        ...(i > 0 && i < RISE.length - 1 ? { offset: o } : {})
+      }))
+      job = run(el, kf, { duration: FLOAT_MS.normal, easing: 'linear' })
     }
+    for (const rec of live) if (rec.el === el) entry.rec = rec
+    job.then(() => floats.delete(entry))
     return el
   }
 
@@ -821,50 +1227,137 @@ export function createVfx({ host = null, reduced = null } = {}) {
     })
   }
 
-  function coins(from, to, n = 8, { stagger = 40, ms = 620, bump: doBump = true } = {}) {
-    if (blocked() || red()) return Promise.resolve(0)
+  /**
+   * coins(from, to, n = 8, { stagger, ms, hold, bump, amount, unit, onArrive, scale }) → Promise<số xu đã tới đích>
+   * Luồng xu tiền vào két / ví HUD theo coinFlight: tỏa ra như quạt, DỪNG GIỮA ĐƯỜNG hold ms (120), rồi bay cong về đích;
+   * đích nảy mỗi khi một xu chạm tới (bump, mặc định bật).
+   * - n: số xu (1–12). Bỏ trống n (null / undefined, hoặc truyền thẳng đối tượng tùy chọn ở vị trí n) mà có amount thì
+   *   số xu = coinCount(amount) (6–12 theo số tiền, có trần), không có amount thì 8 như cũ.
+   * - onArrive({ index, count, share, sum, amount, last, skipped, cut }): gọi MỖI xu tới đích (index theo thứ tự tới,
+   *   share = phần tiền của xu đó theo coinShares(amount, count, unit), sum = tổng đã tới) để HUD đếm lên theo xu.
+   *   Luôn có đúng một lần gọi last === true và khi đó sum === amount: xu không bay được (giảm chuyển động, trang ẩn,
+   *   đích ẩn, hết chỗ trong lớp) → một lần gọi gộp skipped: true (không đồng bộ, sau lời gọi coins); bị clear() / hủy giữa
+   *   chừng → phần còn lại giao gộp trong lần gọi cuối cut: true. Lỗi trong onArrive bị nuốt.
+   * - Giá trị trả giữ như cũ: số xu đã thật sự bay tới đích (giảm chuyển động / không bay được → 0).
+   */
+  function coins(from, to, n = 8, opts = {}) {
+    let o = opts && typeof opts === 'object' ? opts : {}
+    let want = n
+    if (n && typeof n === 'object') { o = n; want = null }
+    const {
+      stagger = COIN_TIMING.stagger, ms = null, hold = COIN_TIMING.hold, bump: doBump = true,
+      amount = null, unit = 1, onArrive = null, scale = 1
+    } = o
+    const amt = num0(amount)
+    const send = info => {
+      if (typeof onArrive !== 'function') return
+      try { onArrive(info) } catch { /* lỗi bên gọi không chặn hiệu ứng */ }
+    }
+    const planned = want === null || want === undefined
+      ? (amount !== null && amount !== undefined ? Math.max(1, coinCount(amt)) : 8)
+      : clampN(Math.floor(Number(want) || 1), 1, COIN_LIMITS.max)
+    // không bay được: giao gộp cả số tiền một lần (không đồng bộ, để bên gọi kịp dựng bộ đếm sau lời gọi coins)
+    const skip = () => {
+      if (typeof onArrive === 'function') {
+        Promise.resolve().then(() => send({ index: -1, count: planned, share: amt, sum: amt, amount: amt, last: true, skipped: true, cut: false }))
+      }
+      return Promise.resolve(0)
+    }
+    if (blocked() || red()) return skip()
     const A = local(from), B = local(to)
-    if (!A || !B) return Promise.resolve(0)
-    const count = Math.max(1, Math.min(12, Math.floor(Number(n) || 1)))
-    const s = { x: A.cx, y: A.cy }, e = { x: B.cx, y: B.cy }
-    const jobs = []
-    const dur = Math.max(200, Math.min(1500, Number(ms) || 620))
-    for (let i = 0; i < count; i++) {
+    if (!A || !B) return skip()
+    const s = { x: A.cx, y: A.cy }
+    const plan = coinFlight(planned, { from: s, to: { x: B.cx, y: B.cy }, ms, hold, stagger })
+    const k = Number(scale) > 0 ? Number(scale) : 1
+    const els = []
+    for (const c of plan) {
       const el = take('vfx-coin')
       if (!el) break
       el.style.left = `${s.x}px`
       el.style.top = `${s.y}px`
-      // tỏa ra quanh nguồn (chủ yếu lên trên), dừng một nhịp, rồi bay cong về đích
-      const ang = UP + (Math.random() * 2 - 1) * 1.25
-      const r = 26 + Math.random() * 30
-      const m = { x: s.x + Math.cos(ang) * r, y: s.y + Math.sin(ang) * r }
-      const c = { x: (m.x + e.x) / 2 + (Math.random() - 0.5) * 40, y: Math.min(m.y, e.y) - 50 - Math.random() * 40 }
-      const K = 16
-      const kf = []
-      for (let k = 0; k <= K; k++) {
-        const u = k / K
-        let pt, sc
-        if (u <= 0.28) {
-          const v = easeOutCubic(u / 0.28)
-          pt = { x: s.x + (m.x - s.x) * v, y: s.y + (m.y - s.y) * v }
-          sc = 0.5 + 0.6 * v
-        } else if (u <= 0.38) {
-          pt = m
-          sc = 1.1 - ((u - 0.28) / 0.1) * 0.1
-        } else {
-          const v = easeInQuad((u - 0.38) / 0.62)
-          pt = bezier(m, c, e, v)
-          sc = 1 - 0.35 * v
-        }
-        kf.push({ offset: u, opacity: u === 0 ? 0 : 1, transform: `translate(${(pt.x - s.x).toFixed(1)}px, ${(pt.y - s.y).toFixed(1)}px) scale(${sc.toFixed(3)})` })
-      }
-      jobs.push(run(el, kf, { duration: dur, delay: i * Math.max(0, Number(stagger) || 0), easing: 'linear' }).then(ok => {
-        if (ok && doBump && to && typeof to.animate === 'function') bump(to)
-        return ok
-      }))
+      els.push([el, c])
     }
+    if (!els.length) return skip()
+    const count = els.length
+    const shares = coinShares(amt, count, unit)
+    let pending = count, got = 0, failed = 0, sum = 0, closed = false
+    const jobs = els.map(([el, c]) => run(el, c.frames.map(f => ({
+      offset: f.offset,
+      opacity: f.opacity,
+      transform: `translate(${(f.x - s.x).toFixed(1)}px, ${(f.y - s.y).toFixed(1)}px) scale(${(f.scale * k).toFixed(3)})`
+    })), { duration: c.duration, delay: c.delay, easing: 'linear' }).then(ok => {
+      pending--
+      if (ok) {
+        const share = shares[got] || 0
+        got++
+        sum += share
+        if (doBump && to && typeof to.animate === 'function') bump(to)
+        const last = pending === 0 && failed === 0
+        if (last) closed = true
+        send({ index: got - 1, count, share, sum, amount: amt, last, skipped: false, cut: false })
+      } else {
+        failed++
+      }
+      if (pending === 0 && !closed) {
+        closed = true
+        send({ index: -1, count, share: amt - sum, sum: amt, amount: amt, last: true, skipped: false, cut: true })
+      }
+      return ok
+    }))
     // số xu đã tới đích (xu bị clear() / hủy giữa chừng không tính)
     return Promise.all(jobs).then(list => list.filter(Boolean).length)
+  }
+
+  // Nhịp sáng quanh đích (ví HUD, két): vòng sáng bo tròn ôm đích (lòng trong suốt), chỉ opacity khi giảm chuyển động.
+  // → phần tử | null
+  function glow(target) {
+    if (blocked()) return null
+    const L = local(target)
+    if (!L) return null
+    const el = take('vfx-ring')
+    if (!el) return null
+    el.setAttribute('data-kind', 'glow')
+    const w = Math.max(28, L.w + 18), h = Math.max(28, L.h + 14)
+    el.style.left = `${L.cx}px`
+    el.style.top = `${L.cy}px`
+    el.style.width = `${w}px`
+    el.style.height = `${h}px`
+    el.style.margin = `${(-h / 2).toFixed(1)}px 0 0 ${(-w / 2).toFixed(1)}px`
+    el.style.borderRadius = `${(h / 2).toFixed(1)}px`
+    el.style.borderWidth = '3px'
+    // sáng ở viền và quầng ngoài, lòng trong suốt: không làm mờ con số vừa đổi
+    el.style.background = 'none'
+    el.style.boxShadow = '0 0 0 3px rgba(255, 246, 196, .55), 0 0 16px 6px rgba(255, 214, 90, .6)'
+    if (red()) run(el, [{ opacity: 0 }, { opacity: 0.95, offset: 0.3 }, { opacity: 0 }], { duration: 480, easing: 'linear' })
+    else {
+      run(el, [
+        { opacity: 0, transform: 'scale(.92)' },
+        { opacity: 0.95, transform: 'scale(1.04)', offset: 0.3 },
+        { opacity: 0, transform: 'scale(1.1)' }
+      ], { duration: 480, easing: 'linear' })
+    }
+    return el
+  }
+
+  // Bộ đếm số do vfx này chạy: clear() / destroy() cho nhảy tới số cuối (không kẹt số dở dang).
+  const counters = new Set()
+  /**
+   * countUp(el, from, to, ms = 600, fmt, opts) — như countUp() rời của module nhưng theo reduced() của vfx này, và nhịp
+   * sáng vẽ trong .vfx-layer (glow 'auto': chỉ khi giảm chuyển động — "số cập nhật ngay, kèm một nhịp sáng").
+   * Trang đang ẩn / vfx đã hủy: ghi thẳng số cuối, không nhịp sáng.
+   */
+  function countUpFx(el, from, to, ms = 600, fmt = null, opts = {}) {
+    const o = opts && typeof opts === 'object' ? opts : {}
+    const off = blocked()
+    const h = startCount(el, from, to, off ? 0 : ms, fmt, {
+      ...o,
+      reduced: off || red(),
+      glow: off ? null : (typeof o.glow === 'function' ? o.glow : glow),
+      glowMode: off ? 'never' : glowModeOf(o.glow)
+    })
+    counters.add(h)
+    h.done.then(() => counters.delete(h))
+    return h
   }
 
   function stats() {
@@ -879,6 +1372,8 @@ export function createVfx({ host = null, reduced = null } = {}) {
     parts = []
     frozen = 0
     idleCanvas()
+    floats.clear()
+    for (const h of [...counters]) h.finish()
     for (const rec of [...live]) rec.end(false)
     for (const [el, anim] of [...extern]) { try { anim.cancel() } catch { /* bỏ qua */ } extern.delete(el) }
     for (const id of timers) clearTimeout(id)
@@ -915,6 +1410,9 @@ export function createVfx({ host = null, reduced = null } = {}) {
     hitstop,
     fly,
     coins,
+    countUp: countUpFx,
+    counting: isCounting,
+    glow,
     confetti,
     stats,
     clear,

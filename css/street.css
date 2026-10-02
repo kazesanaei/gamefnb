@@ -1,0 +1,46 @@
+/* Dải phố của màn Ca bán (service.js renderStreet): hàng khách xếp hàng (mặt + vòng kiên nhẫn, tên, nhãn "Ở quầy" / "Đơn
+   đặt trước" / "Khách lạ", dấu ★ khách lạ) và khách đang chờ món. Vòng kiên nhẫn: components/patience.js (.ring-bg/.ring-fg).
+   M5 Đợt 2 (bước 0): chuyển nguyên văn từ css/game.css, không đổi giao diện. index.html gắn tệp này NGAY SAU game.css để giữ
+   thứ tự cascade (luật cùng độ ưu tiên ở game.css đứng sau dải phố không chạm phần tử của dải phố). Chế độ tập trung khi
+   nấu (.service-screen.is-focus > .street) vẫn ở game.css. */
+
+.street {
+  flex: none; display: flex; align-items: flex-end; gap: 8px; padding: 6px 12px 4px; min-height: 102px;
+  background: linear-gradient(180deg, #ffe6b0 0%, #f7dca7 70%, #d9b98a 70%, #d9b98a 100%);
+}
+.queue { flex: 1; display: flex; align-items: flex-end; gap: 8px; min-width: 0; }
+.queue-empty { font-size: 14px; padding-bottom: 20px; }
+.q-cust { display: flex; flex-direction: column; align-items: center; width: 78px; position: relative; }
+.q-face { position: relative; width: 62px; height: 62px; }
+.q-face .ring { position: absolute; inset: 0; width: 100%; height: 100%; }
+.q-face .face-img { position: absolute; left: 7px; top: 7px; width: 48px; height: 48px; }
+.q-name { font-size: 14px; font-weight: 700; max-width: 78px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.q-tag { position: absolute; top: -6px; right: -4px; font-size: 13px; font-weight: 800; background: var(--brick); color: #fff; border-radius: 999px; padding: 0 6px; white-space: nowrap; }
+/* M4: khách lấy đơn đặt trước của sự kiện ngày */
+.q-tag.is-order { background: #1f4e7a; }
+.at-counter .q-face { transform: scale(1.06); }
+.ring-bg { stroke: rgba(59, 42, 31, .12); }
+.ring-fg { transition: stroke-dashoffset .25s linear, stroke .3s; }
+.waiting { flex: none; display: flex; flex-direction: column; align-items: flex-end; max-width: 45%; }
+.wait-title { font-size: 14px; font-weight: 800; color: var(--brick-dark); }
+.wait-row { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.w-cust { display: flex; flex-direction: column; align-items: center; width: 62px; }
+.w-face { position: relative; width: 42px; height: 42px; }
+.w-face .ring { position: absolute; inset: 0; width: 100%; height: 100%; }
+.w-face .face-img { position: absolute; left: 6px; top: 6px; width: 30px; height: 30px; }
+.w-name { font-size: 14px; max-width: 62px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Màn thấp (vd 360×740): thu dải phố để panel thao tác đủ chỗ (dây phiếu thu theo cùng mốc ở game.css) */
+@media (max-height: 760px) {
+  .street { min-height: 84px; padding-top: 4px; }
+  .q-face { width: 52px; height: 52px; }
+  .q-face .face-img { left: 6px; top: 6px; width: 40px; height: 40px; }
+  .w-face { width: 36px; height: 36px; }
+  .w-face .face-img { left: 5px; top: 5px; width: 26px; height: 26px; }
+}
+
+/* ---------- M4: khách lạ ở hàng chờ ---------- */
+.q-stranger { position: absolute; left: -2px; top: -4px; width: 22px; height: 22px; border-radius: 50%; background: #ffd23f;
+  color: var(--ink); font-size: 14px; font-weight: 900; line-height: 22px; text-align: center; box-shadow: 0 0 0 2px #fff; }
+.q-cust.is-stranger .q-name { color: #9a6a00; font-weight: 800; }
+.q-tag.is-stranger { background: #c98a00; }

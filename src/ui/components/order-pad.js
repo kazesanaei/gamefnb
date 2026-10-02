@@ -69,7 +69,7 @@ const LABELS = Object.freeze({
 })
 
 /**
- * createOrderPad(data, opts) → { el, update(data), destroy(), lineEl(i), artEl(i), paperEl, actionsEl, readback(result) → Promise,
+ * createOrderPad(data, opts) → { el, update(data), destroy(), lineEl(i), artEl(i), paperEl, faceEl, actionsEl, readback(result) → Promise,
  *   stamp({ target, text, keepOnDestroy }) → Promise<boolean>, reveal(i, { smooth }) }
  * destroy() hủy luôn chuỗi chốt đang chạy (trừ chuỗi gọi với keepOnDestroy: true).
  * actionsEl (hàng nút Đọc lại / Chốt) mặc định nằm cuối phiếu; bên gọi nên chuyển nó ra làm con cuối của khâu Order để
@@ -77,7 +77,7 @@ const LABELS = Object.freeze({
  * data: {
  *   draft: [{ recipeId, qty, notes }], recipes, caught: [{ index, type, expectedRecipeId }],
  *   canConfirm (đã đọc lại, phiếu không rỗng), hint (chuỗi nhắc dưới phiếu; '' = ẩn), lastAdded (chỉ số dòng vừa thêm),
- *   sub (dòng phụ cạnh tiêu đề, vd tên khách), errorLabels
+ *   sub (dòng phụ cạnh tiêu đề, vd tên khách), face (chuỗi SVG mặt khách nhỏ cạnh tên; '' = ẩn), errorLabels
  * }
  * opts: { onEdit(i), onRemove(i), onReadback(), onConfirm(), vfx, sound, reduced, labels }
  */
@@ -94,11 +94,14 @@ export function createOrderPad(data = {}, opts = {}) {
   const wait = ms => new Promise(r => later(r, ms))
 
   const sub = h('span', { class: 'co-pad-sub' })
+  // mặt khách nhỏ cạnh tên (data.face: chuỗi SVG): khi đọc lại, khách gật / đổi mặt ngay bên các dòng phiếu
+  const face = h('span', { class: 'co-pad-face', 'aria-hidden': 'true', hidden: true })
+  let faceSig = ''
   const list = h('ol', { class: 'co-pad-lines', testid: 'draft' })
   const empty = h('p', { class: 'co-pad-empty' }, h('span', { class: 'co-pad-empty-ico', 'aria-hidden': 'true' }, '✎'), L.empty)
   const caughtBox = h('div', { class: 'co-pad-caught-wrap' })
   const paper = h('div', { class: 'co-pad-paper g-paper g-paper--torn' },
-    h('div', { class: 'co-pad-head' }, h('b', { class: 'co-pad-title' }, L.title), sub),
+    h('div', { class: 'co-pad-head' }, h('b', { class: 'co-pad-title' }, L.title), h('span', { class: 'co-pad-who' }, face, sub)),
     list, empty, caughtBox)
   const hint = h('p', { class: 'co-pad-hint' })
   const readBtn = h('button', { class: 'co-pad-read g-btn', type: 'button', testid: 'readback', html: ICON_READ, onclick: () => { if (typeof opts.onReadback === 'function') opts.onReadback() } })
@@ -174,6 +177,8 @@ export function createOrderPad(data = {}, opts = {}) {
     list.hidden = model.empty
     sub.textContent = cur.sub || ''
     sub.hidden = !cur.sub
+    const fs = typeof cur.face === 'string' ? cur.face : ''
+    if (fs !== faceSig) { faceSig = fs; face.innerHTML = fs; face.hidden = !fs }
     // lỗi khách bắt
     const cs = JSON.stringify(model.caught)
     if (cs !== caughtSig) {
@@ -395,6 +400,7 @@ export function createOrderPad(data = {}, opts = {}) {
   return {
     el,
     paperEl: paper,
+    faceEl: face,
     actionsEl: actions,
     update,
     readback,

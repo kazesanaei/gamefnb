@@ -1,0 +1,425 @@
+/* Thu tiền ở Quầy (M5 Đợt 2, gói Q-B): khâu Thanh toán (bảng giá phấn, phiếu order bằng hình, máy tính tiền có màn LED,
+   phím bánh kẹo, phím "Báo tổng") và khâu Tính tiền tiền mặt (mặt quầy gỗ có tờ tiền khách đưa, phiếu số liệu, khay inox,
+   ngăn kéo két 7 ngăn theo hình ket_tien).
+   Mã: src/ui/screens/counter-pay.js, counter-cash.js, src/ui/components/numpad.js, cash-drawer.js.
+   Quy ước: lớp tiền tố cs- (cùng lớp g- của css/theme.css, co- của css/counter.css); không viết luật cho lớp cũ của quầy
+   (.numpad-*, .drawer-slot, .tray-stack… trong game.css nay không còn phần tử nào dùng). Không có hoạt ảnh CSS chạy khi dựng
+   (panel Quầy vẽ lại toàn bộ theo stateSig): mọi chuyển động do JS kích theo thao tác, chỉ transform / opacity, ở
+   .vfx-layer. Chữ hiển thị ≥ 13px, vùng chạm ≥ 44px (phím số ≥ 48px). Màu máy theo hình của src/ui/art/scene.js. */
+
+/* ---------- Tờ tiền (billSvg): viền mực như hình M5, bóng cứng mờ ---------- */
+.cs-bill, .cs-bill-under, .cs-bill-ghost { display: block; line-height: 0; }
+.cs-bill svg, .cs-bill-under svg, .cs-bill-ghost svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.cs-bill svg > rect:first-of-type,
+.cs-bill-under svg > rect:first-of-type,
+.cs-bill-ghost svg > rect:first-of-type { stroke: var(--g-ink); stroke-width: 3.4px; }
+.cs-bill { filter: drop-shadow(0 2px 0 rgba(58, 38, 24, .32)); }
+
+/* ---------- Tiêu đề khâu (có hình máy tính) ---------- */
+.cs-title {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--g-font-display); font-weight: 800; font-size: 18px; line-height: 1.15; color: var(--g-tomato-dark);
+}
+.cs-title-ico { flex: none; width: 28px; height: 28px; }
+
+/* ==================== Khâu Thanh toán ==================== */
+.cs-pay { gap: 12px; padding-bottom: 14px; }
+.cs-pay-top { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 10px; align-items: start; }
+
+/* Bảng giá phấn viền gỗ (cùng chất liệu .g-chalk) */
+.cs-board {
+  position: relative; isolation: isolate; min-width: 0;
+  padding: 7px 9px 9px;
+  border: 8px solid transparent; border-radius: 16px;
+  color: var(--g-chalk-text);
+  font-family: var(--g-font-display); font-weight: 800;
+  background:
+    radial-gradient(60% 45% at 28% 22%, rgba(255, 255, 255, .09), rgba(255, 255, 255, 0) 70%) padding-box,
+    radial-gradient(50% 35% at 78% 72%, rgba(255, 255, 255, .06), rgba(255, 255, 255, 0) 70%) padding-box,
+    linear-gradient(160deg, #36564e 0%, var(--g-chalk) 45%, var(--g-chalk-deep) 100%) padding-box,
+    repeating-linear-gradient(90deg, rgba(111, 66, 25, 0) 0 9px, rgba(111, 66, 25, .16) 9px 10.5px, rgba(111, 66, 25, 0) 10.5px 19px) border-box,
+    linear-gradient(180deg, var(--g-wood-light), var(--g-wood) 50%, var(--g-wood-dark)) border-box;
+  box-shadow: 0 0 0 3px var(--g-ink), 0 5px 0 3px var(--g-wood-deep), inset 0 0 0 2.5px var(--g-ink), inset 0 4px 8px rgba(0, 0, 0, .3);
+}
+.cs-board-title {
+  margin: 0 0 4px; padding-bottom: 3px;
+  font-size: 16px; line-height: 1.2; letter-spacing: .02em; color: var(--g-gold-light);
+  border-bottom: 2px dashed rgba(246, 241, 227, .35);
+}
+.cs-board-list { display: flex; flex-direction: column; gap: 3px; }
+.cs-board-row {
+  display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; column-gap: 6px;
+  font-size: 14px; line-height: 1.15; text-shadow: 0 0 1px rgba(255, 255, 255, .35);
+}
+.cs-board-dish { width: 26px; height: 26px; filter: drop-shadow(0 1px 0 rgba(0, 0, 0, .35)); }
+.cs-board-name { min-width: 0; overflow-wrap: anywhere; }
+.cs-board-price { color: var(--g-gold-light); font-size: 15px; white-space: nowrap; }
+.cs-board-row.is-sub { grid-template-columns: 26px minmax(0, 1fr) auto; font-size: 13px; color: rgba(246, 241, 227, .88); }
+.cs-board-row.is-sub .cs-board-price { font-size: 14px; color: #ffd38a; }
+.cs-board-note.co-note-ico {
+  justify-self: center; width: 22px; height: 22px; padding: 1px;
+  border-radius: 50%; background: rgba(246, 241, 227, .92); box-shadow: 0 0 0 1.5px var(--g-ink);
+}
+
+/* Phiếu order tóm tắt: giấy kem viền mực, ghim đỏ, mỗi dòng một hình món có huy hiệu ×n */
+.cs-slip {
+  position: relative; isolation: isolate; min-width: 0;
+  padding: 10px 9px 8px;
+  border: 3px solid var(--g-ink); border-radius: 14px;
+  background:
+    repeating-linear-gradient(180deg, rgba(234, 217, 182, 0) 0 27px, var(--g-paper-line) 27px 29px) 0 30px / 100% calc(100% - 30px) no-repeat,
+    var(--g-paper);
+  color: var(--g-ink);
+  box-shadow: inset 0 -4px 0 var(--g-paper-shade), 0 4px 0 rgba(58, 38, 24, .22);
+}
+.cs-slip-pin {
+  position: absolute; top: -10px; left: 50%; width: 18px; height: 18px; margin-left: -9px;
+  border: 2.5px solid var(--g-ink); border-radius: 50%;
+  background: radial-gradient(circle at 35% 32%, #fff 0 14%, var(--g-tomato-light) 15% 40%, var(--g-tomato) 41% 100%);
+  box-shadow: 0 2px 0 rgba(58, 38, 24, .35);
+  pointer-events: none;
+}
+.cs-slip-title {
+  margin-bottom: 4px; padding-bottom: 2px;
+  font-family: var(--g-font-display); font-weight: 800; font-size: 15px; line-height: 1.2; letter-spacing: .02em;
+  color: var(--g-tomato-dark); border-bottom: 2px dashed rgba(232, 72, 58, .35);
+}
+.cs-slip-list { display: flex; flex-direction: column; gap: 5px; }
+.cs-slip-line { display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: center; column-gap: 7px; }
+.cs-slip-art { position: relative; width: 42px; height: 42px; }
+.cs-slip-dish { width: 42px; height: 42px; }
+.cs-slip-qty {
+  position: absolute; right: -6px; bottom: -4px; min-width: 26px; height: 22px; padding: 0 5px;
+  border: 2px solid var(--g-ink); border-radius: 999px;
+  background: radial-gradient(circle at 35% 28%, var(--g-tomato-light) 0 30%, var(--g-tomato) 75%);
+  color: #fff; font-family: var(--g-font-display); font-weight: 800; font-size: 14px; line-height: 18px; text-align: center;
+  text-shadow: var(--g-text-outline-thin); box-shadow: 0 2px 0 rgba(58, 38, 24, .4);
+}
+.cs-slip-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cs-slip-name { font-family: var(--g-font-display); font-weight: 800; font-size: 14px; line-height: 1.15; overflow-wrap: anywhere; }
+.cs-slip-notes { display: flex; flex-wrap: wrap; gap: 3px; }
+.cs-slip-note.co-note-ico { width: 22px; height: 22px; }
+
+/* Máy tính tự cộng (Hỗ trợ tính tiền / nâng cấp máy tính) */
+.cs-assist {
+  align-self: stretch; padding: 5px 12px 4px;
+  border: 2.5px solid var(--g-ink); border-radius: 12px;
+  background: linear-gradient(180deg, #fff6c8, #ffe27a);
+  font-size: 15px; font-weight: 700; color: var(--g-ink);
+  box-shadow: 0 3px 0 rgba(58, 38, 24, .25);
+}
+.cs-assist b { font-family: var(--g-font-display); font-size: 17px; color: var(--g-tomato-dark); }
+
+/* Máy tính tiền: thân xanh ngọc viền mực, màn LED, phiếu giấy thò khỏi khe */
+.cs-pos {
+  position: relative; isolation: isolate;
+  margin-top: 8px; padding: 10px 10px 12px;
+  border: 3px solid var(--g-ink); border-radius: 22px;
+  background:
+    radial-gradient(90% 40% at 20% 0%, rgba(255, 255, 255, .28), rgba(255, 255, 255, 0) 70%),
+    linear-gradient(180deg, #74cbbf 0%, #4fb3a5 34%, #44a497 100%);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, .35), inset 0 -7px 0 rgba(26, 80, 72, .28), 0 5px 0 #2a6e65, 0 9px 0 rgba(58, 38, 24, .18);
+}
+.cs-pos-top { position: relative; z-index: 1; }
+/* phiếu giấy mép răng cưa thò lên ở góc phải trên (trang trí) */
+.cs-pos-slip {
+  position: absolute; z-index: -1; top: -27px; right: 22px; width: 38px; height: 26px;
+  border: 2.5px solid var(--g-ink); border-bottom: 0; border-radius: 3px 3px 0 0;
+  background:
+    linear-gradient(var(--g-paper-line), var(--g-paper-line)) 7px 9px / 20px 2.5px no-repeat,
+    linear-gradient(var(--g-paper-line), var(--g-paper-line)) 7px 15px / 14px 2.5px no-repeat,
+    var(--g-paper);
+  pointer-events: none;
+}
+.cs-led-frame {
+  position: relative;
+  padding: 7px 9px;
+  border: 3px solid var(--g-ink); border-radius: 15px;
+  background: linear-gradient(180deg, #555c6c 0%, #3d4250 55%, #2f3440 100%);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .2), 0 3px 0 rgba(23, 26, 33, .55);
+}
+.cs-led-dot {
+  position: absolute; right: 8px; bottom: 3px; width: 7px; height: 7px; border-radius: 50%;
+  background: #8edb6a; box-shadow: 0 0 0 1.5px var(--g-ink), 0 0 6px rgba(142, 219, 106, .8);
+  pointer-events: none;
+}
+.cs-led {
+  position: relative; overflow: hidden;
+  display: flex; align-items: baseline; justify-content: flex-end;
+  min-height: 48px; padding: 4px 12px 2px;
+  border: 2.5px solid var(--g-ink); border-radius: 9px;
+  background:
+    linear-gradient(170deg, rgba(255, 255, 255, .14) 0 22%, rgba(255, 255, 255, 0) 23%),
+    repeating-linear-gradient(180deg, rgba(0, 0, 0, 0) 0 3px, rgba(0, 0, 0, .12) 3px 4px),
+    #1f3b2c;
+  color: #aef7c6;
+  font-family: var(--g-font-display); font-weight: 800; font-size: 32px; line-height: 1.15;
+  font-variant-numeric: tabular-nums; letter-spacing: .03em; white-space: nowrap;
+  text-shadow: 0 0 8px rgba(120, 255, 170, .55);
+}
+.cs-led-num { display: inline-block; transform-origin: 100% 70%; }
+.cs-led-k { font-size: .6em; opacity: .5; margin-left: 1px; }
+.cs-led.is-empty .cs-led-num { opacity: .45; }
+.cs-led-frame.is-wrong { border-color: var(--g-bad-dark); box-shadow: 0 0 0 3px var(--g-bad), 0 3px 0 rgba(23, 26, 33, .55); }
+.cs-led.is-wrong { color: #ffb1a3; background-color: #4a1f1a; text-shadow: 0 0 8px rgba(255, 110, 90, .6); }
+.cs-led-frame.is-ok .cs-led { color: #d6ffe3; text-shadow: 0 0 10px rgba(150, 255, 190, .9); }
+.cs-pos-hint {
+  display: table; margin: 7px auto 8px; padding: 1px 10px 0;
+  border: 2px solid var(--g-ink); border-radius: 999px;
+  background: var(--g-paper); color: var(--g-ink);
+  font-size: 13px; font-weight: 700; line-height: 1.35; text-align: center;
+  box-shadow: 0 2px 0 rgba(26, 80, 72, .45);
+}
+
+/* Phím: 3 cột số + cột hành động (Báo tổng cao 4 hàng) */
+.cs-keys {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.12fr);
+  grid-auto-rows: minmax(50px, auto); gap: 7px;
+}
+.cs-key.g-btn {
+  --g-btn-tw: 1.25px;
+  min-height: 50px; min-width: 0; padding: 0 4px;
+  border-radius: 14px; font-size: 26px; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.cs-key-num.g-btn { --g-btn-top: #fffdf6; --g-btn-bot: #ecdcb8; --g-btn-edge: #9a6e38; }
+.cs-key-fn.g-btn { --g-btn-top: #fff1df; --g-btn-bot: #f6c79c; --g-btn-edge: #a8642a; font-size: 18px; }
+.cs-key-back.g-btn { font-size: 26px; }
+.cs-key-act.g-btn {
+  grid-column: 4; grid-row: 1 / span 4;
+  flex-direction: column; gap: 6px; padding: 8px 4px;
+  border-radius: 18px; font-size: 20px; line-height: 1.05; white-space: normal;
+}
+.cs-key-act.g-btn::before { top: 4px; height: 26px; left: 14%; right: 14%; }
+.cs-report-text { display: block; max-width: 4em; }
+.cs-report-bell { display: block; width: 34px; height: 34px; line-height: 0; }
+.cs-report-bell svg { width: 100%; height: 100%; }
+.cs-key-act.g-btn:disabled .cs-report-bell { opacity: .45; filter: grayscale(1); }
+
+/* ==================== Khâu Tính tiền (tiền mặt) ==================== */
+/* Lưới: mặt quầy (tiền khách đưa) | phiếu số liệu; khay; két; thẻ két hết tiền lẻ và .act-bar trải hết bề ngang. */
+.cs-cash {
+  display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 12px 10px;
+  grid-template-areas: "mat facts" "tray tray" "drawer drawer";
+}
+.cs-cash > .cs-mat { grid-area: mat; }
+.cs-cash > .cs-facts { grid-area: facts; }
+.cs-cash > .cs-tray { grid-area: tray; }
+.cs-cash > .cs-drawer { grid-area: drawer; }
+.cs-cash > .cs-nochange, .cs-cash > .act-bar { grid-column: 1 / -1; }
+
+/* Mặt quầy gỗ sẫm: tờ tiền khách đưa xòe ra, nhãn giấy "Khách đưa" (chữ không đặt thẳng lên vân gỗ) */
+.cs-mat {
+  position: relative; isolation: isolate; min-width: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 10px 6px 8px;
+  border: 3px solid var(--g-ink); border-radius: 16px;
+  background:
+    radial-gradient(120% 70% at 18% 0%, rgba(255, 220, 170, .22), rgba(255, 220, 170, 0) 62%),
+    repeating-linear-gradient(178.6deg, rgba(40, 22, 8, 0) 0 6px, rgba(40, 22, 8, .16) 6px 7.5px, rgba(40, 22, 8, 0) 7.5px 13px),
+    repeating-linear-gradient(181.2deg, rgba(255, 210, 150, 0) 0 10px, rgba(255, 210, 150, .1) 10px 12px, rgba(255, 210, 150, 0) 12px 21px),
+    linear-gradient(180deg, #b87838 0%, var(--g-wood-dark) 60%, #8a5422 100%);
+  box-shadow: inset 0 3px 0 rgba(255, 220, 170, .3), inset 0 -6px 0 rgba(40, 22, 8, .35), 0 4px 0 #4b2c10;
+}
+.cs-given { display: flex; flex-direction: column; align-items: center; gap: 7px; min-width: 0; max-width: 100%; }
+.cs-given-bills { display: flex; justify-content: center; align-items: center; padding: 4px 8px 2px; min-height: 50px; }
+.cs-given-bill { flex: none; width: 80px; height: 44px; }
+.cs-given-bill + .cs-given-bill { margin-left: -42px; }
+.cs-given-bills[data-n="4"] .cs-given-bill + .cs-given-bill,
+.cs-given-bills[data-n="5"] .cs-given-bill + .cs-given-bill,
+.cs-given-bills[data-n="6"] .cs-given-bill + .cs-given-bill { margin-left: -58px; }
+.cs-given-bill:nth-child(odd) { transform: rotate(-5deg); }
+.cs-given-bill:nth-child(even) { transform: translateY(-3px) rotate(4deg); }
+.cs-given-bills[data-n="1"] .cs-given-bill { transform: rotate(-3deg); }
+.cs-given-cap {
+  max-width: 100%; padding: 1px 10px 0;
+  border: 2.5px solid var(--g-ink); border-radius: 999px;
+  background: var(--g-paper); color: var(--g-ink);
+  font-family: var(--g-font-display); font-weight: 800; font-size: 14px; line-height: 1.35; text-align: center;
+  box-shadow: 0 2px 0 rgba(40, 22, 8, .5);
+}
+.cs-given-cap b { color: var(--g-tomato-dark); font-size: 15px; white-space: nowrap; }
+
+/* Phiếu số liệu: Tổng (số to), Đã thối, Cần thối (ngày đầu / Hỗ trợ), cảnh báo thối dư */
+.cs-facts {
+  min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px;
+  padding: 7px 9px;
+  border: 3px solid var(--g-ink); border-radius: 14px;
+  background: var(--g-paper); color: var(--g-ink);
+  box-shadow: inset 0 -4px 0 var(--g-paper-shade), 0 4px 0 rgba(58, 38, 24, .22);
+}
+.cs-fact { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0 6px; font-size: 14px; line-height: 1.3; }
+.cs-fact-k { color: var(--g-ink-soft); font-weight: 700; white-space: nowrap; }
+.cs-fact-v { margin-left: auto; font-family: var(--g-font-display); font-weight: 800; font-size: 16px; white-space: nowrap; }
+.cs-fact.is-total { flex-direction: column; align-items: center; gap: 0; }
+.cs-fact.is-total .cs-fact-k { font-size: 14px; }
+.cs-fact.is-total .cs-fact-v { margin: 0; font-size: 24px; line-height: 1.1; color: var(--g-ink); }
+.cs-fact.is-due {
+  padding: 2px 7px 1px;
+  border: 2px solid var(--g-ink); border-radius: 10px;
+  background: linear-gradient(180deg, #fff3bd, #ffe27a);
+}
+.cs-fact.is-due .cs-fact-k { color: var(--g-ink); }
+.cs-fact.is-due .cs-fact-v { color: var(--g-tomato-dark); font-size: 17px; }
+.cs-over {
+  padding: 3px 8px 2px;
+  border: 2px solid var(--g-ink); border-radius: 10px;
+  background: linear-gradient(180deg, var(--g-bad-light), var(--g-bad));
+  color: #fff; font-family: var(--g-font-display); font-weight: 800; font-size: 14px; line-height: 1.25;
+  text-shadow: var(--g-text-outline-thin);
+}
+.cs-over::before { content: '⚠ '; }
+
+/* Khay inox đựng tiền thối */
+.cs-tray {
+  padding: 5px 10px 10px;
+  border: 3px solid var(--g-ink); border-radius: 16px;
+  background: linear-gradient(180deg, #f4f7fa 0%, #dfe5ec 45%, #c8d2dd 100%);
+  color: var(--g-ink);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, .85), inset 0 -5px 0 rgba(58, 38, 24, .12), 0 4px 0 #7f8c9b;
+}
+.cs-tray-head {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0 2px 5px;
+  font-family: var(--g-font-display); font-weight: 800; font-size: 15px; line-height: 1.25;
+}
+.cs-tray-total { font-size: 18px; color: var(--g-tomato-dark); }
+.cs-tray-bed {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
+  min-height: 64px; padding: 6px 10px;
+  border: 2.5px solid rgba(58, 38, 24, .45); border-radius: 11px;
+  background: linear-gradient(180deg, #bcc7d3 0%, #d3dbe4 40%, #e1e7ee 100%);
+  box-shadow: inset 0 3px 5px rgba(58, 38, 24, .2), inset 0 -2px 0 rgba(255, 255, 255, .6);
+}
+.cs-tray.is-empty .cs-tray-bed { justify-content: center; }
+.cs-tray-empty { padding: 4px 6px; font-size: 14px; font-weight: 700; color: #4d5a68; text-align: center; }
+.cs-tray-stack {
+  position: relative; flex: none; width: 90px; height: 52px; min-width: 44px; min-height: 44px; padding: 0;
+  border: 0; border-radius: 8px; background: transparent; color: inherit;
+  touch-action: manipulation; cursor: pointer;
+}
+.cs-tray-stack .cs-tray-bill { position: absolute; left: 3px; top: 5px; width: 80px; height: 44px; }
+.cs-tray-stack .cs-under-1 { transform: translate(4px, -3px) rotate(3deg); }
+.cs-tray-stack .cs-under-2 { transform: translate(7px, -5px) rotate(-2deg); }
+.cs-tray-stack:active .cs-bill { transform: translateY(2px); }
+.cs-tray-stack:focus-visible { outline: 3px solid var(--g-gold); outline-offset: 2px; }
+.cs-stack-count {
+  position: absolute; right: -4px; top: -7px; z-index: 2; min-width: 28px; height: 24px; padding: 0 5px;
+  border: 2px solid var(--g-ink); border-radius: 999px;
+  background: radial-gradient(circle at 35% 28%, var(--g-tomato-light) 0 30%, var(--g-tomato) 75%);
+  color: #fff; font-family: var(--g-font-display); font-weight: 800; font-size: 14px; line-height: 20px; text-align: center;
+  text-shadow: var(--g-text-outline-thin);
+}
+
+/* Ngăn kéo két mở: hình ket_tien, mỗi ngăn là một nút đặt đúng ô trong hình */
+.cs-drawer { position: relative; width: 100%; aspect-ratio: 320 / 150; margin-top: 4px; }
+.cs-drawer-art { position: absolute; inset: 0; display: block; line-height: 0; pointer-events: none; }
+.cs-drawer-art svg { display: block; width: 100%; height: 100%; }
+.cs-slot {
+  position: absolute; display: block; min-width: 44px; min-height: 44px; padding: 0;
+  border: 0; border-radius: 7px; background: transparent; color: var(--g-ink);
+  touch-action: manipulation; cursor: pointer;
+}
+.cs-slot:disabled { cursor: not-allowed; }
+.cs-slot:focus-visible { outline: 3px solid var(--g-gold); outline-offset: 1px; }
+.cs-slot-bills { position: absolute; left: 7%; right: 7%; top: 9%; bottom: 24%; }
+.cs-slot-bill { position: absolute; inset: 0; }
+.cs-slot-bills .cs-under-1 { transform: translate(2px, -2px) rotate(2.5deg); }
+.cs-slot-bills .cs-under-2 { transform: translate(4px, -4px) rotate(-2deg); }
+.cs-slot:active:not(:disabled) .cs-slot-bills { transform: translateY(2px) scale(.97); }
+.cs-bill-ghost { opacity: .22; filter: grayscale(1); }
+.cs-slot-count {
+  position: absolute; z-index: 2; top: -8px; right: -5px; min-width: 24px; height: 24px; padding: 0 5px;
+  border: 2px solid var(--g-ink); border-radius: 999px;
+  background: radial-gradient(circle at 35% 28%, #fff3b0 0 25%, var(--g-gold) 70%);
+  color: var(--g-ink); font-family: var(--g-font-display); font-weight: 800; font-size: 14px; line-height: 20px; text-align: center;
+  box-shadow: 0 2px 0 rgba(58, 38, 24, .35);
+}
+.cs-slot.is-empty .cs-slot-count { background: #d6cab5; color: #6f5f4e; }
+.cs-slot-label {
+  position: absolute; z-index: 1; left: 50%; bottom: 1px; transform: translateX(-50%);
+  padding: 0 7px; border: 2px solid var(--g-ink); border-radius: 999px;
+  background: var(--g-paper); color: var(--g-ink);
+  font-family: var(--g-font-display); font-weight: 800; font-size: 13px; line-height: 16px; white-space: nowrap;
+}
+.cs-slot.is-empty .cs-slot-label { background: #efe7d8; color: #6f5f4e; }
+
+/* Két không gom đủ tờ */
+.cs-nochange {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px;
+  border: 3px solid var(--g-ink); border-radius: 14px;
+  background: linear-gradient(180deg, #fff6d9, #ffe9b0);
+  font-size: 14px; font-weight: 700; line-height: 1.3; color: var(--g-ink);
+  box-shadow: 0 3px 0 rgba(58, 38, 24, .25);
+}
+.cs-nochange-ico {
+  flex: none; width: 28px; height: 28px; border: 2.5px solid var(--g-ink); border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, #fff3b0 0 25%, var(--g-gold) 70%);
+  font-family: var(--g-font-display); font-weight: 800; font-size: 17px; line-height: 23px; text-align: center;
+}
+.cs-nochange-text { flex: 1; min-width: 0; }
+.cs-nochange-btn.g-btn { flex: none; font-size: 15px; }
+
+/* Nút "Đưa tiền thối" dính đáy (.act-bar của panel Quầy) */
+.cs-give.g-btn { min-height: 54px; font-size: 21px; }
+
+/* ==================== Hiệu ứng (đặt trong .vfx-layer, tự dọn) ==================== */
+/* bản sao màn LED + dấu ✓ khi khách nhận tổng */
+.cs-fx-ok { position: absolute; z-index: 1; }
+.cs-fx-ok > .cs-led-frame { width: 100%; height: 100%; }
+.cs-fx-check { position: absolute; right: -12px; top: 50%; width: 54px; height: 54px; margin-top: -27px; line-height: 0; }
+.cs-fx-check svg { display: block; width: 100%; height: 100%; }
+/* bản sao két nảy rồi đóng sau khi thối xong */
+.cs-fx-drawer { position: absolute; z-index: 0; transform-origin: 50% 100%; }
+.cs-fx-drawer > .cs-drawer { width: 100%; height: 100%; margin: 0; }
+
+/* ==================== Màn hẹp / thấp ==================== */
+@media (max-width: 360px) {
+  .cs-given-bill { width: 72px; height: 40px; }
+  .cs-given-bill + .cs-given-bill { margin-left: -38px; }
+  .cs-given-bills[data-n="4"] .cs-given-bill + .cs-given-bill,
+  .cs-given-bills[data-n="5"] .cs-given-bill + .cs-given-bill,
+  .cs-given-bills[data-n="6"] .cs-given-bill + .cs-given-bill { margin-left: -52px; }
+  .cs-tray-stack { width: 82px; height: 48px; }
+  .cs-tray-stack .cs-tray-bill { width: 72px; height: 40px; }
+  .cs-pay-top { gap: 8px; }
+  .cs-board { border-width: 7px; padding: 6px 7px 8px; }
+  .cs-board-row { grid-template-columns: 22px minmax(0, 1fr) auto; column-gap: 5px; }
+  .cs-board-row.is-sub { grid-template-columns: 22px minmax(0, 1fr) auto; }
+  .cs-board-dish { width: 22px; height: 22px; }
+  .cs-board-note.co-note-ico { width: 20px; height: 20px; }
+  .cs-slip { padding: 9px 7px 7px; }
+  .cs-slip-line { grid-template-columns: 36px minmax(0, 1fr); column-gap: 6px; }
+  .cs-slip-art, .cs-slip-dish { width: 36px; height: 36px; }
+  .cs-keys { gap: 6px; }
+  .cs-key.g-btn { font-size: 24px; }
+  .cs-key-act.g-btn { font-size: 18px; }
+  .cs-led { font-size: 29px; }
+  .cs-cash { column-gap: 8px; }
+  .cs-facts { padding: 6px 7px; }
+  .cs-fact { font-size: 13px; gap: 4px; }
+  .cs-fact-v { font-size: 15px; }
+  .cs-fact.is-total .cs-fact-v { font-size: 21px; }
+  .cs-given-cap { font-size: 13px; padding: 1px 8px 0; }
+  .cs-given-cap b { font-size: 14px; }
+}
+@media (max-width: 340px) {
+  .cs-pay-top { grid-template-columns: minmax(0, 1fr); }
+  .cs-mat { padding: 8px 6px 7px; }
+}
+@media (max-height: 700px) {
+  .cs-cash { row-gap: 10px; }
+  .cs-mat { padding: 6px 6px 6px; }
+  .cs-given { gap: 4px; }
+  .cs-given-bills { padding-top: 2px; }
+  .cs-tray { padding-bottom: 8px; }
+  .cs-tray-head { margin-bottom: 3px; }
+  .cs-tray-bed { min-height: 54px; padding: 4px 8px; }
+  .cs-tray-stack { width: 82px; height: 48px; }
+  .cs-tray-stack .cs-tray-bill { width: 72px; height: 40px; }
+  .cs-pos { padding: 8px 8px 10px; }
+  .cs-pos-hint { margin: 6px auto; }
+  .cs-keys { grid-auto-rows: minmax(48px, auto); gap: 6px; }
+  .cs-key.g-btn { min-height: 48px; }
+  .cs-led { min-height: 44px; font-size: 29px; }
+}
