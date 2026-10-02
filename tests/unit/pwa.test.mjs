@@ -231,6 +231,18 @@ test('index.html gắn manifest, biểu tượng và mọi tệp CSS', () => {
   assert.ok(!html.includes('apple-mobile-web-app-capable'))
 })
 
+test('index.html (0.5.0): tải sớm font tiêu đề Latin đúng tệp CSS dùng, có crossorigin, nằm trong PRECACHE, trước CSS', () => {
+  const html = read('index.html')
+  const tag = '<link rel="preload" as="font" type="font/woff2" href="fonts/baloo2-800-latin.woff2" crossorigin>'
+  assert.ok(html.includes(tag), 'thiếu thẻ preload font: ' + tag)
+  // chỉ tải sớm một tệp (bộ dấu tiếng Việt tải theo unicode-range khi cần, tránh cảnh báo "preload chưa dùng")
+  assert.equal((html.match(/rel="preload"/g) || []).length, 1)
+  assert.ok(html.indexOf(tag) < html.indexOf('<link rel="stylesheet"'), 'preload đặt trước CSS')
+  // cùng URL với @font-face của theme.css (khác URL thì trình duyệt tải hai lần)
+  assert.match(read('css/theme.css'), /url\('\.\.\/fonts\/baloo2-800-latin\.woff2'\)/)
+  assert.ok(precacheOf(loadServiceWorker()).includes('fonts/baloo2-800-latin.woff2'))
+})
+
 test('main.js đăng ký service worker (trừ file://) và gắn màn Cài đặt', () => {
   const main = read('src/main.js')
   assert.match(main, /register\('\.\/sw\.js'\)/)

@@ -9,7 +9,8 @@ function deepFreeze(o) {
 
 export const MAIL_CONFIG = deepFreeze({
   // phiên bản nội dung mới nhất (thư phiên bản ≤ số này được gửi cho save cũ); 0.3.0 không có thư riêng
-  currentVersion: '0.4.0',
+  // (0.4.1, 0.4.2 cũng không; 0.5.0 có thư giới thiệu bếp mới, không kèm quà)
+  currentVersion: '0.5.0',
   maxMails: 100,           // đầy thì bỏ thư cũ nhất đã nhận
   expireDays: 30,          // hạn nhận mặc định
   holidayExpireDays: 14,   // quà lễ
@@ -55,7 +56,20 @@ export const MAIL_VERSIONS = deepFreeze([
       'Mỗi ngày có ba phiên hàng hiếm: Chợ sớm 05:00–09:00, Xe ba gác trưa 11:00–13:30, Gánh đặc sản tối 17:30–21:00, ' +
       'cùng một vị khách lạ ghé ca đầu ngày mang quà quê. Gom đủ 3 mảnh công thức rồi nấu thử đạt hạng Được là mở món hiếm. ' +
       'Dì gửi con 1 mảnh Trà tắc mật ong rừng và 1 phần Mật ong rừng U Minh để làm quen nha!',
-    reward: { fragments: { tra_tac_mat_ong: 1 }, rare: { mat_ong_rung: 1 } } }
+    reward: { fragments: { tra_tac_mat_ong: 1 }, rare: { mat_ong_rung: 1 } } },
+  // M5 (0.5.0): bếp làm lại kiểu game nấu ăn, 5 thao tác mới, thẻ bước có tay mẫu, chế độ tập trung khi nấu.
+  // Thư giới thiệu, KHÔNG kèm quà (quyết định đã chốt): reward rỗng nên hộp thư chỉ hiện thư, không có nút Nhận.
+  { version: '0.5.0', id: 'phien_ban_0_5_0', kind: 'phien_ban',
+    title: 'Có gì mới: bếp mới và 5 thao tác mới',
+    body: 'Bếp của xe vừa được sửa sang: nguyên liệu, món và dụng cụ có hình mới to rõ, xong mỗi bước là được đóng dấu chấm điểm ngay, ' +
+      'nấu xong món thì có màn ra món chừng 2 giây (chạm để bỏ qua). ' +
+      'Có thêm 5 thao tác mới: Đập trứng (chạm quả trứng khi kim nằm trong vùng xanh, rồi vuốt xuống cho trứng vào chảo), ' +
+      'Khuấy (vẽ vòng tròn quanh tô hoặc ly, quay vừa tay kẻo văng), Gọt vỏ (vuốt thẳng từ trên xuống theo từng dải vỏ), ' +
+      'Lắc (kéo bình hoặc rổ lên xuống thật đều tay) và Thả đá (kéo từng viên đá thả vào giữa ly rồi bấm Xong). ' +
+      'Trước mỗi bước có thẻ "Bước 1/5" kèm bàn tay mẫu làm thử cho con xem; nấu quen món rồi thì thẻ tự thu gọn. ' +
+      'Máy có màn hình thấp thì lúc nấu, bếp tự ẩn dải khách và thanh 4 khâu cho rộng chỗ, dây phiếu vẫn hiện để con canh khách chờ. ' +
+      'Giá bán, giá vốn và thời gian dành cho mỗi bước vẫn giữ như cũ. Con vào bếp thử tay nghề nha!',
+    reward: {} }
 ])
 
 // Quà lễ: đẩy từ 04:00 ngày `date` tới hết `pushDays` ngày sau đó (mở game muộn vẫn nhận), hạn nhận 14 ngày.

@@ -13,8 +13,10 @@
 // VERSION trùng "version" trong package.json (có test đối chiếu); đổi tệp của game thì tăng VERSION.
 // Thêm/bớt tệp trong src/, css/, icons/, fonts/*.woff2 thì sửa PRECACHE (tests/unit/pwa.test.mjs đối chiếu với cây thư
 // mục thật). Trang mẫu (mau.html, mau/) và fonts/OFL.txt KHÔNG nằm trong PRECACHE.
+// 0.5.0 (M5 Đợt 1): thêm 5 thao tác bếp mới (src/ui/minigames/{dap,xoay,got,lac,bay}.js, _gesture.js), bảng ánh xạ
+// bước → hình trạng thái (src/ui/art/state-map.js); bộ hình mới đã vào ICONS qua mặt tiền src/ui/art.js.
 
-const VERSION = '0.4.2'
+const VERSION = '0.5.0'
 const CACHE_PREFIX = 'bkn-'
 const CACHE = CACHE_PREFIX + VERSION
 
@@ -106,6 +108,7 @@ const PRECACHE = [
   'src/ui/art/kit.js',
   'src/ui/art/mon.js',
   'src/ui/art/props.js',
+  'src/ui/art/state-map.js',
   'src/ui/art/tools.js',
   'src/ui/art/v2.js',
   'src/ui/components/cash-drawer.js',
@@ -131,14 +134,20 @@ const PRECACHE = [
   'src/ui/components/toast.js',
   'src/ui/components/tour.js',
   'src/ui/minigames/_frame.js',
+  'src/ui/minigames/_gesture.js',
   'src/ui/minigames/_util.js',
+  'src/ui/minigames/bay.js',
   'src/ui/minigames/cha.js',
   'src/ui/minigames/cham.js',
   'src/ui/minigames/chon.js',
+  'src/ui/minigames/dap.js',
+  'src/ui/minigames/got.js',
   'src/ui/minigames/index.js',
+  'src/ui/minigames/lac.js',
   'src/ui/minigames/lua.js',
   'src/ui/minigames/rot.js',
   'src/ui/minigames/thai.js',
+  'src/ui/minigames/xoay.js',
   'src/ui/screens/counter.js',
   'src/ui/screens/event.js',
   'src/ui/screens/kitchen.js',

@@ -29,6 +29,8 @@ export const TOTAL_CODES = ['bao_du', 'bao_thieu']
 export const CHANGE_CODES = ['thoi_thieu', 'thoi_du', 'qr_gia']
 const SHEET_MS = 2000
 const END_DELAY_MS = 1200
+// M5: chế độ tập trung khi nấu chỉ bật ở khung thấp hơn chừng này (px).
+export const FOCUS_MAX_H = 760
 
 export default {
   mount(root, app) {
@@ -58,14 +60,46 @@ export default {
     const dots = { counter: false, kitchen: false }
     let destroyed = false
     const offs = []
+
+    // ---------- M5: chế độ tập trung khi nấu (thiết kế mục 1.9) ----------
+    // Tab Bếp đang nấu (bước Chọn, Thớt hoặc sân khấu một bước) và khung cao dưới FOCUS_MAX_H: .service-screen.is-focus ẩn
+    // dải khách và thanh 4 khâu (css/game.css) để panel Bếp cao thêm ~120px; dây phiếu (màu chờ) vẫn hiện. Bếp báo trạng thái
+    // nấu qua onFocus TRƯỚC khi dựng mini-game (plugin đo khung lúc dựng) nên lớp được bật đồng bộ ngay trong lời gọi đó;
+    // mỗi khung hình update() xét lại (đổi tab, xoay máy, đổi cỡ khung).
+    // Thông báo nổi trong lúc tập trung: chờ tới khi thoát (bếp gửi phản hồi tức thì của chính nó với { now: true }).
+    let kitchenWantsFocus = false
+    let focusOn = false
+    const heldToasts = []
+    function applyFocus() {
+      if (destroyed) return
+      const on = kitchenWantsFocus && active === 'kitchen' && el.isConnected && el.clientHeight > 0 && el.clientHeight < FOCUS_MAX_H
+      if (on === focusOn) return
+      focusOn = on
+      el.classList.toggle('is-focus', on)
+      if (!on) flushToasts()
+    }
+    const realToast = app.toast
+    const focusToast = function (text, opts) {
+      if (focusOn && !(opts && opts.now) && !destroyed) { heldToasts.push([text, opts]); return null }
+      return realToast.call(app, text, opts)
+    }
+    function flushToasts() {
+      // giữ tối đa 3 thông báo thường + 2 thẻ Mẹo nghề mới nhất (cùng giới hạn hàng chờ của toast.js)
+      const list = heldToasts.splice(0)
+      const tips = list.filter(([, o]) => o && o.kind === 'tip').slice(-2)
+      const plain = list.filter(([, o]) => !(o && o.kind === 'tip')).slice(-3)
+      for (const [t, o] of [...tips, ...plain]) { try { realToast.call(app, t, o) } catch { /* bỏ qua */ } }
+    }
+    if (typeof realToast === 'function') app.toast = focusToast
     // Thông báo nổi chỉ che dải khách (đặc tả mục 12): chồng thông báo không vượt xuống thanh 4 khâu; thông báo không
-    // vừa thì chờ thông báo trước tắt (toast.js).
+    // vừa thì chờ thông báo trước tắt (toast.js). Chế độ tập trung (thanh 4 khâu ẩn): không vượt quá dây phiếu.
     if (typeof app.toastLimit === 'function') {
       app.toastLimit(() => {
         const stack = app.overlay && app.overlay.querySelector('.toast-stack')
-        const bar = progress.el
+        const bar = focusOn ? rail.el : progress.el
         if (!stack || !bar || !bar.isConnected) return 0
-        return bar.getBoundingClientRect().top - stack.getBoundingClientRect().top - 4
+        const r = bar.getBoundingClientRect()
+        return Math.max(1, (focusOn ? r.bottom : r.top) - stack.getBoundingClientRect().top - 4)
       })
     }
 
@@ -78,7 +112,7 @@ export default {
       const fn = mod.mountKitchen || (mod.default && mod.default.mount)
       if (typeof fn !== 'function') throw new Error('kitchen.js thiếu mountKitchen')
       kitchenPlaceholder.remove()
-      kitchen = fn(panelKitchen, app) || null
+      kitchen = fn(panelKitchen, app, { onFocus: want => { kitchenWantsFocus = !!want; applyFocus() } }) || null
       if (kitchen && active === 'kitchen' && kitchen.onShow) kitchen.onShow()
     }).catch(err => {
       console.warn('Không nạp được bếp:', err && err.message)
@@ -95,6 +129,8 @@ export default {
       panelKitchen.hidden = name !== 'kitchen'
       if (prev === 'counter') counter.onHide && counter.onHide()
       if (prev === 'kitchen' && kitchen && kitchen.onHide) kitchen.onHide()
+      // chế độ tập trung: tắt ngay khi rời Bếp; sang Bếp thì bếp tự báo (onFocus) lúc dựng lại, trước khi dựng mini-game
+      applyFocus()
       if (name === 'counter') counter.onShow && counter.onShow()
       if (name === 'kitchen' && kitchen && kitchen.onShow) kitchen.onShow()
       app.sound('click')
@@ -634,6 +670,7 @@ export default {
         if (kitchen && kitchen.update) {
           try { kitchen.update(dt) } catch (err) { console.error(err) }
         }
+        applyFocus()
         checkComplaint()
         checkIncident()
         offerTour()
@@ -645,6 +682,10 @@ export default {
         destroyed = true
         for (const off of offs) off()
         if (typeof app.toastLimit === 'function') app.toastLimit(null)
+        // trả lại hàm thông báo của app; thông báo còn chờ (đang tập trung) hiện ở màn kế tiếp
+        if (app.toast === focusToast) app.toast = realToast
+        focusOn = false
+        flushToasts()
         if (app.switchTab === showTab) app.switchTab = null
         counter.unmount()
         if (kitchen && kitchen.unmount) { try { kitchen.unmount() } catch (err) { console.error(err) } }

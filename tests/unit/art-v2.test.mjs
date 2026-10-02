@@ -602,3 +602,180 @@ test('art-v2 dụng cụ: phủ mọi icon nâng cấp, bước, mini-game thu�
     assert.notEqual(TOOLS[a], TOOLS[b], `${a} / ${b}`)
   }
 })
+
+// ---------- Đợt 1, gói D2: đạo cụ sân khấu lớn (src/ui/art/props.js) ----------
+const D2_PROPS = ['thot_lon', 'dao_lon', 'tay', 'chao_lon', 'noi_lon', 'phin_lon', 'ly_lon', 'to_lon', 'chen_lon', 'ro_lon',
+  'binh_lac_lon', 'bep_ga', 'dia_lon', 'voi_nuoc']
+const D2_NEW = D2_PROPS.slice(3)
+// Đạo cụ đặt trên mặt bàn/bếp có bóng đất (vòi nước gắn tường thì không).
+const D2_GROUNDED = D2_NEW.filter(id => id !== 'voi_nuoc')
+const d2Pair = v => Array.isArray(v) && v.length === 2 && v.every(n => typeof n === 'number')
+const d2Ell = v => v && typeof v === 'object' && !Array.isArray(v) && ['cx', 'cy', 'rx', 'ry'].every(k => typeof v[k] === 'number')
+// Gom mọi điểm mốc [x, y] và mọi ellipse {cx, cy, rx, ry} trong PROP_META[id] (trừ vb).
+function d2Anchors(o, pts = [], ells = []) {
+  for (const [k, v] of Object.entries(o)) {
+    if (k === 'vb') continue
+    if (d2Pair(v)) pts.push([k, v])
+    else if (d2Ell(v)) ells.push([k, v])
+    else if (Array.isArray(v)) v.forEach((p, i) => d2Pair(p) ? pts.push([`${k}[${i}]`, p]) : null)
+    else if (v && typeof v === 'object') d2Anchors(v, pts, ells)
+  }
+  return { pts, ells }
+}
+
+test('art-v2 đạo cụ: đủ 14 đạo cụ (giữ thớt, dao, tay), cùng bộ khóa với PROP_META, không hình nào trùng', () => {
+  assert.deepEqual(Object.keys(PROPS).sort(), [...D2_PROPS].sort())
+  assert.deepEqual(Object.keys(PROP_META).sort(), [...D2_PROPS].sort())
+  assert.equal(new Set(D2_PROPS.map(id => PROPS[id])).size, D2_PROPS.length, 'mỗi đạo cụ một chuỗi SVG riêng')
+  for (const id of D2_PROPS) {
+    assert.equal(propV2(id), PROPS[id], `${id}: propV2 trả đúng hình`)
+    assert.match(id, /^[a-z0-9_]+$/)
+  }
+})
+
+test('art-v2 đạo cụ: viewBox khớp PROP_META.vb, không phần tử cấm / giá trị lỗi, thẻ cân bằng, ≤ 6 KB, viền mực 3', () => {
+  for (const id of D2_PROPS) {
+    const s = PROPS[id], vb = PROP_META[id].vb
+    assert.ok(Array.isArray(vb) && vb.length === 2 && vb.every(n => Number.isInteger(n) && n >= 64 && n <= 400), `${id}: vb ${vb}`)
+    assert.ok(s.startsWith('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + vb[0] + ' ' + vb[1] + '">') && s.endsWith('</g></svg>'), `${id}: khung svg đúng viewBox`)
+    assert.equal((s.match(/viewBox=/g) || []).length, 1, `${id}: một viewBox`)
+    assert.ok(!/url\(|href|<use\b|<image\b|base64/i.test(s), `${id}: không ảnh ngoài, không <use>`)
+    assert.ok(!/gradient|<filter\b|filter=|clip-?path|<mask\b|mask=|<pattern\b|<text\b|<style\b|<script\b|\bon\w+=/i.test(s), `${id}: phần tử cấm`)
+    assert.ok(!/undefined|NaN|null|Infinity|\[object/.test(s), `${id}: giá trị lỗi`)
+    for (const t of ['svg', 'g']) {
+      assert.equal((s.match(new RegExp(`<${t}\\b`, 'g')) || []).length, (s.match(new RegExp(`</${t}>`, 'g')) || []).length, `${id}: thẻ <${t}> cân bằng`)
+    }
+    // Mọi thẻ hình (path, ellipse, circle, rect) tự đóng; ngoài svg/g không có thẻ mở nào khác.
+    for (const m of s.matchAll(/<(\w+)\b[^>]*?(\/?)>/g)) {
+      if (m[1] === 'svg' || m[1] === 'g') continue
+      assert.ok(['path', 'ellipse', 'circle', 'rect'].includes(m[1]) && m[2] === '/', `${id}: thẻ <${m[1]}> lạ hoặc không tự đóng`)
+    }
+    assert.ok(Buffer.byteLength(s) <= PROP_MAX, `${id}: ${Buffer.byteLength(s)} B > ${PROP_MAX} B`)
+    assert.ok(s.includes(`<g stroke="${kit.INK}" stroke-width="${kit.OUTLINE}" stroke-linejoin="round" stroke-linecap="round">`), `${id}: viền mực INK dày 3, bo tròn`)
+  }
+  const total = D2_PROPS.reduce((n, id) => n + Buffer.byteLength(PROPS[id]), 0)
+  assert.ok(total <= 14 * PROP_MAX, `tổng đạo cụ ${total} B`)
+})
+
+test('art-v2 đạo cụ: ba tông (điểm sáng trắng, mảng tối), bóng đất cho đồ đặt trên bàn/bếp', () => {
+  for (const id of D2_NEW) {
+    const s = PROPS[id]
+    assert.ok(/stroke="#fff"|fill="#fff" opacity="\.\d+"/.test(s), `${id}: thiếu điểm sáng trắng`)
+    const fills = new Set([...s.matchAll(/fill="(#[0-9a-f]{3,6})"/g)].map(m => m[1]).filter(c => c !== kit.INK))
+    assert.ok(fills.size >= 3, `${id}: thiếu mảng màu (nền, tối, sáng…)`)
+  }
+  for (const id of D2_GROUNDED) {
+    const g = PROPS[id].match(/<ellipse cx="([\d.]+)" cy="([\d.]+)" rx="([\d.]+)" ry="([\d.]+)" fill="#3a2618" opacity="\.15" stroke="none"\/>/)
+    assert.ok(g, `${id}: thiếu bóng đất`)
+    // Bóng đất nằm ở nửa dưới hình (đồ nhìn từ trên: tô, chén thì bóng lệch xuống-phải, cũng qua tâm dưới).
+    assert.ok(Number(g[2]) >= PROP_META[id].vb[1] * 0.5, `${id}: bóng đất ở y=${g[2]}`)
+  }
+})
+
+test('art-v2 đạo cụ: mọi điểm mốc / ellipse trong PROP_META nằm trong hộp vẽ; PROP_META đóng băng sâu', () => {
+  for (const id of D2_PROPS) {
+    const [w, h] = PROP_META[id].vb
+    const { pts, ells } = d2Anchors(PROP_META[id])
+    assert.ok(pts.length + ells.length >= 1, `${id}: có ít nhất một điểm mốc`)
+    for (const [k, [x, y]] of pts) assert.ok(x >= 0 && x <= w && y >= 0 && y <= h, `${id}.${k}: (${x}, ${y}) ngoài ${w}×${h}`)
+    for (const [k, e] of ells) {
+      assert.ok(e.rx > 0 && e.ry > 0 && e.cx - e.rx >= 0 && e.cx + e.rx <= w && e.cy - e.ry >= 0 && e.cy + e.ry <= h, `${id}.${k}: ellipse ngoài hộp`)
+    }
+  }
+  assert.ok(isDeepFrozen(PROP_META))
+  assert.throws(() => { 'use strict'; PROP_META.ly_lon.mouth.cy = 0 })
+  assert.throws(() => { 'use strict'; PROP_META.chao_lon.floor.rx = 1 })
+})
+
+test('art-v2 đạo cụ: ly nhựa và ly dưới phin chừa lòng ly trong suốt cho mực nước CSS (mouth/bottom/left/right khớp nhau)', () => {
+  for (const [id, cup] of [['ly_lon', PROP_META.ly_lon], ['phin_lon', PROP_META.phin_lon.cup]]) {
+    const { mouth, bottom, left, right } = cup
+    assert.ok(d2Ell(mouth) && d2Ell(bottom), `${id}: mouth, bottom là ellipse`)
+    assert.ok(mouth.cy < bottom.cy, `${id}: miệng ở trên đáy`)
+    assert.ok(mouth.rx >= bottom.rx, `${id}: ly loe miệng (hoặc thẳng)`)
+    assert.equal(mouth.cx, bottom.cx, `${id}: miệng và đáy cùng trục`)
+    // Thành trái/phải: đoạn từ miệng xuống đáy, đối xứng qua trục ly, nằm trong khoảng hai mép.
+    for (const side of [left, right]) {
+      assert.ok(side.length === 2 && side.every(d2Pair), `${id}: thành ly là 2 điểm`)
+      assert.ok(side[0][1] < side[1][1], `${id}: thành ly đi từ trên xuống`)
+    }
+    assert.ok(left[0][0] < mouth.cx && right[0][0] > mouth.cx && left[1][0] < bottom.cx && right[1][0] > bottom.cx, `${id}: trái < trục < phải`)
+    assert.equal(left[0][0] + right[0][0], 2 * mouth.cx, `${id}: đối xứng ở miệng`)
+    assert.equal(left[1][0] + right[1][0], 2 * bottom.cx, `${id}: đối xứng ở đáy`)
+    assert.ok(Math.abs(left[1][0] - (bottom.cx - bottom.rx)) <= 4 && Math.abs(right[1][1] - bottom.cy) <= 1, `${id}: chân thành ly chạm mép đáy`)
+  }
+  // Thân ly là lớp trắng mờ (opacity < .5) để nước CSS đặt dưới hình lộ ra; ly nhựa không có mảng tô đặc nào che lòng ly.
+  const body = PROPS.ly_lon.match(/<path d="M20 30A80 15 0 0 1 180 30L154 230A54 11 0 0 1 46 230Z" fill="(#[0-9a-f]{6})" stroke="none" opacity="(\.\d+)"\/>/)
+  assert.ok(body && Number(body[2]) < 0.5, 'ly nhựa: thân trong suốt')
+  const { mouth, bottom } = PROP_META.ly_lon
+  for (const m of PROPS.ly_lon.matchAll(/<ellipse cx="([\d.]+)" cy="([\d.]+)" rx="([\d.]+)" ry="([\d.]+)" ([^>]*)\/>/g)) {
+    const [cy, rx, attrs] = [Number(m[2]), Number(m[3]), m[5]]
+    if (cy > mouth.cy + 2 && cy < bottom.cy - 2 && rx > 20) assert.ok(/fill="none"|opacity="\.[0-4]/.test(attrs), `ly nhựa: ellipse đặc trong lòng ly (${m[0].slice(0, 50)})`)
+  }
+  // Giọt cà phê rơi từ dưới đĩa phin, ngay trục ly, phía trên đáy ly.
+  const P = PROP_META.phin_lon
+  assert.equal(P.drip[0], P.cup.mouth.cx)
+  assert.ok(P.drip[1] > P.cup.mouth.cy && P.drip[1] < P.cup.bottom.cy, 'phin: điểm nhỏ giọt nằm trong ly')
+  assert.ok(P.lid[1] < P.drip[1], 'phin: núm nắp ở trên')
+})
+
+test('art-v2 đạo cụ: tô, chén nhìn từ trên (khung vuông, tâm giữa khung, r < lòng < vành) cho cử chỉ khuấy', () => {
+  for (const id of ['to_lon', 'chen_lon']) {
+    const m = PROP_META[id], [w, h] = m.vb
+    assert.equal(w, h, `${id}: khung vuông`)
+    assert.deepEqual(m.center, [w / 2, h / 2], `${id}: tâm giữa khung (khớp vùng khuấy CSS canh giữa)`)
+    assert.ok(m.bottom < m.r && m.r < m.inner && m.inner < m.rim && m.rim <= w / 2 - 4, `${id}: đáy < r < lòng < vành`)
+    // Vùng khuấy CSS của xoay.js (inset 12% → bán kính 0,38 cạnh) nằm gọn trong lòng tô/chén.
+    assert.ok(0.38 * w < m.inner, `${id}: mặt khuấy CSS không lấn ra vành`)
+    assert.ok(PROPS[id].includes(`<circle cx="${w / 2}" cy="${h / 2}" r="${m.rim}" fill="none"/>`), `${id}: viền vành đúng bán kính`)
+  }
+  assert.notEqual(PROPS.to_lon, PROPS.chen_lon)
+  assert.ok(PROPS.to_lon.includes(kit.PAL.xanh_nhan[0]) && !PROPS.chen_lon.includes(kit.PAL.xanh_nhan[0]), 'tô viền lam, chén men ngọc (khác men)')
+  assert.ok(PROP_META.chen_lon.bottom < PROP_META.to_lon.bottom, 'chén lòng sâu hơn (đáy nhỏ hơn)')
+})
+
+test('art-v2 đạo cụ: bếp ga có nhóm lửa xanh riêng (data-part="lua") để CSS lắc; điểm đặt nồi/chảo ở trên lửa', () => {
+  const s = PROPS.bep_ga
+  const g = s.match(/<g data-part="lua">([\s\S]*?)<\/g>/)
+  assert.ok(g, 'có nhóm lửa')
+  assert.equal((s.match(/data-part=/g) || []).length, 1, 'đúng một nhóm data-part')
+  assert.ok(!/<g\b/.test(g[1]), 'nhóm lửa không lồng nhóm khác')
+  assert.ok((g[1].match(/<path /g) || []).length >= 10, 'lửa có nhiều lưỡi')
+  assert.ok(g[1].includes('fill="#3d86f2"'), 'lửa xanh')
+  const m = PROP_META.bep_ga
+  assert.ok(m.flame.top < m.flame.base && m.flame.base <= m.burner.cy + m.burner.ry, 'lửa mọc từ đầu đốt lên')
+  assert.ok(m.seat[1] <= m.flame.top + 4 && m.seat[1] < m.burner.cy, 'điểm đặt nồi ngay trên ngọn lửa')
+  assert.equal(m.seat[0], m.burner.cx)
+  assert.equal(m.flame.cx, m.burner.cx)
+  // Các đạo cụ khác không có nhóm data-part.
+  for (const id of D2_PROPS.filter(i => i !== 'bep_ga')) assert.ok(!PROPS[id].includes('data-part'), `${id}: không có data-part`)
+})
+
+test('art-v2 đạo cụ: chảo, nồi, rổ, đĩa: lòng (floor / water / mouth / well) nằm trong vành; base là điểm thấp nhất ở trục', () => {
+  const inside = (a, b) => a.cx - a.rx >= b.cx - b.rx && a.cx + a.rx <= b.cx + b.rx && a.cy - a.ry >= b.cy - b.ry && a.cy + a.ry <= b.cy + b.ry
+  const C = PROP_META.chao_lon, N = PROP_META.noi_lon, R = PROP_META.ro_lon, D = PROP_META.dia_lon
+  assert.ok(inside(C.floor, C.rim), 'chảo: đáy trong vành')
+  assert.ok(C.floor.rx >= 80 && C.floor.ry >= 30, 'chảo: lòng rộng đủ hai quả trứng')
+  assert.deepEqual(C.center, [C.floor.cx, C.floor.cy])
+  assert.ok(inside(N.water, N.rim), 'nồi: mặt nước trong vành')
+  assert.ok(R.mouth.rx > 0 && R.mouth.cy > 0 && R.center[1] >= R.mouth.cy, 'rổ: tâm lòng rổ')
+  assert.ok(inside(D.well, D.rim), 'đĩa: lòng đĩa trong vành')
+  for (const [id, m] of [['chao_lon', C], ['noi_lon', N], ['ro_lon', R], ['dia_lon', D], ['ly_lon', PROP_META.ly_lon],
+    ['phin_lon', PROP_META.phin_lon], ['binh_lac_lon', PROP_META.binh_lac_lon]]) {
+    assert.ok(d2Pair(m.base) && m.base[1] > m.vb[1] * 0.75, `${id}: base ở đáy hình`)
+  }
+  // Bình lắc dựng đứng, khung hẹp (khớp khung lắc ~0,62 rộng/cao); rổ nằm ngang (~1,5).
+  const ar = id => PROP_META[id].vb[0] / PROP_META[id].vb[1]
+  assert.ok(ar('binh_lac_lon') > 0.55 && ar('binh_lac_lon') < 0.7, 'bình lắc: tỉ lệ khung')
+  assert.ok(ar('ro_lon') > 1.4 && ar('ro_lon') < 1.6, 'rổ: tỉ lệ khung')
+  // Vòi nước: miệng vòi ở dưới tay vặn, có bề rộng dòng nước.
+  const V = PROP_META.voi_nuoc
+  assert.ok(V.mouth[1] > V.handle[1] && V.mouthW > 0 && V.mouth[0] - V.mouthW / 2 >= 0 && V.mouth[0] + V.mouthW / 2 <= V.vb[0])
+})
+
+test('art-v2 đạo cụ: mã nguồn props.js không dùng tên biến chứa từ cấm', () => {
+  const src = readFileSync(path.join(ROOT, 'src', 'ui', 'art', 'props.js'), 'utf8').toLowerCase()
+  for (const w of ['grab', 'napas', 'ipos', 'momo', 'fabi', 'vnpay', 'zalopay', 'vietqr', 'baemin', 'shopeefood', 'michelin']) {
+    assert.ok(!src.includes(w), `props.js chứa "${w}"`)
+  }
+})

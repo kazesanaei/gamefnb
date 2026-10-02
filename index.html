@@ -14,6 +14,9 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Bếp KN">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <!-- M5 (0.5.0): tải sớm font tiêu đề Baloo 2 (bộ chữ Latin, nút và tiêu đề dùng ngay ở màn đầu); bộ dấu tiếng Việt
+       fonts/baloo2-800-vi.woff2 tải theo unicode-range khi cần. crossorigin bắt buộc với font để khớp yêu cầu của CSS. -->
+  <link rel="preload" as="font" type="font/woff2" href="fonts/baloo2-800-latin.woff2" crossorigin>
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/game.css">
   <link rel="stylesheet" href="css/kitchen.css">

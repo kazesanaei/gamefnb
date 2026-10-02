@@ -217,3 +217,28 @@ test('sàn: thớt lắc và một hàng vết vẫn ≥ 44px (vùng chạm), đ
     }
   }
 })
+
+// M5 (Đợt 1): cảnh của bước Chà theo id bước — chỉ đổi hình, không đổi thuật toán vừa khung ở trên.
+test('cảnh bước Chà theo id: rửa → chậu nước có vòi, bóc → đĩa, xé/bóp → thớt gỗ; mọi bước Chà trong công thức đều có cảnh', async () => {
+  const { chaLook, CHA_LOOKS } = await import('../../src/ui/minigames/cha.js')
+  const { DATA } = await import('../../src/data/index.js')
+  const { STATES_V2 } = await import('../../src/ui/art/v2.js')
+  assert.equal(chaLook({ id: 'rua_dua' }, false).scene, 'basin')
+  assert.equal(chaLook({ id: 'boc_trung_cut' }, false).scene, 'plate')
+  assert.equal(chaLook({ id: 'xe_kho_muc' }, true).scene, 'board')
+  assert.equal(chaLook({ id: 'bop_muoi' }, true).scene, 'board')
+  // không khớp tiền tố: vết bẩn → chậu nước, đổi chiều → thớt gỗ
+  assert.equal(chaLook({ id: 'lau_ban' }, false).scene, 'basin')
+  assert.equal(chaLook({ id: 'lau_ban' }, true).scene, 'board')
+  assert.ok(Object.isFrozen(CHA_LOOKS))
+  for (const r of Object.values(DATA.RECIPES)) {
+    for (const s of r.steps.filter(x => x.type === 'cha')) {
+      const look = chaLook(s, !(Number(s.params && s.params.spots) > 0))
+      // hình khi xong (nếu có) phải có thật trong bộ hình trạng thái
+      if (look.done) {
+        const art = look.art || (DATA.INGREDIENTS[s.ing] && DATA.INGREDIENTS[s.ing].icon) || s.ing
+        assert.ok(STATES_V2[`${art}.${look.done}`], `${r.id}.${s.id}: thiếu hình ${art}.${look.done}`)
+      }
+    }
+  }
+})

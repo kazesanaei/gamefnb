@@ -1,25 +1,48 @@
 // Màn Bếp (panel con của màn ca bán): dây phiếu → chọn nguyên liệu → Thớt sơ chế → Ra món → Giao cho khách.
 // Giao diện với khung app: mountKitchen(root, app, opts?) → { unmount(), update(dt), onShow(), onHide(), selectTicket(id),
-// tourSpot(), busy(), guideHold(on) } (3 hàm cuối: hướng dẫn lần đầu, bản 0.4.1).
+// tourSpot(), busy(), guideHold(on), focusWanted() } (tourSpot, busy, guideHold: hướng dẫn lần đầu, bản 0.4.1).
 // opts.tasting = { onDone(dish) }: chế độ NẤU THỬ ở Chợ Công Thức (app là app "hộp cát" có state/ctx riêng):
 // không đếm giờ (giới hạn bước nới rộng, ẩn thanh thời gian), không nút về dây phiếu / bỏ món, Ra món xong gọi onDone.
+// opts.onFocus(want) (M5): màn ca bán bật "chế độ tập trung" (ẩn dải khách, thanh 4 khâu ở khung thấp) khi bếp đang nấu
+// (Chọn, Thớt, sân khấu). Bếp gọi hàm này mỗi khi trạng thái nấu đổi, và luôn gọi TRƯỚC khi dựng mini-game (plugin đo
+// kích thước khung lúc dựng).
+//
+// M5 (0.5.0, thiết kế mục 1.8): luồng bước mới
+// - Thẻ vào bước (components/step-card.js) thay thẻ gợi ý chữ: món nấu chưa tới HINT_HIDE_AFTER_COOKS lần thì thẻ đầy đủ
+//   (ruy băng "Bước k/N", hình to, động từ, tay mẫu; tự vào sau 1,1 giây hoặc chạm), từ đó trở đi ruy băng gọn không chờ.
+// - Mini-game nhận ctx mở rộng { vfx, reduced, stepIndex, stepTotal, stepGrades, method }.
+// - Có kết quả: lưu ngay (submitStep), giữ sân khấu thêm ~700 ms (500 ms khi giảm chuyển động) cho con dấu, dừng hình,
+//   Dì Sáu phản ứng (components/stamp.js), rồi mới đóng lớp, vẽ lại Thớt và hỏi lại nếu bước chí mạng Hỏng.
+// - Thớt gỗ: nguyên liệu là hình to đổi sang hình đã sơ chế (art/state-map.js); mỗi bước là huy hiệu tròn có biểu tượng
+//   loại thao tác. Bảng chọn cách sơ chế là các thẻ hình. Dây phiếu, dòng món, thẻ công thức có hình món/nguyên liệu to.
+// - Ra món: bảng ra món mới (components/dish-reveal.js) trên lớp nổi, ~2,2 giây (giảm chuyển động 1,4 giây), chạm để bỏ qua.
 import { h, svgBox, clear } from '../dom.js'
 import { upper, formatVND } from '../format.js'
-import { icon, DI_SAU } from '../art.js'
+import { icon, art, prop, DI_SAU } from '../art.js'
 import {
   startCook, submitChon, boardSteps, beginStep, getStep, submitStep, autoStep, retryStep,
   finishDish, abandonDish, serveTicket, effectiveSteps, chonDraft, saveChonDraft
 } from '../../core/kitchen.js'
 import { zoneMul } from '../../core/minigame-scoring.js'
-import { playStep, hintFor, skinFor } from '../minigames/index.js'
+import { playStep, skinFor } from '../minigames/index.js'
 import { uiRand, hashKey } from '../minigames/_util.js'
 import { rareStock } from '../../core/rare.js'
+import { isReduced } from '../motion.js'
+import { createStepCard, stepCardModel, stepProgress, STEP_CARD_AUTO_MS } from '../components/step-card.js'
+import { showStepResult, createStamp, playStamp, gradeKey } from '../components/stamp.js'
+import { createDishReveal, revealMs, REVEAL_MS, REVEAL_MS_REDUCED } from '../components/dish-reveal.js'
+import { boardStates, methodState } from '../art/state-map.js'
 
-export const HINT_MS = 800
-export const REVEAL_MS = 1200
+// Thẻ vào bước tự chạy sau chừng này (ms) nếu người chơi không chạm (thẻ đầy đủ).
+export const HINT_MS = STEP_CARD_AUTO_MS
+// Màn ra món tự đóng: 2.200 ms (giảm chuyển động 1.400 ms) — xem components/dish-reveal.js.
+export { REVEAL_MS, REVEAL_MS_REDUCED }
 export const HINT_HIDE_AFTER_COOKS = 3
 // Chặn click ma: chỉ bỏ click đến trong khoảng này sau lần chạm (một cú chạm thường nhấc ngón trong vài trăm ms).
 export const TAP_GUARD_MS = 1000
+// Con dấu nổi của bước Chọn / bước Tự làm (không có sân khấu để giữ): hiện chừng này rồi tự gỡ.
+export const FLASH_MS = 1600
+export const FLASH_MS_REDUCED = 1200
 
 // Mức ngân sách chờ → màu viền phiếu: xanh < 50%, vàng 50–80%, đỏ > 80% (nhấp nháy).
 export function waitLevel(ratio) {
@@ -45,6 +68,8 @@ export function moodForGrade(grade) {
 
 const lowerFirst = s => (s ? s.charAt(0).toLocaleLowerCase('vi-VN') + s.slice(1) : '')
 const ING_ERR_ORDER = ['trai_ghi_chu', 'bay', 'thieu_chinh', 'thieu_phu', 'thua']
+// Năm thao tác M5: lời góp ý ghép từ DIALOGUE.diSau.typeTips theo mẫu `${nhãn bước} ${góp ý}`.
+const NEW_TYPES = ['dap', 'xoay', 'got', 'lac', 'bay']
 
 // Một câu góp ý của Dì Sáu: lỗi nguyên liệu nặng nhất, không thì bước kém nhất, không thì khen.
 export function dishComment(dish, recipe, data) {
@@ -93,10 +118,85 @@ export function dishComment(dish, recipe, data) {
       lua: `${label} chưa tới độ, canh kim vô giữa vùng xanh nha.`,
       rot: `${label} lệch vạch rồi, thả tay đúng vạch nha con.`
     }
+    const tips = (data && data.DIALOGUE && data.DIALOGUE.diSau && data.DIALOGUE.diSau.typeTips) || {}
+    for (const t of NEW_TYPES) if (tips[t]) byType[t] = `${label} ${tips[t]}`
     return byType[def.type] || `${label} còn chưa khéo, lần sau kỹ hơn nha.`
   }
   const praise = (data && data.DIALOGUE && data.DIALOGUE.diSau && data.DIALOGUE.diSau.praise) || ['Khéo tay lắm con!']
   return praise[Math.abs(Math.round(Number(dish.q) || 0)) % praise.length]
+}
+
+// ---------- Biểu tượng loại thao tác trên huy hiệu bước ----------
+// Hình tự vẽ (viewBox 64, viền mực, cel-shading): ngọn lửa (Canh lửa), giọt nước (Rửa), muỗng rắc (Nêm); còn lại dùng
+// icon dụng cụ / nguyên liệu của bộ hình (dao, dao bào, muỗng khuấy, bình lắc, khay bày…) hoặc bàn tay (đạo cụ 'tay').
+const GLYPHS = Object.freeze({
+  flame: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g stroke="#3a2618" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">' +
+    '<ellipse cx="32" cy="58" rx="14" ry="3.5" fill="#3a2618" opacity=".15" stroke="none"/>' +
+    '<path d="M32 5c3 11 17 16 17 32a17 17 0 0 1-34 0c0-9 4-14 9-18 1 5 3 8 6 9-2-9 0-16 2-23z" fill="#f28a1e"/>' +
+    '<path d="M44 36a13 13 0 0 1-9 17c6-4 7-11 5-17z" fill="#d4620a" stroke="none"/>' +
+    '<path d="M32 30c2 5 8 8 8 15a8 8 0 0 1-16 0c0-5 3-8 5-10 1 3 2 4 3 4-1-4 0-7 0-9z" fill="#ffd23f" stroke-width="2"/>' +
+    '<ellipse cx="24" cy="31" rx="2.6" ry="6" fill="#fff" opacity=".5" stroke="none" transform="rotate(20 24 31)"/></g></svg>',
+  drop: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g stroke="#3a2618" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">' +
+    '<ellipse cx="32" cy="59" rx="13" ry="3.2" fill="#3a2618" opacity=".15" stroke="none"/>' +
+    '<path d="M32 5C25 19 13 29 13 39a19 19 0 0 0 38 0C51 29 39 19 32 5z" fill="#4aa3df"/>' +
+    '<path d="M47 40a15 15 0 0 1-15 15c9-3 13-9 13-15z" fill="#22679a" stroke="none" opacity=".55"/>' +
+    '<path d="M22 40a10 10 0 0 0 7 10" fill="none" stroke="#fff" stroke-width="3.2" opacity=".75"/>' +
+    '<ellipse cx="25" cy="27" rx="3" ry="5.5" fill="#fff" opacity=".55" stroke="none" transform="rotate(25 25 27)"/></g></svg>',
+  // muỗng nghiêng rắc gia vị (Nêm, Thêm đường / sữa)
+  spoon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g stroke="#3a2618" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">' +
+    '<ellipse cx="34" cy="59" rx="15" ry="3.2" fill="#3a2618" opacity=".15" stroke="none"/>' +
+    '<rect x="3" y="16" width="27" height="8" rx="4" fill="#d99a4c" transform="rotate(28 16 20)"/>' +
+    '<ellipse cx="40" cy="29" rx="14" ry="9.5" fill="#dfe7ec" transform="rotate(28 40 29)"/>' +
+    '<ellipse cx="41.5" cy="28" rx="9" ry="5.5" fill="#fff4dc" stroke-width="2" transform="rotate(28 41.5 28)"/>' +
+    '<ellipse cx="35" cy="24" rx="4" ry="1.8" fill="#fff" opacity=".7" stroke="none" transform="rotate(28 35 24)"/>' +
+    '<g fill="#fff4dc" stroke-width="2"><circle cx="47" cy="45" r="3"/><circle cx="40" cy="51" r="2.6"/><circle cx="51" cy="54" r="2.2"/></g></g></svg>'
+})
+
+/**
+ * stepBadge(step) → { kind: 'icon', id, state? } | { kind: 'glyph', id } | { kind: 'prop', id } — biểu tượng loại thao
+ * tác của bước (thuần, test Node). Thái: dao; Gọt: dao bào; Khuấy: muỗng khuấy; Lắc: bình lắc (lắc rổ: rổ); Bày: khay
+ * bày; Đập: trứng nứt; Canh lửa: ngọn lửa; Rửa: giọt nước; Bóc / Xé / Bóp / Vắt (chạm nhanh): bàn tay; Nêm, Thêm
+ * (đếm nấc): muỗng rắc; Rót vào ly: ly; Rưới: hình thứ đang rưới (dầu hành, cốt dừa, mật ong…); Chọn: rổ.
+ */
+export function stepBadge(step) {
+  const s = step || {}
+  const ing = s.ing || null
+  switch (s.type) {
+    case 'thai': return { kind: 'icon', id: 'dao_thep' }
+    case 'got': return { kind: 'icon', id: 'dao_bao' }
+    case 'xoay': return { kind: 'icon', id: 'muong_khuay' }
+    case 'lac': return { kind: 'icon', id: s.skin === 'ro' ? 'ro' : 'binh_lac' }
+    case 'bay': return { kind: 'icon', id: 'khay_bay' }
+    case 'dap': return { kind: 'icon', id: ing || 'trung_ga', state: 'nut' }
+    case 'lua': return { kind: 'glyph', id: 'flame' }
+    case 'cha': return /^rua/.test(String(s.id || '')) ? { kind: 'glyph', id: 'drop' } : { kind: 'prop', id: 'tay' }
+    case 'rot': return s.skin === 'to' && ing ? { kind: 'icon', id: s.icon || ing } : { kind: 'icon', id: 'ly' }
+    case 'cham': return s.params && s.params.mode === 'min' ? { kind: 'prop', id: 'tay' } : { kind: 'glyph', id: 'spoon' }
+    case 'chon': return { kind: 'icon', id: 'ro' }
+    default: return { kind: 'icon', id: ing || 'fallback' }
+  }
+}
+
+function badgeSvg(b) {
+  if (!b) return icon('fallback')
+  if (b.kind === 'glyph') return GLYPHS[b.id] || icon('fallback')
+  if (b.kind === 'prop') return prop(b.id) || icon('fallback')
+  return b.state ? art(b.id, b.state) : icon(b.id)
+}
+
+/**
+ * stepStatus(step, byId) → { text, cls } — dòng trạng thái ngắn dưới huy hiệu bước (thuần).
+ * Đã xong: "Tốt · 85" (tự làm: "Tự làm · 80"); chưa mở: "Sau: <bước trước>" hoặc "Sau <n> bước"; mở: "Chạm để làm" /
+ * "Chọn cách" (bước phải chọn cách sơ chế).
+ */
+export function stepStatus(s, byId = new Map()) {
+  const r = s && s.result
+  if (r) return { text: r.auto ? `Tự làm · ${r.score}` : `${r.grade} · ${r.score}`, cls: 'is-done' }
+  if (s && !s.available) {
+    const need = (s.after || []).filter(id => !(byId.get(id) && byId.get(id).done)).map(id => (byId.get(id) || {}).label || id)
+    return { text: need.length > 1 ? `Sau ${need.length} bước` : `Sau: ${need[0] || 'bước trước'}`, cls: 'is-locked' }
+  }
+  return { text: s && s.method ? 'Chọn cách' : 'Chạm để làm', cls: 'is-available' }
 }
 
 // Nạp css/kitchen.css một lần (khung app có thể đã gắn sẵn).
@@ -113,9 +213,14 @@ function ensureStyles() {
 // Nấu thử: nới giới hạn thời gian của bước (2,5 × par → 10 × par) để người chơi làm thong thả.
 export const TASTING_PAR_MUL = 4
 
+// Dấu ✓ nhỏ trên hình (nguyên liệu sẵn sàng, bước đã xong) và ổ khóa (bước chưa mở): SVG tin cậy, viền mực.
+const TICK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+const LOCK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 11V8.2a4.5 4.5 0 0 1 9 0V11" fill="none" stroke="#3a2618" stroke-width="2.6" stroke-linecap="round"/><rect x="4.5" y="10.5" width="15" height="11" rx="3" fill="#f7b928" stroke="#3a2618" stroke-width="2.4"/><circle cx="12" cy="15.6" r="1.7" fill="#3a2618"/></svg>'
+
 export function mountKitchen(root, app, opts = {}) {
   ensureStyles()
   const tasting = opts && opts.tasting ? opts.tasting : null
+  const onFocus = opts && typeof opts.onFocus === 'function' ? opts.onFocus : null
   const main = h('div', { class: 'k-main' })
   // Hai lớp phủ, mỗi lúc chỉ một lớp hiện: sân khấu mini-game nằm trong panel Bếp (vùng chơi giữa dây phiếu và thanh tab);
   // bảng chọn, hộp hỏi lại, hộp xác nhận, bảng công bố món nằm ở lớp nổi gốc của app (app.overlay), phủ cả thanh tab —
@@ -137,7 +242,11 @@ export function mountKitchen(root, app, opts = {}) {
     token: 0,
     lastDish: null,        // {ticketId, lineIndex, dish, comment, mood, recipeId}
     dismissed: null,       // bước dở người chơi chọn "Để sau" (không tự mở lại)
-    layerKind: null,
+    layerKind: null,       // 'card' (thẻ vào bước đang chờ chạm) | 'stage' | 'sheet' | 'prompt' | 'confirm' | 'reveal'
+    card: null,            // thẻ vào bước đang hiện (createStepCard)
+    result: null,          // kết quả bước đang giữ sân khấu (con dấu): { step, score, timer }
+    pendingCritical: null, // bước chí mạng Hỏng mà chưa kịp hỏi lại (đổi tab lúc con dấu đang hiện)
+    reveal: null,          // bảng ra món đang hiện (createDishReveal)
     revealTimer: 0,
     key: ''
   }
@@ -145,7 +254,7 @@ export function mountKitchen(root, app, opts = {}) {
   const offs = []
 
   // Chặn "click ma" (màn cảm ứng): lớp phủ đóng/mở ngay lúc ngón tay còn chạm — Nhấc của bước lửa chốt ở pointerdown, chạm
-  // thẻ gợi ý hay bảng công bố món, mini-game tự kết thúc (hết giờ, đủ lần chạm) — thì cú click trình duyệt sinh ra lúc nhấc
+  // thẻ vào bước hay bảng công bố món, mini-game tự kết thúc (hết giờ, đủ lần chạm) — thì cú click trình duyệt sinh ra lúc nhấc
   // ngón rơi xuống phần tử mới nằm dưới ngón: nút "Bỏ món" trên Thớt, "Giao cho khách" trên dây phiếu, nút Xong của mini-game
   // vừa mở (bước về 0 điểm). Bỏ click của lần chạm bắt đầu TRƯỚC lần đổi lớp phủ gần nhất (so thứ tự sự kiện, không so giờ)
   // và chưa quá TAP_GUARD_MS; lần chạm mới và click từ bàn phím (có phím bấm sau lần chạm cuối) không bị chặn.
@@ -172,18 +281,21 @@ export function mountKitchen(root, app, opts = {}) {
   }
   const recipeOf = id => (D().RECIPES || {})[id]
   const ingName = id => ((D().INGREDIENTS || {})[id] || {}).name || id
-  const ingIconSvg = id => icon(((D().INGREDIENTS || {})[id] || {}).icon || id)
+  const ingIconId = id => ((D().INGREDIENTS || {})[id] || {}).icon || id
+  const ingIconSvg = id => icon(ingIconId(id))
+  const ingArt = (id, state) => (state ? art(ingIconId(id), state) : ingIconSvg(id))
   const noteLabels = (recipe, notes) => (notes || []).map(id => ((recipe && recipe.notes) || []).find(n => n.id === id)).filter(Boolean).map(n => n.label)
   const gradeLabel = g => ((D().BALANCE && D().BALANCE.gradeLabels) || (D().STRINGS && D().STRINGS.grades) || {})[g] || g
   const save = () => { try { app.save && app.save() } catch (err) { console.error(err) } }
   const saveNow = () => {
     try { if (typeof app.saveNow === 'function') app.saveNow(); else save() } catch (err) { console.error(err) }
   }
-  const toast = text => { try { app.toast && app.toast(text) } catch { /* bỏ qua */ } }
+  // thông báo của chính bếp là phản hồi tức thì cho thao tác vừa làm: hiện ngay cả khi chế độ tập trung đang bật (now)
+  const toast = text => { try { app.toast && app.toast(text, { now: true }) } catch { /* bỏ qua */ } }
   const sound = n => { try { app.sound && app.sound(n) } catch { /* bỏ qua */ } }
   const vibrate = ms => { try { app.vibrate && app.vibrate(ms) } catch { /* bỏ qua */ } }
-  const reduced = () => !!(S() && S().settings && S().settings.reducedMotion) ||
-    (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches)
+  const reduced = () => isReduced(app)
+  const vfx = () => (app.vfx && typeof app.vfx.burst === 'function' ? app.vfx : null)
   const cookKey = c => (c ? `${c.ticketId}:${c.lineIndex}` : '')
   const playable = step => (tasting && step ? { ...step, par: (Number(step.par) || 1) * TASTING_PAR_MUL } : step)
   const tutorialLine = key => {
@@ -200,6 +312,22 @@ export function mountKitchen(root, app, opts = {}) {
     if (c && c.phase === 'chon' && !ui.showRail) return 'chon'
     if (c && c.phase === 'thot' && !ui.showRail) return 'thot'
     return 'rail'
+  }
+
+  // Chế độ tập trung (màn ca bán): bếp đang nấu — bước Chọn, Thớt hoặc sân khấu một bước. Báo cho màn ca bán mỗi khi đổi;
+  // gọi trước khi dựng mini-game để plugin đo đúng khung.
+  let focusSent = null
+  function focusWanted() {
+    if (tasting || destroyed || !ui.visible) return false
+    const m = mode()
+    return m === 'chon' || m === 'thot'
+  }
+  function syncFocus() {
+    if (!onFocus) return
+    const want = focusWanted()
+    if (want === focusSent) return
+    focusSent = want
+    try { onFocus(want) } catch (err) { console.error(err) }
   }
 
   function computeKey() {
@@ -226,6 +354,8 @@ export function mountKitchen(root, app, opts = {}) {
     clear(main)
     const m = mode()
     main.dataset.view = m
+    // chế độ tập trung bật/tắt TRƯỚC khi dựng kệ Chọn (plugin đo khung lúc dựng)
+    syncFocus()
     if (m === 'off') {
       main.appendChild(h('div', { class: 'k-empty' }, 'Chưa mở ca. Mở hàng rồi mới nấu được nha.'))
       return
@@ -242,25 +372,35 @@ export function mountKitchen(root, app, opts = {}) {
       svgBox(DI_SAU[mood] || DI_SAU.vui, 'k-disau-face'), h('div', { class: 'k-bubble' }, text))
   }
 
-  // Thẻ công thức: tên món, nguyên liệu cần (không lộ bẫy), ghi chú đỏ, các bước + trạng thái.
+  function notesRow(notes, cls = '') {
+    return notes.length ? h('div', { class: ['k-notes', cls] }, notes.map(n => h('span', { class: 'k-note' }, upper(n)))) : null
+  }
+
+  // Thẻ công thức: hàng hình nguyên liệu (huy hiệu ×n, tên nhỏ bên dưới), ghi chú đỏ, các bước + trạng thái.
   // compact (trên Thớt sơ chế): chỉ hiện ghi chú đỏ, nguyên liệu và các bước gập lại để thớt đủ chỗ.
   function recipeCard(cook, open = false, compact = false) {
     const recipe = recipeOf(cook.recipeId) || {}
     const notes = noteLabels(recipe, cook.notes)
+    const INGS = D().INGREDIENTS || {}
+    const multi = []
     const ings = (recipe.ingredients || []).map(i => {
-      // "×2" là số lượng trong món, lấy 1 lần chạm (chạm lần nữa là bỏ ra) → ghi rõ để người mới không chạm 2 lần
-      let text = ingName(i.id) + (i.qty && i.qty > 1 ? ` ×${i.qty} (chạm 1 lần)` : '')
+      const qty = i.qty && i.qty > 1 ? i.qty : 0
+      // "×2" là số lượng trong món, lấy 1 lần chạm (chạm lần nữa là bỏ ra) → ghi rõ ở dòng chú thích cuối thẻ
+      if (qty) multi.push(`${ingName(i.id)} ×${qty} (chạm 1 lần)`)
+      let sub = null
       if (i.role === 'tuy_chon') {
         const by = (recipe.notes || []).filter(n => (n.adds || []).includes(i.id)).map(n => n.label)
-        text += by.length ? ` (khi dặn ${by.join(', ')})` : ' (tùy chọn)'
+        sub = h('small', { class: 'k-card-opt' }, by.length ? `khi dặn ${by.join(', ')}` : 'tùy chọn')
       }
       // M4: nguyên liệu hiếm: số phần kho còn (luôn thấy trên thẻ, kể cả khi ô kệ có nhãn "còn n" nằm dưới thanh Xong;
       // nấu thử không trừ kho nên không ghi)
-      const INGS = D().INGREDIENTS || {}
       const left = !tasting && INGS[i.id] && INGS[i.id].rare
-        ? h('small', { class: 'k-card-left', 'data-testid': 'card-left-' + i.id }, ` · kho còn ${rareStock(S(), i.id)}`) : null
-      return h('li', { class: ['k-card-ing', 'role-' + i.role] }, svgBox(ingIconSvg(i.id), 'k-card-ing-icon'), h('span', null, text, left))
+        ? h('small', { class: 'k-card-left', 'data-testid': 'card-left-' + i.id }, `kho còn ${rareStock(S(), i.id)}`) : null
+      return h('li', { class: ['k-card-ing', 'role-' + i.role, INGS[i.id] && INGS[i.id].rare ? 'is-rare' : ''], dataset: { ing: i.id } },
+        h('span', { class: 'k-card-art', dataset: qty ? { qty } : {} }, svgBox(ingIconSvg(i.id), 'k-card-ing-icon')),
+        h('span', { class: 'k-card-name' }, ingName(i.id)), sub, left)
     })
+    const tip = multi.length ? h('p', { class: 'k-card-tip' }, multi.join(' · ')) : null
     const board = cook.board || effectiveSteps(recipe, cook.notes, null, cook.qty).filter(s => s.type !== 'chon')
     const steps = [{ id: 'chon', label: 'Chọn nguyên liệu' }, ...board].map(s => {
       const r = cook.steps && cook.steps[s.id]
@@ -268,17 +408,21 @@ export function mountKitchen(root, app, opts = {}) {
         h('span', null, s.label), h('span', { class: 'k-card-step-st' }, r ? `${r.grade}${r.auto ? ' (tự làm)' : ''}` : '—'))
     })
     const noteRow = notes.length ? h('div', { class: 'k-notes k-card-notes' }, h('span', { class: 'k-card-lbl' }, 'Ghi chú:'), notes.map(n => h('span', { class: 'k-note' }, upper(n)))) : null
+    const label = 'Thẻ công thức ' + (recipe.name || '')
     if (compact) {
-      const more = h('details', { class: 'k-card-steps' }, h('summary', null, `Thẻ công thức: nguyên liệu, ${steps.length} bước`),
-        h('ul', { class: 'k-card-ings' }, ings), h('ol', null, steps))
+      const more = h('details', { class: 'k-card-steps' },
+        h('summary', null, svgBox(icon(recipe.icon || recipe.id || 'fallback'), 'k-card-sum-icon'),
+          h('span', null, 'Thẻ công thức'), h('small', { class: 'k-card-sum-n' }, `${ings.length} món · ${steps.length} bước`)),
+        h('ul', { class: 'k-card-ings' }, ings), tip, h('ol', null, steps))
       if (open) more.open = true
-      return h('aside', { class: 'k-card is-compact', 'data-testid': 'recipe-card', 'aria-label': 'Thẻ công thức ' + (recipe.name || '') }, noteRow, more)
+      return h('aside', { class: 'k-card is-compact', 'data-testid': 'recipe-card', 'aria-label': label }, noteRow, more)
     }
     const details = h('details', { class: 'k-card-steps' }, h('summary', null, `Các bước (${steps.length})`), h('ol', null, steps))
     if (open) details.open = true
-    return h('aside', { class: 'k-card', 'data-testid': 'recipe-card', 'aria-label': 'Thẻ công thức ' + (recipe.name || '') },
+    return h('aside', { class: 'k-card', 'data-testid': 'recipe-card', 'aria-label': label },
       noteRow,
       h('ul', { class: 'k-card-ings' }, ings),
+      tip,
       details)
   }
 
@@ -292,19 +436,23 @@ export function mountKitchen(root, app, opts = {}) {
       return
     }
     const max = (D().BALANCE && D().BALANCE.ticketRailMax) || 3
-    const head = h('div', { class: 'k-rail-head' }, h('h2', null, 'Dây phiếu'), h('span', { class: 'k-rail-count' }, `${sh.tickets.length}/${max}`))
+    const head = h('div', { class: 'k-rail-head' },
+      h('h2', null, 'Dây phiếu'),
+      h('span', { class: ['k-rail-count', sh.tickets.length >= max ? 'is-full' : ''] }, `${sh.tickets.length}/${max}`))
     main.appendChild(head)
     if (ui.lastDish) main.appendChild(lastDishBanner())
     const c = sh.cook
     if (c && c.phase !== 'xong') {
       const r = recipeOf(c.recipeId)
       main.appendChild(h('div', { class: 'k-resume' },
-        h('span', { class: 'k-resume-name' }, `Đang làm: ${r ? r.name : c.recipeId}`),
+        svgBox(icon(r ? r.icon : c.recipeId), 'k-resume-icon'),
+        h('span', { class: 'k-resume-name' }, h('small', null, 'Đang làm'), h('b', null, r ? r.name : c.recipeId)),
         h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-testid': 'abandon-dish', onclick: () => onAbandon() }, 'Bỏ món'),
         h('button', { class: 'btn btn-primary', type: 'button', 'data-testid': 'cook-resume', onclick: () => { ui.showRail = false; render() } }, 'Làm tiếp')))
     }
     if (!sh.tickets.length) {
-      main.appendChild(h('div', { class: 'k-empty', 'data-testid': 'rail-empty' }, 'Chưa có phiếu nào. Qua Quầy nhận order nha!'))
+      main.appendChild(h('div', { class: 'k-empty', 'data-testid': 'rail-empty' },
+        svgBox(icon('thot'), 'k-empty-art'), h('span', null, 'Chưa có phiếu nào. Qua Quầy nhận order nha!')))
       return
     }
     const list = h('div', { class: 'k-tickets' })
@@ -327,12 +475,16 @@ export function mountKitchen(root, app, opts = {}) {
       const done = t.done && t.done[i]
       const cooking = c && c.phase !== 'xong' && c.ticketId === t.id && c.lineIndex === i
       const status = done ? gradeLabel(done.grade) : cooking ? 'Đang làm' : 'Chờ'
+      const rare = !!(r && r.baseRecipe)
       const row = h('div', { class: ['k-line', done ? 'is-done' : '', cooking ? 'is-cooking' : ''] },
-        svgBox(icon(r ? r.icon : l.recipeId), 'k-line-icon'),
+        h('span', { class: ['k-line-art', rare ? 'is-rare' : ''] },
+          svgBox(icon(r ? r.icon : l.recipeId), 'k-line-icon'),
+          l.qty > 1 ? h('b', { class: 'k-line-qty', 'aria-hidden': 'true' }, '×' + l.qty) : null,
+          done ? svgBox(TICK_SVG, 'k-line-tick') : null),
         h('div', { class: 'k-line-text' },
           h('div', { class: 'k-line-name' }, `${l.qty} × ${r ? r.name : l.recipeId}`),
-          notes.length ? h('div', { class: 'k-notes' }, notes.map(n => h('span', { class: 'k-note' }, upper(n)))) : null),
-        h('span', { class: ['k-line-st', done ? 'grade-' + done.grade : ''] }, status))
+          notesRow(notes)),
+        h('span', { class: ['k-line-st', done ? 'grade-' + done.grade : '', cooking ? 'is-cooking' : ''] }, status))
       if (open && !done) {
         row.appendChild(h('button', {
           class: 'btn btn-primary k-line-go', type: 'button', 'data-testid': 'cook-line-' + i,
@@ -354,6 +506,7 @@ export function mountKitchen(root, app, opts = {}) {
       onclick: () => { ui.openTicket = open ? null : t.id; render() },
       onkeydown: e => { if (e.key === 'Enter') { ui.openTicket = open ? null : t.id; render() } }
     },
+    h('i', { class: 'k-ticket-clip', 'aria-hidden': 'true' }),
     h('div', { class: 'k-ticket-head' },
       h('b', { class: 'k-ticket-no' }, t.no),
       h('span', { class: 'k-ticket-cust' }, cust ? cust.name : ''),
@@ -365,12 +518,14 @@ export function mountKitchen(root, app, opts = {}) {
 
   function lastDishBanner() {
     const d = ui.lastDish
+    const recipe = recipeOf(d.recipeId) || {}
     return h('div', { class: ['k-last', 'grade-' + d.dish.grade], 'data-testid': 'dish-result', dataset: { grade: d.dish.grade, q: d.dish.q } },
-      svgBox(DI_SAU[d.mood] || DI_SAU.vui, 'k-disau-face'),
+      h('div', { class: 'k-last-dish' }, svgBox(icon(recipe.icon || d.recipeId), 'k-last-icon'),
+        h('span', { class: 'k-last-grade' }, gradeLabel(d.dish.grade))),
       h('div', { class: 'k-last-text' },
         h('b', null, `${d.name}: ${gradeLabel(d.dish.grade)} · ${d.dish.q}%`),
         d.dish.flawless ? h('span', { class: 'k-flawless' }, 'Không tì vết') : null,
-        h('div', { class: 'k-bubble' }, d.comment)))
+        h('div', { class: 'k-last-talk' }, svgBox(DI_SAU[d.mood] || DI_SAU.vui, 'k-disau-face'), h('div', { class: 'k-bubble' }, d.comment))))
   }
 
   // ----- Chọn nguyên liệu -----
@@ -437,8 +592,8 @@ export function mountKitchen(root, app, opts = {}) {
     save()
     const cook = SH().cook
     const g = cook && cook.steps.chon ? cook.steps.chon.grade : ''
-    flash(`Chọn nguyên liệu: ${g}`, r.score)
     render()
+    flash(r.score, g, 'Chọn nguyên liệu')
   }
 
   // ----- Thớt sơ chế -----
@@ -448,9 +603,10 @@ export function mountKitchen(root, app, opts = {}) {
     const t = sh.tickets.find(x => x.id === cook.ticketId)
     const recipe = recipeOf(cook.recipeId)
     return h('div', { class: 'k-board-head' },
-      h('button', { class: 'btn btn-ghost k-back', type: 'button', 'data-testid': 'kitchen-back', 'aria-label': 'Về dây phiếu', onclick: () => { ui.showRail = true; render() } }, '‹ Phiếu'),
+      h('button', { class: 'btn btn-ghost btn-small k-back', type: 'button', 'data-testid': 'kitchen-back', 'aria-label': 'Về dây phiếu', onclick: () => { ui.showRail = true; render() } }, '‹ Phiếu'),
       recipe ? svgBox(icon(recipe.icon || recipe.id), 'k-card-icon') : null,
-      h('span', { class: 'k-board-title' }, `${t ? t.no + ' · ' : ''}${recipe ? recipe.name : ''}`, cook.qty > 1 ? h('span', { class: 'k-qty' }, ` ×${cook.qty}`) : null),
+      h('span', { class: 'k-board-title' }, t ? h('small', { class: 'k-board-no' }, t.no) : null, h('span', null, recipe ? recipe.name : ''),
+        cook.qty > 1 ? h('span', { class: 'k-qty' }, ` ×${cook.qty}`) : null),
       t ? h('span', { class: 'k-wait-dot', dataset: { ticketId: t.id, wait: 'green' }, 'data-wait-dot': t.id }) : null)
   }
 
@@ -463,7 +619,8 @@ export function mountKitchen(root, app, opts = {}) {
     if (!tasting) main.appendChild(boardHeader(cook))
     main.appendChild(recipeCard(cook, false, true))
 
-    // Nguyên liệu trên thớt, mỗi thứ kèm các bước của nó.
+    // Nguyên liệu trên thớt, mỗi thứ kèm các bước của nó; hình nguyên liệu theo các bước đã xong (art/state-map.js).
+    const states = boardStates(cook.board || [], cook.steps || {}, { notes: cook.notes || [], activeId: null })
     const groups = new Map()
     for (const id of cook.picked || []) groups.set(id, [])
     const whole = []
@@ -474,19 +631,22 @@ export function mountKitchen(root, app, opts = {}) {
     const boardEl = h('div', { class: 'k-board', 'data-testid': 'board' })
     const ready = []
     for (const [ing, steps] of groups) {
-      if (steps.length) boardEl.appendChild(ingTile(ing, steps, bs))
+      if (steps.length) boardEl.appendChild(ingTile(ing, steps, bs, recipe, states))
       else ready.push(ing)
     }
-    if (whole.length) boardEl.appendChild(ingTile(null, whole, bs, recipe))
+    if (whole.length) boardEl.appendChild(ingTile(null, whole, bs, recipe, states))
     const readyRow = ready.length
-      ? h('div', { class: 'k-ready', 'data-testid': 'board-ready' }, h('span', { class: 'k-card-lbl' }, 'Sẵn sàng:'),
-        ready.map(id => h('span', { class: 'k-ready-item', dataset: { ing: id } }, svgBox(ingIconSvg(id), 'k-card-ing-icon'), ingName(id), ' ✓')))
+      ? h('div', { class: 'k-ready', 'data-testid': 'board-ready' }, h('span', { class: 'k-card-lbl' }, 'Sẵn sàng'),
+        ready.map(id => h('span', { class: 'k-ready-item', dataset: { ing: id }, title: ingName(id), 'aria-label': ingName(id) + ' sẵn sàng' },
+          svgBox(ingArt(id, states[ingIconId(id)] || states[id]), 'k-ready-icon'), svgBox(TICK_SVG, 'k-ready-tick'))))
       : null
     // lời Dì Sáu (ngày 1) nằm ngay dưới tên thớt, gọn một bong bóng nhỏ: đặt dưới thớt thì bị thanh "Bỏ món / Ra món"
     // che mất ở màn thấp, người mới không thấy lời giải thích duy nhất về Thớt sơ chế
     const tip = diSauLine(tutorialLine('thot'))
     if (tip) tip.classList.add('is-compact')
-    main.appendChild(h('div', { class: 'k-thot' }, h('div', { class: 'k-thot-title' }, 'Thớt sơ chế'), tip, readyRow, boardEl))
+    main.appendChild(h('div', { class: 'k-thot' },
+      h('i', { class: 'k-thot-hole', 'aria-hidden': 'true' }),
+      h('div', { class: 'k-thot-title' }, 'Thớt sơ chế'), tip, boardEl, readyRow))
 
     const retryInfo = cook.retriesLeft > 0 ? `Còn ${cook.retriesLeft} lượt làm lại` : 'Hết lượt làm lại'
     main.appendChild(h('div', { class: 'k-toolbar' },
@@ -495,55 +655,48 @@ export function mountKitchen(root, app, opts = {}) {
       h('button', { class: 'btn btn-primary', type: 'button', 'data-testid': 'finish-dish', onclick: onFinish }, 'Ra món')))
   }
 
-  function ingTile(ing, steps, all, recipe) {
-    const doneTypes = new Set(steps.filter(s => s.done).map(s => s.type))
+  function ingTile(ing, steps, all, recipe, states) {
     const cls = ['k-ing']
-    if (doneTypes.has('cha')) cls.push('is-washed')
-    if (doneTypes.has('thai')) cls.push('is-cut')
-    if (doneTypes.has('lua')) cls.push('is-cooked')
     if (steps.length && steps.every(s => s.done)) cls.push('is-finished')
     if (!steps.length) cls.push('is-ready')
     const name = ing ? ingName(ing) : 'Cả món'
-    const img = ing ? ingIconSvg(ing) : icon((recipe && recipe.icon) || 'fallback')
+    const st = ing ? (states[ing] || states[ingIconId(ing)] || null) : null
+    const img = ing ? ingArt(ing, st) : icon((recipe && recipe.icon) || 'fallback')
     const byId = new Map(all.map(s => [s.id, s]))
-    return h('div', { class: cls, dataset: { ing: ing || 'ca_mon' } },
-      h('div', { class: 'k-ing-top' }, svgBox(img, 'k-ing-icon'), h('span', { class: 'k-ing-name' }, name),
-        !steps.length ? h('span', { class: 'k-ing-ready' }, '✓ Sẵn sàng') : null),
+    const INGS = D().INGREDIENTS || {}
+    return h('div', { class: cls, dataset: { ing: ing || 'ca_mon', state: st || undefined } },
+      h('div', { class: 'k-ing-top' },
+        h('span', { class: ['k-ing-art', ing && INGS[ing] && INGS[ing].rare ? 'is-rare' : ''] }, svgBox(img, 'k-ing-icon'),
+          steps.length && steps.every(s => s.done) ? svgBox(TICK_SVG, 'k-ing-tick') : null),
+        h('span', { class: 'k-ing-name' }, name)),
       steps.length ? h('div', { class: 'k-steps' }, steps.map(s => stepButton(s, byId))) : null)
   }
 
   function stepButton(s, byId) {
     const r = s.result
-    let st = ''
+    const st = stepStatus(s, byId)
     const cls = ['k-step', 'type-' + s.type]
-    if (r) {
-      st = `${r.grade} · ${r.score}${r.auto ? ' (tự làm)' : ''}`
-      cls.push('is-done', 'grade-' + gradeClass(r.score))
-    } else if (!s.available) {
-      const need = (s.after || []).filter(id => !(byId.get(id) && byId.get(id).done)).map(id => (byId.get(id) || {}).label || id)
-      st = 'Sau: ' + need.join(', ')
-      cls.push('is-locked')
-    } else {
-      st = s.method ? 'Chọn cách rồi làm' : 'Chạm để làm'
-      cls.push('is-available')
-    }
+    if (r) cls.push('is-done', 'grade-' + gradeKey(r.score))
+    else if (!s.available) cls.push('is-locked')
+    else cls.push('is-available')
     if (s.critical) cls.push('is-critical')
     // bước phải chọn cách sơ chế (thái lát / thái sợi…): hướng dẫn lần đầu chỉ đúng vào bước này
     if (s.method) cls.push('has-method')
+    const def = getStep(S(), s.id) || s
     return h('button', {
       class: cls, type: 'button', 'data-testid': 'board-step-' + s.id, dataset: { stepId: s.id, type: s.type },
       'aria-disabled': !r && !s.available ? 'true' : 'false',
+      'aria-label': `${s.label}${s.critical ? ' (bước quan trọng)' : ''}: ${st.text}`,
       onclick: () => onBoardStep(s.id)
     },
-    h('span', { class: 'k-step-label' }, (!r && !s.available ? '🔒 ' : '') + s.label),
-    h('span', { class: 'k-step-st' }, st))
-  }
-
-  function gradeClass(score) {
-    if (score >= 90) return 'hoan_hao'
-    if (score >= 70) return 'tot'
-    if (score >= 50) return 'dat'
-    return 'hong'
+    h('span', { class: 'k-step-badge' },
+      svgBox(badgeSvg(stepBadge(def)), 'k-step-ico'),
+      r ? svgBox(TICK_SVG, 'k-step-tick') : null,
+      !r && !s.available ? svgBox(LOCK_SVG, 'k-step-lock') : null,
+      s.critical ? h('b', { class: 'k-step-crit', 'aria-hidden': 'true' }, '★') : null),
+    h('span', { class: 'k-step-text' },
+      h('span', { class: 'k-step-label' }, s.label),
+      h('span', { class: 'k-step-st' }, st.text)))
   }
 
   // ---------- thao tác ----------
@@ -566,7 +719,7 @@ export function mountKitchen(root, app, opts = {}) {
   }
 
   function onBoardStep(stepId) {
-    if (ui.play) return
+    if (ui.play || ui.result) return
     const ctx = cctx()
     const s = boardSteps(S(), ctx).find(x => x.id === stepId)
     if (!s) return
@@ -583,11 +736,14 @@ export function mountKitchen(root, app, opts = {}) {
     startStep(stepId, null)
   }
 
-  // Bảng chọn trước khi làm: cách sơ chế / tự làm / làm lại.
+  // Bảng chọn trước khi làm: cách sơ chế (thẻ hình) / tự làm / làm lại.
   function openSheet(s, { retrying = false } = {}) {
     const METHOD = D().METHOD_LABELS || {}
     const cook = SH().cook
-    const kids = [h('h3', { class: 'k-sheet-title' }, s.label)]
+    const def = getStep(S(), s.id) || s
+    const kids = [h('div', { class: 'k-sheet-head' },
+      h('span', { class: 'k-step-badge k-sheet-badge' }, svgBox(badgeSvg(stepBadge(def)), 'k-step-ico')),
+      h('h3', { class: 'k-sheet-title' }, s.label))]
     if (s.done && !retrying) {
       const step = getStep(S(), s.id) || {}
       const cost = Math.max(0, Number(step.retryCost) || 0)
@@ -597,9 +753,16 @@ export function mountKitchen(root, app, opts = {}) {
     } else {
       if (s.method) {
         kids.push(h('p', { class: 'k-sheet-q' }, 'Chọn cách sơ chế:'))
-        kids.push(h('div', { class: 'k-methods' }, (s.method.options || []).map(id =>
-          h('button', { class: 'btn k-method', type: 'button', 'data-testid': 'method-' + id, onclick: () => { closeLayer(); startStep(s.id, id) } },
-            METHOD[id] || id))))
+        const ing = s.ing || def.ing
+        kids.push(h('div', { class: 'k-methods' }, (s.method.options || []).map(id => {
+          const ms = methodState(id)
+          return h('button', {
+            class: 'btn k-method', type: 'button', 'data-testid': 'method-' + id, dataset: { method: id },
+            onclick: () => { closeLayer(); startStep(s.id, id) }
+          },
+          ing ? svgBox(ingArt(ing, ms || null), 'k-method-art') : null,
+          h('span', { class: 'k-method-name' }, METHOD[id] || id))
+        })))
       } else {
         kids.push(h('button', { class: 'btn btn-primary', type: 'button', 'data-testid': 'step-start', onclick: () => { closeLayer(); startStep(s.id, null) } }, 'Tự tay làm'))
       }
@@ -620,8 +783,8 @@ export function mountKitchen(root, app, opts = {}) {
     const r = autoStep(S(), stepId, cctx())
     if (!r.ok) { toast('Chưa tự làm được bước này.'); return }
     save()
-    flash(`Tự làm: ${r.grade}`, r.score)
     render()
+    flash(r.score, r.grade, 'Tự làm')
   }
 
   function onRetry(stepId) {
@@ -638,10 +801,15 @@ export function mountKitchen(root, app, opts = {}) {
     startStep(stepId, null)
   }
 
-  function pluginCtx(step, cook, recipe) {
+  // ctx của mini-game. extra: { method, progress } (bước Thớt) — progress = stepProgress (chấm bước ở đầu sân khấu).
+  function pluginCtx(step, cook, recipe, { method = null, progress = null } = {}) {
     const st = S()
     const sh = SH()
     const d = D()
+    // bước Chọn: chưa có bảng bước trên Thớt (cook.board dựng lúc chốt rổ) → N đếm từ công thức (cùng ghi chú, số phần)
+    const prog = progress || (step.type === 'chon'
+      ? { index: 1, total: effectiveSteps(recipe || {}, cook.notes, null, cook.qty).filter(s => s.type !== 'chon').length + 1, grades: [] }
+      : stepProgress(cook, step.id))
     return {
       app, recipe, data: d, notes: cook.notes.slice(), qty: cook.qty,
       zoneMul: zoneMul(st, step.type, cook.recipeId, d.BALANCE, d.UPGRADES),
@@ -649,22 +817,27 @@ export function mountKitchen(root, app, opts = {}) {
       // Nấu thử: không tính giờ thật sự (không tự kết thúc bước, không phạt quá giờ) và có "tay chỉ" (gợi ý ngay)
       untimed: !!tasting, guide: !!tasting,
       slowBurn: !!(st.upgrades && st.upgrades.chao_chong_dinh),
-      rand: uiRand(hashKey([st.seed, sh.day, cook.ticketId, cook.lineIndex, step.id].join(':')))
+      rand: uiRand(hashKey([st.seed, sh.day, cook.ticketId, cook.lineIndex, step.id].join(':'))),
+      // M5: hiệu ứng dùng chung của app (không tự tạo), câu hỏi giảm chuyển động, chấm bước "Bước k/N", cách sơ chế đã chọn
+      vfx: vfx(), reduced,
+      stepIndex: prog.index, stepTotal: prog.total, stepGrades: prog.grades,
+      method: method || null
     }
   }
 
-  // Chơi một bước trên thớt: thẻ gợi ý 0,8 giây (chạm để bỏ qua) rồi mount mini-game phủ panel.
+  // Chơi một bước trên thớt: thẻ vào bước (đầy đủ: chờ chạm hoặc 1,1 giây; gọn: không chờ) rồi mount mini-game phủ panel.
   function startStep(stepId, method) {
     const step = beginStep(S(), stepId)
     if (!step) { toast('Bước này chưa mở.'); render(); return }
     ui.dismissed = null
     save()
+    syncFocus()
     const sh = SH()
     const cook = sh.cook
     const recipe = recipeOf(cook.recipeId)
     const notes = noteLabels(recipe, cook.notes)
     const stage = h('div', { class: 'mg-stage' })
-    // data-type: loại mini-game (CSS gọn đầu sân khấu riêng cho bước Chà ở màn thấp — css/kitchen.css)
+    // data-type: loại mini-game (CSS gọn đầu sân khấu ở màn thấp — css/kitchen.css)
     const wrap = h('div', { class: 'k-stage-wrap', dataset: { type: step.type } },
       h('div', { class: 'k-stage-bar' },
         h('span', { class: 'k-stage-dish' }, recipe ? recipe.name : ''),
@@ -674,53 +847,73 @@ export function mountKitchen(root, app, opts = {}) {
     showLayer('stage', wrap)
     const token = ++ui.token
     ui.play = { kind: 'step', handle: null, token, stepId }
+    const progress = stepProgress(cook, step.id)
 
     const go = () => {
       if (destroyed || !ui.play || ui.play.token !== token) return
-      hintEl && hintEl.remove()
-      const handle = playStep(stage, playable(step), pluginCtx(step, cook, recipe))
-      markLayer()   // thẻ gợi ý vừa nhường chỗ cho mini-game (nút Xong có thể nằm ngay dưới ngón tay)
+      ui.card = null
+      if (ui.layerKind === 'card') ui.layerKind = 'stage'
+      const handle = playStep(stage, playable(step), pluginCtx(step, cook, recipe, { method, progress }))
+      markLayer()   // thẻ vào bước vừa nhường chỗ cho mini-game (nút Xong có thể nằm ngay dưới ngón tay)
       revealTargets(stage)
       ui.play.handle = handle
       handle.result.then(res => {
         if (!res || destroyed || !ui.play || ui.play.token !== token) return
         ui.play = null
-        onStepResult(step, method, res)
+        onStepResult(step, method, res, stage, wrap)
       })
     }
     const prog = S().recipes && S().recipes[cook.recipeId]
-    const showHint = !prog || (prog.cooks || 0) < HINT_HIDE_AFTER_COOKS
-    let hintEl = null
-    if (showHint) {
-      const hint = hintFor(step, D())
-      hintEl = h('div', { class: 'k-hint', 'data-testid': 'step-hint', role: 'status' },
-        h('b', null, step.label), h('span', null, hint.text), h('small', null, 'Chạm để bắt đầu ngay'))
-      let started = false
-      const once = () => { if (started) return; started = true; go() }
-      hintEl.addEventListener('pointerdown', e => { e.preventDefault(); once() })
-      wrap.appendChild(hintEl)
-      setTimeout(once, HINT_MS)
-    } else {
-      requestAnimationFrame(go)
-    }
+    const full = !prog || (prog.cooks || 0) < HINT_HIDE_AFTER_COOKS
+    const model = stepCardModel(step, { index: progress.index, total: progress.total, data: D(), recipe })
+    const card = createStepCard(model, { full, onStart: go, reduced, stage })
+    ui.card = card
+    wrap.appendChild(card.el)
+    // thẻ đầy đủ đang chờ chạm: hướng dẫn lần đầu có thể chỉ vào thẻ (tourSpot 'card-<loại>')
+    if (full) ui.layerKind = 'card'
   }
 
-  function onStepResult(step, method, res) {
+  // Có kết quả bước: lưu ngay, giữ sân khấu cho con dấu + Dì Sáu (~700 ms), rồi đóng lớp, vẽ lại Thớt, hỏi lại nếu bước
+  // chí mạng Hỏng.
+  function onStepResult(step, method, res, stage, wrap) {
     const r = submitStep(S(), step.id, { score: res.score, method: method || undefined, details: res.details }, cctx())
-    closeLayer()
-    if (!r.ok) { toast('Không lưu được bước này.'); render(); return }
+    if (!r.ok) { closeLayer(); toast('Không lưu được bước này.'); render(); return }
     save()
-    const good = r.score >= 90
-    sound(good ? 'ding' : r.score < 50 ? 'error' : 'click')
+    markLayer()
+    // sân khấu thôi nhận chạm trong lúc con dấu hiện (cú click của lần chạm vừa kết thúc bước không rơi vào đâu cả)
+    wrap.classList.add('is-result')
     vibrate(r.score < 50 ? 80 : 15)
-    const extra = r.methodWrong ? ' (sai cách −15)' : ''
-    flash(`${step.label}: ${r.grade}${extra}`, r.score)
+    if (r.score < 50) sound('error')
+    const red = reduced()
+    let shown = null
+    try {
+      const sh = SH()
+      const cook = sh && sh.cook
+      shown = showStepResult(stage, {
+        score: r.score, label: r.grade, note: r.methodWrong ? 'Sai cách −15' : '', data: D(),
+        rand: uiRand(hashKey([S().seed, sh ? sh.day : 0, cook ? cook.ticketId : '', step.id, 'react', r.score].join(':'))),
+        vfx: vfx(), sound: n => sound(n), reduced: red
+      })
+    } catch (err) { console.error(err) }
+    const holdMs = shown ? shown.holdMs : 0
+    const pending = { step, score: r.score, timer: 0 }
+    ui.result = pending
+    pending.timer = setTimeout(() => finishResult(pending), holdMs)
+  }
+
+  function finishResult(pending) {
+    if (!pending || ui.result !== pending) return
+    ui.result = null
+    clearTimeout(pending.timer)
+    closeLayer()
+    if (destroyed) return
     render()
-    if (step.critical && r.score < 50) criticalPrompt(step)
+    if (pending.step.critical && pending.score < 50) criticalPrompt(pending.step)
   }
 
   // Bước chí mạng Hỏng: Làm lại (tốn tiền) / Bỏ món / Để vậy.
   function criticalPrompt(step) {
+    ui.pendingCritical = null
     const s = boardSteps(S(), cctx()).find(x => x.id === step.id)
     const cost = Math.max(0, Number(step.retryCost) || 0)
     const kids = [
@@ -735,6 +928,17 @@ export function mountKitchen(root, app, opts = {}) {
     kids.push(h('button', { class: 'btn btn-danger', type: 'button', 'data-testid': 'abandon-dish', onclick: () => { closeLayer(); onAbandon(true) } }, 'Bỏ món'))
     kids.push(h('button', { class: 'btn btn-ghost', type: 'button', 'data-testid': 'prompt-close', onclick: closeLayer }, 'Để vậy'))
     showLayer('prompt', h('div', { class: 'k-sheet k-critical', 'data-testid': 'critical-prompt', role: 'dialog' }, kids))
+  }
+
+  // Bước chí mạng Hỏng mà lúc đó người chơi đổi tab (con dấu đang hiện): hỏi lại khi quay về, nếu bước vẫn Hỏng.
+  function flushPendingCritical() {
+    const step = ui.pendingCritical
+    ui.pendingCritical = null
+    if (!step || ui.layerKind || ui.play) return
+    const sh = SH()
+    const cook = sh && sh.cook
+    const r = cook && cook.phase === 'thot' && cook.steps && cook.steps[step.id]
+    if (r && r.score < 50 && mode() === 'thot') criticalPrompt(step)
   }
 
   async function confirmBox({ title, text, ok, cancel = 'Quay lại', danger = false }) {
@@ -760,7 +964,7 @@ export function mountKitchen(root, app, opts = {}) {
   }
 
   async function onFinish() {
-    if (ui.play && ui.play.kind === 'step') return
+    if ((ui.play && ui.play.kind === 'step') || ui.result) return
     const ctx = cctx()
     const undone = boardSteps(S(), ctx).filter(s => !s.done)
     if (undone.length) {
@@ -786,35 +990,39 @@ export function mountKitchen(root, app, opts = {}) {
     ui.showRail = false
     ui.openTicket = null
     render()
-    showReveal()
+    const shownMs = showReveal()
     if (tasting && typeof tasting.onDone === 'function') {
-      setTimeout(() => { if (!destroyed) tasting.onDone(dish) }, REVEAL_MS + 150)
+      setTimeout(() => { if (!destroyed) tasting.onDone(dish) }, shownMs + 150)
     }
   }
 
+  // Bảng ra món (lớp nổi): tự đóng sau revealMs (2,2 s; giảm chuyển động 1,4 s), chạm để bỏ qua. → thời gian hiện (ms).
   function showReveal() {
     const d = ui.lastDish
-    if (!d) return
+    const red = reduced()
+    if (!d) return revealMs(red)
     clear(flashHost)
     const recipe = recipeOf(d.recipeId) || {}
     const lvUp = d.dish.mastery && d.dish.mastery.levelUp
     const lvNames = (D().STRINGS && D().STRINGS.masteryLevels) || {}
-    const box = h('div', {
-      class: ['k-reveal', 'grade-' + d.dish.grade], 'data-testid': 'dish-reveal',
-      dataset: { grade: d.dish.grade, q: d.dish.q }, role: 'status'
-    },
-    svgBox(icon(recipe.icon || d.recipeId), 'k-reveal-dish'),
-    h('div', { class: 'k-reveal-grade' }, gradeLabel(d.dish.grade)),
-    h('div', { class: 'k-reveal-q' }, `${d.dish.q}%`),
-    d.dish.flawless ? h('div', { class: 'k-flawless' }, 'Không tì vết') : null,
-    lvUp ? h('div', { class: 'k-levelup' }, `Lên cấp thạo món: ${lvNames[d.dish.mastery.levelAfter] || d.dish.mastery.levelAfter}`) : null,
-    h('div', { class: 'k-disau' }, svgBox(DI_SAU[d.mood] || DI_SAU.vui, 'k-disau-face'), h('div', { class: 'k-bubble' }, d.comment)))
-    showLayer('reveal', box)
-    box.addEventListener('pointerdown', () => closeLayer())
-    sound(d.dish.grade === 'hong' ? 'error' : 'bell')
+    let rv = null
+    try {
+      rv = createDishReveal({
+        dish: d.dish, recipe, name: d.name, mood: d.mood, comment: d.comment, data: D(), reduced: red,
+        lvUpText: lvUp ? `Lên cấp thạo món: ${lvNames[d.dish.mastery.levelAfter] || d.dish.mastery.levelAfter}` : '',
+        vfx: vfx(), sound: n => sound(n),
+        onClose: () => { if (ui.reveal === rv && ui.layerKind === 'reveal') closeLayer() }
+      })
+    } catch (err) { console.error(err) }
+    if (!rv) return revealMs(red)
+    showLayer('reveal', rv.el)
+    ui.reveal = rv
+    rv.play()
     vibrate(d.dish.grade === 'hong' ? 80 : 15)
+    const ms = rv.plan && rv.plan.totalMs ? rv.plan.totalMs : revealMs(red)
     clearTimeout(ui.revealTimer)
-    ui.revealTimer = setTimeout(() => { if (ui.layerKind === 'reveal') closeLayer() }, REVEAL_MS)
+    ui.revealTimer = setTimeout(() => { if (ui.layerKind === 'reveal' && ui.reveal === rv) closeLayer() }, ms)
+    return ms
   }
 
   async function onAbandon(skipConfirm = false) {
@@ -880,12 +1088,14 @@ export function mountKitchen(root, app, opts = {}) {
 
   // ---------- lớp phủ ----------
   // kind: 'stage' (sân khấu mini-game, trong panel) | 'sheet' | 'prompt' | 'confirm' | 'reveal' (lớp nổi của app)
+  // (thẻ vào bước nằm trên lớp sân khấu: ui.layerKind 'card' khi thẻ đầy đủ đang chờ chạm, lớp vẫn data-kind="stage")
   function showLayer(kind, node) {
     clearTimeout(ui.revealTimer)
     markLayer()
     if (kind !== 'stage') clear(flashHost)   // nhãn nổi không che hộp thoại
     const target = kind === 'stage' ? layer : popLayer
     hideLayer(target === layer ? popLayer : layer)
+    if (target === popLayer && ui.reveal) { const rv = ui.reveal; ui.reveal = null; rv.destroy() }
     clear(target)
     target.appendChild(node)
     target.hidden = false
@@ -902,7 +1112,16 @@ export function mountKitchen(root, app, opts = {}) {
   function closeLayer() {
     clearTimeout(ui.revealTimer)
     markLayer()
+    if (ui.result) {
+      // đóng giữa lúc con dấu đang hiện (đổi tab, bỏ món…): kết quả đã lưu; bước chí mạng Hỏng thì hỏi lại khi quay về
+      const p = ui.result
+      ui.result = null
+      clearTimeout(p.timer)
+      if (p.step.critical && p.score < 50) ui.pendingCritical = p.step
+    }
+    if (ui.card) { const c = ui.card; ui.card = null; c.destroy() }
     if (ui.play && ui.play.kind === 'step') stopPlay()
+    if (ui.reveal) { const rv = ui.reveal; ui.reveal = null; rv.destroy() }
     hideLayer(layer)
     hideLayer(popLayer)
     ui.layerKind = null
@@ -918,12 +1137,16 @@ export function mountKitchen(root, app, opts = {}) {
     if (p && p.handle) { try { p.handle.destroy() } catch (err) { console.error(err) } }
   }
 
-  // Nhãn kết quả nổi (không bắt chờ).
-  function flash(text, score) {
-    const g = gradeClass(score)
-    const n = h('div', { class: ['k-flash', 'grade-' + g], 'data-testid': 'step-result', dataset: { score } }, text, h('b', null, ` ${score}`))
+  // Con dấu nổi (không bắt chờ): kết quả bước Chọn và bước Tự làm — không có sân khấu để giữ nên dấu nằm ở đầu panel Bếp.
+  function flash(score, label, note = '') {
+    clear(flashHost)
+    const red = reduced()
+    const n = createStamp({ score, label, note })
+    n.classList.add('k-flash')
     flashHost.appendChild(n)
-    setTimeout(() => n.remove(), reduced() ? 1200 : 1600)
+    try { playStamp(n, { vfx: vfx(), sound: x => sound(x), reduced: red }).catch(() => {}) } catch { /* bỏ qua */ }
+    vibrate(score < 50 ? 80 : 15)
+    setTimeout(() => n.remove(), red ? FLASH_MS_REDUCED : FLASH_MS)
   }
 
   function updateWaitColors() {
@@ -950,12 +1173,15 @@ export function mountKitchen(root, app, opts = {}) {
 
   // ---------- hướng dẫn lần đầu (tour) / bảng Hướng dẫn ----------
   // Chỗ đang làm ở Bếp cho màn ca bán chọn tour: null khi đang bận (mini-game, bảng chọn cách, hộp hỏi, công bố món) để
-  // hướng dẫn không chen ngang; 'chon' | 'thot' | 'ready' (có phiếu đủ món chờ giao) | 'rail' (dây phiếu có phiếu).
+  // hướng dẫn không chen ngang; 'card-<loại>' (thẻ vào bước đầy đủ đang chờ chạm) | 'chon' | 'thot' | 'ready' (có phiếu đủ
+  // món chờ giao) | 'line' | 'rail' (dây phiếu có phiếu).
   function busy() {
-    return !!(ui.layerKind || (ui.play && ui.play.kind === 'step'))
+    return !!(ui.layerKind || (ui.play && ui.play.kind === 'step') || ui.result)
   }
   function tourSpot() {
-    if (destroyed || !ui.visible || busy() || tasting) return null
+    if (destroyed || !ui.visible || tasting) return null
+    if (ui.layerKind === 'card' && ui.card && ui.card.waiting && ui.card.model) return 'card-' + ui.card.model.type
+    if (busy()) return null
     const m = mode()
     if (m === 'chon') return ui.play && ui.play.kind === 'chon' ? 'chon' : null
     if (m === 'thot') return 'thot'
@@ -968,17 +1194,22 @@ export function mountKitchen(root, app, opts = {}) {
     if (open && open.lines.some((l, i) => !(open.done && open.done[i]))) return 'line'
     return 'rail'
   }
-  // Tour hoặc bảng Hướng dẫn đang mở (ca tạm dừng): bước Chọn giữ đồng hồ đứng yên (không tính quá giờ lúc đọc); bước
-  // mini-game đang chơi thì dừng, đóng lại chơi lại từ đầu như khi đổi tab. Không vẽ lại bếp trong lúc giữ.
+  // Tour hoặc bảng Hướng dẫn đang mở (ca tạm dừng): bước Chọn giữ đồng hồ đứng yên (không tính quá giờ lúc đọc); thẻ vào
+  // bước đang chờ thì dừng tự chạy (hold); bước mini-game đang chơi thì dừng, đóng lại chơi lại từ đầu như khi đổi tab;
+  // con dấu đang hiện thì xong luôn. Không vẽ lại bếp trong lúc giữ.
   let guide = null
   function guideHold(on) {
     if (destroyed) return
     if (on) {
       if (guide) return
+      if (ui.result) finishResult(ui.result)
       const p = ui.play
       if (p && p.kind === 'chon' && p.handle && typeof p.handle.hold === 'function') {
         p.handle.hold(true)
         guide = { kind: 'chon', handle: p.handle }
+      } else if (p && p.kind === 'step' && ui.card && ui.card.waiting) {
+        ui.card.hold(true)
+        guide = { kind: 'card', card: ui.card }
       } else if (p && p.kind === 'step') {
         closeLayer()
         guide = { kind: 'step' }
@@ -990,6 +1221,8 @@ export function mountKitchen(root, app, opts = {}) {
     if (!g) return
     if (g.kind === 'chon') {
       if (ui.play && ui.play.handle === g.handle) g.handle.hold(false)
+    } else if (g.kind === 'card') {
+      if (ui.card === g.card && g.card.waiting) g.card.hold(false)
     } else if (g.kind === 'step' && ui.visible) {
       render()
       resumeActive()
@@ -1011,29 +1244,36 @@ export function mountKitchen(root, app, opts = {}) {
     ui.visible = true
     render()
     resumeActive()
+    if (ui.pendingCritical) flushPendingCritical()
   }
 
   function onHide() {
     ui.visible = false
     stopPlay()
     closeLayer()
+    syncFocus()
   }
 
   function selectTicket(ticketId) {
     ui.openTicket = ticketId
     const c = SH() && SH().cook
     // đang nấu dở: hiện dây phiếu (món dở vẫn giữ, bấm "Làm tiếp" để quay lại)
-    if (c && c.phase !== 'xong' && !(ui.play && ui.play.kind === 'step')) ui.showRail = true
-    if (ui.visible && !(ui.play && ui.play.kind === 'step')) render()
+    const playing = !!((ui.play && ui.play.kind === 'step') || ui.result)
+    if (c && c.phase !== 'xong' && !playing) ui.showRail = true
+    if (ui.visible && !playing) render()
   }
 
   function unmount() {
     destroyed = true
     for (const off of offs) { try { off() } catch { /* bỏ qua */ } }
+    if (ui.result) { clearTimeout(ui.result.timer); ui.result = null }
+    if (ui.card) { try { ui.card.destroy() } catch { /* bỏ qua */ } ui.card = null }
+    if (ui.reveal) { try { ui.reveal.destroy() } catch { /* bỏ qua */ } ui.reveal = null }
     stopPlay()
     clearTimeout(ui.revealTimer)
     el.remove()
     popLayer.remove()
+    if (onFocus && focusSent) { focusSent = false; try { onFocus(false) } catch (err) { console.error(err) } }
   }
 
   // Dây phiếu chung của màn ca bán: chạm phiếu → mở phiếu đó trong bếp.
@@ -1048,7 +1288,7 @@ export function mountKitchen(root, app, opts = {}) {
     render()
     resumeActive()
   }
-  return { unmount, update, onShow, onHide, selectTicket, tourSpot, busy, guideHold }
+  return { unmount, update, onShow, onHide, selectTicket, tourSpot, busy, guideHold, focusWanted }
 }
 
 // Theo quy ước router (mục 13): export default { mount(root, app, params) }.

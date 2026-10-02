@@ -1,12 +1,18 @@
-// CHA — chà rửa / gọt / bóc (params.spots) hoặc lắc / trộn / khuấy / bóp (params.strokes).
+// CHA — chà rửa / bóc vỏ (params.spots) hoặc xé / bóp (params.strokes).
 // spots: vuốt qua từng vết đủ quãng để sạch dần; strokes: vuốt qua lại, đếm số lần đổi chiều.
+// M5 (Đợt 1): cảnh theo bước — rửa (id bắt đầu bằng "rua"): chậu nước có vòi chảy, vết bùn, rửa tới đâu bọt nổi tới đó, sạch
+// thì lấp lánh; bóc ("boc"): đĩa sứ, mảng vỏ lốm đốm; xé ("xe") / bóp ("bop"): thớt gỗ, nguyên liệu theo tay qua lại. Hình
+// nguyên liệu TO (artV2) giữa thớt; làm xong thì đổi sang hình trạng thái (dưa leo sạch, trứng cút bóc, khô mực xé).
+// GIỮ NGUYÊN thuật toán vừa khung (fitSpotsBox, spotLayout, rubSpots, fitStrokesHeight, hằng số) và hợp đồng e2e:
+// cha-area (thớt — khung đo), cha-spot-<i>[data-clean] + lớp .cha-spot / .is-clean, cha-progress[data-v].
 import { h, svgBox } from '../dom.js'
 import { bindPointer } from '../input.js'
 import { scoreCha } from '../../core/minigame-scoring.js'
 import {
-  clamp, createClock, frameLoop, settleOnce, feedback, stepLimitSec, buildFrame, ingIcon,
-  createReversalCounter, uiRand
+  clamp, createClock, frameLoop, settleOnce, feedback, stepLimitSec, createReversalCounter, vfxOf, reducedOf, frameSteps
 } from './_util.js'
+import { buildFrame2 } from './_frame.js'
+import { artV2, propV2, PROP_META } from '../art/v2.js'
 
 // Mọi số đo của chế độ vết bẩn tính theo "đơn vị chuẩn" của thớt chuẩn PAD_W × PAD_H (đơn vị = px khi thớt đủ chỗ).
 // Thớt thật = khung chuẩn × tỉ lệ k (px / đơn vị): co theo chỗ còn lại của sân khấu (màn thấp, ca đông khách) nhưng
@@ -103,6 +109,24 @@ export function fitStrokesHeight(availW, availH) {
   return Math.round(Number.isFinite(free) ? Math.max(STROKE_MIN_H, Math.min(full, free)) : full)
 }
 
+// Cảnh của bước theo tiền tố id (lõi cũng nhận bước rửa nhờ "cha" + tiền tố "rua"):
+// scene: basin (chậu nước + vòi) | plate (đĩa sứ) | board (thớt gỗ); spot: kiểu vết (mud bùn đất, shell mảng vỏ);
+// art/artState: hình thay cho hình nguyên liệu của bước (bóp muối: cùi bưởi hạt lựu); done: hình trạng thái khi xong;
+// grit: màu vụn khi vuốt (thớt xé/bóp).
+export const CHA_LOOKS = Object.freeze({
+  rua: Object.freeze({ scene: 'basin', spot: 'mud', done: 'sach' }),
+  boc: Object.freeze({ scene: 'plate', spot: 'shell', done: 'boc' }),
+  xe: Object.freeze({ scene: 'board', done: 'xe', grit: Object.freeze(['#e9c99a', '#c79a62', '#f6e3c2']) }),
+  bop: Object.freeze({ scene: 'board', art: 'vo_buoi', artState: 'hat_luu', salt: true, grit: Object.freeze(['#ffffff', '#e9eef2', '#f8eac2']) })
+})
+
+/** Cảnh của bước (thuần): theo tiền tố id; không khớp thì vết bẩn → chậu nước, đổi chiều → thớt gỗ. */
+export function chaLook(step, isStrokes) {
+  const id = String((step && step.id) || '')
+  for (const k of Object.keys(CHA_LOOKS)) if (id === k || id.startsWith(k + '_')) return CHA_LOOKS[k]
+  return isStrokes ? CHA_LOOKS.xe : CHA_LOOKS.rua
+}
+
 function mount(stage, step, ctx = {}) {
   const params = step.params || {}
   const mul = ctx.zoneMul || 1
@@ -110,16 +134,40 @@ function mount(stage, step, ctx = {}) {
   const clock = createClock()
   const out = settleOnce()
   const rand = ctx.rand || Math.random
+  const vfx = vfxOf(ctx)
+  const reduced = reducedOf(ctx)
   const isStrokes = !(Number(params.spots) > 0) && Number(params.strokes) > 0
+  const look = chaLook(step, isStrokes)
+  const INGS = (ctx.data && ctx.data.INGREDIENTS) || {}
+  const ingArt = (INGS[step.ing] && INGS[step.ing].icon) || step.ing || (ctx.recipe && ctx.recipe.icon) || 'fallback'
+  const artId = look.art || step.icon || ingArt
+  const foodSvg = artV2(artId, look.artState)
+  const doneSvg = look.done ? artV2(artId, look.done) : ''
   stage.classList.add('mg-cha', isStrokes ? 'is-strokes' : 'is-spots')
 
-  const hint = isStrokes ? 'Vuốt qua lại thật đều tay.' : 'Vuốt qua lại lên các vết bẩn cho sạch.'
-  const fr = buildFrame(stage, step, ctx, { sub: hint })
-  const food = h('div', { class: 'cha-food' }, svgBox(ingIcon(step.ing, ctx, step.icon || null), 'cha-food-icon'))
-  const pad = h('div', { class: 'cha-pad', 'data-testid': 'cha-area' }, food)
+  const hint = isStrokes ? 'Vuốt qua lại thật đều tay.' : look.spot === 'shell' ? 'Vuốt qua lại lên các mảng vỏ cho sạch.' : 'Vuốt qua lại lên các vết bẩn cho sạch.'
+  const fr = buildFrame2(stage, {
+    icon: artV2(ingArt), title: step.label || '', sub: hint,
+    steps: frameSteps(ctx), timeLabel: ctx.untimed ? 'Thong thả' : null, vfx
+  })
+  const foodArt = svgBox(foodSvg, 'cha-food-icon')
+  const food = h('div', { class: 'cha-food' }, foodArt)
+  const doneArt = doneSvg && doneSvg !== foodSvg ? svgBox(doneSvg, 'cha-food-icon cha-food-done') : null
+  if (doneArt) food.appendChild(doneArt)
+  const pad = h('div', { class: ['cha-pad', 'scene-' + look.scene, look.spot ? 'spot-' + look.spot : '', look.salt ? 'has-salt' : ''], 'data-testid': 'cha-area' }, food)
+  // vòi nước (chỉ chậu rửa): dòng nước chảy xuống chậu, gợn nước chỗ nước rơi — trang trí, không nhận chạm
+  let tap = null
+  if (look.scene === 'basin') {
+    const tapSvg = propV2('voi_nuoc')
+    tap = h('div', { class: 'cha-tap', 'aria-hidden': 'true' },
+      h('div', { class: 'cha-stream' }, h('i', { class: 'cha-stream-flow' })),
+      h('i', { class: 'cha-splash' }),
+      tapSvg ? svgBox(tapSvg, 'cha-tap-art') : h('i', { class: 'cha-tap-art is-css' }))
+    pad.appendChild(tap)
+  }
   const barFill = h('div', { class: 'mg-bar-fill' })
   const bar = h('div', { class: 'mg-bar', 'data-testid': 'cha-progress', 'data-v': '0' }, barFill)
-  const label = h('div', { class: 'mg-count' })
+  const label = h('div', { class: 'mg-count g-pill' })
   fr.area.append(pad)
   fr.foot.append(bar, label)
   let ended = false
@@ -132,8 +180,9 @@ function mount(stage, step, ctx = {}) {
   }
   setProgress(0, '\u00a0')   // giữ chỗ dòng chữ ở chân (chưa có số liệu) để đo chỗ còn lại cho thớt đúng ngay lúc mount
 
-  // Chỗ còn lại cho thớt (px) = khung sân khấu − đầu − chân − khoảng cách − đệm. Sân khấu trên Thớt có chiều cao cố định
-  // (lớp phủ panel Bếp), nên thớt lấp vừa chỗ này thì mọi vết nằm trọn phía trên thanh chân dính, không phải cuộn.
+  // Chỗ còn lại cho thớt (px) = khung sân khấu − đầu − chân − khoảng cách − đệm − phần khác trong vùng chơi (thẻ hướng dẫn
+  // .mg-sub của buildFrame2 nằm trong vùng chơi, trên thớt). Sân khấu trên Thớt có chiều cao cố định (lớp phủ panel Bếp), nên
+  // thớt lấp vừa chỗ này thì mọi vết nằm trọn phía trên thanh chân dính, không phải cuộn.
   // null: sân khấu chưa hiện (chưa có kích thước) → thớt chuẩn; h ≤ 0 (đã hiện nhưng hết chỗ) → thớt cỡ sàn.
   function room() {
     if (!stage.isConnected || stage.clientHeight <= 0 || fr.area.clientWidth <= 0) return null
@@ -148,7 +197,36 @@ function mount(stage, step, ctx = {}) {
       used += el.getBoundingClientRect().height + (parseFloat(es.marginTop) || 0) + (parseFloat(es.marginBottom) || 0)
     }
     used += (parseFloat(cs.rowGap) || 0) * Math.max(0, count - 1)
+    const as = getComputedStyle(fr.area)
+    used += (parseFloat(as.paddingTop) || 0) + (parseFloat(as.paddingBottom) || 0)
+    let inner = 0
+    for (const el of fr.area.children) {
+      if (el === pad) continue
+      const es = getComputedStyle(el)
+      if (es.display === 'none' || es.position === 'absolute' || es.position === 'fixed') continue
+      inner++
+      used += el.getBoundingClientRect().height + (parseFloat(es.marginTop) || 0) + (parseFloat(es.marginBottom) || 0)
+    }
+    used += (parseFloat(as.rowGap) || 0) * inner
     return { w: fr.area.clientWidth, h: Math.floor(stage.clientHeight - used) }
+  }
+
+  // Vòi nước theo cỡ thớt: góc trên-phải, miệng vòi trên lòng chậu; dòng nước rơi tới giữa chậu.
+  function placeTap(w, hh) {
+    if (!tap) return
+    const meta = PROP_META.voi_nuoc || { vb: [180, 132], mouth: [155, 123], mouthW: 20 }
+    const tw = Math.round(Math.min(w * 0.34, hh * 0.62, 128))
+    const sc = tw / meta.vb[0]
+    const th = Math.round(meta.vb[1] * sc)
+    const mx = meta.mouth[0] * sc, my = meta.mouth[1] * sc
+    // miệng vòi rơi vào ~74% bề ngang, nước rơi xuống tới ~50% chiều cao thớt
+    const left = Math.round(w * 0.74 - mx)
+    const top = Math.round(Math.max(-th * 0.16, hh * 0.04 - my * 0.55))
+    Object.assign(tap.style, { left: left + 'px', top: top + 'px', width: tw + 'px', height: th + 'px' })
+    const sw = Math.max(5, Math.round(meta.mouthW * sc * 0.7))
+    const fall = Math.max(10, Math.round(hh * 0.5 - (top + my)))
+    Object.assign(tap.firstChild.style, { left: Math.round(mx - sw / 2) + 'px', top: Math.round(my - 2) + 'px', width: sw + 'px', height: fall + 'px' })
+    Object.assign(tap.children[1].style, { left: Math.round(mx) + 'px', top: Math.round(my + fall) + 'px' })
   }
 
   // ---- chế độ vết bẩn ----
@@ -175,6 +253,7 @@ function mount(stage, step, ctx = {}) {
     food.style.width = size + 'px'
     food.style.height = size + 'px'
     for (const sp of spots) sp.el.style.setProperty('--size', (SPOT_RADIUS * 2 * k).toFixed(1) + 'px')
+    placeTap(padW, padH)
     return fit
   }
   if (!isStrokes) {
@@ -183,10 +262,10 @@ function mount(stage, step, ctx = {}) {
     spotLayout(n, fit.wr, fit.hr, rand).forEach((p, i) => {
       const el = h('div', {
         class: 'cha-spot', 'data-testid': 'cha-spot-' + i, 'data-clean': '0',
-        style: { left: (p.nx * 100).toFixed(3) + '%', top: (p.ny * 100).toFixed(3) + '%', '--size': (SPOT_RADIUS * 2 * k).toFixed(1) + 'px' }
-      })
+        style: { left: (p.nx * 100).toFixed(3) + '%', top: (p.ny * 100).toFixed(3) + '%', '--size': (SPOT_RADIUS * 2 * k).toFixed(1) + 'px', '--tilt': Math.round(rand() * 360) + 'deg' }
+      }, h('i', { class: 'cha-foam' }))
       pad.appendChild(el)
-      spots.push({ nx: p.nx, ny: p.ny, clean: 0, el })
+      spots.push({ nx: p.nx, ny: p.ny, clean: 0, el, fx: 0 })
     })
   }
   const need = SPOT_NEED_PX / (mul > 0 ? mul : 1)
@@ -195,7 +274,7 @@ function mount(stage, step, ctx = {}) {
   function applyStrokes(free) {
     const hh = fitStrokesHeight(free ? free.w : PAD_W, free ? free.h : null)
     pad.style.height = hh + 'px'
-    const size = Math.round(Math.min(200, hh * 0.8))
+    const size = Math.round(Math.min(200, hh * 0.86))
     food.style.width = size + 'px'
     food.style.height = size + 'px'
   }
@@ -247,14 +326,29 @@ function mount(stage, step, ctx = {}) {
           const sp = spots[i]
           sp.el.style.setProperty('--clean', sp.clean.toFixed(3))
           sp.el.dataset.clean = sp.clean.toFixed(2)
-          if (sp.clean >= 1) { sp.el.classList.add('is-clean'); feedback(ctx, 'tap') }
+          // rửa / bóc tới đâu bọt nước, mảnh vỏ bắn ra tới đó (mỗi 1/3 độ sạch một lần; giảm chuyển động: không hạt)
+          const step3 = Math.floor(sp.clean * 3)
+          if (vfx && step3 > sp.fx && sp.clean < 1 && !reduced()) {
+            sp.fx = step3
+            try { vfx.burst(sp.el, look.spot === 'shell' ? 'crumb' : 'drop', look.spot === 'shell' ? { n: 2, colors: ['#efe3c8', '#b99a6a', '#fffaf0'] } : { n: 2 }) } catch { /* bỏ qua */ }
+          }
+          if (sp.clean >= 1 && !sp.el.classList.contains('is-clean')) {
+            sp.el.classList.add('is-clean')
+            feedback(ctx, 'tap')
+            // sạch vết: 3–6 hạt lấp lánh (giảm chuyển động: một dấu sao tĩnh)
+            if (vfx) { try { vfx.burst(sp.el, reduced() ? 'star' : 'sparkle', { n: 4 }) } catch { /* bỏ qua */ } }
+          }
         }
         if (changed.length) updateSpots()
       } else {
         const before = rev.count
         rev.push(p.x)
         food.style.setProperty('--dx', clamp(p.x - pad.clientWidth / 2, -60, 60) + 'px')
-        if (rev.count !== before) { feedback(ctx, 'tap'); updateStrokes() }
+        if (rev.count !== before) {
+          feedback(ctx, 'tap')
+          if (vfx && look.grit && !reduced()) { try { vfx.burst(food, 'crumb', { n: 2, colors: look.grit }) } catch { /* bỏ qua */ } }
+          updateStrokes()
+        }
       }
       last = p
     },
@@ -274,7 +368,13 @@ function mount(stage, step, ctx = {}) {
   function endSoon() {
     if (ended) return
     ended = true
-    feedback(ctx, 'good')
+    feedback(ctx, 'good', food)
+    // xong: hình trạng thái (dưa leo sạch, trứng cút bóc, khô mực xé) hiện rõ, nảy nhẹ
+    if (doneArt) {
+      food.classList.add('is-done')
+      doneArt.style.opacity = '1'
+      if (vfx) { try { vfx.pop(doneArt) } catch { /* bỏ qua */ } }
+    }
     setTimeout(finish, 220)
   }
 
@@ -301,7 +401,11 @@ function mount(stage, step, ctx = {}) {
     if (ro) ro.disconnect()
   }
 
-  return { result: out.promise, destroy() { cleanup(); out.settle(null) } }
+  return {
+    result: out.promise,
+    hold(on) { if (!out.done) clock.hold(on) },
+    destroy() { cleanup(); fr.destroy(); out.settle(null) }
+  }
 }
 
 export default { type: 'cha', mount }

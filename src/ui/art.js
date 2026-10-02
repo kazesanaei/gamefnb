@@ -1,5 +1,20 @@
 // Hình vẽ SVG dạng chuỗi (không ảnh ngoài, không base64). JS thuần, không dùng DOM.
 // Icon dùng viewBox 0 0 64 64: màu phẳng, viền đậm, hình đơn giản dễ thương.
+//
+// M5 (0.5.0) — MẶT TIỀN của hệ hình (thiết kế M5 mục 1.2):
+// - ICONS = bộ hình cũ (nguyên liệu, món, dụng cụ, sự kiện/meta) được THAY bằng hình mới cùng id của src/ui/art/*
+//   (ing-tuoi, ing-kho, mon, tools; kiểu cel-shading viền mực). Mọi id cũ vẫn còn (sự kiện, thư, món tương lai… chưa
+//   vẽ lại thì giữ hình cũ); thêm 4 biểu tượng thao tác mới (muong_khuay, dao_bao, binh_lac, khay_bay).
+// - art(id, state): hình trạng thái 'id.state' (dưa leo thái lát, trứng ốp la…) nếu có, không thì icon(id).
+// - prop(id) / PROP_META / PROPS: đạo cụ sân khấu lớn (viewBox riêng, KHÔNG nằm trong ICONS); thiếu thì ''.
+// - LEGACY_ICONS: bộ hình cũ nguyên vẹn (Phòng mẫu so cũ/mới, test so "hình mới khác hình cũ").
+// - Tệp này import THẲNG src/ui/art/{ing-tuoi,ing-kho,mon,tools,props}.js; src/ui/art/v2.js chỉ là lớp tương thích
+//   (artV2 = art, propV2 = prop) import từ tệp này, nên không có vòng import.
+import { ING_TUOI, ING_TUOI_STATES } from './art/ing-tuoi.js'
+import { ING_KHO, ING_KHO_STATES } from './art/ing-kho.js'
+import { MON as MON_V2 } from './art/mon.js'
+import { TOOLS as TOOLS_V2 } from './art/tools.js'
+import { PROPS as PROPS_RAW, PROP_META } from './art/props.js'
 
 const INK = '#3a2618'
 const FONT = 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif'
@@ -608,13 +623,47 @@ const META = {
 const FALLBACK_ICON = svg(
   `<circle cx="32" cy="32" r="24" fill="#eeeae2"/>` + txt(32, 42, '?', 28, INK))
 
-export const ICONS = deepFreeze({ ...ING, ...MON, ...TOOLS, ...META, fallback: FALLBACK_ICON })
+const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k)
+
+// Bộ hình cũ (trước M5), giữ nguyên để so cũ/mới; game dùng ICONS bên dưới.
+export const LEGACY_ICONS = deepFreeze({ ...ING, ...MON, ...TOOLS, ...META, fallback: FALLBACK_ICON })
+
+// Bộ hình mới M5 (viewBox 64): nguyên liệu tươi, đồ khô/chai lọ, món, dụng cụ và biểu tượng thao tác.
+export const ICONS_V2 = deepFreeze({ ...ING_TUOI, ...ING_KHO, ...MON_V2, ...TOOLS_V2 })
+// Hình trạng thái 'id.trạng_thái' (viewBox 64), không nằm trong ICONS.
+export const STATES = deepFreeze({ ...ING_TUOI_STATES, ...ING_KHO_STATES })
+// Đạo cụ sân khấu lớn (viewBox riêng, mốc tọa độ ở PROP_META).
+export const PROPS = deepFreeze({ ...PROPS_RAW })
+export { PROP_META }
+
+// Hình mới đè lên hình cũ cùng id; id chỉ có ở bộ cũ (sự kiện, thư, món tương lai…) giữ hình cũ.
+export const ICONS = deepFreeze({ ...ING, ...MON, ...TOOLS, ...META, ...ICONS_V2, fallback: FALLBACK_ICON })
 
 /** SVG của icon theo id (nhận cả id món không kèm tiền tố mon_); không có thì trả hình dự phòng. */
 export function icon(id) {
   if (typeof id === 'string') {
-    if (Object.prototype.hasOwnProperty.call(ICONS, id)) return ICONS[id]
-    if (Object.prototype.hasOwnProperty.call(ICONS, 'mon_' + id)) return ICONS['mon_' + id]
+    if (has(ICONS, id)) return ICONS[id]
+    if (has(ICONS, 'mon_' + id)) return ICONS['mon_' + id]
+  }
+  return FALLBACK_ICON
+}
+
+/** Hình của id ở trạng thái state (vd art('dua_leo', 'lat')); trạng thái chưa vẽ hoặc không truyền thì icon(id). */
+export function art(id, state) {
+  if (typeof id === 'string' && state != null && has(STATES, `${id}.${state}`)) return STATES[`${id}.${state}`]
+  return icon(id)
+}
+
+/** SVG đạo cụ sân khấu lớn; '' nếu không có (bên gọi tự dự phòng bằng CSS hoặc icon). */
+export function prop(id) {
+  return typeof id === 'string' && has(PROPS, id) ? PROPS[id] : ''
+}
+
+/** Hình của bộ cũ (Phòng mẫu so cũ/mới); không có thì hình dự phòng. */
+export function legacyIcon(id) {
+  if (typeof id === 'string') {
+    if (has(LEGACY_ICONS, id)) return LEGACY_ICONS[id]
+    if (has(LEGACY_ICONS, 'mon_' + id)) return LEGACY_ICONS['mon_' + id]
   }
   return FALLBACK_ICON
 }

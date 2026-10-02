@@ -58,8 +58,8 @@ export const MINIGAME_TYPES = deepFreeze({
     }
   },
   // ---------- M5: năm thao tác mới ----------
-  // icon tạm (ICONS chưa có hình riêng của thao tác): xoay 'sua_muoi' → muong_khuay, got 'dao_thep' → dao_bao,
-  // lac 'ly' → binh_lac, bay 'ro' → khay_bay (đổi lại khi bộ hình dụng cụ M5 vào ICONS).
+  // Biểu tượng thao tác (bộ hình dụng cụ M5 đã vào ICONS từ 0.5.0): dap trung_ga, xoay muong_khuay, got dao_bao,
+  // lac binh_lac, bay khay_bay. Lớp vỏ có hình riêng thì giữ (chen sua_muoi, ro bot_nang, ly da).
   // Lớp vỏ: sub là dòng hướng dẫn trên sân khấu, count là chữ của bộ đếm, act là chữ nút (nếu có).
   dap: {
     name: 'Đập trứng',
@@ -69,7 +69,7 @@ export const MINIGAME_TYPES = deepFreeze({
     icon: 'trung_ga'
   },
   xoay: {
-    name: 'Khuấy', hint: 'Vẽ vòng tròn quanh lòng tô cho đủ số vòng, quay vừa tay kẻo văng ra ngoài.', icon: 'sua_muoi',
+    name: 'Khuấy', hint: 'Vẽ vòng tròn quanh lòng tô cho đủ số vòng, quay vừa tay kẻo văng ra ngoài.', icon: 'muong_khuay',
     skins: {
       to: {
         name: 'Trộn đều', hint: 'Vẽ vòng tròn trong tô để trộn đều, quay vừa tay kẻo văng ra ngoài.',
@@ -90,10 +90,10 @@ export const MINIGAME_TYPES = deepFreeze({
     hint: 'Vuốt thẳng từ trên xuống theo từng dải vỏ cho tới khi hết vỏ.',
     sub: 'Vuốt thẳng từ trên xuống theo từng dải vỏ.',
     count: 'Dải',
-    icon: 'dao_thep'
+    icon: 'dao_bao'
   },
   lac: {
-    name: 'Lắc', hint: 'Kéo lên kéo xuống thật đều tay cho đủ số lượt.', icon: 'ly',
+    name: 'Lắc', hint: 'Kéo lên kéo xuống thật đều tay cho đủ số lượt.', icon: 'binh_lac',
     skins: {
       binh: {
         name: 'Lắc bình', hint: 'Kéo bình lên xuống thật đều tay cho đủ số lượt lắc.',
@@ -106,7 +106,7 @@ export const MINIGAME_TYPES = deepFreeze({
     }
   },
   bay: {
-    name: 'Bày', hint: 'Kéo từng món thả vào giữa đích cho đủ số, rồi bấm Xong.', icon: 'ro',
+    name: 'Bày', hint: 'Kéo từng món thả vào giữa đích cho đủ số, rồi bấm Xong.', icon: 'khay_bay',
     skins: {
       ly: {
         name: 'Thả đá', hint: 'Kéo từng viên đá thả vào giữa ly cho đủ số, rồi bấm Xong.',

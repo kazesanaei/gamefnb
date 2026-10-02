@@ -320,6 +320,76 @@ test('art: icon() có hình dự phòng; tiền và QR đúng quy định', () =
   assert.ok(cartSvg({ name: '<Xe & "Tôi">' }).includes('&lt;Xe &amp; &quot;Tôi&quot;&gt;'))
 })
 
+// M5 (0.5.0): src/ui/art.js là mặt tiền — bộ hình mới (src/ui/art/*) thay hình cũ cùng id trong ICONS, giữ mọi id cũ;
+// art(id, state) lấy hình trạng thái; prop(id) lấy đạo cụ sân khấu (ngoài ICONS); v2.js chỉ đặt lại tên, không vòng import.
+test('art 0.5.0: ICONS gộp bộ hình mới đè hình cũ cùng id, giữ mọi id cũ; art(), prop(), PROP_META; biểu tượng 5 thao tác', async () => {
+  const A = await import('../../src/ui/art.js')
+  const V2 = await import('../../src/ui/art/v2.js')
+  assert.equal(A.ICONS, ICONS)
+  for (const o of [A.LEGACY_ICONS, A.ICONS_V2, A.STATES, A.PROPS, A.PROP_META]) assert.ok(Object.isFrozen(o))
+  // mọi id cũ còn đủ; id có hình mới thì dùng hình mới, id chỉ có ở bộ cũ (sự kiện, thư, món tương lai…) giữ hình cũ
+  for (const id of Object.keys(A.LEGACY_ICONS)) {
+    assert.ok(ICONS[id], `mất id cũ ${id}`)
+    assert.equal(ICONS[id], A.ICONS_V2[id] ?? A.LEGACY_ICONS[id], `${id}: sai nguồn hình`)
+  }
+  for (const id of Object.keys(A.ICONS_V2)) assert.equal(ICONS[id], A.ICONS_V2[id], `${id}: chưa dùng hình mới`)
+  // đủ 42 nguyên liệu và 5 món dùng hình mới; hình mới khác hình cũ
+  for (const ing of Object.values(INGREDIENTS)) {
+    assert.ok(A.ICONS_V2[ing.icon], `nguyên liệu ${ing.icon} chưa có hình mới`)
+    assert.notEqual(ICONS[ing.icon], A.LEGACY_ICONS[ing.icon], `${ing.icon} vẫn là hình cũ`)
+  }
+  for (const r of Object.values(RECIPES)) assert.equal(icon(r.icon), A.ICONS_V2[r.icon], `món ${r.id}: hình mới`)
+  // ICONS chỉ gồm thêm 4 biểu tượng thao tác; hình trạng thái và đạo cụ KHÔNG vào ICONS
+  const added = Object.keys(ICONS).filter(k => !(k in A.LEGACY_ICONS)).sort()
+  assert.deepEqual(added, ['binh_lac', 'dao_bao', 'khay_bay', 'muong_khuay'])
+  assert.ok(!Object.keys(ICONS).some(k => k.includes('.')), 'hình trạng thái không nằm trong ICONS')
+  for (const id of Object.keys(A.PROPS)) assert.ok(!(id in ICONS), `đạo cụ ${id} không nằm trong ICONS`)
+  // icon(): nhận id món không kèm mon_, dự phòng, không lấy thuộc tính kế thừa
+  assert.equal(icon('che_buoi'), A.ICONS_V2.mon_che_buoi)
+  assert.equal(icon('constructor'), ICONS.fallback)
+  // art(id, state): trạng thái → icon(id) (kể cả trạng thái chưa vẽ, id món không kèm mon_); hình dự phòng
+  assert.equal(A.art('dua_leo', 'lat'), A.STATES['dua_leo.lat'])
+  assert.equal(A.art('trung_ga', 'op_la'), A.STATES['trung_ga.op_la'])
+  assert.equal(A.art('dua_leo', 'chua_ve'), ICONS.dua_leo)
+  assert.equal(A.art('dua_leo'), ICONS.dua_leo)
+  assert.equal(A.art('tra_tac'), ICONS.mon_tra_tac)
+  assert.equal(A.art('thu', 'mo'), ICONS.thu, 'id chỉ có ở bộ cũ vẫn có hình')
+  for (const bad of [undefined, null, 'khong_co_that', 'constructor', 42]) assert.equal(A.art(bad, 'lat'), ICONS.fallback)
+  for (const s of Object.values(A.STATES)) assert.ok(s.startsWith('<svg') && s.includes('viewBox="0 0 64 64"') && !/url\(|href|<image|base64|undefined|NaN|null/.test(s))
+  // prop(id): đạo cụ lớn có viewBox riêng theo PROP_META.vb; thiếu thì ''
+  for (const [id, s] of Object.entries(A.PROPS)) {
+    assert.equal(A.prop(id), s)
+    const vb = A.PROP_META[id] && A.PROP_META[id].vb
+    assert.ok(Array.isArray(vb) && s.includes(`viewBox="0 0 ${vb[0]} ${vb[1]}"`), `${id}: viewBox khớp PROP_META`)
+  }
+  for (const bad of ['khong_co', 'toString', undefined, null]) assert.equal(A.prop(bad), '')
+  // legacyIcon(): hình cũ cho Phòng mẫu so cũ/mới
+  assert.equal(A.legacyIcon('dua_leo'), A.LEGACY_ICONS.dua_leo)
+  assert.equal(A.legacyIcon('tra_tac'), A.LEGACY_ICONS.mon_tra_tac)
+  assert.equal(A.legacyIcon('khong_co_that'), ICONS.fallback)
+  // lớp tương thích v2.js trỏ đúng mặt tiền
+  assert.equal(V2.artV2, A.art)
+  assert.equal(V2.propV2, A.prop)
+  assert.equal(V2.STATES_V2, A.STATES)
+  assert.equal(V2.ICONS_V2, A.ICONS_V2)
+  assert.equal(V2.PROPS, A.PROPS)
+  assert.equal(V2.PROP_META, A.PROP_META)
+  // không vòng import: mặt tiền import thẳng các tệp art/*, không import v2.js
+  const { readFileSync } = await import('node:fs')
+  const src = readFileSync(new URL('../../src/ui/art.js', import.meta.url), 'utf8')
+  assert.ok(!/from '\.\/art\/v2\.js'/.test(src), 'art.js không import art/v2.js')
+  for (const f of ['ing-tuoi', 'ing-kho', 'mon', 'tools', 'props']) assert.ok(src.includes(`from './art/${f}.js'`), `art.js import art/${f}.js`)
+  // biểu tượng 5 thao tác mới (thiết kế mục 1.6); lớp vỏ có hình riêng giữ nguyên
+  const want = { dap: 'trung_ga', xoay: 'muong_khuay', got: 'dao_bao', lac: 'binh_lac', bay: 'khay_bay' }
+  for (const [t, id] of Object.entries(want)) {
+    assert.equal(MINIGAME_TYPES[t].icon, id, `${t}: biểu tượng ${id}`)
+    assert.equal(ICONS[id], A.ICONS_V2[id], `${t}: biểu tượng là hình mới`)
+  }
+  assert.equal(MINIGAME_TYPES.xoay.skins.chen.icon, 'sua_muoi')
+  assert.equal(MINIGAME_TYPES.lac.skins.ro.icon, 'bot_nang')
+  assert.equal(MINIGAME_TYPES.bay.skins.ly.icon, 'da')
+})
+
 test('cặp bẫy phân biệt được bằng hình hoặc màu', () => {
   for (const [id, ing] of Object.entries(INGREDIENTS)) {
     if (!ing.trapOf) continue

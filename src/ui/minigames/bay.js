@@ -1,51 +1,87 @@
-// BAY — bày / thả món vào đích (M5, bản TẠM chơi được; gói Pha trộn làm đẹp sau, giữ nguyên hợp đồng testid/data-*).
-// Kéo từng món (viên đá) từ khay thả vào vùng đích (ly nhìn từ trên xuống). Khay có max(n + 1, 3) món nên ghi chú "Ít đá" có
-// ý nghĩa thật. Thả ngoài đích thì món trôi về khay, không phạt; chạm món đã thả (hoặc kéo nó ra ngoài ly) để lấy ra.
-// Thả ≥ 1 món thì bật "Xong".
-// Chấm: scoreBay (điểm vị trí theo khoảng cách tới tâm / bán kính, −30 mỗi món lệch số lượng).
-// Hợp đồng e2e: bay-target (tâm và bán kính bằng boundingBox); bay-item-<i>[data-placed = 0|1]; bay-count ("1/2",
-// data-v, data-n); bay-done. Lớp vỏ (step.skin): ly → stage[data-skin].
+// BAY — bày / thả món vào đích (M5, gói Pha trộn E3). Ly nhựa TO nhìn ngang (đạo cụ ly_lon) đựng cà phê (sữa đặc lắng
+// đáy, cà phê ở trên); khay đá nhựa xanh có max(n + 1, 3) viên đá to (hình da.mot_vien) nên ghi chú "Ít đá" có ý nghĩa thật.
+// Kéo từng viên thả vào ly: viên đá rơi xuống mặt nước (squash), mặt nước gợn, nước bắn, tiếng "tõm" (âm plop), mực nước
+// dâng nhẹ theo số viên. Thả ngoài vùng ly thì viên đá trôi về ô của nó trên khay, không phạt; chạm viên đã thả (hoặc kéo
+// nó ra khỏi ly) để lấy ra. Thả ≥ 1 viên thì bật "Xong"; đủ số thì nút Xong sáng lên. Giảm chuyển động: không rơi, không
+// bắn — viên đá hiện thẳng trong ly, chỉ còn gợn mặt nước (opacity).
+// Chấm: scoreBay (điểm vị trí theo khoảng cách tới tâm vùng thả / bán kính lúc thả, −30 mỗi viên lệch số lượng —
+// core/minigame-scoring.js, không đổi).
+// Hợp đồng e2e (giữ từ bản tạm gói A): bay-target (vùng thả hình tròn trên miệng ly; tâm và bán kính bằng boundingBox; không
+// nhận chạm — pointer-events: none); bay-item-<i>[data-placed = 0|1] (vùng chạm ≥ 46px); bay-count chỉ chứa "k/n" (vd "1/2"),
+// data-v, data-n — nhãn "Đá" nằm ngoài; bay-done (bật khi đã thả ≥ 1). Lớp vỏ (step.skin): ly → .mg-bay.skin-ly,
+// stage[data-skin].
+// Cách giải tự động: với i < data-n, nhấn giữa bay-item-i, kéo (≥ 8 bước) tới tâm bay-target (lệch ±8px), thả; rồi bấm
+// bay-done.
 import { h, svgBox } from '../dom.js'
 import { bindPointer } from '../input.js'
 import { scoreBay } from '../../core/minigame-scoring.js'
-import { createClock, frameLoop, settleOnce, feedback } from './_util.js'
+import { createClock, frameLoop, settleOnce, feedback, vfxOf, reducedOf, frameSteps } from './_util.js'
 import { buildFrame2 } from './_frame.js'
-import { artV2, propV2 } from '../art/v2.js'
-import { isReduced } from '../motion.js'
+import { artV2, propV2, PROP_META } from '../art/v2.js'
 import { gestureLimitSec } from './_gesture.js'
 
-export const BAY_ITEM_PX = 52
+export const BAY_ITEM_PX = 52          // cạnh viên đá trên khay (px) — co tới 46 ở cảnh thấp, không dưới 44
+const BAY_ITEM_MIN = 46
 const TAP_MAX = 8
+const LEVEL = 0.52                     // mực cà phê ban đầu (phần chiều cao lòng ly)
+const LEVEL_PER = 0.025                // mỗi viên đá làm mực dâng thêm
 
 /** Số món trên khay cho n món cần thả. */
 export function trayCount(n) { return Math.max(Math.floor(Number(n) || 1) + 1, 3) }
 
-// Màu mặt nước trong ly theo món.
-const LIQUID = Object.freeze({ ca_phe_sua_da: '#5a3420', ca_phe_muoi: '#4a2b1a' })
-
-function cue(ctx, name, fallback) {
-  const app = ctx && ctx.app
-  if (!app || typeof app.sound !== 'function') return
-  const names = app.audio && Array.isArray(app.audio.names) ? app.audio.names : null
-  const pick = names && !names.includes(name) ? fallback : name
-  try { if (pick) app.sound(pick) } catch { /* bỏ qua */ }
+// Lòng ly (PROP_META.ly_lon, khung 200 × 250): miệng, đáy, thành trong trái/phải [trên, dưới].
+const CUP = PROP_META.ly_lon || {
+  vb: [200, 250], mouth: { cx: 100, cy: 31, rx: 75, ry: 12.5 }, bottom: { cx: 100, cy: 226, rx: 50, ry: 10 },
+  left: [[25, 31], [50, 226]], right: [[175, 31], [150, 226]]
 }
+const f1 = v => Math.round(v * 10) / 10
+const lerp = (a, b, t) => a + (b - a) * t
 
-function reducedOf(ctx) {
-  return () => {
-    try {
-      if (typeof ctx.reduced === 'function') return !!ctx.reduced()
-      if (ctx.reduced !== undefined && ctx.reduced !== null) return !!ctx.reduced
-    } catch { /* bỏ qua */ }
-    return isReduced(ctx.app)
+/** Mặt cắt lòng ly ở mực f (0 = đáy, 1 = miệng), theo khung đạo cụ: { y, xl, xr, ry }. */
+export function cupLevel(f) {
+  const t = Math.max(0, Math.min(1, Number(f) || 0))
+  return {
+    y: lerp(CUP.bottom.cy, CUP.mouth.cy, t),
+    xl: lerp(CUP.left[1][0], CUP.left[0][0], t),
+    xr: lerp(CUP.right[1][0], CUP.right[0][0], t),
+    ry: lerp(CUP.bottom.ry, CUP.mouth.ry, t)
   }
 }
 
-function artBox(svg, style = '') {
-  const box = svgBox(svg, 'mg-art', { style: 'display:block;' + style })
-  const s = box.firstElementChild
-  if (s) { s.style.width = '100%'; s.style.height = '100%'; s.style.display = 'block' }
-  return box
+// Màu đồ uống trong ly theo món: [thân, mặt, lớp đáy].
+const DRINK = Object.freeze({
+  ca_phe_sua_da: Object.freeze(['#4a2412', '#713c1e', '#f3dcaa']),
+  ca_phe_muoi: Object.freeze(['#3f1f10', '#683619', '#f3dcaa'])
+})
+const DRINK_DEFAULT = Object.freeze(['#c98a3a', '#e0a95a', '#f6e3b4'])
+
+/**
+ * Nước trong ly (thuần): SVG cùng khung đạo cụ, đặt DƯỚI hình ly — thân đồ uống từ đáy tới mực f, lớp đáy (sữa đặc lắng)
+ * tới mực fb, mặt nước là ellipse sáng hơn có viền mực mảnh.
+ */
+export function drinkSvg(f, colors = DRINK_DEFAULT, fb = 0.13) {
+  const [body, top, under] = colors
+  const B = CUP.bottom, s = cupLevel(f), u = cupLevel(fb)
+  const bottomArc = `A${B.rx} ${B.ry} 0 0 0 ${CUP.left[1][0]} ${B.cy}`
+  const shape = (lv) => `M${CUP.left[1][0]} ${B.cy}L${f1(lv.xl)} ${f1(lv.y)}L${f1(lv.xr)} ${f1(lv.y)}L${CUP.right[1][0]} ${B.cy}${bottomArc}Z`
+  return `<svg viewBox="0 0 ${CUP.vb[0]} ${CUP.vb[1]}" aria-hidden="true"><g stroke="#3a2618" stroke-linejoin="round">` +
+    `<path d="${shape(s)}" fill="${body}" stroke="none"/>` +
+    `<path d="${shape(u)}" fill="${under}" stroke="none"/>` +
+    `<ellipse cx="100" cy="${f1(u.y)}" rx="${f1((u.xr - u.xl) / 2)}" ry="${f1(u.ry)}" fill="${under}" stroke="none"/>` +
+    `<path d="M${f1(u.xl + 4)} ${f1(u.y + 3)}Q100 ${f1(u.y - 9)} ${f1(u.xr - 4)} ${f1(u.y + 3)}" fill="none" stroke="${top}" stroke-width="5" opacity=".55"/>` +
+    `<ellipse cx="100" cy="${f1(s.y)}" rx="${f1((s.xr - s.xl) / 2)}" ry="${f1(s.ry)}" fill="${top}" stroke-width="1.6"/>` +
+    `<ellipse cx="${f1(100 - (s.xr - s.xl) * 0.18)}" cy="${f1(s.y - s.ry * 0.25)}" rx="${f1((s.xr - s.xl) * 0.16)}" ry="${f1(s.ry * 0.3)}" fill="#fff" opacity=".22" stroke="none"/>` +
+    '</g></svg>'
+}
+
+// Mũi tên chỉ xuống miệng ly (gợi ý; nhấp nhô bằng CSS, giảm chuyển động: đứng yên).
+const DOWN = '<svg viewBox="0 0 40 50" aria-hidden="true"><g fill="none" stroke-linecap="round" stroke-linejoin="round">' +
+  '<path d="M20 6V40M8 28L20 41L32 28" stroke="#3a2618" stroke-width="9"/>' +
+  '<path d="M20 6V40M8 28L20 41L32 28" stroke="#fffaf0" stroke-width="4.5"/></g></svg>'
+
+function sound(ctx, name) {
+  const app = ctx && ctx.app
+  try { if (app && typeof app.sound === 'function') app.sound(name) } catch { /* bỏ qua */ }
 }
 
 function mount(stage, step, ctx = {}) {
@@ -56,100 +92,193 @@ function mount(stage, step, ctx = {}) {
   const limit = gestureLimitSec(step, { assist: !!ctx.assist, untimed: !!ctx.untimed })
   const clock = createClock()
   const out = settleOnce()
-  const vfx = ctx.vfx || null
+  const vfx = vfxOf(ctx)
   const reduced = reducedOf(ctx)
   const T = ((ctx.data || {}).MINIGAME_TYPES || {}).bay || {}
   const skinId = 'ly'
   const skin = (T.skins && T.skins[skinId]) || {}
   const INGS = (ctx.data && ctx.data.INGREDIENTS) || {}
   const itemId = (INGS[step.ing] && INGS[step.ing].icon) || step.ing || 'da'
-  const itemSvg = artV2(itemId)
-  const liquid = LIQUID[ctx.recipe && ctx.recipe.id] || '#9fd3e6'
+  // vật kéo thả: MỘT viên đá to (hình da.mot_vien; nguyên liệu không có trạng thái này thì dùng hình gốc)
+  const itemSvg = artV2(itemId, 'mot_vien')
+  const drink = DRINK[ctx.recipe && ctx.recipe.id] || DRINK_DEFAULT
 
   stage.classList.add('mg-bay', 'skin-' + skinId)
   stage.dataset.skin = skinId
   const fr = buildFrame2(stage, {
-    icon: itemSvg, title: step.label || skin.name || T.name || '', sub: skin.sub || 'Kéo từng món thả vào đích, đủ số thì bấm Xong.',
-    steps: Number(ctx.stepTotal) > 0 ? { index: ctx.stepIndex, total: ctx.stepTotal, grades: ctx.stepGrades || [] } : null,
-    timeLabel: ctx.untimed ? 'Thong thả' : null, vfx
+    icon: artV2(itemId), title: step.label || skin.name || T.name || '', sub: skin.sub || 'Kéo từng món thả vào đích, đủ số thì bấm Xong.',
+    steps: frameSteps(ctx), timeLabel: ctx.untimed ? 'Thong thả' : null, vfx
   })
 
-  // Ly nhìn từ trên xuống: vành ly, mặt nước; vòng nét đứt là vùng thả.
-  const propSvg = propV2('ly_lon')
-  const target = h('div', {
-    class: 'bay-target', 'data-testid': 'bay-target',
-    style: 'position:absolute;border-radius:50%;' +
-      (propSvg ? '' : `background:radial-gradient(circle at 50% 50%,${liquid} 0 66%,#dff1f7 67% 80%,#bfe0ea 81%);border:4px solid #3a2618;box-shadow:0 5px 0 rgba(58,38,24,.3);`)
-  },
-  propSvg ? artBox(propSvg, 'position:absolute;inset:0;width:100%;height:100%;') : null,
-  h('div', { style: 'position:absolute;inset:22%;border-radius:50%;border:3px dashed rgba(255,250,240,.8);pointer-events:none;' }),
-  h('div', { style: 'position:absolute;left:18%;top:14%;width:20%;height:10%;border-radius:50%;background:rgba(255,255,255,.5);pointer-events:none;' }))
-  const tray = h('div', {
-    class: 'bay-tray',
-    style: 'position:absolute;left:8px;right:8px;bottom:4px;border:4px solid #3a2618;border-radius:16px;background:linear-gradient(180deg,#e8eef1,#c6d3da);box-shadow:0 4px 0 rgba(58,38,24,.3);'
-  })
-  const scene = h('div', { class: 'bay-scene', style: 'position:relative;flex:1 1 0;width:100%;min-height:150px;' }, target, tray)
+  // ---- Cảnh: ly (nước dưới hình ly), vùng thả, gợi ý; khay đá có M ô ----
+  const liquid = h('div', { class: 'bay-liquid', html: drinkSvg(LEVEL, drink) })
+  const glassSvg = propV2('ly_lon')
+  const glassArt = glassSvg ? svgBox(glassSvg, 'bay-glass-art') : h('div', { class: 'bay-glass-art is-css' })
+  const target = h('div', { class: 'bay-target', 'data-testid': 'bay-target', 'aria-hidden': 'true' })
+  const hint = svgBox(DOWN, 'bay-hint')
+  const ring = h('i', { class: 'bay-ring' })
+  const tray = h('div', { class: 'bay-tray' })
+  // lớp chồng: nước (dưới) → gợn → viên đá trong ly → hình ly (thân trong suốt phủ lên đá) → vùng thả, gợi ý → đá trên khay
+  const scene = h('div', { class: 'bay-scene' }, tray, liquid, ring)
   const items = []
   for (let i = 0; i < M; i++) {
+    const art = svgBox(itemSvg, 'bay-item-art')
     const el = h('div', {
-      class: 'bay-item', 'data-testid': 'bay-item-' + i, 'data-placed': '0', role: 'button', 'aria-label': 'Món ' + (i + 1),
-      style: `position:absolute;left:0;top:0;width:${BAY_ITEM_PX}px;height:${BAY_ITEM_PX}px;margin:${-BAY_ITEM_PX / 2}px 0 0 ${-BAY_ITEM_PX / 2}px;` +
-        'touch-action:none;cursor:pointer;z-index:3;'
-    }, h('div', { class: 'bay-item-art', style: 'width:100%;height:100%;' }, artBox(itemSvg, 'width:100%;height:100%;')))
+      class: 'bay-item', 'data-testid': 'bay-item-' + i, 'data-placed': '0', role: 'button', 'aria-label': `${skin.count || 'Món'} ${i + 1}`
+    }, art)
     scene.appendChild(el)
-    items.push({ el, art: el.firstChild, i, placed: null, d: null })
+    items.push({ el, art, i, placed: null, d: null, drag: null, at: null, order: 0 })
   }
+  scene.append(glassArt, target, hint)
   fr.area.append(scene)
 
   // bay-count chỉ chứa "k/n" (vd "1/2"); nhãn ("Đá") đứng ngoài
   const counter = h('span', { class: 'bay-count', 'data-testid': 'bay-count', 'data-v': '0', 'data-n': String(n) })
-  const countPill = h('div', { class: 'mg-count g-pill g-pill--big' }, h('span', null, (skin.count || 'Món') + ' '), counter)
+  const countPill = h('div', { class: 'mg-count g-pill g-pill--big bay-pill' }, h('span', null, (skin.count || 'Món') + ' '), counter)
   const doneBtn = h('button', { class: 'g-btn g-btn--small mg-done', type: 'button', 'data-testid': 'bay-done', disabled: true }, 'Xong')
   fr.foot.append(countPill, doneBtn)
 
-  // Bố cục (px) theo cỡ cảnh: khay dưới, ly giữa phần trên. Món đã thả lưu vị trí theo bán kính ly (đổi cỡ vẫn đúng chỗ).
-  let L = { W: 0, H: 0, cx: 0, cy: 0, R: 0, trayTop: 0 }
+  // ---- Bố cục (px) theo cỡ cảnh: ly to nhất có thể; khay dưới ly (cảnh cao) hoặc khay dọc bên trái (cảnh thấp) ----
+  // L.k: px trên một đơn vị khung ly; (L.gx, L.gy): góc trên-trái hộp ly; vùng thả: tâm (L.tx, L.ty) bán kính L.R.
+  let L = null
+  let level = LEVEL
   function layout() {
     const r = scene.getBoundingClientRect()
     if (!r.width || !r.height) return
     const W = r.width, H = r.height
-    const trayH = BAY_ITEM_PX + 16
-    const trayTop = H - 4 - trayH
-    const R = Math.max(40, Math.min(110, (trayTop - 10) / 2, W * 0.32))
-    L = { W, H, cx: W / 2, cy: Math.max(R + 2, (trayTop - 6) / 2), R, trayTop }
-    Object.assign(target.style, { left: (L.cx - R) + 'px', top: (L.cy - R) + 'px', width: 2 * R + 'px', height: 2 * R + 'px' })
-    tray.style.height = trayH + 'px'
-    for (const it of items) if (!it.drag) place(it)
+    const s = Math.round(Math.max(BAY_ITEM_MIN, Math.min(BAY_ITEM_PX, H * 0.3)))
+    const cell = s + 8
+    const ar = CUP.vb[0] / CUP.vb[1]
+    // A: khay ngang dưới đáy cảnh
+    const trayHA = cell + 10
+    const ghA = Math.min(H - trayHA - 10, (W * 0.66) / ar, 300)
+    // B: khay dọc bên trái (1 hoặc 2 cột)
+    const rowsFit = Math.max(1, Math.floor((H - 12) / cell))
+    const cols = Math.ceil(M / rowsFit)
+    const trayWB = cols * cell + 10
+    const ghB = Math.min(H - 8, (W - trayWB - 28) / ar, 300)
+    const useB = ghB > ghA * 1.12
+    const gh = Math.max(60, useB ? ghB : ghA)
+    const gw = gh * ar
+    const k = gw / CUP.vb[0]
+    let gx, gy, tr
+    if (useB) {
+      const rows = Math.ceil(M / cols)
+      const th = rows * cell + 10
+      tr = { x: 6, y: Math.max(0, Math.round((H - th) / 2)), w: trayWB, h: th, cols }
+      gx = Math.round(tr.x + tr.w + (W - tr.x - tr.w - gw) / 2)
+      gy = Math.round(Math.max(2, (H - gh) / 2))
+    } else {
+      const cols2 = Math.min(M, Math.max(1, Math.floor((W - 22) / cell)))
+      const rows = Math.ceil(M / cols2)
+      const tw = cols2 * cell + 10, th = rows * cell + 10
+      tr = { x: Math.round((W - tw) / 2), y: Math.round(H - th - 2), w: tw, h: th, cols: cols2 }
+      gx = Math.round((W - gw) / 2)
+      gy = Math.round(Math.max(2, tr.y - 8 - gh))
+    }
+    const surf = cupLevel(LEVEL)
+    const ty = gy + ((CUP.mouth.cy + surf.y) / 2) * k
+    L = { W, H, s, cell, k, gx, gy, gw, gh, tray: tr, tx: gx + CUP.mouth.cx * k, ty, R: CUP.mouth.rx * k }
+    for (const el of [liquid, glassArt]) Object.assign(el.style, { left: gx + 'px', top: gy + 'px', width: Math.round(gw) + 'px', height: Math.round(gh) + 'px' })
+    Object.assign(target.style, { left: f1(L.tx - L.R) + 'px', top: f1(L.ty - L.R) + 'px', width: f1(2 * L.R) + 'px', height: f1(2 * L.R) + 'px' })
+    Object.assign(tray.style, { left: tr.x + 'px', top: tr.y + 'px', width: tr.w + 'px', height: tr.h + 'px' })
+    tray.replaceChildren(...items.map((it, i) => {
+      const c = cellPos(i)
+      return h('i', { class: 'bay-cell', style: { left: f1(c.x - tr.x - cell / 2 + 1) + 'px', top: f1(c.y - tr.y - cell / 2 + 1) + 'px', width: (cell - 2) + 'px', height: (cell - 2) + 'px' } })
+    }))
+    const hs = Math.round(Math.max(30, Math.min(48, gw * 0.24)))
+    Object.assign(hint.style, { width: hs + 'px', height: Math.round(hs * 1.25) + 'px', left: f1(L.tx - hs / 2) + 'px', top: f1(Math.max(0, gy + CUP.mouth.cy * k - hs * 1.3)) + 'px' })
+    for (const it of items) {
+      it.el.style.width = s + 'px'
+      it.el.style.height = s + 'px'
+      if (!it.drag) place(it)
+    }
   }
-  function home(i) {
-    const gap = (L.W - 16) / M
-    return { x: 8 + gap * (i + 0.5), y: L.trayTop + (BAY_ITEM_PX + 16) / 2 }
+  // tâm ô thứ i trên khay
+  function cellPos(i) {
+    const tr = L.tray
+    const col = i % tr.cols, row = Math.floor(i / tr.cols)
+    return { x: tr.x + 5 + L.cell * (col + 0.5), y: tr.y + 5 + L.cell * (row + 0.5) }
   }
+  // chỗ của viên đá trong ly: nổi ở mặt nước, kẹp trong thành ly, gần chỗ thả nhất mà không đè viên đã có (các viên thả
+  // trước); mặt nước hết chỗ thì xếp tầng trên, nhô dần lên miệng ly
+  function slotIn(it) {
+    const s = L.s
+    const sv = cupLevel(level)
+    const xl = L.gx + sv.xl * L.k + s * 0.5 + 2, xr = L.gx + sv.xr * L.k - s * 0.5 - 2
+    const want = L.gx + it.placed.u * L.k
+    const lo = Math.min(xl, xr), hi = Math.max(xl, xr)
+    const others = items.filter(o => o !== it && o.placed && o.order < it.order && o.at)
+    const y0 = L.gy + sv.y * L.k - s * 0.18
+    const gap = s * 0.8
+    for (let layer = 0; layer < 6; layer++) {
+      const y = y0 - layer * s * 0.52
+      const row = others.filter(o => Math.abs(o.at.y - y) < s * 0.26)
+      let best = null
+      for (let d = 0; d <= hi - lo + 1; d += 3) {
+        for (const x of d ? [want - d, want + d] : [want]) {
+          if (x < lo - 0.5 || x > hi + 0.5) continue
+          if (row.every(o => Math.abs(o.at.x - x) >= gap)) { best = x; break }
+        }
+        if (best !== null) break
+      }
+      if (best !== null) return { x: Math.max(lo, Math.min(hi, best)), y: Math.max(L.gy - s * 0.3, y) }
+    }
+    return { x: Math.max(lo, Math.min(hi, want)), y: L.gy - s * 0.3 }
+  }
+  let order = 0
   function place(it) {
-    const pos = it.placed ? { x: L.cx + it.placed.nx * L.R, y: L.cy + it.placed.ny * L.R } : home(it.i)
-    it.el.style.transform = `translate(${pos.x.toFixed(1)}px, ${pos.y.toFixed(1)}px)`
+    if (!L) return
+    const pos = it.placed ? slotIn(it) : cellPos(it.i)
+    it.at = pos
+    it.el.style.transform = `translate(${f1(pos.x - L.s / 2)}px, ${f1(pos.y - L.s / 2)}px)`
+    it.el.classList.toggle('is-in', !!it.placed)
+  }
+  function placeAll() {
+    const list = items.filter(it => it.placed).sort((a, b) => a.order - b.order)
+    for (const it of list) place(it)
+  }
+  function setLevel() {
+    level = LEVEL + LEVEL_PER * items.filter(it => it.placed).length
+    liquid.innerHTML = drinkSvg(level, drink)
   }
   layout()
-  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(layout) : null
+  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => { layout(); placeAll() }) : null
   if (ro) ro.observe(scene)
 
   const placedCount = () => items.filter(it => it.placed).length
+  let fullShown = false
   function render() {
     const k = placedCount()
     counter.textContent = `${k}/${n}`
     counter.dataset.v = String(k)
     doneBtn.disabled = k < 1
+    doneBtn.classList.toggle('is-ready', k === n)
+    countPill.classList.toggle('is-over', k > n)
+    if (k === n && !fullShown) {
+      fullShown = true
+      if (vfx) { try { vfx.floatText(glassArt, 'Đủ đá rồi!', { tone: 'good', size: 'small' }) } catch { /* bỏ qua */ } }
+    }
+    if (k !== n) fullShown = false
   }
   render()
 
+  let dead = false
+  const timers = new Set()
+  const later = (fn, ms) => { const id = setTimeout(() => { timers.delete(id); fn() }, ms); timers.add(id); return id }
+
+  function overTarget(x, y) { return Math.hypot(x - L.tx, y - L.ty) <= L.R }
+
   const unbinds = items.map(it => bindPointer(it.el, {
     down(p) {
-      if (out.done) return
+      if (out.done || !L) return
       const r = scene.getBoundingClientRect()
-      const cur = it.placed ? { x: L.cx + it.placed.nx * L.R, y: L.cy + it.placed.ny * L.R } : home(it.i)
+      const cur = it.at || cellPos(it.i)
       it.drag = { x0: p.clientX, y0: p.clientY, ox: p.clientX - r.left - cur.x, oy: p.clientY - r.top - cur.y, moved: 0 }
-      it.el.style.zIndex = '5'
-      it.el.style.transition = 'none'
+      it.el.classList.remove('is-glide')
+      it.el.classList.add('is-drag')
+      target.classList.add('is-armed')
+      if (typeof it.el.getAnimations === 'function') { try { for (const a of it.el.getAnimations()) a.cancel() } catch { /* bỏ qua */ } }
     },
     move(p) {
       const d = it.drag
@@ -157,58 +286,105 @@ function mount(stage, step, ctx = {}) {
       const r = scene.getBoundingClientRect()
       d.moved = Math.max(d.moved, Math.hypot(p.clientX - d.x0, p.clientY - d.y0))
       const x = p.clientX - r.left - d.ox, y = p.clientY - r.top - d.oy
-      it.el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`
+      it.el.style.transform = `translate(${f1(x - L.s / 2)}px, ${f1(y - L.s / 2)}px) scale(1.08)`
+      target.classList.toggle('is-over', overTarget(x, y))
     },
     up(p) { drop(it, p, false) },
     cancel(p) { drop(it, p, true) }
   }))
 
+  function endDrag(it) {
+    it.drag = null
+    it.el.classList.remove('is-drag')
+    target.classList.remove('is-armed', 'is-over')
+  }
+
+  function takeOut(it) {
+    it.placed = null
+    it.d = null
+    it.el.dataset.placed = '0'
+    setLevel()
+    placeAll()
+    render()
+  }
+
   function drop(it, p, cancelled) {
     const d = it.drag
-    it.drag = null
-    it.el.style.zIndex = '3'
+    endDrag(it)
     if (!d || out.done) { place(it); return }
-    // chạm (không kéo) vào món đã thả → lấy ra trả về khay
+    // chạm (không kéo) vào viên đã thả → lấy ra trả về khay
     if (d.moved < TAP_MAX) {
-      if (it.placed && !cancelled) {
-        it.placed = null
-        it.d = null
-        it.el.dataset.placed = '0'
-        feedback(ctx, 'tap')
-        render()
-      }
+      if (it.placed && !cancelled) { takeOut(it); feedback(ctx, 'tap') }
       glide(it)
       return
     }
     const r = scene.getBoundingClientRect()
     const x = p.clientX - r.left - d.ox, y = p.clientY - r.top - d.oy
-    const dist = Math.hypot(x - L.cx, y - L.cy) / L.R
+    const dist = Math.hypot(x - L.tx, y - L.ty) / L.R
     if (dist <= 1 && !cancelled) {
-      // vị trí hiển thị kẹp trong lòng ly (điểm chấm dùng khoảng cách thật lúc thả)
-      const k = dist > 0.78 ? 0.78 / dist : 1
-      it.placed = { nx: ((x - L.cx) / L.R) * k, ny: ((y - L.cy) / L.R) * k }
+      const was = !!it.placed
+      it.placed = { u: (x - L.gx) / L.k }
+      it.order = ++order
       it.d = Math.round(dist * 1000) / 1000
       it.el.dataset.placed = '1'
-      place(it)
-      cue(ctx, 'plop', 'click')
-      if (vfx && !reduced()) vfx.squash(it.art)
-      if (vfx) vfx.ripple(p.clientX, p.clientY)
+      setLevel()
+      placeAll()
+      const to = it.at
+      if (!hint.classList.contains('is-off')) { hint.classList.add('is-off'); later(() => { hint.hidden = true }, 280) }
       render()
+      fall(it, { x, y }, to, was)
       return
     }
-    // thả ngoài ly: trôi về khay, không phạt (món đã thả mà kéo ra ngoài thì coi như lấy ra)
-    if (it.placed && !cancelled) {
-      it.placed = null
-      it.d = null
-      it.el.dataset.placed = '0'
-      render()
-    }
+    // thả ngoài ly: trôi về khay, không phạt (viên đã thả mà kéo ra ngoài thì coi như lấy ra)
+    if (it.placed && !cancelled) takeOut(it)
     glide(it)
   }
 
+  // Viên đá rơi từ chỗ thả xuống mặt nước (150 ms), rồi squash + gợn + nước bắn + "tõm". Giảm chuyển động: hiện thẳng.
+  function fall(it, from, to, was) {
+    const land = () => {
+      if (dead || !it.placed) return
+      sound(ctx, 'plop')
+      const sr = scene.getBoundingClientRect()
+      const sx = sr.left + to.x, sy = sr.top + to.y + L.s * 0.22
+      splashRing(to.x, to.y + L.s * 0.22)
+      if (vfx) {
+        try {
+          vfx.ripple(sx, sy)
+          if (!reduced()) {
+            vfx.squash(it.art)
+            if (!was) vfx.burst({ x: sx, y: sy }, 'drop', { n: 4, colors: [drink[1], '#e9f6fc', '#cdeeff'] })
+          }
+        } catch { /* bỏ qua */ }
+      }
+    }
+    if (reduced() || typeof it.el.animate !== 'function') { land(); return }
+    try {
+      const a = it.el.animate([
+        { transform: `translate(${f1(from.x - L.s / 2)}px, ${f1(from.y - L.s / 2)}px) scale(1.08)` },
+        { transform: `translate(${f1(to.x - L.s / 2)}px, ${f1(to.y - L.s / 2)}px)` }
+      ], { duration: to.y > from.y ? 150 : 110, easing: 'cubic-bezier(.55, 0, 1, .45)' })
+      a.addEventListener('finish', land)
+    } catch { land() }
+  }
+
+  // Gợn mặt nước: ellipse sáng loang ra (WAAPI transform/opacity; giảm chuyển động: chỉ mờ đi).
+  function splashRing(x, y) {
+    const w = Math.max(30, L.R * 1.1)
+    Object.assign(ring.style, { left: f1(x - w / 2) + 'px', top: f1(y - w * 0.14) + 'px', width: f1(w) + 'px', height: f1(w * 0.28) + 'px' })
+    if (typeof ring.animate !== 'function') return
+    try {
+      ring.animate(reduced()
+        ? [{ opacity: 0.8 }, { opacity: 0 }]
+        : [{ opacity: 0.9, transform: 'scale(.3)' }, { opacity: 0, transform: 'scale(1.35)' }],
+      { duration: 420, easing: 'ease-out' })
+    } catch { /* bỏ qua */ }
+  }
+
   function glide(it) {
-    it.el.style.transition = reduced() ? 'none' : 'transform .2s ease-out'
+    it.el.classList.toggle('is-glide', !reduced())
     place(it)
+    later(() => it.el.classList.remove('is-glide'), 240)
   }
 
   doneBtn.addEventListener('click', () => finish())
@@ -248,15 +424,18 @@ function mount(stage, step, ctx = {}) {
     clock.destroy()
     for (const u of unbinds) u()
     if (ro) ro.disconnect()
-    for (const it of items) it.drag = null
+    for (const it of items) if (it.drag) { endDrag(it); place(it) }
   }
 
   return {
     result: out.promise,
     hold(on) { if (!out.done) clock.hold(on) },
     destroy() {
+      dead = true
       cleanup()
       if (revealRaf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(revealRaf)
+      for (const id of timers) clearTimeout(id)
+      timers.clear()
       fr.destroy()
       out.settle(null)
     }

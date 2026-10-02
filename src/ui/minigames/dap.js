@@ -1,28 +1,69 @@
-// DAP — đập trứng (M5, bản TẠM chơi được; gói Bếp lửa làm đẹp sau, giữ nguyên hợp đồng testid/data-*).
-// Hai nhịp mỗi quả: (1) chạm quả trứng khi kim thước lực (chạy đi về, chu kỳ 1,1 s) nằm trong vùng xanh → trứng nứt;
-// (2) vuốt xuống (±35° × mul, tối đa 50°) để tách vào chảo. Chạm thay vì vuốt (với trứng đã nứt) hoặc chạm quá mạnh (kim quá
-// vùng xanh) thì vỏ rơi vào chảo (quả đó tối đa 40 điểm). Đủ n quả thì tự xong. Chấm: scoreDap (core/minigame-scoring.js).
-// Hợp đồng e2e: dap-pan; dap-egg[data-state = nguyen|nut|xong, data-i]; dap-meter[data-a, data-b]; dap-needle[data-v];
-// dap-count[data-v, data-n]. Nhấn giữ quả trứng lúc kim trong [a, b] rồi kéo xuống ~80px và thả = một quả hoàn hảo.
+// DAP — đập trứng (M5, gói Bếp lửa). Hai nhịp mỗi quả:
+//  (1) chạm quả trứng khi kim thước lực (chạy đi về, chu kỳ 1,1 s) nằm trong vùng xanh → trứng nứt (âm 'crack', rung 3px);
+//  (2) vuốt xuống (±35° × mul, tối đa 50°) → lòng trứng rơi vào chảo, nảy squash, dầu bắn, âm 'sizzle'.
+// Chạm thay vì vuốt (với trứng đã nứt) hoặc chạm quá mạnh (kim quá vùng xanh) thì vỏ rơi vào chảo ("Có vỏ!", quả đó tối đa
+// 40 điểm). Đủ n quả thì tự xong. Chấm: scoreDap (core/minigame-scoring.js); vùng xanh DAP_ZONE nới theo zoneMul.
+// Cảnh: thước lực trên cùng (ngón tay không che), quả trứng to cầm ngay trên miệng chảo lớn (propV2('chao_lon')), trứng đã
+// tách nằm trong lòng chảo theo PROP_META.chao_lon.floor. Trứng gà ta: cùng khuôn hình trung_ga.*, đặt --yolk đậm trên cảnh.
+// Hợp đồng e2e (giữ nguyên từ gói A): dap-pan; dap-egg[data-state = nguyen|nut|xong, data-i]; dap-meter[data-a, data-b];
+// dap-needle[data-v]; dap-count[data-v, data-n]. Cách giải: chờ data-v của kim nằm trong [a, b], nhấn giữ tâm quả trứng,
+// kéo xuống 80px rồi thả = một quả hoàn hảo; chờ quả kế tiếp (data-state nguyen, data-i tăng) rồi lặp lại.
 import { h, svgBox } from '../dom.js'
 import { bindPointer } from '../input.js'
 import { scoreDap, DAP_ZONE } from '../../core/minigame-scoring.js'
 import { createClock, frameLoop, settleOnce, feedback, scaledZone } from './_util.js'
 import { buildFrame2 } from './_frame.js'
-import { artV2, propV2, STATES_V2 } from '../art/v2.js'
+import { artV2, propV2, PROP_META } from '../art/v2.js'
 import { isReduced } from '../motion.js'
 import { classifySwipe, needleValue, NEEDLE_PERIOD, gestureLimitSec } from './_gesture.js'
 
 export const DAP_SWIPE_MIN = 36        // px: vuốt tối thiểu để tách trứng
 export const DAP_TAP_MAX = 12          // px: dịch dưới mức này coi là chạm (không phải vuốt)
+export const DAP_YOLK_TA = '#e8730c'   // lòng đỏ trứng gà ta (đậm hơn trứng gà thường)
+export const DAP_METER_H = 44          // px: dải thước lực ở đầu cảnh (gồm lề và đầu kim nhô lên)
 
-// Âm theo tên (âm mới của M5 có thể chưa có trong bộ âm: dùng âm dự phòng).
-function cue(ctx, name, fallback) {
-  const app = ctx && ctx.app
-  if (!app || typeof app.sound !== 'function') return
-  const names = app.audio && Array.isArray(app.audio.names) ? app.audio.names : null
-  const pick = names && !names.includes(name) ? fallback : name
-  try { if (pick) app.sound(pick) } catch { /* bỏ qua */ }
+const PAN_FALLBACK = { vb: [320, 176], floor: { cx: 140, cy: 99, rx: 90, ry: 37 }, rim: { cx: 140, cy: 90, rx: 116, ry: 52 }, base: [140, 157] }
+
+/**
+ * Bố cục cảnh đập trứng (thuần, px trong khung cảnh W×H): thước lực trên cùng, chảo dưới đáy (lòng chảo canh giữa),
+ * quả trứng cầm ngay trên miệng chảo, các ô trứng đã tách trong lòng chảo.
+ * → { meter: {x, y, w}, pan: {x, y, w, h, s}, egg: {x, y, size}, slots: [{x, y, size}] }
+ */
+export function dapLayout(W, H, n = 1, meta = PAN_FALLBACK) {
+  const m = meta && meta.vb ? meta : PAN_FALLBACK
+  const [VW, VH] = m.vb
+  const fl = m.floor, rim = m.rim
+  const w = Math.max(120, Number(W) || 0), hh = Math.max(110, Number(H) || 0)
+  const meter = { x: Math.round(w / 2 - Math.min(300, w * 0.86) / 2), y: 14, w: Math.round(Math.min(300, w * 0.86)) }
+  const top = DAP_METER_H
+  // lòng chảo canh giữa: phần bên phải (cán) cần (VW − rim.cx)·s, bên trái rim.cx·s
+  const s = Math.max(0.25, Math.min((w / 2 - 4) / (VW - rim.cx), (hh - top) * 0.6 / VH, 1.1))
+  const pw = VW * s, ph = VH * s
+  const px = w / 2 - rim.cx * s
+  const py = hh - ph
+  // quả trứng: đáy chạm ngang tâm miệng chảo, không lên quá thước lực
+  const room = py + rim.cy * s - top
+  const size = Math.round(Math.max(56, Math.min(132, w * 0.36, room)))
+  const ey = Math.round(Math.max(top, py + rim.cy * s - size))
+  const egg = { x: Math.round(w / 2 - size / 2), y: ey, size }
+  // ô trứng đã tách: rải đều theo bề ngang lòng chảo
+  const k = Math.max(1, Math.floor(Number(n) || 1))
+  const span = k === 1 ? 0 : Math.min(0.9, 1.4 - 0.25 * Math.min(k, 4)) * fl.rx
+  const fs = Math.min(1.25, 2.2 / k) * fl.rx * s
+  const slots = []
+  for (let i = 0; i < k; i++) {
+    const off = k === 1 ? 0 : -span + (2 * span * i) / (k - 1)
+    slots.push({ x: Math.round(px + (fl.cx + off) * s), y: Math.round(py + fl.cy * s), size: Math.round(fs) })
+  }
+  return { meter, pan: { x: Math.round(px), y: Math.round(py), w: Math.round(pw), h: Math.round(ph), s }, egg, slots }
+}
+
+// Âm theo tên viết thẳng (audio.js SOUND_NAMES) — bỏ qua nếu không có app.
+function soundOf(ctx) {
+  return name => {
+    const app = ctx && ctx.app
+    try { if (app && typeof app.sound === 'function') app.sound(name) } catch { /* bỏ qua */ }
+  }
 }
 
 function reducedOf(ctx) {
@@ -35,13 +76,13 @@ function reducedOf(ctx) {
   }
 }
 
-// SVG đặt vừa khung (chiếm trọn hộp, giữ tỉ lệ).
-function artBox(svg, style = '') {
-  const box = svgBox(svg, 'mg-art', { style: 'display:block;' + style })
-  const s = box.firstElementChild
-  if (s) { s.style.width = '100%'; s.style.height = '100%'; s.style.display = 'block' }
-  return box
+// WAAPI an toàn (trình duyệt cũ / Node không có animate thì bỏ qua).
+function anim(el, frames, opts) {
+  try { if (el && typeof el.animate === 'function') return el.animate(frames, opts) } catch { /* bỏ qua */ }
+  return null
 }
+
+const ARROW = '<svg viewBox="0 0 40 64" aria-hidden="true"><path d="M20 4v44" fill="none" stroke="#3a2618" stroke-width="9" stroke-linecap="round"/><path d="M6 38l14 18 14-18" fill="none" stroke="#3a2618" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 4v44" fill="none" stroke="#fffaf0" stroke-width="4" stroke-linecap="round"/><path d="M6 38l14 18 14-18" fill="none" stroke="#fffaf0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 
 function mount(stage, step, ctx = {}) {
   const params = step.params || {}
@@ -53,79 +94,87 @@ function mount(stage, step, ctx = {}) {
   const tol = Math.min(50, 35 * mul)
   const clock = createClock()
   const out = settleOnce()
-  const vfx = ctx.vfx || null
+  const vfx = ctx.vfx || (ctx.app && ctx.app.vfx) || null
   const reduced = reducedOf(ctx)
+  const sound = soundOf(ctx)
   const T = ((ctx.data || {}).MINIGAME_TYPES || {}).dap || {}
   const INGS = (ctx.data && ctx.data.INGREDIENTS) || {}
-  const eggId = (INGS[step.ing] && INGS[step.ing].icon) || step.ing || 'trung_ga'
-  const has = k => Object.prototype.hasOwnProperty.call(STATES_V2, k)
+  const ingIcon = (INGS[step.ing] && INGS[step.ing].icon) || step.ing || 'trung_ga'
+  const ta = ingIcon === 'trung_ga_ta'
+  // khuôn hình chung trung_ga.* (lòng đỏ var(--yolk)); trứng gà ta chỉ đổi --yolk, không có sao trên sân khấu
+  const eggId = ta ? 'trung_ga' : ingIcon
   const eggSvg = artV2(eggId)
-  const crackSvg = has(eggId + '.nut') ? STATES_V2[eggId + '.nut'] : artV2('trung_ga', 'nut')
-  const friedSvg = has(eggId + '.op_la') ? STATES_V2[eggId + '.op_la'] : artV2('trung_ga', 'op_la')
-  const ta = eggId === 'trung_ga_ta'
+  const crackSvg = artV2(eggId, 'nut') !== eggSvg ? artV2(eggId, 'nut') : artV2('trung_ga', 'nut')
+  const friedSvg = artV2(eggId, 'op_la_song') !== eggSvg ? artV2(eggId, 'op_la_song') : artV2('trung_ga', 'op_la_song')
+  const meta = PROP_META.chao_lon || PAN_FALLBACK
 
-  stage.classList.add('mg-dap')
+  stage.classList.add('mg-dap', 'g-heat')
+  if (ta) stage.classList.add('is-ta')
   const fr = buildFrame2(stage, {
-    icon: eggSvg, title: step.label || T.name || '', sub: T.sub || 'Chạm trứng khi kim vào vùng xanh, rồi vuốt xuống.',
+    icon: artV2(ingIcon), title: step.label || T.name || '', sub: T.sub || 'Chạm trứng khi kim vào vùng xanh, rồi vuốt xuống.',
     steps: Number(ctx.stepTotal) > 0 ? { index: ctx.stepIndex, total: ctx.stepTotal, grades: ctx.stepGrades || [] } : null,
     timeLabel: ctx.untimed ? 'Thong thả' : null, vfx
   })
 
-  // Thước lực (trên cùng vùng chơi, ngón tay không che): vùng xanh + kim chạy đi về.
+  // Thước lực: vùng xanh + kim (kim chạy bằng transform translateX theo bề ngang lòng thước).
   const pct = v => (Math.max(0, Math.min(1, v)) * 100).toFixed(2) + '%'
-  const zoneEl = h('div', {
-    class: 'dap-zone',
-    style: `position:absolute;top:0;bottom:0;left:${pct(za)};width:calc(${pct(zb)} - ${pct(za)});background:#5fbf4a;border-left:2px solid #3a2618;border-right:2px solid #3a2618;`
-  })
-  const needle = h('div', {
-    class: 'dap-needle', 'data-testid': 'dap-needle', 'data-v': '0',
-    style: 'position:absolute;top:-5px;bottom:-5px;left:0;width:6px;margin-left:-3px;border-radius:3px;background:#3a2618;box-shadow:0 0 0 2px #fffaf0;'
-  })
+  const zoneEl = h('div', { class: 'dap-zone', style: { left: pct(za), width: `calc(${pct(zb)} - ${pct(za)})` } })
+  const needle = h('div', { class: 'dap-needle', 'data-testid': 'dap-needle', 'data-v': '0' })
+  const rail = h('div', { class: 'dap-rail' }, needle)
   const meter = h('div', {
     class: 'dap-meter', 'data-testid': 'dap-meter', 'data-a': za.toFixed(3), 'data-b': zb.toFixed(3),
-    role: 'meter', 'aria-label': 'Lực tay', 'aria-valuemin': '0', 'aria-valuemax': '1',
-    style: 'position:absolute;top:6px;left:50%;transform:translateX(-50%);width:min(300px,84%);height:18px;border:3px solid #3a2618;border-radius:999px;background:linear-gradient(90deg,#f6e7c4,#f3c27a 70%,#e2553f);overflow:visible;box-shadow:0 2px 0 rgba(58,38,24,.3);'
-  }, h('div', { style: 'position:absolute;inset:0;border-radius:999px;overflow:hidden;' }, zoneEl), needle)
+    role: 'meter', 'aria-label': 'Lực tay', 'aria-valuemin': '0', 'aria-valuemax': '1'
+  }, h('div', { class: 'dap-track' }, zoneEl), rail)
 
-  // Chảo (đạo cụ lớn nếu bộ hình đã có, không thì vẽ bằng CSS) và trứng đã tách trong chảo.
+  // Chảo lớn + lớp trứng đã tách trong lòng chảo.
   const panArt = propV2('chao_lon')
-  const panInner = h('div', { class: 'dap-pan-in', style: 'position:absolute;inset:0;' })
-  const pan = h('div', {
-    class: 'dap-pan', 'data-testid': 'dap-pan',
-    style: 'position:absolute;left:50%;bottom:4px;transform:translateX(-50%);width:min(320px,90%);height:min(120px,40%);min-height:60px;' +
-      (panArt ? '' : 'border:4px solid #3a2618;border-radius:50%;background:radial-gradient(ellipse at 45% 40%,#6b6b6b 0 30%,#3d3d3d 62%,#262626 100%);box-shadow:0 4px 0 rgba(58,38,24,.35),inset 0 0 0 6px #555;') +
-      (ta ? '--yolk:#e8730c;' : '')
-  }, panArt ? artBox(panArt, 'position:absolute;inset:0;width:100%;height:100%;') : null, panInner)
+  const pan = h('div', { class: ['dap-pan', panArt ? '' : 'is-css'], 'data-testid': 'dap-pan' },
+    panArt ? svgBox(panArt, 'dap-pan-art') : null)
+  const fried = h('div', { class: 'dap-fried-layer' })
 
-  // Quả trứng đang cầm (vùng thao tác): khung định vị + phần hình (để rung, kéo không đè transform định vị).
-  const eggArt = h('div', { class: 'dap-egg-art', style: 'width:100%;height:100%;' }, artBox(eggSvg, 'width:100%;height:100%;'))
+  // Quả trứng đang cầm (vùng thao tác): khung định vị + phần hình (rung, kéo theo ngón không đè transform định vị).
+  const eggArt = h('div', { class: 'dap-egg-art' }, svgBox(eggSvg, 'dap-egg-svg'))
   const egg = h('div', {
     class: 'dap-egg', 'data-testid': 'dap-egg', 'data-state': 'nguyen', 'data-i': '0', role: 'button',
-    'aria-label': 'Quả trứng',
-    style: 'position:absolute;left:50%;top:34px;transform:translateX(-50%);width:clamp(64px,30%,112px);aspect-ratio:1;' +
-      'touch-action:none;cursor:pointer;z-index:2;' + (ta ? '--yolk:#e8730c;' : '')
+    'aria-label': 'Quả trứng'
   }, eggArt)
-  const scene = h('div', { class: 'dap-scene', style: 'position:relative;flex:1 1 0;width:100%;min-height:120px;' }, meter, pan, egg)
+  const arrow = svgBox(ARROW, 'dap-arrow')
+  const scene = h('div', { class: 'dap-scene', style: ta ? { '--yolk': DAP_YOLK_TA } : null }, meter, pan, fried, arrow, egg)
   fr.area.append(scene)
 
-  // Bố cục theo cỡ cảnh: chảo dưới đáy, trứng cầm ngay trên miệng chảo (chồng nhẹ lên vành), thước trên cùng.
+  const countText = T.count || 'Trứng'
+  const dots = []
+  const dotsEl = h('span', { class: 'dap-count-eggs', 'aria-hidden': 'true' })
+  for (let i = 0; i < Math.min(n, 6); i++) { const d = svgBox(eggSvg, 'dap-count-egg'); dots.push(d); dotsEl.appendChild(d) }
+  const countLabel = h('span', { class: 'dap-count-text' })
+  const counter = h('div', { class: 'mg-count g-pill g-pill--big dap-count', 'data-testid': 'dap-count', 'data-v': '0', 'data-n': String(n) },
+    dotsEl, countLabel)
+  fr.foot.append(counter)
+
+  let L = null
+  let railW = 0               // px: bề ngang lòng thước (kim dịch bằng transform trong khoảng này, không tràn khung)
   function layout() {
     const r = scene.getBoundingClientRect()
     if (!r.width || !r.height) return
-    const panH = Math.max(60, Math.min(120, r.height * 0.4))
-    const panW = Math.min(320, r.width * 0.9, panH * 2.8)
-    const egg0 = Math.max(64, Math.min(128, r.width * 0.32, r.height - 34 - panH * 0.75))
-    const top = Math.max(34, r.height - 4 - panH * 0.75 - egg0)
-    Object.assign(pan.style, { width: panW + 'px', height: panH + 'px' })
-    Object.assign(egg.style, { width: egg0 + 'px', height: egg0 + 'px', top: top + 'px' })
+    L = dapLayout(r.width, r.height, n, meta)
+    Object.assign(meter.style, { left: L.meter.x + 'px', top: L.meter.y + 'px', width: L.meter.w + 'px' })
+    railW = Math.max(0, L.meter.w - 6)
+    Object.assign(pan.style, { left: L.pan.x + 'px', top: L.pan.y + 'px', width: L.pan.w + 'px', height: L.pan.h + 'px' })
+    Object.assign(egg.style, { left: L.egg.x + 'px', top: L.egg.y + 'px', width: L.egg.size + 'px', height: L.egg.size + 'px' })
+    // mũi tên "vuốt xuống" đứng cạnh phải quả trứng (chữ nổi ở cạnh trái), không bị ngón tay và quả trứng che
+    const ah = Math.round(Math.max(34, Math.min(60, L.egg.size * 0.62)))
+    Object.assign(arrow.style, { left: Math.min(r.width - ah * 0.35, L.egg.x + L.egg.size + ah * 0.3) + 'px', top: (L.egg.y + L.egg.size * 0.18) + 'px', height: ah + 'px' })
+    for (const [i, el] of placed.entries()) placeFried(el, i)
+  }
+  const placed = []
+  function placeFried(el, i) {
+    const sl = L && L.slots[Math.min(i, L.slots.length - 1)]
+    if (!sl) return
+    Object.assign(el.style, { left: (sl.x - sl.size / 2) + 'px', top: (sl.y - sl.size / 2) + 'px', width: sl.size + 'px', height: sl.size + 'px' })
   }
   layout()
   const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(layout) : null
   if (ro) ro.observe(scene)
-
-  const countText = T.count || 'Trứng'
-  const counter = h('div', { class: 'mg-count g-pill g-pill--big', 'data-testid': 'dap-count', 'data-v': '0', 'data-n': String(n) })
-  fr.foot.append(counter)
 
   const cracks = []           // [{ force, split, shell }]
   let cur = { force: null, shell: false, state: 'nguyen' }
@@ -135,22 +184,32 @@ function mount(stage, step, ctx = {}) {
   let needleV = 0
 
   function renderCount() {
-    counter.textContent = `${countText} ${cracks.length}/${n}`
+    countLabel.textContent = `${countText} ${cracks.length}/${n}`
     counter.dataset.v = String(cracks.length)
+    dots.forEach((d, i) => d.classList.toggle('is-used', i < cracks.length))
   }
   renderCount()
 
   function setEggState(st) {
     cur.state = st
     egg.dataset.state = st
-    const svg = st === 'nguyen' ? eggSvg : crackSvg
-    eggArt.replaceChildren(artBox(svg, 'width:100%;height:100%;'))
+    stage.classList.toggle('is-cracked', st === 'nut')
+    eggArt.replaceChildren(svgBox(st === 'nguyen' ? eggSvg : crackSvg, 'dap-egg-svg'))
     // tách xong: vỏ rỗng biến đi, chờ quả kế tiếp nảy vào
     eggArt.style.opacity = st === 'xong' ? '0' : ''
   }
 
-  function float(text, tone, at = egg) {
-    if (vfx) vfx.floatText(at, text, { tone, size: 'small' })
+  // Chữ nổi: lớp hiệu ứng chung (vfx) nếu có, không thì nhãn ngắn trong cảnh. Mặc định đặt cạnh trái quả trứng, ngang giữa
+  // quả (không đè thước lực, không bị ngón tay che; cạnh phải dành cho mũi tên "vuốt xuống").
+  function say(text, tone, at = null) {
+    const sr = scene.getBoundingClientRect()
+    let x, y
+    if (at) { const r = at.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top + r.height * 0.35 }
+    else { const r = egg.getBoundingClientRect(); x = Math.max(sr.left + 60, r.left - 34); y = r.top + r.height * 0.45 }
+    if (vfx && typeof vfx.floatText === 'function' && vfx.floatText({ x, y: y + 48 }, text, { tone, size: 'small' })) return
+    const el = h('div', { class: ['heat-pop', 'is-' + tone], style: { left: (x - sr.left) + 'px', top: Math.max(14, y - sr.top) + 'px' } }, text)
+    scene.appendChild(el)
+    later(() => el.remove(), 800)
   }
 
   // Nhịp 1: nứt trứng — lực là vị trí kim lúc chạm.
@@ -159,55 +218,61 @@ function mount(stage, step, ctx = {}) {
     cur.force = f
     cur.shell = f > zb + 1e-9           // quá mạnh: vỏ vụn rơi vào chảo
     setEggState('nut')
-    cue(ctx, 'crack', 'chop')
+    sound('crack')
     feedback(ctx, f >= za && f <= zb ? 'hit' : 'tap')
-    if (f > zb) float('Mạnh tay quá!', 'bad')
-    else if (f < za) float('Nhẹ tay quá', 'bad')
-    else float('Nứt đẹp!', 'good')
+    if (f > zb) say('Mạnh tay quá!', 'bad')
+    else if (f < za) say('Nhẹ tay quá', 'bad')
+    else say('Nứt đẹp!', 'good')
+    meter.classList.remove('is-hit-good', 'is-hit-bad')
+    meter.classList.add(f >= za && f <= zb ? 'is-hit-good' : 'is-hit-bad')
     // trứng rung 3px (phản hồi nứt); giảm chuyển động: bỏ rung
-    if (!reduced() && typeof eggArt.animate === 'function') {
-      try {
-        eggArt.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(3px)' }, { transform: 'translateX(-3px)' },
-          { transform: 'translateX(2px)' }, { transform: 'translateX(0)' }], { duration: 180, easing: 'linear' })
-      } catch { /* bỏ qua */ }
+    if (!reduced()) {
+      anim(eggArt, [{ transform: 'translateX(0)' }, { transform: 'translateX(3px) rotate(2deg)' }, { transform: 'translateX(-3px) rotate(-2deg)' },
+        { transform: 'translateX(2px)' }, { transform: 'translateX(0)' }], { duration: 180, easing: 'linear' })
     }
   }
 
   // Nhịp 2: tách vào chảo (shell: vỏ rơi theo).
-  function split(shell) {
+  function split(shell, dy = 0) {
     const rec = { force: cur.force, split: true, shell: !!(shell || cur.shell) }
     cracks.push(rec)
+    const i = cracks.length - 1
+    const isRed = reduced()
+    // vỏ rỗng rơi xuống mờ đi (giảm chuyển động: biến mất ngay)
+    if (!isRed) anim(eggArt, [{ transform: `translateY(${dy}px)`, opacity: 1 }, { transform: `translateY(${dy + 24}px) scale(.9)`, opacity: 0 }], { duration: 160, easing: 'ease-in' })
     eggArt.style.transform = ''
     setEggState('xong')
     renderCount()
-    const i = cracks.length - 1
-    const slots = Math.max(1, n)
-    const x = slots === 1 ? 50 : 22 + (56 * i) / (slots - 1)
-    const fried = h('div', {
-      class: 'dap-fried', 'data-shell': rec.shell ? '1' : '0',
-      style: `position:absolute;left:${x.toFixed(1)}%;top:50%;width:min(42%,96px);aspect-ratio:1;transform:translate(-50%,-50%);pointer-events:none;`
-    }, artBox(friedSvg, 'width:100%;height:100%;'))
-    if (rec.shell) {
-      fried.appendChild(h('i', {
-        class: 'dap-shell',
-        style: 'position:absolute;left:58%;top:30%;width:12px;height:9px;background:#fff7e8;border:2px solid #3a2618;border-radius:2px 8px 3px 6px;transform:rotate(18deg);'
-      }))
+    stage.classList.add('is-split')
+    const egg2 = h('div', { class: ['dap-fried', rec.shell ? 'has-shell' : ''], 'data-shell': rec.shell ? '1' : '0' },
+      h('div', { class: 'dap-fried-in' }, svgBox(friedSvg, 'dap-fried-svg')),
+      rec.shell ? h('i', { class: 'dap-shell s1' }) : null, rec.shell ? h('i', { class: 'dap-shell s2' }) : null)
+    placed.push(egg2)
+    placeFried(egg2, i)
+    fried.appendChild(egg2)
+    sound('sizzle')
+    if (rec.shell) say('Có vỏ!', 'bad', egg2)
+    if (!isRed) {
+      // lòng trứng rơi từ tay xuống, chạm chảo thì nảy squash 420 ms (gốc ở đáy)
+      anim(egg2.firstChild, [
+        { transform: 'translateY(-46%) scale(.55, .7)', opacity: 0, offset: 0 },
+        { transform: 'translateY(0) scale(1.14, .82)', opacity: 1, offset: 0.32 },
+        { transform: 'translateY(0) scale(.95, 1.06)', offset: 0.58 },
+        { transform: 'translateY(0) scale(1.02, .98)', offset: 0.8 },
+        { transform: 'translateY(0) scale(1, 1)' }
+      ], { duration: 420, easing: 'ease-out' })
+      if (vfx && typeof vfx.burst === 'function') vfx.burst(egg2, 'oil', { n: 6 + Math.floor(Math.random() * 5) })
     }
-    panInner.appendChild(fried)
-    feedback(ctx, 'sizzle')
-    if (rec.shell) float('Có vỏ!', 'bad', pan)
-    if (vfx && !reduced()) {
-      vfx.squash(fried.firstChild)
-      vfx.burst(pan, 'oil', { n: 6 + Math.floor(Math.random() * 5) })
-    }
-    if (cracks.length >= n) { later(finish, 380); return }
+    if (cracks.length >= n) { later(finish, 420); return }
     // quả kế tiếp
     later(() => {
       if (out.done) return
       cur = { force: null, shell: false, state: 'nguyen' }
       egg.dataset.i = String(cracks.length)
+      stage.classList.remove('is-split')
+      meter.classList.remove('is-hit-good', 'is-hit-bad')
       setEggState('nguyen')
-      if (vfx) vfx.pop(eggArt)
+      if (!reduced()) anim(eggArt, [{ transform: 'translateY(-14px) scale(.5)', opacity: 0 }, { transform: 'translateY(0) scale(1.08)', opacity: 1, offset: 0.6 }, { transform: 'none', opacity: 1 }], { duration: 260, easing: 'ease-out' })
     }, 260)
   }
 
@@ -216,13 +281,13 @@ function mount(stage, step, ctx = {}) {
       if (out.done || cur.state === 'xong') return
       const fresh = cur.state === 'nguyen'
       if (fresh) crack()
-      drag = { x0: p.clientX, y0: p.clientY, fresh }
+      drag = { x0: p.clientX, y0: p.clientY, fresh, dy: 0 }
     },
     move(p) {
-      if (!drag || out.done) return
+      if (!drag || out.done || cur.state !== 'nut') return
       // trứng đi theo ngón khi kéo xuống (phản hồi trực tiếp: giữ cả khi giảm chuyển động)
-      const dy = Math.max(0, Math.min(64, p.clientY - drag.y0))
-      eggArt.style.transform = `translateY(${dy}px)`
+      drag.dy = Math.max(0, Math.min(64, p.clientY - drag.y0))
+      eggArt.style.transform = `translateY(${drag.dy}px) rotate(${(drag.dy / 64 * 10).toFixed(1)}deg)`
     },
     up(p) { endDrag(p, false) },
     cancel(p) { endDrag(p, true) }
@@ -233,23 +298,30 @@ function mount(stage, step, ctx = {}) {
     drag = null
     if (!d || out.done || cur.state !== 'nut') { eggArt.style.transform = ''; return }
     const sw = classifySwipe({ x: d.x0, y: d.y0 }, { x: p.clientX, y: p.clientY }, { axis: 'y', tolDeg: tol, minLen: DAP_SWIPE_MIN, dir: 1 })
-    if (sw.ok) { split(false); return }
+    if (sw.ok) { split(false, d.dy); return }
     eggArt.style.transform = ''
     if (cancelled) return
     // chạm (không vuốt) vào trứng đã nứt từ trước → bóp vỡ, vỏ rơi vào chảo
     if (sw.len < DAP_TAP_MAX && !d.fresh) { split(true); return }
-    if (sw.len >= DAP_TAP_MAX) float('Vuốt xuống!', 'bad')
+    if (sw.len >= DAP_TAP_MAX) say('Vuốt thẳng xuống!', 'bad')
   }
 
   // Sân khấu bếp ở màn thấp cuộn dọc (thanh chân dính đáy): cuộn sẵn để cảnh thao tác nằm trên thanh chân — vừa thì hiện
   // trọn, không vừa thì giữ mép trên của cảnh ở đầu khung (đầu sân khấu cuộn khuất).
   let revealRaf = 0
+  // Khung quá thấp (chưa đủ chỗ cho cả cảnh): ưu tiên thước lực + quả trứng (vùng chạm) nằm trọn trên thanh chân; vẫn không
+  // đủ thì giữ quả trứng trọn vẹn ngay trên thanh chân.
   function reveal() {
     revealRaf = 0
     try {
       if (out.done || stage.scrollHeight <= stage.clientHeight + 1) return
       const sr = stage.getBoundingClientRect(), fr2 = fr.foot.getBoundingClientRect(), r = scene.getBoundingClientRect()
-      const delta = r.height <= fr2.top - sr.top ? r.bottom - fr2.top + 2 : r.top - sr.top
+      const room = fr2.top - sr.top
+      const er = egg.getBoundingClientRect(), mr = meter.getBoundingClientRect()
+      let delta
+      if (r.height <= room) delta = r.bottom - fr2.top + 2
+      else if (er.bottom - mr.top + 12 <= room) delta = mr.top - 10 - sr.top
+      else delta = er.bottom + 4 - fr2.top
       if (delta > 0) stage.scrollTop += Math.ceil(delta)
     } catch { /* bỏ qua */ }
   }
@@ -258,8 +330,9 @@ function mount(stage, step, ctx = {}) {
   const loop = frameLoop(() => {
     const t = clock.elapsed()
     needleV = needleValue(t, period)
-    needle.style.left = pct(needleV)
+    needle.style.transform = `translateX(${(needleV * railW).toFixed(1)}px)`
     needle.dataset.v = needleV.toFixed(3)
+    needle.classList.toggle('is-in', needleV >= za && needleV <= zb)
     fr.setTime(t / limit)
     if (t >= limit) finish()
   })
@@ -269,8 +342,9 @@ function mount(stage, step, ctx = {}) {
     const elapsed = clock.elapsed()
     cleanup()
     const score = scoreDap({ cracks, n, zone: DAP_ZONE, mul })
-    if (cracks.length < n && vfx) float('Hết giờ', 'bad', pan)
+    if (cracks.length < n) say('Hết giờ', 'bad', pan)
     feedback(ctx, score >= 90 ? 'good' : score < 50 ? 'bad' : 'ok')
+    stage.classList.add('is-finished')
     out.settle({ score, details: { cracks: cracks.map(c => ({ ...c })), n, zone: DAP_ZONE.slice(), shown: [za, zb], elapsed } })
   }
 

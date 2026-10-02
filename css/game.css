@@ -483,6 +483,15 @@
   .numpad-grid { gap: 4px; }
 }
 
+/* ---------- M5: chế độ tập trung khi nấu (service.js, thiết kế mục 1.9) ----------
+   Tab Bếp đang nấu (Chọn, Thớt, sân khấu một bước) và khung cao dưới 760px: ẩn dải khách và thanh 4 khâu để panel Bếp cao
+   thêm ~120px; HUD, dây phiếu (màu chờ) và thanh tab vẫn hiện. Lớp được bật trước khi dựng mini-game (plugin đo khung lúc
+   dựng), tắt khi rời Bếp hoặc hết món. Đổi bố cục tức thì (không hoạt ảnh) để kích thước khung đúng ngay lúc đo. */
+.service-screen.is-focus > .street,
+.service-screen.is-focus > .progress4 { display: none; }
+/* dây phiếu là mốc trên cùng của vùng nấu: kẻ viền mực mỏng cho tách khỏi HUD */
+.service-screen.is-focus > .ticket-rail { border-top: 2px solid rgba(58, 38, 24, .25); }
+
 /* ---------- M4: món hiếm ở quầy, khách lạ ở hàng chờ ---------- */
 .menu-item.is-rare { border-color: #f0d68a; background: #fffbea; position: relative; }
 .menu-item.is-out { opacity: .55; }

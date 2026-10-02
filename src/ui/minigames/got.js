@@ -1,46 +1,62 @@
-// GOT — gọt vỏ (M5, bản TẠM chơi được; gói Sơ chế làm đẹp sau, giữ nguyên hợp đồng testid/data-*).
-// Quả to giữa vùng chơi, vỏ chia K dải dọc (params.strips). Vuốt thẳng từ trên xuống (lệch ±35° × mul, tối đa 50°) trên một
-// dải để gọt; độ phủ mỗi dải là HỢP các nhát vuốt (bandCoverage). Nhát vuốt nghiêng, ngược chiều hoặc trượt ra ngoài quả là
-// nhát hụt (−8 mỗi nhát, tối đa −24). Mọi dải phủ ≥ 85% thì tự xong; bấm Xong để dừng sớm. Chấm: scoreGot.
-// Hợp đồng e2e: got-fruit; got-band-<i>[data-done = độ phủ 0..1, 2 chữ số; data-lo, data-hi = đoạn cần gọt theo phần chiều
-// cao quả] (dải là cột cao bằng quả, bị viền elip cắt; vuốt từ mép trên xuống mép dưới boundingBox của dải là phủ trọn);
-// got-count[data-v = số dải xong, data-n = K]; got-done.
+// GOT — gọt vỏ (M5). Quả TO nằm trên thớt gỗ (hình artV2), vỏ chia K dải dọc (params.strips). Vuốt thẳng từ trên xuống
+// (lệch ±35° × mul, tối đa 50°) trên một dải để gọt; độ phủ mỗi dải là HỢP các nhát vuốt (bandCoverage). Phần đã gọt
+// của dải lộ ruột — vẽ bằng chính hình trạng thái "đã gọt" (artV2(id, 'got')) khớp khung quả; mỗi nhát gọt có dải vỏ cuộn
+// rơi xuống (vfx 'peel' + một dải vỏ rơi trong lớp .mg-fx; giảm chuyển động: dải vỏ chỉ mờ đi tại chỗ), tiếng peel. Gọt
+// sạch một dải: chữ "Sạch vỏ!"; đủ K dải: cả quả đổi sang hình đã gọt, lấp lánh.
+// Nhát vuốt nghiêng, ngược chiều hoặc trượt ra ngoài quả là nhát hụt (−8 mỗi nhát, tối đa −24). Mọi dải phủ ≥ 85% thì tự
+// xong; bấm Xong để dừng sớm. Chấm: scoreGot (lõi, không đổi).
+// Hợp đồng e2e (giữ nguyên từ bản tạm của gói A): got-fruit; got-band-<i>[data-done = độ phủ 0..1, 2 chữ số; data-lo,
+// data-hi = đoạn cần gọt theo phần chiều cao quả] (dải là CỘT cao bằng quả, thẳng đứng, bị viền elip cắt; vuốt từ mép trên
+// xuống mép dưới boundingBox của dải là phủ trọn); got-count[data-v = số dải xong, data-n = K]; got-done (bật sau nhát đầu).
+// Cách giải tự động: với mỗi i, vuốt dọc giữa boundingBox của got-band-i từ (x giữa, y trên + 2) tới (x giữa, y dưới − 2).
 import { h, svgBox } from '../dom.js'
 import { bindPointer } from '../input.js'
 import { scoreGot } from '../../core/minigame-scoring.js'
-import { createClock, frameLoop, settleOnce, feedback } from './_util.js'
+import { createClock, frameLoop, settleOnce, feedback, vfxOf, reducedOf, frameSteps } from './_util.js'
 import { buildFrame2 } from './_frame.js'
-import { artV2 } from '../art/v2.js'
-import { isReduced } from '../motion.js'
+import { artV2, propV2, PROP_META } from '../art/v2.js'
 import { classifySwipe, bandCoverage, mergeSegments, gestureLimitSec } from './_gesture.js'
 
 export const GOT_DONE_AT = 0.85        // dải phủ từ mức này coi như gọt xong (điểm dải đã tối đa)
 export const GOT_SWIPE_MIN = 24
 const TAP_MAX = 10
+// Dao bào nổi phía trên ngón tay (px) để ngón không che chỗ đang gọt.
+export const PEELER_OFFSET_PX = 34
 
-// Màu vỏ / ruột theo nguyên liệu.
-const FRUIT = Object.freeze({
-  xoai_xanh: Object.freeze({ skin: '#5f9e3c', dark: '#467a2b', flesh: '#f2e59a', shape: 'oval' }),
-  vo_buoi: Object.freeze({ skin: '#9ccc4a', dark: '#7aa835', flesh: '#fff3d8', shape: 'round' })
+// Tư thế quả trên thớt (lưới 64 của hình SAU khi xoay): rot (độ), box [x0, y0, x1, y1] khung thân quả; peeled: hình đã gọt
+// cùng khung (khớp chỗ với vỏ); màu vỏ (skin, dark) cho dải vỏ rơi, flesh cho phần đang gọt dở; shape: dáng khung (elip).
+export const GOT_POSE = Object.freeze({
+  xoai_xanh: Object.freeze({
+    rot: 40, box: Object.freeze([5.1, 20.3, 50.5, 48]), peeled: 'got', peeledBox: Object.freeze([8.2, 18.4, 49.9, 43.9]),
+    // cuống và lá (nét nâu của cuống trở đi) chĩa ra ngoài khi quả nằm ngang: bỏ ở lớp vỏ để gọt
+    trim: 'stroke="#7a5a2e"',
+    skin: '#5fae42', dark: '#3d8a2c', flesh: '#e4eb90', shape: 'oval'
+  }),
+  vo_buoi: Object.freeze({
+    rot: 0, box: Object.freeze([5, 10, 47, 52.4]), peeled: 'got', peeledBox: Object.freeze([7, 10, 49, 52.4]),
+    // hình vỏ bưởi kèm một miếng vỏ cắt sẵn đè lên góc dưới-phải quả: bỏ miếng đó khi làm lớp vỏ để gọt (nhận theo màu cùi)
+    trim: 'fill="#f8eac2"',
+    skin: '#aed14c', dark: '#7aa835', flesh: '#f8eac2', shape: 'round'
+  })
 })
-const FRUIT_DEFAULT = Object.freeze({ skin: '#8bbf4a', dark: '#6d9a35', flesh: '#fbeec6', shape: 'oval' })
+const POSE_DEFAULT = Object.freeze({
+  rot: 0, box: Object.freeze([6, 6, 58, 58]), peeled: 'got', peeledBox: null,
+  skin: '#8bbf4a', dark: '#6d9a35', flesh: '#fbeec6', shape: 'oval'
+})
 
-function cue(ctx, name, fallback) {
-  const app = ctx && ctx.app
-  if (!app || typeof app.sound !== 'function') return
-  const names = app.audio && Array.isArray(app.audio.names) ? app.audio.names : null
-  const pick = names && !names.includes(name) ? fallback : name
-  try { if (pick) app.sound(pick) } catch { /* bỏ qua */ }
+/** Bỏ phần trang trí của hình từ phần tử đầu tiên chứa dấu `marker` tới hết nhóm (thuần). Không thấy dấu: giữ nguyên. */
+export function trimArt(svg, marker) {
+  if (typeof svg !== 'string' || !marker) return svg
+  const at = svg.indexOf(marker)
+  if (at < 0) return svg
+  const start = svg.lastIndexOf('<', at)
+  const end = svg.lastIndexOf('</g>')
+  return start > 0 && end > start ? svg.slice(0, start) + svg.slice(end) : svg
 }
 
-function reducedOf(ctx) {
-  return () => {
-    try {
-      if (typeof ctx.reduced === 'function') return !!ctx.reduced()
-      if (ctx.reduced !== undefined && ctx.reduced !== null) return !!ctx.reduced
-    } catch { /* bỏ qua */ }
-    return isReduced(ctx.app)
-  }
+/** Bỏ bóng đất (elip mực mờ .15 dưới chân hình) — quả nằm xoay trên thớt thì bóng vẽ riêng bằng CSS (thuần). */
+export function dropGround(svg) {
+  return typeof svg === 'string' ? svg.replace(/<ellipse[^>]*opacity="\.15"[^>]*\/>/, '') : svg
 }
 
 /** Dải dọc i (trên K) của quả hình elip rộng W cao H: { left, width, top, height } (px) — đoạn cần gọt của dải (dây cung
@@ -54,6 +70,13 @@ export function bandRect(i, K, W, H) {
   return { left: i * w, width: w, top: B - half, height: 2 * half }
 }
 
+// Kiểu đặt một hình (lưới 64, xoay rot) sao cho khung box của nó lấp đúng khung W × H (px).
+function artPlace(box, rot, W) {
+  const [x0, y0, x1] = box
+  const unit = W / (x1 - x0)
+  return { width: 64 * unit + 'px', height: 64 * unit + 'px', left: (-x0 * unit) + 'px', top: (-y0 * unit) + 'px', transform: `rotate(${rot}deg)` }
+}
+
 function mount(stage, step, ctx = {}) {
   const params = step.params || {}
   const K = Math.max(1, Math.floor(Number(params.strips) || 1))
@@ -62,45 +85,44 @@ function mount(stage, step, ctx = {}) {
   const limit = gestureLimitSec(step, { assist: !!ctx.assist, untimed: !!ctx.untimed })
   const clock = createClock()
   const out = settleOnce()
-  const vfx = ctx.vfx || null
+  const vfx = vfxOf(ctx)
   const reduced = reducedOf(ctx)
   const T = ((ctx.data || {}).MINIGAME_TYPES || {}).got || {}
   const INGS = (ctx.data && ctx.data.INGREDIENTS) || {}
   const artId = (INGS[step.ing] && INGS[step.ing].icon) || step.ing || 'fallback'
-  const look = FRUIT[step.ing] || FRUIT_DEFAULT
+  const pose = GOT_POSE[artId] || POSE_DEFAULT
+  const iconSvg = artV2(artId)
+  const skinSvg = dropGround(trimArt(iconSvg, pose.trim))
+  const peeledArt = artV2(artId, pose.peeled)
+  const peeledSvg = dropGround(peeledArt)
+  const hasPeeled = !!peeledArt && peeledArt !== iconSvg
+  const [bx0, by0, bx1, by1] = pose.box
+  const ratio = (by1 - by0) / (bx1 - bx0)
 
   stage.classList.add('mg-got')
   const fr = buildFrame2(stage, {
-    icon: artV2(artId), title: step.label || T.name || '', sub: T.sub || 'Vuốt thẳng từ trên xuống theo từng dải vỏ.',
-    steps: Number(ctx.stepTotal) > 0 ? { index: ctx.stepIndex, total: ctx.stepTotal, grades: ctx.stepGrades || [] } : null,
-    timeLabel: ctx.untimed ? 'Thong thả' : null, vfx
+    icon: iconSvg, title: step.label || T.name || '', sub: T.sub || 'Vuốt thẳng từ trên xuống theo từng dải vỏ.',
+    steps: frameSteps(ctx), timeLabel: ctx.untimed ? 'Thong thả' : null, vfx
   })
 
-  // Quả (elip) + các dải vỏ; phần đã gọt vẽ thành các khúc màu ruột trong dải.
-  const fruit = h('div', {
-    class: 'got-fruit', 'data-testid': 'got-fruit', 'data-shape': look.shape,
-    style: `position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;border:4px solid #3a2618;overflow:hidden;` +
-      `background:${look.skin};box-shadow:0 5px 0 rgba(58,38,24,.3);touch-action:none;`
-  })
+  // Quả: lớp vỏ (hình gốc) + K dải; phần đã gọt của mỗi dải là các khúc cắt từ hình "đã gọt" đặt khớp khung quả.
+  const skin = svgBox(skinSvg, 'got-art got-skin')
+  const fruit = h('div', { class: ['got-fruit', 'is-' + pose.shape], 'data-testid': 'got-fruit', 'data-shape': pose.shape, style: { '--flesh': pose.flesh } }, skin)
   const bands = []
   for (let i = 0; i < K; i++) {
-    const peeled = h('div', { class: 'got-peeled', style: 'position:absolute;inset:0;pointer-events:none;' })
-    const live = h('div', { class: 'got-live', hidden: true, style: `position:absolute;left:0;right:0;background:${look.flesh};opacity:.7;pointer-events:none;` })
-    const el = h('div', {
-      class: 'got-band', 'data-testid': 'got-band-' + i, 'data-done': '0',
-      style: `position:absolute;background:linear-gradient(90deg,${look.dark},${look.skin} 35%,${look.skin} 70%,${look.dark});` +
-        (i > 0 ? 'border-left:2px dashed rgba(58,38,24,.35);' : '')
-    }, peeled, live)
+    const peeled = h('div', { class: 'got-peeled' })
+    const live = h('div', { class: 'got-live', hidden: true })
+    const el = h('div', { class: ['got-band', i > 0 ? 'has-seam' : ''], 'data-testid': 'got-band-' + i, 'data-done': '0' }, peeled, live)
     fruit.appendChild(el)
     bands.push({ el, peeled, live, segs: [], cov: 0, rect: null, lo: 0, hi: 1 })
   }
-  // điểm sáng trên-trái (khối cel-shading)
-  fruit.appendChild(h('div', { style: 'position:absolute;left:16%;top:12%;width:22%;height:14%;border-radius:50%;background:rgba(255,255,255,.45);pointer-events:none;' }))
-  const knife = h('div', {
-    class: 'got-knife', hidden: true,
-    style: 'position:absolute;left:0;top:0;width:34px;height:10px;margin:-5px 0 0 -17px;border-radius:5px;background:#c9ccd1;border:3px solid #3a2618;pointer-events:none;z-index:3;'
-  })
-  const scene = h('div', { class: 'got-scene', style: 'position:relative;flex:1 1 0;width:100%;min-height:120px;touch-action:none;' }, fruit, knife)
+  const whole = hasPeeled ? svgBox(peeledSvg, 'got-art got-whole') : null
+  if (whole) fruit.appendChild(whole)
+  const peelerSvg = artV2('dao_bao')
+  const knife = h('div', { class: 'got-knife', hidden: true }, svgBox(peelerSvg, 'got-knife-art'))
+  const boardSvg = propV2('thot_lon')
+  const board = boardSvg ? svgBox(boardSvg, 'got-board') : h('div', { class: 'got-board is-css' })
+  const scene = h('div', { class: 'got-scene' }, board, fruit, knife)
   fr.area.append(scene)
 
   const countText = T.count || 'Dải'
@@ -109,15 +131,39 @@ function mount(stage, step, ctx = {}) {
   fr.foot.append(counter, doneBtn)
 
   let W = 0, H = 0
+  let peeledStyle = null
   function layout() {
     const r = scene.getBoundingClientRect()
     if (!r.width || !r.height) return
-    const round = look.shape === 'round'
-    H = Math.max(96, Math.min(250, r.height - 12))
-    W = Math.max(150, Math.min(r.width - 32, round ? H : H * 0.8 + 24, 300))
-    if (round) H = Math.min(H, W)
-    fruit.style.width = W + 'px'
-    fruit.style.height = H + 'px'
+    // quả to nhất vừa cảnh (chừa mép cho thớt, dao bào), không quá 270px; quả tròn không cao hơn bề ngang
+    W = Math.max(120, Math.min(r.width * 0.8, 270, (r.height * 0.86 - 8) / ratio))
+    H = W * ratio
+    W = Math.round(W)
+    H = Math.round(H)
+    const fl = Math.round((r.width - W) / 2)
+    const ft = Math.round((r.height - H) / 2 + Math.min(10, (r.height - H) * 0.2))   // chừa chỗ cuống, lá phía trên
+    Object.assign(fruit.style, { left: fl + 'px', top: ft + 'px', width: W + 'px', height: H + 'px' })
+    // nét viền ngoài của hình phóng to giữ khoảng 4,5px (hình 64 vẽ nét 3 cho cỡ biểu tượng)
+    fruit.style.setProperty('--got-sw', (4.5 / (W / (bx1 - bx0))).toFixed(2))
+    Object.assign(skin.style, artPlace(pose.box, pose.rot, W))
+    // hình đã gọt: khung thân của nó lấp đúng khung quả (dáng gần như trùng hình vỏ)
+    const pb = pose.peeledBox || pose.box
+    const pr = (pb[3] - pb[1]) / (pb[2] - pb[0])
+    peeledStyle = artPlace(pb, pose.rot, W)
+    // lệch tỉ lệ dọc nhỏ (≤ 2%) giữa hai hình: canh giữa theo chiều dọc
+    const dy = (H - W * pr) / 2
+    peeledStyle.top = (parseFloat(peeledStyle.top) + dy) + 'px'
+    if (whole) Object.assign(whole.style, peeledStyle)
+    // thớt dưới quả: rộng hơn quả, tâm hơi thấp hơn tâm quả (quả nằm trên mặt thớt), không lòi khỏi cảnh
+    const meta = PROP_META.thot_lon || { vb: [240, 160], center: [120, 69] }
+    const bw = Math.round(Math.min(r.width - 4, Math.max(W * 1.3, 160), (r.height - 2) * meta.vb[0] / meta.vb[1]))
+    const bh = Math.round(bw * meta.vb[1] / meta.vb[0])
+    const bcx = r.width / 2
+    const bcy = Math.min(r.height - bh * (1 - meta.center[1] / meta.vb[1]), ft + H * 0.62)
+    Object.assign(board.style, {
+      left: Math.round(bcx - bw / 2) + 'px', top: Math.round(Math.max(0, bcy - bh * meta.center[1] / meta.vb[1])) + 'px',
+      width: bw + 'px', height: bh + 'px'
+    })
     bands.forEach((b, i) => {
       b.rect = bandRect(i, K, W, H)
       b.lo = b.rect.top / H
@@ -129,11 +175,20 @@ function mount(stage, step, ctx = {}) {
     })
   }
 
-  // Khúc đã gọt: segs lưu theo phần chiều cao quả (0..1) để đổi cỡ vẫn đúng chỗ.
+  // Khúc đã gọt: segs lưu theo phần chiều cao quả (0..1) để đổi cỡ vẫn đúng chỗ. Mỗi khúc là một ô cắt (overflow hidden)
+  // chứa bản sao hình đã gọt, dời ngược để khớp đúng chỗ trên quả. Thiếu hình đã gọt thì tô màu ruột.
   function drawBand(b) {
-    b.peeled.replaceChildren(...mergeSegments(b.segs, 0, 1).map(([a, c]) => h('div', {
-      style: `position:absolute;left:0;right:0;top:${(a * 100).toFixed(2)}%;height:${((c - a) * 100).toFixed(2)}%;background:${look.flesh};`
-    })))
+    if (!b.rect) return
+    b.peeled.replaceChildren(...mergeSegments(b.segs, 0, 1).map(([a, c]) => {
+      const cell = h('div', { class: 'got-cut', style: { top: (a * 100).toFixed(2) + '%', height: ((c - a) * 100).toFixed(2) + '%' } })
+      if (hasPeeled && peeledStyle) {
+        const st = { ...peeledStyle }
+        st.left = (parseFloat(peeledStyle.left) - b.rect.left) + 'px'
+        st.top = (parseFloat(peeledStyle.top) - a * H) + 'px'
+        cell.appendChild(svgBox(peeledSvg, 'got-art', { style: st }))
+      } else cell.classList.add('is-flat')
+      return cell
+    }))
   }
 
   function renderCount() {
@@ -167,14 +222,46 @@ function mount(stage, step, ctx = {}) {
   function showKnife(p) {
     const r = scene.getBoundingClientRect()
     knife.hidden = false
-    knife.style.transform = `translate(${p.clientX - r.left}px, ${p.clientY - r.top}px)`
+    knife.style.transform = `translate(${Math.round(p.clientX - r.left)}px, ${Math.round(p.clientY - r.top - PEELER_OFFSET_PX)}px)`
   }
   function clearLive() { for (const b of bands) b.live.hidden = true }
 
   function miss(p, text) {
     misses++
-    feedback(ctx, 'bad')
-    if (vfx) vfx.floatText({ x: p.clientX, y: p.clientY }, text, { tone: 'bad', size: 'small' })
+    feedback(ctx, 'bad', fruit)
+    if (vfx) { try { vfx.floatText({ x: p.clientX, y: p.clientY }, text, { tone: 'bad', size: 'small' }) } catch { /* bỏ qua */ } }
+  }
+
+  // Dải vỏ cuộn rơi: một dải màu vỏ (viền mực) rời khỏi quả ở chỗ vừa gọt, xoắn và rơi xuống rồi mờ (500 ms); giảm chuyển
+  // động: chỉ mờ đi tại chỗ. Nằm trong lớp .mg-fx của sân khấu (không nhận chạm).
+  function dropPeel(b, a, c) {
+    const fx = fr.fx
+    if (!fx || typeof fx.getBoundingClientRect !== 'function') return
+    const fxr = fx.getBoundingClientRect()
+    const r = fruit.getBoundingClientRect()
+    const sc = W ? r.width / W : 1
+    const left = r.left - fxr.left + (b.rect.left + b.rect.width * 0.18) * sc
+    const top = r.top - fxr.top + a * H * sc
+    const len = Math.max(18, (c - a) * H * sc)
+    const strip = h('i', {
+      class: 'got-strip',
+      style: { left: Math.round(left) + 'px', top: Math.round(top) + 'px', width: Math.round(b.rect.width * 0.64 * sc) + 'px', height: Math.round(len) + 'px', '--skin': pose.skin, '--dark': pose.dark, '--flesh': pose.flesh }
+    })
+    fx.appendChild(strip)
+    const done = () => strip.remove()
+    if (typeof strip.animate !== 'function') { later(done, 520); return }
+    try {
+      const dir = b.rect.left + b.rect.width / 2 < W / 2 ? -1 : 1
+      const anim = reduced()
+        ? strip.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 420, easing: 'linear', fill: 'forwards' })
+        : strip.animate([
+          { transform: 'translate(0, 0) rotate(0deg) scaleY(1)', opacity: 1 },
+          { transform: `translate(${dir * 10}px, ${len * 0.25}px) rotate(${dir * 18}deg) scaleY(.7)`, opacity: 1, offset: 0.35 },
+          { transform: `translate(${dir * 26}px, ${len * 0.6 + 40}px) rotate(${dir * 70}deg) scaleY(.42)`, opacity: 0 }
+        ], { duration: 520, easing: 'cubic-bezier(0.4, 0, 0.9, 0.6)', fill: 'forwards' })
+      anim.addEventListener('finish', done)
+      anim.addEventListener('cancel', done)
+    } catch { later(done, 520) }
   }
 
   const unbind = bindPointer(scene, {
@@ -186,7 +273,7 @@ function mount(stage, step, ctx = {}) {
     move(p) {
       if (!drag || out.done) return
       showKnife(p)
-      // khúc đang gọt hiện mờ ngay dưới ngón (phản hồi tức thì)
+      // khúc đang gọt hiện mờ màu ruột ngay dưới ngón (phản hồi tức thì)
       const q = inFruit(p)
       const i = bandAt((drag.p0.x + q.x) / 2)
       clearLive()
@@ -227,11 +314,15 @@ function mount(stage, step, ctx = {}) {
     b.el.dataset.done = b.cov.toFixed(2)
     drawBand(b)
     doneBtn.disabled = false
-    cue(ctx, 'peel', 'chop')
-    // dải vỏ cuộn rơi (giảm chuyển động: không hạt)
-    if (vfx && !reduced()) vfx.burst(b.el, 'peel', { n: 3, colors: [look.skin, look.dark] })
+    // tiếng "sột" + vỏ cuộn bắn ra (vfx, giảm chuyển động: không hạt) + dải vỏ rơi
+    feedback(ctx, 'peel')
+    if (vfx && !reduced()) { try { vfx.burst(b.el, 'peel', { n: 3, colors: [pose.skin, pose.dark] }) } catch { /* bỏ qua */ } }
+    dropPeel(b, Math.max(b.lo, Math.min(a, b.hi)), Math.min(b.hi, Math.max(c, b.lo)))
     const done = renderCount()
-    if (b.cov >= GOT_DONE_AT && before < GOT_DONE_AT && vfx) vfx.floatText(b.el, 'Sạch vỏ!', { tone: 'good', size: 'small' })
+    if (b.cov >= GOT_DONE_AT && before < GOT_DONE_AT) {
+      b.el.classList.add('is-done')
+      if (vfx) { try { vfx.floatText(b.el, 'Sạch vỏ!', { tone: 'good', size: 'small' }) } catch { /* bỏ qua */ } }
+    }
     if (done >= K && !ending) { ending = true; later(finish, 260) }
   }
 
@@ -263,6 +354,11 @@ function mount(stage, step, ctx = {}) {
     cleanup()
     const coverage = bands.map(b => Math.round(b.cov * 1000) / 1000)
     const score = scoreGot({ coverage, target: K, misses, elapsed, par: step.par })
+    // gọt sạch cả quả: hiện nguyên hình đã gọt, lấp lánh
+    if (bands.every(b => b.cov >= GOT_DONE_AT)) {
+      fruit.classList.add('is-peeled')
+      if (vfx) { try { vfx.burst(fruit, reduced() ? 'star' : 'sparkle', { n: 6 }); if (whole) vfx.pop(whole) } catch { /* bỏ qua */ } }
+    }
     feedback(ctx, score >= 90 ? 'good' : score < 50 ? 'bad' : 'ok')
     out.settle({ score, details: { coverage, strips: K, strokes, misses, elapsed } })
   }
