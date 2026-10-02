@@ -1004,6 +1004,9 @@ export function mountKitchen(root, app, opts = {}) {
     ui.dismissed = null
     save()
     syncFocus()
+    // con dấu nổi của bước trước (Chọn, Tự làm) thuộc về Thớt: bắt đầu bước mới thì dọn ngay, không để nó đè ruy băng
+    // "Bước k/N" của thẻ vào bước hay dòng hướng dẫn trên sân khấu
+    clear(flashHost)
     const sh = SH()
     const cook = sh.cook
     const recipe = recipeOf(cook.recipeId)
