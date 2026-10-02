@@ -2,6 +2,8 @@
 // manifest hợp lệ (tên, màu, biểu tượng 192/512 + maskable đúng kích thước), index.html gắn manifest và mọi CSS,
 // mọi import tương đối trong src/ trỏ tới tệp có trong PRECACHE; chạy thử service worker trong môi trường giả:
 // cài → lưu đủ tệp, kích hoạt → dọn cache bản cũ, mất mạng vẫn trả tệp (bỏ qua ?devNow/?test khi so khóa).
+// 0.4.2: PRECACHE gồm cả font tự lưu fonts/*.woff2 (không gồm fonts/OFL.txt, trang mẫu mau.html, mau/); mở trang
+// (navigate) chỉ gốc scope và index.html mới trả trang game đã lưu, trang khác (mau.html) lấy từ mạng, mất mạng mới trả game.
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
@@ -27,13 +29,15 @@ function walk(dir, filter) {
   return out
 }
 
-// Tệp phải có trong PRECACHE: trang, manifest, mọi .js trong src/, mọi .css trong css/, mọi tệp trong icons/.
+// Tệp phải có trong PRECACHE: trang, manifest, mọi .js trong src/, mọi .css trong css/, mọi tệp trong icons/,
+// font tự lưu fonts/*.woff2 (giấy phép fonts/OFL.txt không cần cho game chạy offline).
 function expectedFiles() {
   return [
     'index.html', 'manifest.webmanifest',
     ...walk('src', n => n.endsWith('.js')),
     ...walk('css', n => n.endsWith('.css')),
-    ...walk('icons', n => !n.startsWith('.'))
+    ...walk('icons', n => !n.startsWith('.')),
+    ...walk('fonts', n => n.endsWith('.woff2'))
   ].sort()
 }
 
@@ -135,6 +139,12 @@ test('PRECACHE của sw.js khớp đúng cây thư mục thật (thiếu hay th�
   for (const f of list) assert.ok(!f.startsWith('/') && !f.startsWith('.'), 'đường dẫn phải tương đối: ' + f)
   // biểu tượng bắt buộc
   for (const f of ['icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png']) assert.ok(list.includes(f), f)
+  // font tiêu đề tự lưu (chơi offline vẫn đúng chữ); trang mẫu và giấy phép font không thuộc game
+  for (const f of ['fonts/baloo2-800-latin.woff2', 'fonts/baloo2-800-vi.woff2']) assert.ok(list.includes(f), f)
+  for (const f of list) {
+    assert.ok(f !== 'mau.html' && !f.startsWith('mau/'), 'trang mẫu không được nằm trong PRECACHE: ' + f)
+    assert.ok(f !== 'fonts/OFL.txt', 'fonts/OFL.txt không cần nằm trong PRECACHE')
+  }
 })
 
 test('GitHub Pages: có tệp rỗng .nojekyll ở gốc (giữ tệp tên bắt đầu bằng "_"), không cần nằm trong PRECACHE', () => {
@@ -304,6 +314,54 @@ test('service worker dưới đường dẫn con /gamefnb/ (GitHub Pages): cài 
   assert.equal(r.response.status, 200)
   const c2 = fresh.store.get('bkn-' + JSON.parse(read('package.json')).version)
   assert.ok(c2 && c2.has('https://kazesanaei.github.io/gamefnb/css/kitchen.css'), 'tệp của game dưới /gamefnb/ phải được cất')
+})
+
+test('service worker: mở trang khác (mau.html) khi có mạng lấy từ mạng, không bị thay bằng trang game; gốc vẫn ra game', async () => {
+  for (const basePath of ['', '/gamefnb']) {
+    const sw = loadServiceWorker({ origin: 'https://kazesanaei.github.io', basePath })
+    await dispatch(sw, 'install')
+    await dispatch(sw, 'activate')
+    const n = sw.calls.fetch.length
+    for (const p of ['/mau.html', '/mau.html?tab=thai', '/mau.html#ra-mon']) {
+      const nav = await dispatch(sw, 'fetch', fetchEvent(sw, p, { mode: 'navigate' }))
+      assert.ok(nav.handled, basePath + p)
+      assert.equal(nav.response.status, 200, basePath + p)
+      const text = await nav.response.text()
+      assert.match(text, /<title>Bếp Khởi Nghiệp – Phòng mẫu<\/title>/, basePath + p + ': phải là trang mẫu, không phải trang game')
+      assert.doesNotMatch(text, /src\/main\.js/, basePath + p)
+    }
+    assert.ok(sw.calls.fetch.length >= n + 3, basePath + ': trang mẫu phải lấy từ mạng')
+    assert.ok(sw.calls.fetch.slice(n).every(u => u.startsWith(basePath + '/mau.html')), basePath + ': ' + sw.calls.fetch.slice(n).join(', '))
+    // trang mẫu không bị cất vào cache của game
+    const cache = sw.store.get('bkn-' + JSON.parse(read('package.json')).version)
+    assert.ok(![...cache.keys()].some(k => k.includes('mau.html')), basePath + ': không cất mau.html')
+    // gốc scope và index.html (kể cả có query) vẫn trả trang game đã lưu, không gọi mạng (không phải máy cục bộ)
+    const m = sw.calls.fetch.length
+    for (const p of ['/', '/?seed=42', '/index.html', '/index.html?devNow=2026-11-13T09:00']) {
+      const nav = await dispatch(sw, 'fetch', fetchEvent(sw, p, { mode: 'navigate' }))
+      assert.equal(nav.response.status, 200, basePath + p)
+      assert.match(await nav.response.text(), /<title>Bếp Khởi Nghiệp<\/title>/, basePath + p)
+    }
+    assert.equal(sw.calls.fetch.length, m, basePath + ': trang game lấy từ cache')
+  }
+})
+
+test('service worker: mất mạng thì mở gốc vẫn ra trang game; mở trang khác (mau.html) cũng trả trang game đã lưu', async () => {
+  for (const basePath of ['', '/gamefnb']) {
+    const sw = loadServiceWorker({ origin: 'https://kazesanaei.github.io', basePath })
+    await dispatch(sw, 'install')
+    await dispatch(sw, 'activate')
+    sw.offline.on = true
+    for (const p of ['/', '/?seed=7', '/index.html', '/mau.html']) {
+      const nav = await dispatch(sw, 'fetch', fetchEvent(sw, p, { mode: 'navigate' }))
+      assert.ok(nav.handled, basePath + p)
+      assert.equal(nav.response.status, 200, basePath + p)
+      assert.match(await nav.response.text(), /<title>Bếp Khởi Nghiệp<\/title>/, basePath + p + ': mất mạng phải ra trang game')
+    }
+    // font tự lưu có trong cache (chữ tiêu đề đúng khi chơi offline)
+    const font = await dispatch(sw, 'fetch', fetchEvent(sw, '/fonts/baloo2-800-latin.woff2'))
+    assert.equal(font.response.status, 200, basePath + ': font trong cache')
+  }
 })
 
 test('service worker: bỏ qua yêu cầu khác nguồn và không phải GET; tệp lạ lấy từ mạng', async () => {

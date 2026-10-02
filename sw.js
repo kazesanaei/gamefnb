@@ -7,11 +7,14 @@
 //   và hoàn giá vốn đã trừ, không bỏ ca im lặng (docs/kien-truc.md mục 16.1).
 // - Kích hoạt (activate): dọn cache của các phiên bản cũ ('bkn-…' khác bản này), nhận quyền điều khiển trang.
 // - Tải tệp (fetch): cache trước (cache-first) cho tài nguyên tĩnh cùng nguồn; so khóa cache bỏ qua query
-//   (?devNow, ?test, ?seed…); mở trang (navigate) luôn trả index.html đã lưu.
+//   (?devNow, ?test, ?seed…). Mở trang (navigate): chỉ GỐC scope (vd /gamefnb/) và index.html trả trang game đã lưu;
+//   trang khác cùng nguồn (vd mau.html — Phòng mẫu giao diện) lấy từ mạng, mất mạng mới trả trang game (0.4.2; trước đó
+//   mọi lượt mở trang đều ra trang game nên không mở được trang mẫu trên máy đã cài game).
 // VERSION trùng "version" trong package.json (có test đối chiếu); đổi tệp của game thì tăng VERSION.
-// Thêm/bớt tệp trong src/, css/, icons/ thì sửa PRECACHE (test tests/unit/pwa.test.mjs đối chiếu với cây thư mục thật).
+// Thêm/bớt tệp trong src/, css/, icons/, fonts/*.woff2 thì sửa PRECACHE (tests/unit/pwa.test.mjs đối chiếu với cây thư
+// mục thật). Trang mẫu (mau.html, mau/) và fonts/OFL.txt KHÔNG nằm trong PRECACHE.
 
-const VERSION = '0.4.1'
+const VERSION = '0.4.2'
 const CACHE_PREFIX = 'bkn-'
 const CACHE = CACHE_PREFIX + VERSION
 
@@ -23,11 +26,16 @@ const PRECACHE = [
   'icons/icon-512.png',
   'icons/apple-touch-icon.png',
   'css/base.css',
+  'css/counter.css',
+  'css/fx.css',
   'css/game.css',
   'css/kitchen.css',
   'css/meta.css',
   'css/settings.css',
+  'css/theme.css',
   'css/tour.css',
+  'fonts/baloo2-800-latin.woff2',
+  'fonts/baloo2-800-vi.woff2',
   'src/main.js',
   'src/core/bus.js',
   'src/core/chains.js',
@@ -87,20 +95,39 @@ const PRECACHE = [
   'src/ui/format.js',
   'src/ui/input.js',
   'src/ui/loop.js',
+  'src/ui/motion.js',
   'src/ui/router.js',
+  'src/ui/vfx.js',
+  'src/ui/art/ing-kho.js',
+  'src/ui/art/ing-tuoi.js',
+  'src/ui/art/kit.js',
+  'src/ui/art/mon.js',
+  'src/ui/art/props.js',
+  'src/ui/art/tools.js',
+  'src/ui/art/v2.js',
   'src/ui/components/cash-drawer.js',
   'src/ui/components/chain-card.js',
   'src/ui/components/checkin-popup.js',
+  'src/ui/components/disau-react.js',
+  'src/ui/components/dish-reveal.js',
   'src/ui/components/help.js',
   'src/ui/components/hud.js',
+  'src/ui/components/menu-board.js',
   'src/ui/components/meta-ui.js',
   'src/ui/components/modal.js',
+  'src/ui/components/note-icons.js',
   'src/ui/components/numpad.js',
+  'src/ui/components/order-bubble.js',
+  'src/ui/components/order-pad.js',
+  'src/ui/components/order-sheet.js',
   'src/ui/components/patience.js',
   'src/ui/components/progress4.js',
+  'src/ui/components/stamp.js',
+  'src/ui/components/step-card.js',
   'src/ui/components/ticket-rail.js',
   'src/ui/components/toast.js',
   'src/ui/components/tour.js',
+  'src/ui/minigames/_frame.js',
   'src/ui/minigames/_util.js',
   'src/ui/minigames/cha.js',
   'src/ui/minigames/cham.js',
@@ -132,6 +159,8 @@ const PRECACHE = [
 const LOCAL_DEV = ['localhost', '127.0.0.1'].includes(self.location.hostname)
 
 const INDEX_URL = new URL('index.html', self.location).href
+// Gốc scope (thư mục chứa sw.js, vd https://…/gamefnb/): mở trang tại đây hoặc index.html là mở game.
+const SCOPE_URL = new URL('./', self.location).href
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -161,7 +190,10 @@ self.addEventListener('fetch', event => {
   const url = new URL(req.url)
   if (url.origin !== self.location.origin) return
   if (req.mode === 'navigate') {
-    event.respondWith(cacheFirst(event, INDEX_URL, req))
+    // Gốc scope và index.html (bỏ qua query như ?seed, ?devNow): trang game đã lưu (cache trước).
+    // Trang khác (vd mau.html): lấy từ mạng; mất mạng mới trả trang game (networkFirstPage).
+    if (isGamePage(url)) event.respondWith(cacheFirst(event, INDEX_URL, req))
+    else event.respondWith(networkFirstPage(req))
     return
   }
   event.respondWith(cacheFirst(event, req, req))
@@ -188,6 +220,25 @@ async function cacheFirst(event, key, req) {
       const shell = await cache.match(INDEX_URL)
       if (shell) return shell
     }
+    throw err
+  }
+}
+
+// Điều hướng tới gốc scope hoặc index.html (so đường dẫn, bỏ query và #).
+function isGamePage(url) {
+  const path = url.origin + url.pathname
+  return path === SCOPE_URL || path === INDEX_URL
+}
+
+// Trang không phải trang game (vd mau.html): tải mạng, không cất vào cache; mất mạng (hoặc lỗi mạng) thì trả trang game
+// đã lưu để người chơi vẫn vào được game.
+async function networkFirstPage(req) {
+  try {
+    return await fetch(req)
+  } catch (err) {
+    const cache = await caches.open(CACHE)
+    const shell = await cache.match(INDEX_URL)
+    if (shell) return shell
     throw err
   }
 }

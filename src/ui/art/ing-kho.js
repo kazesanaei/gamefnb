@@ -2,14 +2,14 @@
 // Cặp bẫy nước tương / nước mắm khác nhau ngay ở DÁNG chai (nhận ra ở 48px), không chỉ khác màu:
 // nước tương là chai CAO cổ dài màu nâu đen, nắp đỏ, nhãn hạt đậu; nước mắm là chai THẤP bầu rộng màu hổ phách, nắp vàng, nhãn con cá.
 
-import { INK, DETAIL, PAL, svg, ground, hilite, tone3, txt } from './kit.js'
+import { INK, DETAIL, PAL, svg, ground, hilite, tone3, txt, r1 } from './kit.js'
 
 const LABEL = PAL.giay
 
 // Nắp chai có khía dọc.
 function cap(x, y, w, h, fill, ridge) {
   const lines = []
-  for (let i = 1; i < 4; i++) lines.push(`M${x + (w * i) / 4} ${y + 1.6}V${y + h - 1.6}`)
+  for (let i = 1; i < 4; i++) lines.push(`M${r1(x + (w * i) / 4)} ${r1(y + 1.6)}V${r1(y + h - 1.6)}`)
   return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2.2" fill="${fill}"/>` +
     `<path d="${lines.join('')}" stroke="${ridge}" stroke-width="1.4"/>` +
     hilite(x + 2.6, y + h / 2, 1, h * 0.28, 0.6)

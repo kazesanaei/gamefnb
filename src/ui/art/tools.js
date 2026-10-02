@@ -1,7 +1,7 @@
 // Hình dụng cụ M5 (icon 64): thớt gỗ, dao thép. Thuần, import trong Node được. Quy chuẩn ở kit.js.
 // Bản lớn dùng trên sân khấu nằm ở props.js (thot_lon, dao_lon).
 
-import { INK, DETAIL, PAL, svg, ground, hilite, tone3, dots } from './kit.js'
+import { DETAIL, PAL, svg, ground, hilite, tone3, dots } from './kit.js'
 
 // Thớt gỗ có tay cầm và lỗ treo, nhìn hơi chéo (thấy bề dày ở mép dưới).
 const BOARD = 'M6 23C6 18.5 9 16 13.5 16H42C46.5 16 49 18.5 49 23V25.5H55C59 25.5 61 28 61 32C61 36 59 38.5 55 38.5H49V41C49 45.5 46.5 48 42 48H13.5C9 48 6 45.5 6 41Z'

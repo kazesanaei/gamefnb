@@ -85,11 +85,13 @@ Hai dịch vụ này cho phép **tải thẳng thư mục game lên**, không c�
 
 1. Trên trang kho GitHub, chọn nhánh **`claude/fb-business-game-qswti6`** (ô chọn nhánh phía trên danh sách tệp).
 2. Bấm nút xanh **Code** → **Download ZIP**, rồi giải nén.
-3. Game chỉ cần **3 tệp và 3 thư mục** sau (nằm ở thư mục gốc vừa giải nén):
+3. Game chỉ cần **3 tệp và 4 thư mục** sau (nằm ở thư mục gốc vừa giải nén):
    - `index.html`, `manifest.webmanifest`, `sw.js`
-   - `css/`, `src/`, `icons/`
+   - `css/`, `src/`, `icons/`, `fonts/` (từ bản 0.4.2 có font tiêu đề tự lưu; **thiếu `fonts/` thì game không chơi offline được**)
 
-   Muốn không công khai tài liệu và mã kiểm thử, hãy tạo một thư mục mới (ví dụ `bep-khoi-nghiep`) và **chép riêng** 6 mục trên vào đó, rồi dùng thư mục mới này để tải lên. Không cần `docs/`, `tests/`, `tools/`, `package.json`.
+   Muốn có cả **Phòng mẫu giao diện** (mục F) thì chép thêm `mau.html` và thư mục `mau/`.
+
+   Muốn không công khai tài liệu và mã kiểm thử, hãy tạo một thư mục mới (ví dụ `bep-khoi-nghiep`) và **chép riêng** các mục trên vào đó, rồi dùng thư mục mới này để tải lên. Không cần `docs/`, `tests/`, `tools/`, `package.json`.
 
 ### C2. Cloudflare Pages
 
@@ -150,3 +152,36 @@ Dùng link GitHub Pages (cách B) hoặc Cloudflare / Netlify (cách C). Link ph
 - **Xóa dữ liệu duyệt web của trang** (hoặc gỡ ứng dụng đã cài) là mất tiến trình trên trình duyệt đó. Hãy sao lưu trước. Game tự nhắc sao lưu mỗi 7 ngày.
 - Safari có thể tự dọn dữ liệu của trang web lâu ngày không mở. Thêm game vào Màn hình chính và sao lưu định kỳ để an toàn.
 - Chỉ mở game ở **một tab**. Mở thêm tab thứ hai thì tab cũ tự khóa để không ghi đè tiến trình mới.
+
+---
+
+## F. Phòng mẫu giao diện (mau.html)
+
+Phòng mẫu là trang riêng để **duyệt giao diện mới** (hình to, nút "bánh kẹo", con dấu, màn ra món…) trước khi ráp vào game. Trang có 4 thẻ lớn ở đầu:
+
+- **Hình**: so hình cũ và hình mới ở 4 cỡ (48, 72, 120, 200) trên nền giấy và nền gỗ.
+- **Gọi món**: chơi thử một lượt gọi món thật với Cô Thu: chọn món, số phần, ghi chú, đọc lại đơn, chốt order (có con dấu "ĐÃ CHỐT" và phiếu bay lên dây phiếu).
+- **Bếp: Thái**: thẻ "Bước 3/6 · Thái dưa leo!" có bàn tay làm mẫu, thái dưa leo kiểu mới, con dấu theo điểm thật và lời Dì Sáu. Bốn nút tròn ở dưới để xem nhanh 4 hạng dấu.
+- **Ra món**: màn ra món của 5 hạng, bật/tắt "Không tì vết" và "Lên cấp".
+
+Nút **bánh răng** ở góc trên mở bảng **Tùy chỉnh** với 3 công tắc: **Giảm chuyển động**, **Âm thanh**, **Khung thấp** (thu phần chơi còn khoảng 300 điểm ảnh, giống màn 360×600 trong ca thật).
+
+Phòng mẫu **không lưu gì vào bản lưu của game**, không cài vào máy, chơi thử thoải mái. Nút **Về game** đưa về trang game.
+
+### F1. Mở Phòng mẫu
+
+- **Link claude.ai "Bếp Khởi Nghiệp – Phòng mẫu"** (khuyên dùng để duyệt): gửi riêng trong cuộc trò chuyện. Link này nằm ở địa chỉ khác với game nên không bị ảnh hưởng bởi bản game đã cài trên máy. Người làm kỹ thuật dựng lại trang này bằng lệnh `node tools/dong-goi-artifact.mjs --entry mau.html` (lệnh in ra trang và danh sách tệp kèm để đăng).
+- **GitHub Pages**: **https://kazesanaei.github.io/gamefnb/mau.html**
+- Trên máy tính: chạy `npm run serve` rồi mở **http://localhost:8080/mau.html**.
+
+### F2. Máy đã từng mở game: nhận bản mới trước
+
+Các bản game **trước 0.4.2** trả trang game cho **mọi** link cùng địa chỉ, nên trên điện thoại đã từng mở game, link `…/mau.html` sẽ ra game thay vì Phòng mẫu. Làm một lần:
+
+1. Mở game (link GitHub Pages hoặc biểu tượng **Bếp KN** trên màn hình chính) khi **có mạng**, chờ vài giây.
+2. Ở màn **Chuẩn bị**, thấy thẻ **Có bản mới** thì bấm **Tải lại**. Chưa thấy thẻ thì đóng hẳn game (vuốt tắt ứng dụng hoặc đóng mọi tab của game) rồi mở lại, đợi thẻ hiện.
+3. Kiểm tra: **Cài đặt** ghi phiên bản **0.4.2** trở lên.
+4. Sau đó mới mở link `…/mau.html`.
+
+Từ bản 0.4.2, chỉ link gốc (`…/gamefnb/`) và `index.html` mở ra game; các trang khác như `mau.html` luôn tải từ mạng. **Mất mạng** thì link Phòng mẫu mở ra game (trang mẫu không được lưu để chơi offline).
+

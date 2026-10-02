@@ -14,7 +14,7 @@ import { DI_SAU } from './art.js'
 export const SAVE_DEBOUNCE_MS = 300
 
 // Phiên bản game: trùng "version" trong package.json và VERSION của sw.js (có test đối chiếu).
-export const APP_VERSION = '0.4.1'
+export const APP_VERSION = '0.4.2'
 
 // Màn con: nút Back của điện thoại / cử chỉ vuốt lùi đưa về màn Chuẩn bị thay vì rời game.
 // (Danh sách tham khảo; thực tế mọi màn không phải màn gốc của router.js đều là màn con — isSubScreen.)

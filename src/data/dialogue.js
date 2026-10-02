@@ -548,6 +548,13 @@ export const DIALOGUE = deepFreeze({
     praise: ['Trời đất, khéo tay dữ vậy con!', 'Món này dì chấm mười điểm!', 'Làm vầy khách nhớ tới hoài.'],
     worry: ['Coi chừng lửa đó con!', 'Khách chờ lâu rồi, nhanh tay lên con.', 'Đọc kỹ phiếu trước khi làm nha.'],
     regret: ['Hơi tiếc ha, lần sau mình làm kỹ hơn.', 'Không sao, té đâu đứng dậy đó.', 'Hỏng thì làm lại, đừng giao món dở cho khách.'],
+    // M5: phản ứng ngắn sau mỗi bước bếp, theo hạng bước (hoan_hao, tot, dat, hong), hiện ở góc sân khấu
+    stepReact: {
+      hoan_hao: ['Đẹp quá con ơi!', 'Trời đất, khéo tay dữ thần!', 'Chuẩn từng li luôn nghen!', 'Vậy mới là dân bếp chớ!'],
+      tot: ['Khá lắm, giữ vậy nha!', 'Được đó con, tay quen rồi đó.', 'Ngon lành, ráng thêm chút nữa nghen!', 'Ổn rồi, cứ vậy mà làm.'],
+      dat: ['Hơi lệch chút, không sao!', 'Tạm được, bước sau kỹ hơn nha.', 'Cũng xong, mà chậm tay lại chút con.', 'Từ từ thôi, nhìn kỹ vạch nghen.'],
+      hong: ['Lỡ tay rồi, bước sau kỹ hơn nha!', 'Không sao, hít thở rồi làm tiếp nè.', 'Đừng nản nghen con, ai mới làm cũng vậy.', 'Trật chút xíu thôi, mình gỡ lại ở bước sau.']
+    },
     loanOffer: 'Kẹt vốn hả con? Dì cho mượn đỡ, bán được thì trả dần.',
     tutorial: {
       order: 'Khách nói gì thì ghi y vậy vào sổ order nha con.',

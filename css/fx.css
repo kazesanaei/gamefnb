@@ -1,0 +1,930 @@
+/* Thành phần M5 trong bếp: thẻ vào bước (.g-step-card), con dấu kết quả bước (.g-stamp), Dì Sáu phản ứng (.g-disau-react),
+   khung sân khấu mới (.g-frame2: chấm bước, thanh giờ, thẻ hướng dẫn, lớp .mg-fx), bước Thái kiểu mới (.g-thai2) và màn ra
+   món (.g-reveal). Dùng biến --g-* của css/theme.css.
+   Quy ước: chỉ thêm lớp tiền tố g- (và .mg-fx); KHÔNG đổi lớp cũ của game — chỗ cần đè kiểu cũ của sân khấu (kitchen.css)
+   thì chỉ đè khi phần tử có thêm lớp g- tương ứng (đủ độ ưu tiên). Hoạt ảnh chỉ đổi transform/opacity, hữu hạn (trừ tia
+   sáng, nhịp nhún nhẹ, tay mẫu lặp — tắt hẳn khi giảm chuyển động, cuối tệp). Lớp hiệu ứng không nhận chạm.
+   Màn thấp: thẻ bước và màn ra món co theo khung chứa (container query; khung panel Bếp ở 360×600 chỉ ~300px). */
+
+/* ======================================================================
+   1. Thẻ vào bước
+   ====================================================================== */
+.g-step-card {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 26px 12px 10px;
+  background:
+    radial-gradient(90% 60% at 50% 42%, rgba(255, 226, 122, .32), rgba(255, 226, 122, 0) 70%),
+    rgba(58, 38, 24, .5);
+  container-type: size;
+  container-name: g-card;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  animation: g-fade-in .16s ease-out both;
+}
+.g-step-card-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: min(100%, 360px);
+  max-height: 100%;
+  padding: 28px 16px 14px;
+  border: var(--g-outline, 3px) solid var(--g-ink, #3a2618);
+  border-radius: var(--g-radius-l, 22px);
+  color: var(--g-ink, #3a2618);
+  background:
+    radial-gradient(70% 45% at 50% 34%, #fffdf6 0 40%, rgba(255, 253, 246, 0) 100%),
+    var(--g-paper, #fffaf0);
+  box-shadow: inset 0 -5px 0 var(--g-paper-shade, #f1e2c2), 0 6px 0 rgba(58, 38, 24, .4);
+  animation: g-card-in .42s var(--g-ease-back, ease-out) both;
+}
+.g-step-card-ribbon {
+  position: absolute;
+  top: -21px;
+  left: 50%;
+  margin: 0;
+  transform: translateX(-50%);
+  font-size: 19px;
+}
+.g-step-card-stage {
+  position: relative;
+  flex: none;
+  width: 180px;
+  width: min(48cqw, 40cqh, 210px);
+  aspect-ratio: 1;
+}
+.g-step-card-glow {
+  position: absolute;
+  inset: -12%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 226, 122, .95) 0 28%, rgba(255, 226, 122, .35) 48%, rgba(255, 226, 122, 0) 68%);
+}
+.g-step-card-art {
+  position: absolute;
+  inset: 0;
+  display: block;
+  animation: g-card-zoom .5s ease-out .06s both;
+}
+.g-step-card-art svg,
+.g-step-card-demo svg { display: block; width: 100%; height: 100%; }
+.g-step-card-verb {
+  --g-title-fill: var(--g-tomato, #e8483a);
+  max-width: 100%;
+  margin: 2px 0 0;
+  font-size: 28px;
+  text-align: center;
+  animation: g-card-up .36s var(--g-ease-back, ease-out) .14s both;
+}
+.g-step-card-hint {
+  max-width: 300px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.3;
+  text-align: center;
+  color: var(--g-ink-soft, #6e5340);
+}
+.g-step-card-go { min-width: 210px; margin-top: 2px; }
+.g-step-card-timer {
+  flex: none;
+  width: 56%;
+  height: 7px;
+  border: 2px solid var(--g-ink, #3a2618);
+  border-radius: 999px;
+  background: #efe2c4;
+  overflow: hidden;
+}
+.g-step-card-timer > i {
+  display: block;
+  height: 100%;
+  background: var(--g-go, #43a63d);
+  transform-origin: 0 50%;
+  animation: g-card-timer 1.1s linear both;
+}
+.g-step-card.is-held .g-step-card-timer > i { animation-play-state: paused; }
+.g-step-card.is-leaving { animation: g-card-out .2s ease-in forwards; }
+.g-step-card.is-leaving .g-step-card-panel { animation: g-card-panel-out .2s ease-in forwards; }
+
+/* Tay mẫu: khung .g-demo-path trùng khung hình; tay đặt sao cho đầu ngón trỏ (PROP_META.tay.tip ≈ 25,9% · 8,9%) nằm ở
+   điểm gốc (giữa khung); dịch chuyển tính theo % khung nên đúng ở mọi cỡ. */
+.g-step-card-demo { position: absolute; inset: 0; pointer-events: none; }
+.g-demo-path { position: absolute; inset: 0; animation: g-demo-tap 1.8s ease-in-out .5s infinite both; }
+.g-demo-hand {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 38%;
+  aspect-ratio: 96 / 120;
+  transform: translate(-25.9%, -8.9%);
+}
+.g-demo-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 34%;
+  aspect-ratio: 1;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(58, 38, 24, .55), inset 0 0 0 2px rgba(58, 38, 24, .25);
+  transform: translate(-50%, -50%) scale(.3);
+  opacity: 0;
+  animation: g-demo-ring 1.8s ease-out .5s infinite both;
+}
+.g-demo-orbit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46%;
+  aspect-ratio: 1;
+  border: 3px dashed rgba(255, 255, 255, .95);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+/* Thái: vạch chấm + dao lớn dựng đứng trên ngón tay; ngón kéo tới vạch, nhấc lên là dao bổ xuống */
+.g-step-card-demo[data-gesture="drag-cut"] .g-demo-path { transform: translate(8%, 0); animation-name: g-demo-cut; animation-duration: 2s; }
+.g-step-card-demo[data-gesture="drag-cut"] .g-demo-hand { top: 68%; width: 30%; }
+.g-demo-guide {
+  position: absolute;
+  left: 58%;
+  top: 6%;
+  width: 8px;
+  height: 58%;
+  margin-left: -4px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='16'%3E%3Crect x='1.5' y='1' width='5' height='9' rx='2.5' fill='%23fffaf0' stroke='%233a2618' stroke-width='1.6'/%3E%3C/svg%3E") repeat-y 0 0 / 8px 16px;
+}
+.g-demo-slash {
+  position: absolute;
+  left: 58%;
+  top: 10%;
+  width: 6px;
+  height: 50%;
+  margin-left: -3px;
+  border-radius: 3px;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(58, 38, 24, .5);
+  opacity: 0;
+  animation: g-demo-slash 2s linear .5s infinite both;
+}
+.g-demo-knife-wrap { position: absolute; inset: 0; animation: g-demo-chop 2s linear .5s infinite both; }
+.g-demo-knife {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 44%;
+  aspect-ratio: 200 / 64;
+  transform-origin: 98.5% 40.6%;
+  transform: translate(-98.5%, -40.6%) rotate(90deg);
+}
+.g-step-card-demo[data-gesture="rub"] .g-demo-path { animation-name: g-demo-rub; animation-duration: 1.6s; }
+.g-step-card-demo[data-gesture="hold"] .g-demo-path { animation-name: g-demo-hold; animation-duration: 2s; }
+.g-step-card-demo[data-gesture="hold"] .g-demo-ring { animation-name: g-demo-ring-hold; animation-duration: 2s; }
+.g-step-card-demo[data-gesture="tap-swipe"] .g-demo-path { animation-name: g-demo-tap-swipe; animation-duration: 2s; }
+.g-step-card-demo[data-gesture="tap-swipe"] .g-demo-ring { top: 38%; animation-duration: 2s; }
+.g-step-card-demo[data-gesture="circle"] .g-demo-path { animation-name: g-demo-circle; animation-duration: 1.6s; animation-timing-function: linear; }
+.g-step-card-demo[data-gesture="swipe-down"] .g-demo-path { animation-name: g-demo-swipe-down; animation-duration: 1.4s; }
+.g-step-card-demo[data-gesture="shake"] .g-demo-path { animation-name: g-demo-shake; animation-duration: 1.2s; }
+.g-step-card-demo[data-gesture="drag"] .g-demo-path { animation-name: g-demo-drag; animation-duration: 1.8s; }
+
+/* Bản gọn (từ lần nấu thứ 3): ruy băng nhỏ trôi qua đầu sân khấu, không chặn chạm */
+.g-step-mini {
+  position: absolute;
+  top: 78px;
+  left: 50%;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 24px);
+  padding: 5px 14px 4px;
+  border: var(--g-outline, 3px) solid var(--g-ink, #3a2618);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff0a6, var(--g-gold, #f7b928));
+  color: var(--g-ink, #3a2618);
+  font-family: var(--g-font-display, system-ui);
+  font-weight: 800;
+  font-size: 16px;
+  line-height: 1.1;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 3px 0 rgba(58, 38, 24, .35);
+  transform: translateX(-50%);
+  animation: g-mini 1.3s ease-out both;
+}
+.g-step-mini span { overflow: hidden; text-overflow: ellipsis; }
+.g-step-mini i { font-style: normal; opacity: .6; }
+
+/* ======================================================================
+   2. Con dấu kết quả bước
+   ====================================================================== */
+.g-stamp {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  width: 118px;
+  pointer-events: none;
+  color: #fff;
+  font-family: var(--g-font-display, system-ui);
+  font-weight: 800;
+}
+.g-stamp-ink {
+  position: relative;
+  display: block;
+  width: 118px;
+  height: 118px;
+  transform: rotate(-8deg);
+}
+.g-stamp-shape { position: absolute; inset: 0; display: block; }
+.g-stamp-shape svg { display: block; width: 100%; height: 100%; }
+.g-stamp-label,
+.g-stamp-score {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  text-align: center;
+  line-height: 1;
+  white-space: nowrap;
+  text-transform: uppercase;
+  text-shadow: var(--g-text-outline, 0 0 2px #3a2618);
+}
+.g-stamp-label { top: 53%; font-size: 16px; letter-spacing: .01em; }
+.g-stamp-score { top: 70%; font-size: 21px; letter-spacing: .04em; }
+.grade-dat .g-stamp-label { top: 52%; }
+.g-stamp-note {
+  margin-top: 6px;
+  padding: 2px 10px;
+  border: 2px solid var(--g-ink, #3a2618);
+  border-radius: 999px;
+  background: var(--g-paper, #fffaf0);
+  color: var(--g-ink, #3a2618);
+  font-size: 13px;
+  line-height: 1.3;
+  white-space: nowrap;
+  box-shadow: 0 2px 0 rgba(58, 38, 24, .25);
+}
+/* Trong lớp hiệu ứng của sân khấu: giữa vùng chơi, hơi cao */
+.mg-fx > .g-stamp { position: absolute; left: 50%; top: 38%; margin: -59px 0 0 -59px; }
+
+/* ======================================================================
+   3. Dì Sáu phản ứng (góc trên-phải, dưới đầu sân khấu)
+   ====================================================================== */
+.g-disau-react {
+  position: absolute;
+  top: 50px;
+  right: 8px;
+  z-index: 4;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: min(80%, 290px);
+  pointer-events: none;
+}
+.g-disau-face {
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  border: var(--g-outline, 3px) solid var(--g-ink, #3a2618);
+  border-radius: 50%;
+  overflow: hidden;
+  background: #fff7e6;
+  box-shadow: 0 3px 0 rgba(58, 38, 24, .35);
+  animation: g-react-face .3s var(--g-ease-back, ease-out) both;
+}
+.g-disau-face svg { display: block; width: 100%; height: 100%; }
+.g-disau-bubble {
+  position: relative;
+  margin-top: 4px;
+  padding: 6px 11px 5px;
+  border: 2.5px solid var(--g-ink, #3a2618);
+  border-radius: 14px;
+  background: var(--g-paper, #fffaf0);
+  color: var(--g-ink, #3a2618);
+  font-family: var(--g-font-display, system-ui);
+  font-weight: 800;
+  font-size: 15px;
+  line-height: 1.25;
+  box-shadow: 0 3px 0 rgba(58, 38, 24, .28);
+  transform-origin: 100% 40%;
+  animation: g-react-pop .25s var(--g-ease-back, ease-out) .05s both;
+}
+/* đuôi bong bóng chỉ sang mặt Dì Sáu */
+.g-disau-bubble::after {
+  content: '';
+  position: absolute;
+  top: 14px;
+  right: -8px;
+  width: 11px;
+  height: 11px;
+  border-top: 2.5px solid var(--g-ink, #3a2618);
+  border-right: 2.5px solid var(--g-ink, #3a2618);
+  background: var(--g-paper, #fffaf0);
+  transform: rotate(45deg) skew(8deg, 8deg);
+}
+.g-disau-react.grade-hoan_hao .g-disau-bubble { background: #fff6c8; }
+.g-disau-react.grade-hoan_hao .g-disau-bubble::after { background: #fff6c8; }
+.g-disau-react.grade-hong .g-disau-bubble { background: #fde8e3; }
+.g-disau-react.grade-hong .g-disau-bubble::after { background: #fde8e3; }
+
+/* ======================================================================
+   4. Khung sân khấu mới (buildFrame2)
+   ====================================================================== */
+.mg-stage.g-frame2 { gap: 6px; }
+.mg-stage.g-frame2 > .mg-head.g-head2 { flex: none; display: flex; align-items: center; gap: 8px; height: 44px; min-height: 44px; }
+.g-dots {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.g-dots[hidden] { display: none; }
+/* dây nối các chấm */
+.g-dots::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 50%;
+  height: 4px;
+  margin-top: -2px;
+  border-radius: 2px;
+  background: rgba(58, 38, 24, .28);
+}
+.g-dot {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 2.5px solid var(--g-ink, #3a2618);
+  border-radius: 50%;
+  background: #efe3c8;
+  color: #7d6c5a;
+  font-family: var(--g-font-display, system-ui);
+  font-weight: 800;
+  font-size: 14px;
+  line-height: 1;
+  box-shadow: 0 2px 0 rgba(58, 38, 24, .3);
+}
+.g-dot-n { font-size: 14px; }
+.g-dot.is-now {
+  width: 34px;
+  height: 34px;
+  border-width: 3px;
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--g-gold, #f7b928), 0 3px 0 rgba(58, 38, 24, .35);
+  animation: g-dot-now 1.6s ease-in-out infinite;
+}
+.g-dot-ico { display: block; width: 28px; height: 28px; }
+.g-dot-ico svg, .g-dot-tick svg { display: block; width: 100%; height: 100%; }
+.g-dot.is-done { background: var(--g-go, #43a63d); color: #fff; }
+.g-dot-tick { display: block; width: 18px; height: 18px; }
+/* bước xong: dấu ✓ + màu và vòng viền theo hạng (vòng ngoài nhạt để không chỉ dựa vào màu nền) */
+.g-dot.grade-hoan_hao { background: var(--g-gold, #f7b928); color: var(--g-ink, #3a2618); box-shadow: 0 0 0 2px #fff0a6, 0 2px 0 rgba(58, 38, 24, .3); }
+.g-dot.grade-tot { background: var(--g-go, #43a63d); box-shadow: 0 0 0 2px #c9efb4, 0 2px 0 rgba(58, 38, 24, .3); }
+.g-dot.grade-dat { background: var(--g-sky, #4aa3df); box-shadow: 0 0 0 2px #cfe9fb, 0 2px 0 rgba(58, 38, 24, .3); }
+.g-dot.grade-hong { background: var(--g-bad, #d8392b); box-shadow: 0 0 0 2px #ffd0c8, 0 2px 0 rgba(58, 38, 24, .3); }
+.g-head2 > .mg-head-text { flex: 1 1 0; min-width: 0; }
+.mg-stage.g-frame2 .g-head2-title {
+  overflow: hidden;
+  color: var(--g-ink, #3a2618);
+  font-family: var(--g-font-display, system-ui);
+  font-weight: 800;
+  font-size: 17px;
+  line-height: 1.1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* thanh giờ: viên thuốc có đồng hồ (giữ [mg-time], .mg-time-fill, .is-late) */
+.mg-stage.g-frame2 .g-head2 > .mg-time.g-time {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: auto;
+  height: 32px;
+  padding: 0 8px 0 3px;
+  border: 2.5px solid var(--g-ink, #3a2618);
+  border-radius: 999px;
+  background: var(--g-paper, #fffaf0);
+  overflow: visible;
+  box-shadow: 0 2px 0 rgba(58, 38, 24, .3);
+}
+.g-time-ico { display: block; flex: none; width: 22px; height: 22px; }
+.g-time-ico svg { display: block; width: 100%; height: 100%; }
+.g-time-track {
+  display: block;
+  width: 52px;
+  height: 11px;
+  border: 2px solid var(--g-ink, #3a2618);
+  border-radius: 999px;
+  background: #eadcc0;
+  overflow: hidden;
+}
+.g-time .mg-time-fill { width: 100%; height: 100%; background: var(--g-go, #43a63d); transform-origin: 0 50%; }
+.g-time.is-late .mg-time-fill { background: var(--g-bad, #d8392b); }
+.g-time.is-late { background: #ffe3dc; }
+.g-time-label { font-family: var(--g-font-display, system-ui); font-weight: 800; font-size: 13px; white-space: nowrap; }
+/* dòng hướng dẫn: thẻ giấy nhỏ ở mép trên vùng chơi (không nhận chạm) */
+.mg-stage.g-frame2 .mg-area.g-area2 { position: relative; }
+/* vùng chơi chia phần còn lại của sân khấu; sàn 130px (thớt tối thiểu 120px) — khung quá thấp thì sân khấu bếp tự cuộn */
+.mg-stage.g-frame2.g-frame2 > .mg-area.g-area2 { flex: 1 1 0; min-height: 130px; gap: 0; }
+.mg-stage.g-frame2 .mg-area > .mg-sub.g-sub2 {
+  position: relative;
+  z-index: 3;
+  flex: none;
+  align-self: center;
+  max-width: calc(100% - 16px);
+  margin: 0 0 4px;
+  padding: 3px 10px 2px;
+  border: 2px solid var(--g-ink, #3a2618);
+  border-radius: 10px;
+  background: rgba(255, 250, 240, .95);
+  color: var(--g-ink, #3a2618);
+  font-size: 13px;
+  line-height: 1.25;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 2px 0 rgba(58, 38, 24, .22);
+}
+.mg-stage.g-frame2 > .mg-foot.g-foot2 { min-height: 48px; }
+.g-foot2 .g-pill { font-variant-numeric: tabular-nums; }
+/* lớp hiệu ứng của sân khấu: con dấu, Dì Sáu, chữ nổi — không bao giờ nhận chạm */
+.mg-fx { position: absolute; inset: 0; z-index: 8; overflow: hidden; pointer-events: none; container-type: size; container-name: g-fx; }
+.mg-fx * { pointer-events: none !important; }
+
+@media (max-width: 400px) {
+  .g-head2.is-crowded .g-head2-title { display: none; }
+}
+/* sân khấu thấp (panel Bếp ~300px): bỏ thẻ hướng dẫn (thẻ bước vừa nói rồi) để thớt to hơn; con dấu lệch trái, thấp
+   xuống và nhỏ lại, Dì Sáu gọn bên phải để hai thứ không chồng nhau */
+.mg-stage.g-frame2 .mg-area.g-area2 { container-type: size; container-name: g-area; }
+@container g-area (max-height: 210px) {
+  .mg-stage.g-frame2 .mg-area > .mg-sub.g-sub2 { display: none; }
+}
+@container g-fx (max-height: 380px) {
+  .mg-fx > .g-stamp { left: 30%; top: 60%; margin: -48px 0 0 -48px; width: 96px; }
+  .mg-fx > .g-stamp .g-stamp-ink { width: 96px; height: 96px; }
+  .mg-fx > .g-stamp .g-stamp-label { font-size: 13px; }
+  .mg-fx > .g-stamp .g-stamp-score { font-size: 17px; }
+  .mg-fx > .g-disau-react { max-width: 66%; }
+  .mg-fx > .g-disau-react .g-disau-face { flex-basis: 40px; width: 40px; height: 40px; }
+  .mg-fx > .g-disau-react .g-disau-bubble { font-size: 13px; padding: 4px 9px 3px; }
+}
+
+/* ======================================================================
+   5. Bước Thái kiểu mới (ctx.look === 2)
+   ====================================================================== */
+.mg-stage.mg-thai.g-thai2 .thai-board.g-board2 {
+  flex: 0 1 auto;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  min-height: 120px;
+  max-height: 100%;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  overflow: visible;
+  touch-action: none;
+}
+.g-board2-art { position: absolute; display: block; pointer-events: none; }
+.g-board2-art svg { display: block; width: 100%; height: 100%; }
+.mg-stage.g-thai2 .thai-food.g-food2 {
+  position: absolute;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  pointer-events: none;
+}
+/* bóng đất dưới nguyên liệu (hình gốc bị cắt bỏ bóng khi nằm ngang) */
+.g-food2::before {
+  content: '';
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: -9%;
+  height: 24%;
+  border-radius: 50%;
+  background: rgba(58, 38, 24, .2);
+}
+.g-piece2 { position: absolute; inset: 0; }
+.g-piece2-art { position: absolute; display: block; }
+/* hình nguyên liệu phóng to ~4 lần: viền ngoài mảnh lại cho cân với thớt (nét chi tiết giữ nguyên) */
+.g-piece2-art svg > g { stroke-width: 2.1; }
+.g-piece2-art svg { display: block; width: 100%; height: 100%; }
+.g-food2.is-done .g-piece2, .g-food2.is-done::before { opacity: 0; transition: opacity .2s ease-out; }
+/* mặt cắt lộ ruột ở mép trái mỗi lát */
+.g-face2 {
+  position: absolute;
+  border: 2.5px solid var(--g-ink, #3a2618);
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 50%, var(--core, #f6fbe0) 0 24%, var(--flesh, #e3f3b8) 25% 100%);
+  box-shadow: inset 0 0 0 3px var(--skin, #4ea443);
+}
+.g-face2::after {
+  content: '';
+  position: absolute;
+  inset: 24% 20%;
+  border: 2px dotted var(--seed, #8fbf5c);
+  border-radius: 50%;
+}
+/* vạch chấm: gạch trắng viền mực + dải dung sai xanh nhạt */
+.mg-stage.g-thai2 .thai-guide.g-guide2 {
+  z-index: 2;
+  width: 0;
+  margin: 0;
+  border: 0;
+  opacity: 1;
+  transition: opacity .2s ease-out;
+}
+.mg-stage.g-thai2 .thai-guide.g-guide2::before {
+  left: calc(-1 * var(--band, 6px));
+  width: calc(2 * var(--band, 6px));
+  border-radius: 6px;
+  background: rgba(67, 166, 61, .26);
+}
+.mg-stage.g-thai2 .thai-guide.g-guide2::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  width: 8px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='16'%3E%3Crect x='1.5' y='1' width='5' height='9' rx='2.5' fill='%23fffaf0' stroke='%233a2618' stroke-width='1.6'/%3E%3C/svg%3E") repeat-y 0 0 / 8px 16px;
+}
+.mg-stage.g-thai2.is-wide-guide .thai-guide.g-guide2 { border: 0; margin: 0; }
+.mg-stage.g-thai2 .thai-guide.g-guide2.is-cut { opacity: 0; }
+.mg-stage.g-thai2 .thai-aim.g-aim2 { z-index: 3; border-left: 2px dashed rgba(232, 72, 58, .8); }
+.mg-stage.g-thai2 .thai-knife.g-knife2 { z-index: 5; }
+.g-knife2-chop { position: absolute; left: 0; top: 0; }
+.g-knife2-svg { position: absolute; left: 0; top: 0; display: block; }
+.g-knife2-svg svg { display: block; width: 100%; height: 100%; }
+.g-done2 { position: absolute; z-index: 4; display: block; pointer-events: none; }
+.g-done2 svg { display: block; width: 100%; height: 100%; }
+.mg-stage.g-thai2 .mg-foot .mg-done { min-width: 104px; }
+
+/* ======================================================================
+   6. Màn ra món
+   ====================================================================== */
+.g-reveal {
+  --g-rv-in: rgba(255, 236, 170, .97);
+  --g-rv-mid: rgba(242, 176, 74, .95);
+  --g-rv-out: rgba(112, 60, 22, .96);
+  --g-rv-ray: rgba(255, 255, 255, .5);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  color: var(--g-ink, #3a2618);
+  background: radial-gradient(circle at 50% 36%, var(--g-rv-in) 0 16%, var(--g-rv-mid) 48%, var(--g-rv-out) 100%);
+  container-type: size;
+  container-name: g-reveal;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  animation: g-fade-in .18s ease-out both;
+}
+.g-reveal.grade-tuyet_hao { --g-rv-in: rgba(255, 246, 196, .98); --g-rv-mid: rgba(250, 190, 60, .96); --g-rv-out: rgba(140, 70, 10, .96); --g-rv-ray: rgba(255, 255, 255, .62); }
+.g-reveal.grade-ngon { --g-rv-in: rgba(248, 246, 196, .97); --g-rv-mid: rgba(170, 206, 96, .95); --g-rv-out: rgba(48, 92, 34, .96); }
+.g-reveal.grade-duoc { --g-rv-in: rgba(240, 248, 255, .97); --g-rv-mid: rgba(150, 196, 226, .95); --g-rv-out: rgba(36, 70, 104, .96); --g-rv-ray: rgba(255, 255, 255, .38); }
+.g-reveal.grade-kem { --g-rv-in: rgba(250, 232, 206, .97); --g-rv-mid: rgba(214, 156, 98, .95); --g-rv-out: rgba(92, 56, 30, .96); --g-rv-ray: rgba(255, 255, 255, .28); }
+.g-reveal.grade-hong { --g-rv-in: rgba(234, 226, 216, .97); --g-rv-mid: rgba(170, 156, 142, .95); --g-rv-out: rgba(60, 48, 40, .97); --g-rv-ray: rgba(255, 255, 255, .18); }
+.g-reveal-col {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(100%, 420px);
+  max-height: 100%;
+  padding: 30px 14px 12px;
+}
+.g-reveal-name { position: relative; z-index: 3; display: flex; align-items: center; gap: 4px; max-width: 100%; animation: g-reveal-down .35s var(--g-ease-back, ease-out) both; }
+.g-reveal-title { max-width: calc(100cqw - 76px); margin: 0 24px; font-size: 20px; }
+.g-reveal-title > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-reveal-rare { flex: none; font-size: 13px; }
+.g-reveal-main { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.g-reveal-hero {
+  position: relative;
+  flex: none;
+  width: 190px;
+  width: min(54cqw, 34cqh, 230px);
+  aspect-ratio: 1;
+}
+/* tia sáng: conic lặp, mờ dần ra mép, xoay 10 s/vòng */
+.g-reveal-rays {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 250%;
+  height: 250%;
+  margin: -125% 0 0 -125%;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, var(--g-rv-ray) 0deg 8deg, rgba(255, 255, 255, 0) 8deg 20deg);
+  -webkit-mask-image: radial-gradient(circle, #000 18%, rgba(0, 0, 0, .6) 38%, transparent 66%);
+  mask-image: radial-gradient(circle, #000 18%, rgba(0, 0, 0, .6) 38%, transparent 66%);
+  pointer-events: none;
+  animation: g-fade-in .4s ease-out both, g-spin 10s linear infinite;
+}
+.g-reveal-dish-wrap {
+  position: absolute;
+  inset: 4%;
+  animation: g-reveal-pop .45s ease-out both;
+  animation-delay: var(--at, 0ms);
+}
+.g-reveal-dish { position: absolute; inset: 0; display: block; animation: g-bob 2.4s ease-in-out 1.2s infinite; }
+.g-reveal-dish svg, .g-reveal-medal svg, .g-reveal-face svg { display: block; width: 100%; height: 100%; }
+.g-reveal-badge {
+  position: absolute;
+  right: -8%;
+  bottom: -6%;
+  z-index: 2;
+  width: 40%;
+  aspect-ratio: 100 / 112;
+  transform: rotate(-10deg);
+  animation: g-reveal-drop .4s ease-in both;
+  animation-delay: var(--at, 0ms);
+}
+.g-reveal-medal { position: absolute; inset: 0; display: block; }
+.g-reveal-info { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.g-reveal-gradeline { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 0 10px; animation: g-reveal-up .35s var(--g-ease-back, ease-out) both; animation-delay: var(--at, 0ms); }
+.g-reveal-grade { --g-title-fill: #fff4d8; font-size: 32px; white-space: nowrap; }
+.g-reveal.grade-tuyet_hao .g-reveal-grade { --g-title-fill: var(--g-gold-light, #ffe27a); }
+.g-reveal.grade-ngon .g-reveal-grade { --g-title-fill: var(--g-go-light, #8edb6a); }
+.g-reveal.grade-duoc .g-reveal-grade { --g-title-fill: #bfe4ff; }
+.g-reveal.grade-kem .g-reveal-grade { --g-title-fill: var(--g-orange-light, #ffb45c); }
+.g-reveal.grade-hong .g-reveal-grade { --g-title-fill: var(--g-bad-light, #ff7b68); }
+.g-reveal-q { --g-title-fill: #fffaf0; font-size: 30px; font-variant-numeric: tabular-nums; }
+.g-reveal-q small { margin-left: 1px; font-size: .7em; }
+.g-reveal-stars { display: flex; gap: 5px; }
+.g-reveal-star {
+  display: block;
+  width: 30px;
+  height: 30px;
+  animation: g-reveal-star .32s var(--g-ease-back, ease-out) both;
+  animation-delay: var(--at, 0ms);
+}
+.g-reveal-star svg { display: block; width: 100%; height: 100%; }
+.g-reveal-star.is-on svg { fill: var(--g-star, #ffd23f); }
+.g-reveal-star.is-off svg { fill: rgba(255, 250, 240, .55); }
+.g-reveal-star.is-off { opacity: .8; }
+.g-reveal-flawless { margin: 4px 24px 0; font-size: 17px; animation: g-reveal-slide .3s var(--g-ease-back, ease-out) both; animation-delay: var(--at, 0ms); }
+.g-reveal-lvup { animation: g-reveal-up .3s var(--g-ease-back, ease-out) both; animation-delay: var(--at, 0ms); }
+.g-reveal-disau {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  width: 100%;
+  max-width: 380px;
+  margin-top: 2px;
+  animation: g-react-pop .3s var(--g-ease-back, ease-out) both;
+  animation-delay: var(--at, 0ms);
+}
+.g-reveal-face {
+  flex: 0 0 52px;
+  width: 52px;
+  height: 52px;
+  border: var(--g-outline, 3px) solid var(--g-ink, #3a2618);
+  border-radius: 50%;
+  overflow: hidden;
+  background: #fff7e6;
+  box-shadow: 0 3px 0 rgba(58, 38, 24, .35);
+}
+.g-reveal .k-bubble.g-reveal-bubble {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-bottom: 6px;
+  padding: 8px 12px;
+  border: 2.5px solid var(--g-ink, #3a2618);
+  border-radius: 14px;
+  background: var(--g-paper, #fffaf0);
+  color: var(--g-ink, #3a2618);
+  font-size: 15px;
+  line-height: 1.3;
+  text-align: left;
+  box-shadow: 0 3px 0 rgba(58, 38, 24, .3);
+}
+.g-reveal .k-bubble.g-reveal-bubble::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  bottom: 12px;
+  width: 11px;
+  height: 11px;
+  border-left: 2.5px solid var(--g-ink, #3a2618);
+  border-bottom: 2.5px solid var(--g-ink, #3a2618);
+  background: var(--g-paper, #fffaf0);
+  transform: rotate(45deg) skew(8deg, 8deg);
+}
+.g-reveal-tap {
+  color: rgba(255, 250, 240, .95);
+  font-family: var(--g-font-display, system-ui);
+  font-weight: 800;
+  font-size: 14px;
+  text-shadow: 0 1px 0 rgba(58, 38, 24, .7), 0 0 4px rgba(58, 38, 24, .5);
+  animation: g-fade-in .3s ease-out both;
+  animation-delay: var(--at, 0ms);
+}
+/* chạm để bỏ qua: hiện thẳng mọi phần (tia sáng và nhịp nhún vẫn chạy) */
+.g-reveal.is-skipped :is(.g-reveal-name, .g-reveal-dish-wrap, .g-reveal-badge, .g-reveal-gradeline, .g-reveal-star,
+  .g-reveal-flawless, .g-reveal-lvup, .g-reveal-disau, .g-reveal-tap) { animation: none !important; }
+
+/* Khung thấp (vd panel Bếp ~300–520px): món bên trái, chữ bên phải, Dì Sáu gọn */
+@container g-reveal (max-height: 560px) {
+  .g-reveal-col { gap: 6px; padding-top: 26px; }
+  .g-reveal-main { flex-direction: row; gap: 12px; max-width: 100%; }
+  .g-reveal-hero { flex: 0 1 auto; width: min(42cqw, 46cqh, 200px); }
+  .g-reveal-info { flex: 0 1 auto; min-width: 0; align-items: flex-start; }
+  .g-reveal-gradeline { justify-content: flex-start; }
+  .g-reveal-grade { font-size: 28px; }
+  .g-reveal-q { font-size: 26px; }
+  .g-reveal-flawless { height: 32px; margin: 2px 22px 0; padding: 1px 10px 0; font-size: 14px; }
+  .g-reveal-lvup { min-height: 26px; padding: 2px 10px 1px; font-size: 13px; white-space: normal; }
+}
+@container g-reveal (max-height: 400px) {
+  .g-reveal-col { gap: 4px; padding: 24px 10px 6px; }
+  .g-reveal-title { font-size: 17px; }
+  .g-reveal-hero { width: min(40cqw, 46cqh, 150px); }
+  .g-reveal-grade { --g-tw: 1.5px; font-size: 24px; }
+  .g-reveal-q { --g-tw: 1.5px; font-size: 22px; }
+  .g-reveal-star { width: 22px; height: 22px; }
+  .g-reveal-flawless { height: 30px; margin-top: 2px; font-size: 13px; }
+  .g-reveal-face { flex-basis: 40px; width: 40px; height: 40px; }
+  .g-reveal .k-bubble.g-reveal-bubble { margin-bottom: 2px; padding: 5px 10px; font-size: 13px; }
+  .g-reveal-tap { display: none; }
+}
+
+/* Thẻ bước ở khung thấp */
+@container g-card (max-height: 420px) {
+  .g-step-card-panel { gap: 4px; padding: 24px 12px 10px; }
+  .g-step-card-stage { width: min(44cqw, 36cqh, 170px); }
+  .g-step-card-verb { font-size: 25px; }
+  .g-step-card-go { min-height: 46px; font-size: 18px; }
+}
+@container g-card (max-height: 320px) {
+  .g-step-card-panel { padding: 22px 10px 8px; }
+  .g-step-card-ribbon { top: -19px; height: 34px; font-size: 17px; }
+  .g-step-card-stage { width: min(40cqw, 33cqh, 140px); }
+  .g-step-card-verb { --g-tw: 1.5px; font-size: 22px; }
+  .g-step-card-hint { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; font-size: 13px; }
+  .g-step-card-go { min-height: 44px; padding: 5px 14px; font-size: 17px; }
+}
+/* trình duyệt chưa có container query: dựa vào chiều cao khung nhìn */
+@supports not (container-type: size) {
+  @media (max-height: 700px) {
+    .g-step-card-stage { width: 130px; }
+    .g-step-card-hint { display: none; }
+    .g-reveal-hero { width: 140px; }
+  }
+}
+
+/* ======================================================================
+   7. Keyframes (chỉ transform / opacity)
+   ====================================================================== */
+@keyframes g-card-in { 0% { opacity: 0; transform: scale(.82) translateY(10px); } 100% { opacity: 1; transform: none; } }
+@keyframes g-card-zoom { 0% { opacity: 0; transform: scale(.4); } 45% { opacity: 1; transform: scale(1.14); } 72% { transform: scale(.97); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes g-card-up { 0% { opacity: 0; transform: translateY(10px) scale(.9); } 100% { opacity: 1; transform: none; } }
+@keyframes g-card-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@keyframes g-card-out { to { opacity: 0; } }
+@keyframes g-card-panel-out { to { opacity: 0; transform: scale(.92); } }
+@keyframes g-mini {
+  0% { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(.8); }
+  14% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.06); }
+  24% { transform: translateX(-50%) scale(1); }
+  78% { opacity: 1; transform: translateX(-50%); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+}
+@keyframes g-demo-tap {
+  0% { opacity: 0; transform: translate(12%, 20%); }
+  18% { opacity: 1; }
+  40% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(0, 0) scale(.86); }
+  60% { transform: translate(0, 0) scale(1); }
+  82% { opacity: 1; transform: translate(0, 0); }
+  100% { opacity: 0; transform: translate(0, 0); }
+}
+@keyframes g-demo-ring {
+  0%, 46% { opacity: 0; transform: translate(-50%, -50%) scale(.3); }
+  50% { opacity: 1; }
+  80%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.25); }
+}
+@keyframes g-demo-cut {
+  0% { opacity: 0; transform: translate(-30%, 0); }
+  12% { opacity: 1; }
+  46% { transform: translate(8%, 0); }
+  56% { transform: translate(8%, 0); }
+  68% { opacity: 1; transform: translate(8%, -5%); }
+  86%, 100% { opacity: 0; transform: translate(8%, -5%); }
+}
+@keyframes g-demo-chop { 0%, 56% { transform: translateY(0); } 62% { transform: translateY(10%); } 72%, 100% { transform: translateY(0); } }
+@keyframes g-demo-slash { 0%, 60% { opacity: 0; } 63% { opacity: 1; } 80%, 100% { opacity: 0; } }
+@keyframes g-demo-rub {
+  0%, 100% { transform: translate(-20%, 0); }
+  25% { transform: translate(20%, 4%); }
+  50% { transform: translate(-20%, 0); }
+  75% { transform: translate(20%, -4%); }
+}
+@keyframes g-demo-hold {
+  0% { opacity: 0; transform: translate(0, 16%); }
+  15% { opacity: 1; transform: translate(0, 0) scale(1); }
+  25%, 78% { transform: translate(0, 0) scale(.88); }
+  88% { opacity: 1; transform: translate(0, 0) scale(1); }
+  100% { opacity: 0; transform: translate(0, 0); }
+}
+@keyframes g-demo-ring-hold {
+  0%, 24% { opacity: 0; transform: translate(-50%, -50%) scale(.3); }
+  30% { opacity: 1; }
+  78% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+  90%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.3); }
+}
+@keyframes g-demo-tap-swipe {
+  0% { opacity: 0; transform: translate(0, -12%); }
+  14% { opacity: 1; transform: translate(0, -12%) scale(1); }
+  24% { transform: translate(0, -12%) scale(.86); }
+  34% { transform: translate(0, -12%) scale(1); }
+  70% { opacity: 1; transform: translate(0, 22%); }
+  86%, 100% { opacity: 0; transform: translate(0, 22%); }
+}
+@keyframes g-demo-circle {
+  0%, 100% { transform: translate(21%, 0); }
+  12.5% { transform: translate(14.8%, 14.8%); }
+  25% { transform: translate(0, 21%); }
+  37.5% { transform: translate(-14.8%, 14.8%); }
+  50% { transform: translate(-21%, 0); }
+  62.5% { transform: translate(-14.8%, -14.8%); }
+  75% { transform: translate(0, -21%); }
+  87.5% { transform: translate(14.8%, -14.8%); }
+}
+@keyframes g-demo-swipe-down {
+  0% { opacity: 0; transform: translate(0, -24%); }
+  14% { opacity: 1; }
+  64% { opacity: 1; transform: translate(0, 22%); }
+  80%, 100% { opacity: 0; transform: translate(0, 22%); }
+}
+@keyframes g-demo-shake {
+  0%, 100% { transform: translate(0, -14%); }
+  12.5%, 37.5%, 62.5%, 87.5% { transform: translate(0, 14%); }
+  25%, 50%, 75% { transform: translate(0, -14%); }
+}
+@keyframes g-demo-drag {
+  0% { opacity: 0; transform: translate(-28%, 26%); }
+  12% { opacity: 1; }
+  60% { transform: translate(0, 0); }
+  80% { opacity: 1; transform: translate(0, 0); }
+  100% { opacity: 0; transform: translate(0, 0); }
+}
+@keyframes g-react-face { 0% { opacity: 0; transform: scale(.5) rotate(-12deg); } 100% { opacity: 1; transform: none; } }
+@keyframes g-react-pop { 0% { opacity: 0; transform: scale(.5); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes g-dot-now { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-2px) scale(1.04); } }
+@keyframes g-reveal-down { 0% { opacity: 0; transform: translateY(-16px) scale(.9); } 100% { opacity: 1; transform: none; } }
+@keyframes g-reveal-up { 0% { opacity: 0; transform: translateY(12px) scale(.85); } 100% { opacity: 1; transform: none; } }
+@keyframes g-reveal-pop {
+  0% { opacity: 0; transform: scale(.4) rotate(-6deg); }
+  55% { opacity: 1; transform: scale(1.1) rotate(3deg); }
+  78% { transform: scale(.97) rotate(-1deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+@keyframes g-reveal-drop {
+  0% { opacity: 0; transform: translateY(-150%) rotate(-34deg) scale(1.3); }
+  60% { opacity: 1; transform: translateY(5%) rotate(-8deg) scale(.94); }
+  80% { transform: translateY(-3%) rotate(-11deg) scale(1.02); }
+  100% { opacity: 1; transform: rotate(-10deg); }
+}
+@keyframes g-reveal-star { 0% { opacity: 0; transform: scale(.2) rotate(-40deg); } 100% { opacity: 1; transform: none; } }
+@keyframes g-reveal-slide { 0% { opacity: 0; transform: translateX(-40px) scale(.9); } 100% { opacity: 1; transform: none; } }
+
+/* ======================================================================
+   8. Giảm chuyển động: không nảy, không lặp; mọi thứ hiện thẳng (riêng lớp .is-reduced do cài đặt trong game)
+   ====================================================================== */
+.g-step-card.is-reduced, .g-step-card.is-reduced *, .g-step-mini.is-reduced,
+.g-disau-react.is-reduced *, .g-reveal.is-reduced, .g-reveal.is-reduced * { animation: none !important; transition: none !important; }
+.g-disau-react.is-reduced { animation: g-fade-in .2s linear both; }
+html.reduce-motion :is(.g-step-card, .g-step-card *, .g-step-mini, .g-disau-react *, .g-reveal, .g-reveal *, .g-dot, .g-piece2, .g-guide2, .g-food2 *) {
+  animation: none !important;
+  transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.g-step-card, .g-step-card *, .g-step-mini, .g-disau-react *, .g-reveal, .g-reveal *, .g-dot, .g-piece2, .g-guide2, .g-food2 *) {
+    animation: none !important;
+    transition: none !important;
+  }
+}

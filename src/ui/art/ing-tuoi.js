@@ -3,7 +3,7 @@
 // khung chứa đặt --yolk là đổi màu lòng đỏ, không cần vẽ thêm hình.
 
 import {
-  INK, DETAIL, PAL, svg, ground, hilite, tone3, rareStar, dots, r1,
+  DETAIL, PAL, svg, ground, hilite, tone3, rareStar, dots, r1,
   rotPts, sampleCubics, cubicsD, crescent, ellipseShade, ball, polyD
 } from './kit.js'
 
@@ -97,8 +97,8 @@ const dua_leo = svg(
 const dua_leo_lat = svg(
   ground(32, 57.5, 27, 3.4) +
   // Đĩa: một bóng dáng gồm mặt trên và cạnh dày (một viền ngoài), mép mặt trên nét mảnh, lòng đĩa.
-  `<path d="M4 41A28 12.5 0 0 1 60 41V43.6A28 12.5 0 0 1 4 43.6Z" fill="${PAL.dia[1]}"/>` +
-  `<ellipse cx="32" cy="41" rx="28" ry="12.5" fill="${PAL.dia[0]}" stroke-width="1.6"/>` +
+  `<path d="M4 40.6A28 12.5 0 0 1 60 40.6V44.4A28 12.5 0 0 1 4 44.4Z" fill="${PAL.dia[1]}"/>` +
+  `<ellipse cx="32" cy="40.6" rx="27.2" ry="11.8" fill="${PAL.dia[0]}" stroke="#cbbca2" stroke-width="1.6"/>` +
   `<ellipse cx="32" cy="41.5" rx="20" ry="8" fill="none" stroke="#ddd2bd" stroke-width="${DETAIL}"/>` +
   hilite(14, 37, 4, 1.6, 0.8, -15) +
   cucSlice(20, 33, 8.6, 7.2, 2.2, false) + cucSlice(32, 30.5, 8.6, 7.2, 2.2, false) + cucSlice(44, 33, 8.6, 7.2, 2.2, false) +
@@ -255,6 +255,9 @@ const trung_ga_ta = svg(
   `<path d="M5.5 44 C8 54 19 58 32 58 C45 58 56 54 58.5 44 C52 49.5 42 51 32 51 C22 51 12 49.5 5.5 44Z" fill="${PAL.rom[0]}"/>` +
   `<path d="M10 49 l5 2.5 M17 51.6 l5 1.4 M26 53 l5 .5 M36 53 l5 -.6 M45 51.5 l5 -1.6 M52 48.6 l3.6 -2.2" fill="none" stroke="${PAL.rom[1]}" stroke-width="1.8"/>` +
   `<path d="M12 47 l6 2 M30 51.8 l6 0 M46 49.6 l5 -1.8" fill="none" stroke="${PAL.rom[2]}" stroke-width="1.5"/>` +
+  // Vài cọng rơm thò ra hai bên ổ.
+  `<path d="M7.4 46.4l-4.2-1.6M8.6 50.4l-4 2M56.6 46.2l4.2-1.8M55 50.6l3.8 2.2" fill="none" stroke-width="3.4"/>` +
+  `<path d="M7.4 46.4l-4.2-1.6M8.6 50.4l-4 2M56.6 46.2l4.2-1.8M55 50.6l3.8 2.2" fill="none" stroke="${PAL.rom[0]}" stroke-width="1.4"/>` +
   rareStar(53, 11))
 
 export const ING_TUOI = Object.freeze({ dua_leo, trung_ga, tac, hanh_la, trung_ga_ta })

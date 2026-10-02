@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#b9472f">
+  <meta name="description" content="Phòng mẫu giao diện mới của Bếp Khởi Nghiệp: hình mới, gọi món, bước Thái và màn ra món để duyệt.">
+  <title>Bếp Khởi Nghiệp – Phòng mẫu</title>
+  <!-- Trang mẫu để duyệt giao diện M5. KHÔNG đăng ký service worker, KHÔNG ghi bản lưu của game.
+       Không nằm trong PRECACHE của sw.js; sw.js chỉ trả trang game cho gốc và index.html nên trang này luôn lấy từ mạng. -->
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="preload" href="fonts/baloo2-800-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/game.css">
+  <link rel="stylesheet" href="css/kitchen.css">
+  <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/fx.css">
+  <link rel="stylesheet" href="css/counter.css">
+  <link rel="stylesheet" href="mau/mau.css">
+</head>
+<body class="mau-page">
+  <div id="app" class="app-frame mau-frame">
+    <div class="mau-screen" id="mau-screen">
+      <header class="mau-top">
+        <div class="mau-brand">
+          <span class="mau-logo" id="mau-logo" aria-hidden="true"></span>
+          <div class="mau-brand-text">
+            <h1 class="g-title g-title--small mau-title">Phòng mẫu</h1>
+            <p class="mau-note" data-testid="mau-note" title="Bản mẫu để duyệt giao diện, chưa phải game thật">Bản mẫu để duyệt</p>
+          </div>
+          <a class="g-btn g-btn--small g-btn--ghost mau-home" href="./" data-testid="mau-home">Về game</a>
+          <button class="g-btn g-btn--small g-btn--round mau-gear" type="button" id="mau-gear" data-testid="mau-settings"
+            aria-label="Tùy chỉnh: giảm chuyển động, âm thanh, khung thấp" aria-haspopup="dialog"></button>
+        </div>
+        <nav class="mau-tabs" id="mau-tabs" role="tablist" aria-label="Các phần của phòng mẫu"></nav>
+      </header>
+      <main class="mau-body" id="mau-body">
+        <p class="mau-loading">Đang dọn phòng mẫu…</p>
+      </main>
+    </div>
+    <div class="overlay-root" id="mau-overlay"></div>
+  </div>
+  <noscript>
+    <div class="boot boot-error">
+      <p class="boot-title">Bếp Khởi Nghiệp – Phòng mẫu</p>
+      <p class="boot-text">Trình duyệt đang tắt JavaScript. Hãy bật JavaScript để xem phòng mẫu.</p>
+    </div>
+  </noscript>
+  <script type="module" src="mau/mau.js"></script>
+</body>
+</html>

@@ -5,7 +5,7 @@
 //   dao_lon.tip: mũi dao, grip: giữa chuôi, edge: đầu và cuối lưỡi cắt;
 //   tay.tip: đầu ngón trỏ (điểm chạm của "tay mẫu").
 
-import { INK, DETAIL, PAL, svg, ground, hilite, tone3, dots, r1, rotPts, polyD, crescent, deepFreeze } from './kit.js'
+import { DETAIL, PAL, svg, ground, hilite, tone3, r1, rotPts, crescent, deepFreeze } from './kit.js'
 
 // Đa giác bo góc: trả { d, pts } (pts lấy mẫu dọc biên để tính mảng tối/sáng lưỡi liềm).
 function roundPoly(corners, r, k = 5) {

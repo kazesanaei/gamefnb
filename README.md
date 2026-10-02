@@ -2,7 +2,7 @@
 
 Bếp Khởi Nghiệp là game bán hàng chơi trên trình duyệt, thiết kế cho điện thoại cầm dọc. Bạn khởi nghiệp với một chiếc xe đẩy đầu hẻm: tự tay nhận order, báo tổng tiền, thối tiền, rồi vào bếp chọn nguyên liệu, rửa, thái, chiên, nêm cho từng món. Mỗi khách chấm sao riêng phần quầy và phần bếp, nên bạn biết mình sai ở đâu để sửa. Game lồng nhẹ các "Mẹo nghề" về vận hành quán ăn, dùng được để giải trí lẫn để ôn nghề cho nhân viên mới.
 
-Bản hiện tại (**0.4.0**) là **Chặng 1 "Xe đẩy đầu hẻm"** của bản MVP, đã xong bốn mốc: M1 (lõi chơi được), M2 (kinh tế, nhiệm vụ, sự kiện), M3 (hoàn thiện: chơi offline, sao lưu, Cài đặt, nội dung thêm) và M4 (tip mới, sự kiện thưởng/phạt tiền, nguyên liệu và món hiếm).
+Bản hiện tại (**0.4.2**) là **Chặng 1 "Xe đẩy đầu hẻm"** của bản MVP, đã xong bốn mốc: M1 (lõi chơi được), M2 (kinh tế, nhiệm vụ, sự kiện), M3 (hoàn thiện: chơi offline, sao lưu, Cài đặt, nội dung thêm) và M4 (tip mới, sự kiện thưởng/phạt tiền, nguyên liệu và món hiếm).
 
 ---
 
@@ -92,6 +92,17 @@ Mở qua địa chỉ IP vẫn chơi đầy đủ, nhưng các tham số kiểm 
 
 ---
 
+## Phòng mẫu giao diện (mau.html)
+
+Bản 0.4.2 có thêm trang **Phòng mẫu** để duyệt giao diện mới kiểu game nấu ăn (M5 Đợt 0) trước khi ráp vào game: hình mới viền mực, khối 3 tông; màn gọi món có con dấu "ĐÃ CHỐT"; bước Thái kiểu mới có thẻ bước, tay làm mẫu, con dấu và Dì Sáu phản ứng; màn ra món 5 hạng. Nút bánh răng có 3 công tắc: Giảm chuyển động, Âm thanh, Khung thấp (mô phỏng phần chơi ~300 điểm ảnh như màn 360×600).
+
+- Trên máy tính: `npm run serve` rồi mở **http://localhost:8080/mau.html**. GitHub Pages: **https://kazesanaei.github.io/gamefnb/mau.html**.
+- Phòng mẫu không lưu gì vào bản lưu của game, không đăng ký service worker và không nằm trong danh sách tệp chơi offline.
+- **Máy đã từng mở game bản cũ hơn 0.4.2** sẽ thấy link `mau.html` ra game (service worker cũ trả trang game cho mọi link): mở game khi có mạng, ở màn Chuẩn bị bấm **Tải lại** trên thẻ "Có bản mới" (hoặc đóng hẳn game rồi mở lại), sau đó mới mở link Phòng mẫu. Chi tiết: mục F của [`docs/huong-dan-trien-khai.md`](docs/huong-dan-trien-khai.md).
+- Dựng trang artifact claude.ai: `node tools/dong-goi-artifact.mjs --entry mau.html` (không có `--entry` thì dựng trang game); lệnh kiểm mọi module, liên kết, font đều có trong danh sách tệp kèm trước khi ghi.
+
+---
+
 ## Triển khai miễn phí lên Internet
 
 Game là một trang web tĩnh: **không có bước build, không cần máy chủ riêng**. Bạn chỉ cần đưa nguyên thư mục dự án lên một dịch vụ lưu trữ trang tĩnh. Mọi đường dẫn trong game là đường dẫn tương đối nên chạy được cả khi trang nằm trong thư mục con (như `https://<tài-khoản>.github.io/<tên-kho>/`); e2e `tests/e2e/subpath.e2e.mjs` kiểm điều này.
@@ -128,7 +139,7 @@ Thử trên máy tính đúng như khi chạy dưới thư mục con của GitHu
 2. Kéo thả thư mục game vào ô tải lên (không cần lệnh build, không cần kho công khai). Địa chỉ có dạng `https://<tên-dự-án>.netlify.app`.
 3. Cập nhật: thẻ **Deploys** → kéo thả thư mục bản mới.
 
-Khi tải thẳng thư mục (Cloudflare Upload assets, Netlify Deploy manually), game chỉ cần `index.html`, `manifest.webmanifest`, `sw.js` và ba thư mục `css/`, `src/`, `icons/`.
+Khi tải thẳng thư mục (Cloudflare Upload assets, Netlify Deploy manually), game chỉ cần `index.html`, `manifest.webmanifest`, `sw.js` và bốn thư mục `css/`, `src/`, `icons/`, `fonts/` (thiếu `fonts/` thì không chơi offline được). Muốn có Phòng mẫu thì thêm `mau.html` và `mau/`.
 
 ### Vercel
 
@@ -180,7 +191,9 @@ npm run e2e
 
 ```
 index.html          trang game
+mau.html, mau/      Phòng mẫu giao diện M5 (trang duyệt, không thuộc bản chơi offline)
 css/                giao diện (màu, bố cục, màn hình, mini-game)
+fonts/              font tiêu đề Baloo 2 ExtraBold tự lưu (latin, tiếng Việt) và giấy phép OFL.txt
 src/main.js         khởi động game
 src/core/           luật chơi: ca bán, quầy, bếp, chấm điểm, kinh tế, lưu, nhiệm vụ, sự kiện…
                     (không đụng tới giao diện, nên kiểm thử được bằng Node)
@@ -192,7 +205,7 @@ tests/unit/         unit test
 tests/e2e/          kiểm thử giao diện bằng Playwright
 tests/helpers/      máy chủ tĩnh (npm run serve), người chơi tự động
 tests/fixtures/     dữ liệu mẫu cho test (bản lưu thật của bản 0.3.0)
-tools/              dựng biểu tượng, tìm seed cho kiểm thử giao diện
+tools/              dựng biểu tượng, tìm seed cho kiểm thử giao diện, đóng gói trang artifact claude.ai
 docs/               tài liệu thiết kế, kiến trúc, cân bằng
 package.json        các lệnh npm (serve, test, e2e)
 .nojekyll           tệp rỗng, bắt buộc cho GitHub Pages (đừng xóa)
@@ -220,4 +233,5 @@ Muốn đổi giá món, giá nâng cấp, phần thưởng hay lịch sự ki�
 - **Mọi con số trong game** (giá món, giá vốn, tỉ lệ giá vốn, tiền thưởng…) và trong thẻ Mẹo nghề là **số liệu minh họa**, không phải số liệu kinh doanh thật. Nội dung nghề nên được người làm bếp hoặc kế toán duyệt lại trước khi dùng để đào tạo chính thức.
 - Game **không dùng thương hiệu thật**: không có tên, logo hay giao diện của ngân hàng, ví điện tử, ứng dụng giao hàng hay phần mềm bán hàng có thật. Tờ tiền trong game là hình cách điệu có chữ "TIỀN GAME"; mã QR là hoa văn giả, không quét được. Game chỉ học hỏi cơ chế của các game cùng thể loại, không dùng tên, hình ảnh, lời thoại hay mã nguồn của họ.
 - Nếu dùng game để **đào tạo nội bộ trong công ty**, hãy kiểm tra điều khoản sở hữu trí tuệ trong hợp đồng lao động và xin phép công ty theo quy định sở hữu trí tuệ hiện hành trước khi dùng. Game chỉ là công cụ bổ trợ, ôn luyện; không dùng kết quả chơi để xếp loại nhân sự.
+- **Font chữ tiêu đề Baloo 2** (bản ExtraBold 800, cắt riêng phần chữ latin và tiếng Việt, lưu ở `fonts/`) thuộc bản quyền © 2019 The Baloo 2 Project Authors, dùng theo giấy phép **SIL Open Font License 1.1**; toàn văn giấy phép ở [`fonts/OFL.txt`](fonts/OFL.txt). Hai tệp `.woff2` là bản cắt bớt ký tự của font gốc, phát hành kèm game theo đúng giấy phép này (không bán riêng font).
 - Trước khi phát hành công khai, xem danh sách kiểm tra ở mục 16 của `docs/de-xuat-thiet-ke.md` (tra trùng nhãn hiệu, quy định về trò chơi điện tử, dữ liệu cá nhân…). Tài liệu này không phải ý kiến pháp lý.

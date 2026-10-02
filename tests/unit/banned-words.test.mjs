@@ -36,9 +36,10 @@ function listFiles(dir) {
   return out
 }
 
+// 0.4.2: quét thêm trang Phòng mẫu giao diện (mau.html và thư mục mau/).
 function targets() {
-  const files = [...listFiles(join(ROOT, 'src')), ...listFiles(join(ROOT, 'css'))]
-  for (const f of ['index.html', 'lab.html', 'manifest.webmanifest', 'sw.js']) {
+  const files = [...listFiles(join(ROOT, 'src')), ...listFiles(join(ROOT, 'css')), ...listFiles(join(ROOT, 'mau'))]
+  for (const f of ['index.html', 'mau.html', 'lab.html', 'manifest.webmanifest', 'sw.js']) {
     const p = join(ROOT, f)
     if (existsSync(p)) files.push(p)
   }
@@ -82,6 +83,13 @@ test('từ nội bộ không lộ trong file chuỗi hiển thị', () => {
 test('bộ quét thật sự phát hiện được từ cấm', () => {
   assert.ok(normalize('Thanh toán qua MoMo').includes('momo'))
   assert.ok(!normalize('.x { cursor: grab }').includes('grab'))
+})
+
+test('bộ quét có quét trang Phòng mẫu (mau.html, mau/mau.js, mau/mau.css)', () => {
+  const rel = targets().map(f => relative(ROOT, f).split('\\').join('/'))
+  for (const f of ['mau.html', 'mau/mau.js', 'mau/mau.css']) {
+    if (existsSync(join(ROOT, f))) assert.ok(rel.includes(f), 'chưa quét ' + f)
+  }
 })
 
 // Vòng soát lỗi M3: chuỗi hiển thị (chuỗi có chữ tiếng Việt có dấu) không lộ đơn vị kỹ thuật như "14px".

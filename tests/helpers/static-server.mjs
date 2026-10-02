@@ -17,7 +17,10 @@ export const MIME = Object.freeze({
   '.json': 'application/json; charset=utf-8',
   '.webmanifest': 'application/manifest+json; charset=utf-8',
   '.png': 'image/png',
+  '.webp': 'image/webp',
   '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
   '.txt': 'text/plain; charset=utf-8',
   '.md': 'text/markdown; charset=utf-8'
 })
