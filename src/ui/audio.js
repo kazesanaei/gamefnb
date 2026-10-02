@@ -1,10 +1,13 @@
 // Âm thanh tổng hợp bằng WebAudio (không dùng file âm thanh).
 // Âm: click, coin (tiền vào túi), cash (tiền vào két), ding (Hoàn hảo), bell (chuông ra món / khách tới),
 // chop (dao thái "tách"), sizzle (dầu "xèo"), pour (rót nước), error (lỗi), nudge (nhắc nhẹ), chest (mở rương), paper (giấy).
+// M5: stamp (con dấu "cộp"), sparkle (lấp lánh), fanfare (kèn mừng ra món), tick (tích đếm số), whoosh (vút bay).
+// Âm M5 lệch cao độ ngẫu nhiên khoảng ±4% mỗi lần phát để nghe không lặp đều (âm giao diện, được dùng Math.random).
 // AudioContext chỉ tạo sau thao tác đầu tiên của người chơi; trình duyệt chặn âm thanh thì im lặng, không báo lỗi.
 // Mọi âm luôn có tín hiệu hình đi kèm ở giao diện (âm thanh chỉ là phần thêm).
 
-export const SOUND_NAMES = Object.freeze(['click', 'coin', 'cash', 'ding', 'bell', 'chop', 'sizzle', 'pour', 'error', 'nudge', 'chest', 'paper'])
+export const SOUND_NAMES = Object.freeze(['click', 'coin', 'cash', 'ding', 'bell', 'chop', 'sizzle', 'pour', 'error', 'nudge', 'chest', 'paper',
+  'stamp', 'sparkle', 'fanfare', 'tick', 'whoosh'])
 
 // Âm lượng tổng tối đa (trước khi nhân âm lượng trong Cài đặt): tránh chói tai trên loa điện thoại.
 const MASTER_MAX = 0.9
@@ -73,6 +76,9 @@ function noise(ac, dest, t0, buffer, n) {
 }
 
 // ---------- Công thức từng âm ----------
+// Hệ số lệch cao độ ngẫu nhiên ±4% (âm M5).
+const jitter = () => 1 + (Math.random() * 2 - 1) * 0.04
+
 // Mỗi âm là hàm (ac, dest, t0, buf) dựng nút và trả số nút nguồn đã tạo.
 const RECIPES = {
   click: (ac, d, t) => [tone(ac, d, t, { f: 720, d: 0.045, type: 'triangle', v: 0.09 })],
@@ -134,7 +140,37 @@ const RECIPES = {
     ...[523.3, 659.3, 784, 1046.5].map((f, i) => tone(ac, d, t, { f, d: 0.22, type: 'triangle', v: 0.08, at: 0.06 + i * 0.07 })),
     tone(ac, d, t, { f: 2093, d: 0.45, type: 'sine', v: 0.05, at: 0.36 }),
     tone(ac, d, t, { f: 3136, d: 0.35, type: 'sine', v: 0.03, at: 0.4 })
-  ]
+  ],
+  // ---------- M5 ----------
+  // con dấu đập xuống giấy: tiếng "cộp" trầm (ồn lọc thấp 400Hz 60ms) + thân dấu 140Hz
+  stamp: (ac, d, t, buf) => {
+    const j = jitter()
+    return [
+      noise(ac, d, t, buf, { d: 0.06, v: 0.24, filter: { type: 'lowpass', f: 400 * j, q: 0.8 }, attack: 0.002 }),
+      tone(ac, d, t, { f: 140 * j, f2: 105 * j, d: 0.13, type: 'sine', v: 0.2, attack: 0.002, glide: 0.1 })
+    ]
+  },
+  // lấp lánh: 3 nốt tam giác cao, so le 50ms
+  sparkle: (ac, d, t) => {
+    const j = jitter()
+    return [1568, 2093, 2637].map((f, i) => tone(ac, d, t, { f: f * j, d: 0.2, type: 'triangle', v: 0.06, at: i * 0.05, attack: 0.004 }))
+  },
+  // kèn mừng ra món: Đô5 - Mi5 - Sol5 - Đô6 so le 90ms, nốt cuối ngân và có bồi âm
+  fanfare: (ac, d, t) => {
+    const j = jitter()
+    const notes = [523.25, 659.25, 783.99, 1046.5]
+    return [
+      ...notes.map((f, i) => tone(ac, d, t, { f: f * j, d: i === notes.length - 1 ? 0.55 : 0.16, type: 'triangle', v: 0.1, at: i * 0.09, attack: 0.006 })),
+      tone(ac, d, t, { f: 2093 * j, d: 0.45, type: 'sine', v: 0.035, at: 0.29, attack: 0.01 })
+    ]
+  },
+  // tích đếm số: 1kHz ngắn 18ms
+  tick: (ac, d, t) => [tone(ac, d, t, { f: 1000 * jitter(), d: 0.018, type: 'triangle', v: 0.08, attack: 0.002 })],
+  // vút bay: ồn dải hẹp quét 600 → 2400Hz trong 250ms
+  whoosh: (ac, d, t, buf) => {
+    const j = jitter()
+    return [noise(ac, d, t, buf, { d: 0.25, v: 0.13, env: 'swell', filter: { type: 'bandpass', f: 600 * j, f2: 2400 * j, q: 1.4 }, attack: 0.03 })]
+  }
 }
 
 /**

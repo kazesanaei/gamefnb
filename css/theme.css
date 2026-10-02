@@ -1,0 +1,607 @@
+/* Chủ đề giao diện M5 (kiểu game giả lập nấu ăn): font tiêu đề Baloo 2 tự lưu, biến thiết kế --g-*,
+   nút "bánh kẹo" .g-btn, khung giấy / gỗ / bảng phấn, tiêu đề viền mực, huy hiệu, ruy băng, nhãn tròn,
+   và lớp hiệu ứng .vfx-layer (src/ui/vfx.js).
+   Quy ước: chỉ thêm lớp tiền tố g- (và vfx-), biến tiền tố --g-; KHÔNG ghi đè biến hay lớp cũ của game
+   (index.html nạp mọi css/*.css). Chữ luôn nằm trên mảng giấy đặc, không đặt thẳng lên vân gỗ.
+   Hoạt ảnh chỉ đổi transform/opacity; hoạt ảnh lặp tắt khi giảm chuyển động (cuối tệp). */
+
+/* ---------- Font tiêu đề: Baloo 2 ExtraBold 800 (SIL OFL 1.1, fonts/OFL.txt) ---------- */
+/* tiếng Việt: ă, đ, ĩ, ũ, ơ, ư, dấu thanh và ₫ */
+@font-face {
+  font-family: 'Baloo 2';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('../fonts/baloo2-800-vi.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin cơ bản: chữ không dấu, à á â ã è é ê ì í ò ó ô õ ù ú ý, số, dấu câu */
+@font-face {
+  font-family: 'Baloo 2';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('../fonts/baloo2-800-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ---------- Biến thiết kế ---------- */
+:root {
+  /* nền và giấy */
+  --g-cream: #fbf1dc;
+  --g-cream-deep: #f1dfba;
+  --g-paper: #fffaf0;
+  --g-paper-shade: #f1e2c2;      /* mảng tối dưới mép giấy */
+  --g-paper-line: #ead9b6;       /* dòng kẻ */
+  /* mực viền (nâu đậm, không dùng đen) */
+  --g-ink: #3a2618;
+  --g-ink-soft: #6e5340;
+  /* gỗ mật ong 3 tông + tông sâu cho bóng cứng */
+  --g-wood-light: #f2c47c;
+  --g-wood: #d99a4c;
+  --g-wood-dark: #a5672b;
+  --g-wood-deep: #6f4219;
+  /* bảng phấn xanh đen */
+  --g-chalk: #2f4a43;
+  --g-chalk-deep: #223630;
+  --g-chalk-text: #f6f1e3;
+  /* màu nhấn: sáng / chính / đậm */
+  --g-tomato-light: #ff8a6c;
+  --g-tomato: #e8483a;
+  --g-tomato-dark: #a42a1d;
+  --g-orange-light: #ffb45c;
+  --g-orange: #f28a1e;
+  --g-orange-dark: #a85406;
+  --g-gold-light: #ffe27a;
+  --g-gold: #f7b928;            /* vàng nghệ */
+  --g-gold-dark: #a87404;
+  --g-go-light: #8edb6a;         /* xanh lá "đúng" */
+  --g-go: #43a63d;
+  --g-go-dark: #226b28;
+  --g-bad-light: #ff7b68;        /* đỏ "sai" (luôn kèm biểu tượng, không chỉ dựa vào màu) */
+  --g-bad: #d8392b;
+  --g-bad-dark: #8f2015;
+  --g-sky: #4aa3df;
+  --g-sky-dark: #22679a;
+  --g-star: #ffd23f;
+  /* chữ */
+  --g-font-display: 'Baloo 2', system-ui, sans-serif;
+  /* hình khối */
+  --g-outline: 3px;
+  --g-radius-s: 10px;
+  --g-radius: 16px;
+  --g-radius-l: 22px;
+  --g-shadow-hard: 0 4px 0 var(--g-ink);
+  --g-shadow-drop: 0 5px 0 rgba(58, 38, 24, .22);
+  /* chữ viền mực (chồng text-shadow, chạy được mọi trình duyệt) */
+  --g-text-outline: 2px 0 0 var(--g-ink), -2px 0 0 var(--g-ink), 0 2px 0 var(--g-ink), 0 -2px 0 var(--g-ink),
+    1.5px 1.5px 0 var(--g-ink), -1.5px 1.5px 0 var(--g-ink), 1.5px -1.5px 0 var(--g-ink), -1.5px -1.5px 0 var(--g-ink);
+  /* đường cong chuyển động (trùng EASE ở src/ui/motion.js) */
+  --g-ease-back: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --g-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --g-ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+/* ---------- Nút "bánh kẹo" ---------- */
+/* Viền mực 3px, nền sáng trên → đậm dưới, vệt bóng elip ở nửa trên, bóng cứng 0 4px 0 tông đậm.
+   Bấm: lún 3px, bóng còn 1px, co .97 trong 80ms. Chữ Baloo; vùng chạm ≥ 48px. */
+.g-btn {
+  --g-btn-top: #fffdf6;
+  --g-btn-bot: #f2dcae;
+  --g-btn-edge: #a8773a;
+  --g-btn-text: var(--g-ink);
+  --g-btn-text-shadow: 0 1px 0 rgba(255, 255, 255, .65);
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  min-width: 48px;
+  padding: 9px 20px 8px;
+  border: var(--g-outline) solid var(--g-ink);
+  border-radius: var(--g-radius);
+  background: linear-gradient(180deg, var(--g-btn-top) 0%, var(--g-btn-top) 18%, var(--g-btn-bot) 100%);
+  color: var(--g-btn-text);
+  font-family: var(--g-font-display);
+  font-weight: 800;
+  font-size: 19px;
+  line-height: 1.1;
+  letter-spacing: .01em;
+  text-align: center;
+  text-shadow: var(--g-btn-text-shadow);
+  box-shadow: inset 0 -4px 0 rgba(58, 38, 24, .16), 0 4px 0 var(--g-btn-edge);
+  transition: transform 80ms var(--g-ease-out);
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+  cursor: pointer;
+  vertical-align: middle;
+}
+/* vệt bóng elip trắng ~35% ở nửa trên (nằm dưới chữ nhờ isolation + z-index âm) */
+.g-btn::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: 9%;
+  right: 9%;
+  top: 3px;
+  height: 44%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, .14));
+  pointer-events: none;
+}
+.g-btn:active:not(:disabled):not([aria-disabled="true"]),
+.g-btn.g-btn--pressed {
+  transform: translateY(3px) scale(.97);
+  box-shadow: inset 0 -3px 0 rgba(58, 38, 24, .16), 0 1px 0 var(--g-btn-edge);
+}
+.g-btn:focus-visible { outline: 3px solid var(--g-gold); outline-offset: 3px; }
+.g-btn svg, .g-btn .g-ico { flex: none; width: 26px; height: 26px; }
+
+.g-btn--primary {
+  --g-btn-top: var(--g-tomato-light);
+  --g-btn-bot: #d93a2c;
+  --g-btn-edge: var(--g-tomato-dark);
+  --g-btn-text: #fff;
+  --g-btn-text-shadow: 0 2px 0 rgba(90, 20, 10, .55);
+}
+.g-btn--go {
+  --g-btn-top: var(--g-go-light);
+  --g-btn-bot: #359a31;
+  --g-btn-edge: var(--g-go-dark);
+  --g-btn-text: #fff;
+  --g-btn-text-shadow: 0 2px 0 rgba(20, 70, 20, .6);
+}
+.g-btn--gold {
+  --g-btn-top: #fff0a6;
+  --g-btn-bot: var(--g-gold);
+  --g-btn-edge: var(--g-gold-dark);
+  --g-btn-text: var(--g-ink);
+  --g-btn-text-shadow: 0 1px 0 rgba(255, 255, 255, .6);
+}
+.g-btn--ghost {
+  background: rgba(255, 250, 240, .72);
+  box-shadow: 0 3px 0 rgba(58, 38, 24, .28);
+  --g-btn-edge: rgba(58, 38, 24, .28);
+}
+.g-btn--ghost::before { display: none; }
+.g-btn--ghost:active:not(:disabled):not([aria-disabled="true"]) { box-shadow: 0 1px 0 rgba(58, 38, 24, .28); }
+.g-btn--small {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 6px 14px 5px;
+  border-radius: 13px;
+  font-size: 16px;
+}
+.g-btn--small svg, .g-btn--small .g-ico { width: 22px; height: 22px; }
+.g-btn--big {
+  min-height: 60px;
+  padding: 10px 26px 9px;
+  border-radius: var(--g-radius-l);
+  font-size: 23px;
+}
+.g-btn--block { display: flex; width: 100%; }
+.g-btn--round { padding: 0; border-radius: 50%; width: 52px; height: 52px; font-size: 26px; line-height: 1; }
+.g-btn--round::before { left: 22%; right: 22%; top: 4px; height: 38%; }
+.g-btn--round.g-btn--small { width: 46px; height: 46px; font-size: 24px; }
+/* Không bấm được: phẳng, xám ấm, không lún */
+.g-btn:disabled,
+.g-btn[aria-disabled="true"] {
+  --g-btn-top: #efe7d8;
+  --g-btn-bot: #d6cab5;
+  --g-btn-edge: #a8987f;
+  --g-btn-text: #7d6c5a;
+  --g-btn-text-shadow: none;
+  border-color: #8f7b66;
+  box-shadow: 0 2px 0 var(--g-btn-edge);
+  cursor: not-allowed;
+  transform: none;
+}
+.g-btn:disabled::before,
+.g-btn[aria-disabled="true"]::before { opacity: .35; }
+
+/* Ánh lóe chạy ngang nút kêu gọi chính (lặp, tắt khi giảm chuyển động) */
+.g-btn--shine { overflow: hidden; }
+.g-btn--shine::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: -10%;
+  bottom: -10%;
+  left: 0;
+  width: 34%;
+  background: linear-gradient(100deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, .55) 50%, rgba(255, 255, 255, 0) 100%);
+  transform: translateX(-140%) skewX(-18deg);
+  animation: g-glint 3.2s var(--g-ease-out) 1s infinite;
+  pointer-events: none;
+}
+
+/* ---------- Khung giấy ---------- */
+.g-paper {
+  position: relative;
+  isolation: isolate;
+  padding: 14px;
+  border: var(--g-outline) solid var(--g-ink);
+  border-radius: var(--g-radius);
+  background-color: var(--g-paper);
+  color: var(--g-ink);
+  box-shadow: inset 0 -4px 0 var(--g-paper-shade), var(--g-shadow-drop);
+}
+/* dòng kẻ ngang (chữ đặt trên dòng: line-height = --g-line) và lề đỏ nhạt */
+.g-paper--lined {
+  --g-line: 28px;
+  background-image:
+    linear-gradient(90deg, transparent 22px, rgba(232, 72, 58, .3) 22px 24px, transparent 24px),
+    repeating-linear-gradient(180deg, transparent 0 calc(var(--g-line) - 2px), var(--g-paper-line) calc(var(--g-line) - 2px) var(--g-line));
+  background-position: 0 0, 0 var(--g-line-start, 12px);
+  line-height: var(--g-line);
+}
+/* mép răng cưa dưới (phiếu xé từ cuốn): lớp mực lệch xuống làm viền cho răng giấy */
+.g-paper--torn {
+  margin-bottom: 10px;
+  border-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  box-shadow: none;
+}
+.g-paper--torn::before,
+.g-paper--torn::after {
+  content: '';
+  position: absolute;
+  left: calc(-1 * var(--g-outline));
+  right: calc(-1 * var(--g-outline));
+  height: 8px;
+  background-repeat: round no-repeat;
+  background-size: 14px 8px;
+  pointer-events: none;
+}
+.g-paper--torn::before {
+  z-index: -1;
+  bottom: -11px;
+  background-image: conic-gradient(from -45deg at 50% 100%, var(--g-ink) 90deg, transparent 0);
+}
+.g-paper--torn::after {
+  bottom: -8px;
+  background-image: conic-gradient(from -45deg at 50% 100%, var(--g-paper) 90deg, transparent 0);
+}
+/* đinh ghim đỏ ở mép trên */
+.g-pin {
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  border: 2.5px solid var(--g-ink);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 32%, #fff 0 14%, var(--g-tomato-light) 15% 40%, var(--g-tomato) 41% 100%);
+  box-shadow: 0 2px 0 rgba(58, 38, 24, .35);
+  pointer-events: none;
+}
+
+/* ---------- Khung gỗ mật ong ---------- */
+/* vân gỗ là gradient lặp alpha thấp + điểm sáng trên-trái; nội dung chữ đặt trên thẻ giấy bên trong */
+.g-wood {
+  --g-plank: 58px;
+  position: relative;
+  isolation: isolate;
+  padding: 12px;
+  border: var(--g-outline) solid var(--g-ink);
+  border-radius: var(--g-radius);
+  color: var(--g-ink);
+  background:
+    radial-gradient(120% 70% at 18% 0%, rgba(255, 244, 214, .42), rgba(255, 244, 214, 0) 62%),
+    repeating-linear-gradient(178.6deg, rgba(111, 66, 25, 0) 0 6px, rgba(111, 66, 25, .1) 6px 7.5px, rgba(111, 66, 25, 0) 7.5px 13px),
+    repeating-linear-gradient(181.2deg, rgba(255, 232, 186, 0) 0 10px, rgba(255, 232, 186, .14) 10px 12px, rgba(255, 232, 186, 0) 12px 21px),
+    repeating-linear-gradient(180deg, rgba(90, 52, 20, 0) 0 calc(var(--g-plank) - 3px), rgba(90, 52, 20, .32) calc(var(--g-plank) - 3px) calc(var(--g-plank) - 1px), rgba(255, 236, 196, .3) calc(var(--g-plank) - 1px) var(--g-plank)),
+    linear-gradient(180deg, var(--g-wood-light) 0%, var(--g-wood) 55%, #c98a40 100%);
+  box-shadow: inset 0 3px 0 rgba(255, 238, 205, .5), inset 0 -6px 0 rgba(111, 66, 25, .4), 0 5px 0 var(--g-wood-deep);
+}
+.g-wood--flat { --g-plank: 9999px; }
+/* gỗ sẫm (mặt quầy, khung bảng) */
+.g-wood--dark {
+  background:
+    radial-gradient(120% 70% at 18% 0%, rgba(255, 220, 170, .22), rgba(255, 220, 170, 0) 62%),
+    repeating-linear-gradient(178.6deg, rgba(40, 22, 8, 0) 0 6px, rgba(40, 22, 8, .16) 6px 7.5px, rgba(40, 22, 8, 0) 7.5px 13px),
+    repeating-linear-gradient(181.2deg, rgba(255, 210, 150, 0) 0 10px, rgba(255, 210, 150, .1) 10px 12px, rgba(255, 210, 150, 0) 12px 21px),
+    linear-gradient(180deg, #b87838 0%, var(--g-wood-dark) 60%, #8a5422 100%);
+  box-shadow: inset 0 3px 0 rgba(255, 220, 170, .3), inset 0 -6px 0 rgba(40, 22, 8, .35), 0 5px 0 #4b2c10;
+}
+
+/* ---------- Bảng phấn viền gỗ ---------- */
+.g-chalk {
+  position: relative;
+  isolation: isolate;
+  padding: 12px 14px;
+  border: 10px solid transparent;
+  border-radius: var(--g-radius);
+  color: var(--g-chalk-text);
+  font-family: var(--g-font-display);
+  font-weight: 800;
+  background:
+    radial-gradient(60% 45% at 28% 22%, rgba(255, 255, 255, .09), rgba(255, 255, 255, 0) 70%) padding-box,
+    radial-gradient(50% 35% at 78% 72%, rgba(255, 255, 255, .06), rgba(255, 255, 255, 0) 70%) padding-box,
+    linear-gradient(160deg, #36564e 0%, var(--g-chalk) 45%, var(--g-chalk-deep) 100%) padding-box,
+    repeating-linear-gradient(90deg, rgba(111, 66, 25, 0) 0 9px, rgba(111, 66, 25, .16) 9px 10.5px, rgba(111, 66, 25, 0) 10.5px 19px) border-box,
+    linear-gradient(180deg, var(--g-wood-light), var(--g-wood) 50%, var(--g-wood-dark)) border-box;
+  box-shadow:
+    0 0 0 var(--g-outline) var(--g-ink),
+    0 6px 0 var(--g-outline) var(--g-wood-deep),
+    inset 0 0 0 var(--g-outline) var(--g-ink),
+    inset 0 5px 10px rgba(0, 0, 0, .35);
+}
+.g-chalk-line { display: flex; align-items: baseline; gap: 6px; font-size: 17px; line-height: 1.5; text-shadow: 0 0 1px rgba(255, 255, 255, .35); }
+.g-chalk-line > :first-child { flex: none; }
+.g-chalk-dots { flex: 1; min-width: 12px; border-bottom: 2px dotted rgba(246, 241, 227, .45); transform: translateY(-5px); }
+.g-chalk-price { flex: none; color: var(--g-gold-light); }
+
+/* ---------- Tiêu đề viền mực ---------- */
+.g-title {
+  /* độ dày viền chữ co theo cỡ chữ để viền không lấp lòng chữ */
+  --g-tw: 2px;
+  --g-td: calc(var(--g-tw) * .75);
+  margin: 0;
+  font-family: var(--g-font-display);
+  font-weight: 800;
+  font-size: 28px;
+  line-height: 1.08;
+  letter-spacing: .03em;
+  color: var(--g-title-fill, #fff4d8);
+  text-shadow:
+    var(--g-tw) 0 0 var(--g-ink), calc(-1 * var(--g-tw)) 0 0 var(--g-ink),
+    0 var(--g-tw) 0 var(--g-ink), 0 calc(-1 * var(--g-tw)) 0 var(--g-ink),
+    var(--g-td) var(--g-td) 0 var(--g-ink), calc(-1 * var(--g-td)) var(--g-td) 0 var(--g-ink),
+    var(--g-td) calc(-1 * var(--g-td)) 0 var(--g-ink), calc(-1 * var(--g-td)) calc(-1 * var(--g-td)) 0 var(--g-ink),
+    0 calc(var(--g-tw) * 2) 0 var(--g-ink);
+}
+.g-title--red { --g-title-fill: var(--g-tomato); }
+.g-title--gold { --g-title-fill: var(--g-gold-light); }
+.g-title--green { --g-title-fill: var(--g-go-light); }
+.g-title--small { --g-tw: 1.5px; font-size: 21px; letter-spacing: .035em; }
+.g-title--big { --g-tw: 2.5px; font-size: 34px; }
+/* tiêu đề mực trơn (trên giấy, chữ dài) */
+.g-title--plain { color: var(--g-ink); text-shadow: none; letter-spacing: .005em; }
+
+/* ---------- Huy hiệu tròn có số ---------- */
+.g-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 7px;
+  border: 2.5px solid var(--g-ink);
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 28%, var(--g-tomato-light) 0 30%, var(--g-tomato) 70%);
+  color: #fff;
+  font-family: var(--g-font-display);
+  font-weight: 800;
+  font-size: 15px;
+  line-height: 1;
+  text-shadow: 0 1px 0 rgba(90, 20, 10, .55);
+  box-shadow: 0 2px 0 var(--g-ink);
+  white-space: nowrap;
+}
+.g-badge--gold { background: radial-gradient(circle at 35% 28%, #fff3b0 0 25%, var(--g-gold) 70%); color: var(--g-ink); text-shadow: none; }
+.g-badge--go { background: radial-gradient(circle at 35% 28%, var(--g-go-light) 0 30%, var(--g-go) 70%); text-shadow: 0 1px 0 rgba(20, 70, 20, .6); }
+.g-badge--ink { background: var(--g-ink); color: var(--g-gold-light); text-shadow: none; }
+/* góc trên-phải của khung cha (khung cha cần position: relative) */
+.g-badge--corner { position: absolute; top: -12px; right: -10px; z-index: 2; }
+
+/* ---------- Ruy băng có đuôi chẻ ---------- */
+.g-ribbon {
+  --g-ribbon-bg: linear-gradient(180deg, var(--g-tomato-light), var(--g-tomato) 60%, #d23a2c);
+  --g-ribbon-text: #fff;
+  --g-ribbon-text-shadow: 0 2px 0 rgba(90, 20, 10, .55);
+  --g-ribbon-tail-l: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 38'%3E%3Cpath d='M24 1.5H1.5L9 19L1.5 36.5H24Z' fill='%23a42a1d'/%3E%3Cpath d='M24 1.5H1.5L9 19L1.5 36.5H24' fill='none' stroke='%233a2618' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M24 4V12L18 4Z' fill='%233a2618' opacity='.35'/%3E%3C/svg%3E");
+  --g-ribbon-tail-r: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 38'%3E%3Cpath d='M0 1.5H22.5L15 19L22.5 36.5H0Z' fill='%23a42a1d'/%3E%3Cpath d='M0 1.5H22.5L15 19L22.5 36.5H0' fill='none' stroke='%233a2618' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M0 4V12L6 4Z' fill='%233a2618' opacity='.35'/%3E%3C/svg%3E");
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  margin: 0 22px 8px;
+  padding: 1px 16px 0;
+  border: var(--g-outline) solid var(--g-ink);
+  border-radius: 4px;
+  background: var(--g-ribbon-bg);
+  color: var(--g-ribbon-text);
+  font-family: var(--g-font-display);
+  font-weight: 800;
+  font-size: 18px;
+  line-height: 1;
+  white-space: nowrap;
+  text-shadow: var(--g-ribbon-text-shadow);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, .28), inset 0 -4px 0 rgba(0, 0, 0, .12);
+}
+/* đuôi chẻ nằm ngoài thân, thấp hơn 8px như gấp ra sau */
+.g-ribbon::before,
+.g-ribbon::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  width: 22px;
+  height: 38px;
+  background: no-repeat center / 100% 100%;
+  pointer-events: none;
+}
+.g-ribbon::before { left: -25px; background-image: var(--g-ribbon-tail-l); }
+.g-ribbon::after { right: -25px; background-image: var(--g-ribbon-tail-r); }
+.g-ribbon--gold {
+  --g-ribbon-bg: linear-gradient(180deg, #fff0a6, var(--g-gold) 65%, #eaa818);
+  --g-ribbon-text: var(--g-ink);
+  --g-ribbon-text-shadow: 0 1px 0 rgba(255, 255, 255, .55);
+  --g-ribbon-tail-l: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 38'%3E%3Cpath d='M24 1.5H1.5L9 19L1.5 36.5H24Z' fill='%23d79a10'/%3E%3Cpath d='M24 1.5H1.5L9 19L1.5 36.5H24' fill='none' stroke='%233a2618' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M24 4V12L18 4Z' fill='%233a2618' opacity='.35'/%3E%3C/svg%3E");
+  --g-ribbon-tail-r: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 38'%3E%3Cpath d='M0 1.5H22.5L15 19L22.5 36.5H0Z' fill='%23d79a10'/%3E%3Cpath d='M0 1.5H22.5L15 19L22.5 36.5H0' fill='none' stroke='%233a2618' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M0 4V12L6 4Z' fill='%233a2618' opacity='.35'/%3E%3C/svg%3E");
+}
+.g-ribbon--go {
+  --g-ribbon-bg: linear-gradient(180deg, var(--g-go-light), var(--g-go) 65%, #379a33);
+  --g-ribbon-text-shadow: 0 2px 0 rgba(20, 70, 20, .6);
+  --g-ribbon-tail-l: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 38'%3E%3Cpath d='M24 1.5H1.5L9 19L1.5 36.5H24Z' fill='%23226b28'/%3E%3Cpath d='M24 1.5H1.5L9 19L1.5 36.5H24' fill='none' stroke='%233a2618' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M24 4V12L18 4Z' fill='%233a2618' opacity='.35'/%3E%3C/svg%3E");
+  --g-ribbon-tail-r: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 38'%3E%3Cpath d='M0 1.5H22.5L15 19L22.5 36.5H0Z' fill='%23226b28'/%3E%3Cpath d='M0 1.5H22.5L15 19L22.5 36.5H0' fill='none' stroke='%233a2618' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M0 4V12L6 4Z' fill='%233a2618' opacity='.35'/%3E%3C/svg%3E");
+}
+
+/* ---------- Nhãn tròn dạng viên thuốc ---------- */
+.g-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 2px 12px 1px;
+  border: 2.5px solid var(--g-ink);
+  border-radius: 999px;
+  background: var(--g-paper);
+  color: var(--g-ink);
+  font-family: var(--g-font-display);
+  font-weight: 800;
+  font-size: 15px;
+  line-height: 1.1;
+  white-space: nowrap;
+  box-shadow: inset 0 -3px 0 rgba(58, 38, 24, .1), 0 2px 0 rgba(58, 38, 24, .3);
+}
+.g-pill svg, .g-pill .g-ico { flex: none; width: 20px; height: 20px; }
+.g-pill--gold { background: linear-gradient(180deg, #fff0a6, var(--g-gold)); }
+.g-pill--go { background: linear-gradient(180deg, var(--g-go-light), var(--g-go)); color: #fff; text-shadow: 0 1px 0 rgba(20, 70, 20, .6); }
+.g-pill--bad { background: linear-gradient(180deg, var(--g-bad-light), var(--g-bad)); color: #fff; text-shadow: 0 1px 0 rgba(90, 20, 10, .55); }
+.g-pill--dark { background: linear-gradient(180deg, #5a3d28, var(--g-ink)); color: var(--g-gold-light); }
+.g-pill--big { min-height: 38px; padding: 3px 16px 2px; font-size: 19px; }
+
+/* ---------- Hoạt ảnh lặp tiện dụng (tắt khi giảm chuyển động) ---------- */
+.g-bob { animation: g-bob 2.4s ease-in-out infinite; }
+.g-pulse { animation: g-pulse 1.6s ease-in-out infinite; }
+.g-spin-slow { animation: g-spin 10s linear infinite; }
+.g-twinkle { animation: g-twinkle 1.8s ease-in-out infinite; }
+
+@keyframes g-glint {
+  0% { transform: translateX(-140%) skewX(-18deg); }
+  45%, 100% { transform: translateX(420%) skewX(-18deg); }
+}
+@keyframes g-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes g-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+@keyframes g-spin { to { transform: rotate(360deg); } }
+@keyframes g-twinkle { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .55; transform: scale(.82); } }
+@keyframes g-pop-in { 0% { opacity: 0; transform: scale(.4); } 60% { opacity: 1; transform: scale(1.12); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes g-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---------- Lớp hiệu ứng (src/ui/vfx.js) ---------- */
+/* Phủ khung, không bao giờ nhận chạm (thắng luật .overlay-root > * { pointer-events: auto }). */
+.vfx-layer,
+.overlay-root > .vfx-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  overflow: hidden;
+  pointer-events: none;
+  contain: layout paint;
+}
+.vfx-layer * { pointer-events: none !important; }
+.vfx-canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+
+/* hạt DOM (dấu tĩnh khi giảm chuyển động, hạt lẻ): tâm đặt tại left/top */
+.vfx-p {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  background: var(--g-star);
+}
+.vfx-p[data-kind="sparkle"] {
+  background: radial-gradient(circle, #fff 0 22%, var(--g-star) 23% 100%);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+}
+.vfx-p[data-kind="star"] {
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  background: var(--g-star);
+  clip-path: polygon(50% 2%, 62% 36%, 98% 37%, 69% 59%, 79% 95%, 50% 74%, 21% 95%, 31% 59%, 2% 37%, 38% 36%);
+}
+.vfx-p[data-kind="coin"] {
+  border: 2.5px solid var(--g-ink);
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 30%, #fff6c4 0 16%, var(--g-star) 17% 58%, #e9a400 59%);
+}
+
+/* xu bay (coins), mảnh bay nhân bản (fly) */
+.vfx-coin {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border: 2.5px solid var(--g-ink);
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 30%, #fff6c4 0 16%, var(--g-star) 17% 56%, #eaa600 57% 100%);
+  box-shadow: inset 0 0 0 3px rgba(255, 246, 196, .55), inset 0 -3px 0 rgba(150, 90, 0, .45);
+}
+.vfx-fly { position: absolute; left: 0; top: 0; transform-origin: 50% 50%; }
+
+/* gợn chạm */
+.vfx-ripple {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  border: 3px solid rgba(255, 255, 255, .95);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, .35) 0 40%, rgba(255, 255, 255, 0) 70%);
+  box-shadow: 0 0 0 2px rgba(58, 38, 24, .25);
+}
+
+/* vòng sáng lóe ra khi nổ lấp lánh / sao / xu */
+.vfx-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 120px;
+  height: 120px;
+  margin: -60px 0 0 -60px;
+  border: 5px solid rgba(255, 210, 63, .9);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 246, 196, .7) 0 30%, rgba(255, 246, 196, 0) 68%);
+}
+
+/* chữ nổi: Baloo, viền mực, đặt tâm-đáy tại left/top */
+.vfx-text {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -100%);
+  font-family: var(--g-font-display);
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: .03em;
+  white-space: nowrap;
+  color: var(--g-star);
+  text-shadow: var(--g-text-outline), 0 3px 0 var(--g-ink);
+}
+.vfx-text[data-tone="good"] { color: var(--g-go-light); }
+.vfx-text[data-tone="bad"] { color: var(--g-bad-light); }
+.vfx-text[data-tone="info"] { color: var(--g-paper); }
+.vfx-text[data-tone="sky"] { color: #8fd0ff; }
+.vfx-text[data-size="small"] { font-size: 18px; }
+.vfx-text[data-size="big"] { font-size: 32px; }
+
+/* thay cho rung khi giảm chuyển động: chớp viền đỏ tĩnh (không chuyển động) */
+.vfx-alert { outline: 3px solid var(--g-bad) !important; outline-offset: -3px; }
+
+/* ---------- Giảm chuyển động: tắt mọi hoạt ảnh lặp của lớp g- ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .g-btn--shine::after { animation: none !important; opacity: 0; }
+  .g-bob, .g-pulse, .g-spin-slow, .g-twinkle { animation: none !important; }
+  .g-btn { transition: none; }
+}
+html.reduce-motion .g-btn--shine::after { animation: none !important; opacity: 0; }
+html.reduce-motion .g-bob,
+html.reduce-motion .g-pulse,
+html.reduce-motion .g-spin-slow,
+html.reduce-motion .g-twinkle { animation: none !important; }
+html.reduce-motion .g-btn { transition: none; }
