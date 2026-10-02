@@ -264,8 +264,9 @@ test('iPhone bếp: bảng chọn cách, hộp bước hỏng, Ra món luôn, c�
     await tapReach(g, T('finish-dish'), 'Thớt: Ra món')
     await tapReach(g, T('confirm-ok'), 'Hộp Ra món luôn: Vẫn ra món')
     await page.waitForSelector(T('dish-reveal'))
-    // dừng đồng hồ trang để bảng công bố không tự đóng (1,2 giây) trước khi đo; chờ hoạt ảnh phóng to (CSS) xong
-    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 10))
+    // dừng đồng hồ trang để bảng công bố không tự đóng (REVEAL_MS 2,2 giây) trước khi đo; chờ hoạt ảnh phóng to (CSS) xong.
+    // Hẹn dừng sau 300 ms để không bị "tua về quá khứ" khi máy chạy nặng.
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 300))
     await page.waitForTimeout(1400)
     const rv = await measure(page, T('dish-reveal'), false)
     assert.ok(rv.ok, `${vpName(g.viewport)} bảng công bố món tràn khung: ${JSON.stringify(rv)}`)

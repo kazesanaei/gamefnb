@@ -392,8 +392,9 @@ test('(e2) chạm thẻ gợi ý đúng chỗ nút Xong sắp hiện: bước N�
     await page.waitForSelector(T('board'))
     await openBoardStep(page, 'nem', { keepHint: true })
     await page.waitForSelector(T('step-hint'))
-    // dừng đồng hồ trang để thẻ gợi ý không tự đóng (0,8 giây) trước lần chạm
-    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 10))
+    // dừng đồng hồ trang để thẻ bước không tự chạy (1,1 giây) trước lần chạm; hẹn dừng sau 300 ms để không bị "tua về quá
+    // khứ" khi máy chạy nặng
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 300))
     const p = await page.$eval('.k-stage-wrap', e => { const r = e.getBoundingClientRect(); return { x: r.right - 64, y: r.bottom - 28 } })
     await page.touchscreen.tap(p.x, p.y)
     await page.clock.resume()
@@ -426,9 +427,10 @@ test('(e3) chạm bảng công bố món (đóng ở pointerdown): không giao n
     await page.waitForSelector(T('board'))
     await page.click(T('finish-dish'))
     await page.waitForSelector(T('dish-reveal'))
-    // dừng đồng hồ trang để bảng công bố không tự đóng (1,2 giây) trước lần chạm; chờ hoạt ảnh phóng to của bảng (CSS,
-    // không theo đồng hồ trang) xong để khung bảng đứng yên
-    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 10))
+    // dừng đồng hồ trang để bảng công bố không tự đóng (REVEAL_MS 2,2 giây) trước lần chạm; chờ hoạt ảnh phóng to của bảng
+    // (CSS, không theo đồng hồ trang) xong để khung bảng đứng yên. Hẹn dừng sau 300 ms (không phải 10 ms): khi máy chạy nặng,
+    // giữa lúc đọc giờ trang và lúc gọi pauseAt có thể trôi quá 10 ms, pauseAt báo "không thể tua về quá khứ".
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 300))
     await page.waitForTimeout(1400)
     await g.shot('cong-bo')
     // điểm trên bảng công bố mà ngay dưới (dây phiếu) là nút "Giao cho khách"
