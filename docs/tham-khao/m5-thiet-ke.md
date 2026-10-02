@@ -132,6 +132,14 @@ Luật bắt buộc trong `vfx.js` (unit test cho phần thuần, e2e cho phần
 - **Nhân bản rồi bay**: trước khi trạng thái làm panel vẽ lại (chốt order, lấy tờ tiền, kẹp phiếu), lấy `getBoundingClientRect` cùng `cloneNode` của phần tử nguồn, đưa bản sao vào `vfx.layer` rồi mới cho bay. Panel vẽ lại tự do, không phát lại hoạt ảnh.
 - Thay cho rung trên iOS (không có `navigator.vibrate`): `shake(stage, 1)` cho kết quả xấu khi không giảm chuyển động. Khi giảm chuyển động thì chớp viền đỏ tĩnh.
 
+Quy ước bổ sung sau kiểm chứng Đợt 0 (đã có trong mã `src/ui/vfx.js` và test `tests/unit/vfx.test.mjs`):
+
+1. Hết hạt thì canvas rời khỏi lớp; lúc đứng yên `stats().dom === 0`. Thuộc tính `data-n` của canvas chỉ đọc được khi đang có hạt.
+2. Đích đã rời DOM hoặc đang `display:none` thì mọi hàm hiệu ứng bỏ qua (trả 0, null hoặc false), không nổ ở góc màn.
+3. Trang đang ẩn thì không nhận hiệu ứng mới.
+4. `fly` và `coins` bị `clear()` giữa chừng thì Promise trả `false` (hoặc chỉ đếm số xu đã tới đích).
+5. Nút lạ do module khác chèn vào `vfx.layer` chỉ bị `clear()` gỡ ra, không bao giờ được đưa vào pool để tái dùng.
+
 ### 1.4 Thành phần (Đợt 0 tạo, Đợt 1 và 2 ráp)
 
 ```js
@@ -653,6 +661,8 @@ Tổng khoảng 180 hình.
 ---
 
 ## 9. Chỗ cần người dùng quyết định
+
+**Đã chốt (02/10/2026, sau khi duyệt Phòng mẫu Đợt 0):** người dùng duyệt phong cách mẫu, không yêu cầu chỉnh; **Q1 bật chế độ tập trung khi nấu**; **Q6 màn ra món giữ khoảng 2 giây** (`REVEAL_MS` 2.200, chạm để bỏ qua), `SHEET_MS` giữ 2.000. Các mục còn lại theo đề xuất mặc định: Q2 để M6, Q3 giữ hình món nền + huy hiệu, Q4 thư 0.5.0 không quà, Q5 không dùng mẹo rung iOS, Q7 vùng xanh 0,40–0,70 + sàn giờ, Q8 giữ `mau.html`, Q9 giữ `system-ui` cho chữ thân.
 
 - **Q1. Chế độ tập trung khi nấu:** ẩn dải khách và thanh 4 khâu khi đang nấu ở màn cao dưới 760px. Đề xuất: **bật**.
 - **Q2. `bay` chỉ thay "Thêm đá" ở 2 món cà phê**, không thêm bước mới để giữ nguyên par. Nếu muốn có bước Bày (kẹp nhân, trang trí) cho bánh mì hoặc trà tắc thì phải tăng tổng par (đổi thời gian phục vụ) hoặc cắt par của bước khác. Đề xuất: để M6.
