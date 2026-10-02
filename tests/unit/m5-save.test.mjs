@@ -158,7 +158,7 @@ test('3. retryPending và activeStepId trỏ vào bước vừa đổi loại v�
   const s2 = migrate(plain(b.state), DATA)
   assert.equal(s2.shift.cook.activeStepId, 'ao_bot')
   assert.equal(boardStep(s2, 'ao_bot').type, 'lac')
-  assert.deepEqual(boardStep(s2, 'ao_bot').params, { strokes: 8 })
+  assert.deepEqual(boardStep(s2, 'ao_bot').params, { strokes: 8, maxRatio: 1.2 })
   // bước không còn trên bảng (bản sau bỏ bước) → về null, không kẹt
   const sh = plain(b.state.shift)
   sh.cook.activeStepId = 'buoc_da_bo'

@@ -705,17 +705,36 @@ export async function playStage(g, def, { shots = false } = {}) {
       if (k === 1) await snap('got')
     }
   } else if (def.type === 'lac') {
-    // M5 lắc: giữ bình (rổ) kéo lên xuống ±70px trong một lần chạm, chờ ~1 khung hình giữa các lần đổi chiều
+    // M5 lắc: giữ bình (rổ) kéo lên xuống ±70px trong một lần chạm, chờ ~1 khung hình giữa các lần đổi chiều; dừng kéo ngay
+    // khi đủ data-n lượt (không lắc dư). lac-count có data-ok (bước có params.maxRatio, vd Lắc rổ áo bột năng: trò không tự
+    // xong, quá data-ok lượt là lắc quá tay) → nhấc tay ngay để xong. Không có data-ok → trò tự xong ~220 ms sau lượt thứ
+    // data-n; phòng khi luật xong đổi: chờ tối đa 600 ms, chưa thấy kết quả (con dấu trên sân khấu) mà đã đủ lượt thì nhấc tay.
     const sb = await (await page.$(`${S} ${T('lac-shaker')}`)).boundingBox()
     const n = Number(await page.getAttribute(`${S} ${T('lac-count')}`, 'data-n'))
     const x = sb.x + sb.width / 2, y = sb.y + sb.height / 2
+    const look = () => page.evaluate(sel => {
+      const st = document.querySelector(sel)
+      const c = st && st.querySelector('[data-testid="lac-count"]')
+      return {
+        v: c ? Number(c.dataset.v) || 0 : 0, ok: c && c.dataset.ok !== undefined ? Number(c.dataset.ok) : null,
+        done: !c || st.classList.contains('has-result') || !!st.querySelector('[data-testid="step-result"]')
+      }
+    }, S)
     await page.mouse.move(x, y)
     await page.mouse.down()
-    for (let k = 0; k < n + 2; k++) {
+    let now = await look()
+    for (let k = 0; k < n + 2 && !now.done && now.v < n; k++) {
       await page.mouse.move(x, y + (k % 2 ? -70 : 70), { steps: 5 })
       await page.waitForTimeout(30)
       if (k === 2) await snap('lac')
-      if (!(await page.$(`${S} ${T('lac-count')}`))) break
+      now = await look()
+    }
+    if (now.ok === null) {
+      const end = Date.now() + 600
+      while (!now.done && Date.now() < end) {
+        await page.waitForTimeout(40)
+        now = await look()
+      }
     }
     await page.mouse.up().catch(() => {})
   } else if (def.type === 'bay') {

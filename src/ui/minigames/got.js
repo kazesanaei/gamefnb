@@ -5,7 +5,9 @@
 // sạch một dải: chữ "Sạch vỏ!"; đủ K dải: cả quả đổi sang hình đã gọt, lấp lánh.
 // Nhát vuốt nghiêng, ngược chiều hoặc trượt ra ngoài quả là nhát hụt (−8 mỗi nhát, tối đa −24); nhát hợp lệ vuốt lại chỗ đã
 // gọt (kể cả dải đã sạch) chỉ hiện lời nhắc, không tính hụt. Mọi dải phủ ≥ 85% thì tự xong; bấm Xong để dừng sớm. Chấm:
-// scoreGot (lõi, không đổi); nấu thử (ctx.untimed) không phạt quá giờ.
+// scoreGot (core/minigame-scoring.js): trung bình min(1, phủ/0,85) của K dải × 100 − nhát hụt − 15 nếu quá mốc
+// overtimeAt('got') = max(2 × par, sàn giờ minLimitSec 1,2 × dải + 1 của lõi); nấu thử (ctx.untimed, par = Infinity) không
+// phạt quá giờ.
 // Hợp đồng e2e (giữ nguyên từ bản tạm của gói A): got-fruit; got-band-<i>[data-done = độ phủ 0..1, 2 chữ số; data-lo,
 // data-hi = đoạn cần gọt theo phần chiều cao quả] (dải là CỘT cao bằng quả, thẳng đứng, bị viền elip cắt; vuốt từ mép trên
 // xuống mép dưới boundingBox của dải là phủ trọn); got-count[data-v = số dải xong, data-n = K]; got-done (bật sau nhát đầu).

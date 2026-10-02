@@ -24,14 +24,31 @@
 //  (g) Hồi quy vòng sửa F: chế độ tập trung giữ tới khi màn ra món đóng — thông báo bị hoãn không thả ra đè ruy băng tên món.
 //  (h) Hồi quy vòng sửa F: bước Chọn ở khung thấp (375×553 vùng an toàn, 320×568, món hiếm Tây Ninh thẻ dài) — vừa mở đã
 //      thấy và bấm được ít nhất một hàng kệ (không phải tự vuốt tìm).
+//  (i) Hồi quy vòng sửa G (G1, G2, G6): món nhiều bước nhất (Bánh tráng trộn Tây Ninh 9 bước, Cà phê muối 8 bước) ở 320×568
+//      và 360×600 — hàng chấm bước (.g-dots) không lấn viên đồng hồ [mg-time], chấm hiện tại thấy trọn, chạm vào biểu
+//      tượng đồng hồ và vạch giờ trúng chính viên đồng hồ, viên đồng hồ không tràn khỏi màn.
+//  (j) Hồi quy vòng sửa G (G3): màn ra món của món hiếm tên dài ở 320×568 và 375×553 vùng an toàn — huy hiệu "★ Hiếm"
+//      (.g-reveal-rare) nằm trọn trong bảng ra món và khung nhìn, bấm trúng chính nó, không đè chữ tên; tên không bị cắt "…".
+//  (k) Hồi quy vòng sửa G (G5): thẻ vào bước ở khung thấp 375×553 vùng an toàn, bước Thả đá — câu hướng dẫn đang hiện
+//      (.g-step-card-hint) không bị cắt, ký tự cuối "…bấm Xong." nằm trong khung câu.
+//  (l) Hồi quy D1/E3: Thả đá — thả ở tâm vùng thả thì vùng thả báo data-tier="tam" và bước được 100 điểm; thả ở vành ngoài
+//      (0,85 bán kính) thì data-tier="mep" và 55 điểm — khớp bayTier / bayPlaceScore.
+//  (m) Hồi quy D1/E3: Khuấy — xoay-progress[data-v] làm tròn XUỐNG: vẽ 2,997 vòng (chưa nhấc tay) ghi "2.99" chứ không
+//      "3.00", giữ tay thêm 400 ms (giờ trang) trò vẫn chưa xong; vẽ tiếp đủ vòng thì xong ≥ 90.
+//  (n) Hồi quy vòng sửa F (F1): người chơi cũ — món đã nấu đúng HINT_HIDE_AFTER_COOKS lần (mốc ẩn thẻ) — lần đầu gặp loại
+//      thao tác mới chưa xem hướng dẫn (khuấy, gọt, bày) vẫn thấy thẻ đầy đủ (tay mẫu step-card-demo, nút "Chạm để bắt
+//      đầu"); chạm thì vào trò và ghi đã xem hướng dẫn của loại đó.
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { T, openGame, seedSave, waitSave, resolveIncidentIfShown, cookShiftSave, COOK_OPEN_MS } from './helpers.mjs'
 import { markSeen } from '../../src/core/tour.js'
+import { bayPlaceScore } from '../../src/core/minigame-scoring.js'
 import { DATA } from '../../src/data/index.js'
 import { GESTURE_BY_TYPE, stepProgress } from '../../src/ui/components/step-card.js'
 import { REVEAL_MS, REVEAL_MS_REDUCED } from '../../src/ui/components/dish-reveal.js'
+import { bayTier } from '../../src/ui/minigames/bay.js'
 import { FOCUS_MAX_H } from '../../src/ui/screens/service.js'
+import { HINT_HIDE_AFTER_COOKS, stepCardFull } from '../../src/ui/screens/kitchen.js'
 
 // Mô phỏng iPhone có tai thỏ và thanh Home (vùng an toàn 47/34), iOS cắt phần tử nằm ngoài vùng cuộn.
 const SAFE_CSS = `:root { --safe-top: 47px !important; --safe-bottom: 34px !important; }
@@ -728,6 +745,379 @@ for (const c of [
       assert.ok(m.back && m.back.top >= m.panelTop - 0.5 && m.back.h >= 44 - 0.5 && m.back.w >= 44 - 0.5, `nút "‹ Phiếu" trong khung, vùng chạm ≥ 44px (${JSON.stringify(m.back)})`)
       assert.ok(m.card && m.card.top >= m.panelTop - 0.5, 'thẻ công thức không bị cuộn khuất')
       assert.ok(m.docSW <= m.vw + 1, 'trang không tràn ngang')
+      assert.deepEqual(errors, [], 'có lỗi console/trang')
+    } finally {
+      await g.close()
+    }
+  })
+}
+
+// ---------- (i) Hàng chấm bước không lấn viên đồng hồ ở món nhiều bước nhất (hồi quy vòng sửa G) ----------
+
+// Đo đầu sân khấu: hàng chấm (.g-dots, các .g-dot đang hiện) so với viên đồng hồ [mg-time]; chấm hiện tại thấy trọn trong
+// hộp chấm (hộp có thể cắt phần tràn); tâm biểu tượng đồng hồ và tâm vạch giờ phải trúng chính viên đồng hồ.
+// DOT_GAP: khoảng hở tối thiểu giữa hàng chấm và viên đồng hồ (vòng sáng của chấm hiện tại nhô ra ngoài hộp chấm vài px —
+// bản trước vòng sửa G còn cách 4px là vòng vàng đã chạm đồng hồ; sau sửa cách ≥ 40px ở 320 và 360px).
+const DOT_GAP = 8
+function measureDots() {
+  const st = document.querySelector('[data-testid="minigame-stage"]')
+  const R = e => e.getBoundingClientRect()
+  const box = st.querySelector('.g-dots')
+  const all = [...st.querySelectorAll('.g-dot')]
+  const shown = all.filter(d => { const cs = getComputedStyle(d); return cs.display !== 'none' && cs.visibility !== 'hidden' && R(d).width > 0 })
+  const tm = st.querySelector('[data-testid="mg-time"]')
+  const tR = R(tm), bR = R(box)
+  const last = shown.length ? R(shown[shown.length - 1]) : null
+  const now = st.querySelector('.g-dot.is-now')
+  const nR = now ? R(now) : null
+  const hitsTimer = el => {
+    if (!el) return null
+    const r = R(el)
+    const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+    return !!(at && tm.contains(at))
+  }
+  return {
+    n: all.length, shown: shown.length, vw: innerWidth, head: st.querySelector('.mg-head').className,
+    dotsRight: Math.max(last ? last.right : 0, bR.right), timerLeft: tR.left, timerRight: tR.right,
+    nowIn: !!nR && nR.left >= bR.left - 1 && nR.right <= bR.right + 1,
+    icoHit: hitsTimer(st.querySelector('.g-time-ico')), trackHit: hitsTimer(st.querySelector('.g-time-track'))
+  }
+}
+
+for (const c of [
+  { frame: '320x568', recipeId: 'banh_trang_tron_tay_ninh', stepId: 'tron' },
+  { frame: '320x568', recipeId: 'ca_phe_muoi', stepId: 'danh_sua_muoi' },
+  { frame: '360x600', recipeId: 'banh_trang_tron_tay_ninh', stepId: 'tron' },
+  { frame: '360x600', recipeId: 'ca_phe_muoi', stepId: 'danh_sua_muoi' }
+]) {
+  const N = DATA.RECIPES[c.recipeId].steps.length
+  const f = FRAMES[c.frame]
+  test(`(i) chấm bước ${c.frame}${f.tickets > 1 ? ` ${f.tickets} phiếu` : ''} ${c.recipeId} (${N} bước) .${c.stepId}: hàng chấm không lấn viên đồng hồ, chấm hiện tại thấy trọn, đồng hồ bấm trúng`, { timeout: 180000 }, async () => {
+    const g = await openFrame(c.frame, `m5-cham-buoc-${c.frame}-${c.recipeId}`)
+    const { page, errors } = g
+    try {
+      const { state } = cookShiftSave({ recipeId: c.recipeId }, c.stepId, { tickets: f.tickets, cooks: 5 })
+      // đã xem mọi hướng dẫn: thẻ vào bước chỉ còn ruy băng gọn, vào sân khấu ngay
+      markSeen(state, Object.keys(DATA.TOURS))
+      await openCook(g, state)
+      await tapBoardStep(page, c.stepId)
+      await page.waitForSelector(`${S('xoay')} .mg-foot`)
+      // chờ trò dựng xong (ResizeObserver, tự cuộn cảnh) và nhịp nảy vào của chấm
+      await page.waitForTimeout(600)
+      const m = await page.evaluate(measureDots)
+      await g.shot('cham-buoc')
+      const label = `${c.frame} ${c.recipeId}`
+      assert.equal(m.n, N, `${label}: có đủ ${N} chấm bước (${m.head})`)
+      assert.ok(m.shown >= 1, `${label}: hàng chấm đang hiện`)
+      assert.ok(m.dotsRight + DOT_GAP <= m.timerLeft, `${label}: hàng chấm ${m.dotsRight > m.timerLeft ? 'lấn' : 'sát'} viên đồng hồ (chấm tới ${m.dotsRight.toFixed(1)}, đồng hồ từ ${m.timerLeft.toFixed(1)}, cần cách ≥ ${DOT_GAP}px; ${m.head})`)
+      assert.ok(m.nowIn, `${label}: chấm bước hiện tại bị hộp chấm cắt`)
+      assert.equal(m.icoHit, true, `${label}: tâm biểu tượng đồng hồ không trúng viên đồng hồ`)
+      assert.equal(m.trackHit, true, `${label}: tâm vạch giờ không trúng viên đồng hồ`)
+      assert.ok(m.timerRight <= m.vw + 0.5, `${label}: viên đồng hồ tràn khỏi màn (${m.timerRight.toFixed(1)} > ${m.vw})`)
+      assert.deepEqual(errors, [], 'có lỗi console/trang')
+    } finally {
+      await g.close()
+    }
+  })
+}
+
+// ---------- (j) Huy hiệu "★ Hiếm" của màn ra món nằm trọn trong màn (hồi quy vòng sửa G) ----------
+
+// Đo hàng tên của màn ra món (đã dừng ở trạng thái nghỉ): huy hiệu hiếm so với bảng ra món, khung nhìn và chữ tên.
+function measureRare() {
+  const rv = document.querySelector('[data-testid="dish-reveal"]')
+  const R = e => e.getBoundingClientRect()
+  const vw = innerWidth, vh = innerHeight
+  const rvR = R(rv)
+  const span = rv.querySelector('.g-reveal-title > span')
+  const rare = rv.querySelector('.g-reveal-rare')
+  const out = { name: span.textContent, vw, vh, box: [rvR.left, rvR.right, rvR.top, rvR.bottom], cut: span.scrollWidth > span.clientWidth + 1 }
+  if (!rare) return out
+  const rr = R(rare)
+  const at = document.elementFromPoint(rr.left + rr.width / 2, rr.top + rr.height / 2)
+  // chữ tên: hình bao các dòng chữ, bỏ phần đệm trên (~40% cỡ chữ, chỗ trống trên dấu thanh — hình bao của huy hiệu xoay 7°
+  // to hơn hình thật một chút)
+  const rg = document.createRange()
+  rg.selectNodeContents(span)
+  const fs = parseFloat(getComputedStyle(span).fontSize)
+  const over = [...rg.getClientRects()].some(r => rr.left < r.right && rr.right > r.left && rr.top < r.bottom && rr.bottom > r.top + fs * 0.4)
+  Object.assign(out, {
+    rare: rare.textContent.trim(), rr: [rr.left, rr.right, rr.top, rr.bottom], opacity: getComputedStyle(rare).opacity,
+    inBox: rr.left >= rvR.left - 0.5 && rr.right <= rvR.right + 0.5 && rr.top >= rvR.top - 0.5,
+    inView: rr.left >= -0.5 && rr.right <= vw + 0.5 && rr.top >= -0.5 && rr.bottom <= vh + 0.5,
+    hit: !!(at && rare.contains(at)), overName: over
+  })
+  return out
+}
+
+for (const c of [
+  { frame: '320x568', recipeId: 'banh_trang_tron_tay_ninh' },
+  { frame: '320x568', recipeId: 'tra_tac_mat_ong' },
+  { frame: '375x553', recipeId: 'banh_trang_tron_tay_ninh' }
+]) {
+  const f = FRAMES[c.frame]
+  const name = DATA.RECIPES[c.recipeId].name
+  test(`(j) ra món ${c.frame}${f.safe ? ' vùng an toàn' : ''} món hiếm "${name}": huy hiệu "★ Hiếm" nằm trọn trong màn, bấm trúng, không đè tên; tên không bị cắt`, { timeout: 180000 }, async () => {
+    const g = await openFrame(c.frame, `m5-huy-hieu-hiem-${c.frame}-${c.recipeId}`)
+    const { page, errors } = g
+    try {
+      const { state } = cookShiftSave({ recipeId: c.recipeId }, 'all', { tickets: f.tickets, cooks: 5 })
+      await openCook(g, state)
+      await page.tap(T('finish-dish'))
+      await page.waitForSelector(T('dish-reveal'))
+      // giờ trang chạy tới sau mọi nhịp (huy hiệu ở 300 ms) rồi đứng, bảng không tự đóng (2,2 giây); hoạt ảnh CSS hữu hạn của
+      // bảng (chạy theo giờ thật) cho về trạng thái cuối
+      await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1800)
+      await page.waitForTimeout(400)
+      await page.evaluate(() => {
+        for (const a of document.querySelector('[data-testid="dish-reveal"]').getAnimations({ subtree: true })) {
+          if (a.effect && a.effect.getComputedTiming().iterations !== Infinity) { try { a.finish() } catch { /* bỏ qua */ } }
+        }
+      })
+      await page.waitForTimeout(100)
+      const m = await page.evaluate(measureRare)
+      await g.shot('huy-hieu-hiem')
+      const label = `${c.frame} ${name}`
+      const at = `${label}: huy hiệu (${m.rr && m.rr.map(v => v.toFixed(1)).join(', ')}), bảng (${m.box.map(v => v.toFixed(1)).join(', ')}), khung ${m.vw}×${m.vh}`
+      assert.equal(m.name, name, 'ruy băng ghi đúng tên món')
+      assert.equal(m.cut, false, `${label}: tên món bị cắt "…"`)
+      assert.equal(m.rare, '★ Hiếm', `${label}: có huy hiệu "★ Hiếm"`)
+      assert.equal(m.opacity, '1', `${label}: huy hiệu đã hiện hẳn`)
+      assert.ok(m.inBox, `${at} — nằm trong bảng ra món`)
+      assert.ok(m.inView, `${at} — nằm trọn trong khung nhìn`)
+      assert.ok(m.hit, `${at} — tâm huy hiệu trúng chính huy hiệu (không bị cắt, không bị che)`)
+      assert.equal(m.overName, false, `${at} — huy hiệu đè chữ tên`)
+      assert.deepEqual(errors, [], 'có lỗi console/trang')
+    } finally {
+      await g.close()
+    }
+  })
+}
+
+// ---------- (k) Thẻ vào bước ở khung thấp không cắt mất cuối câu hướng dẫn (hồi quy vòng sửa G) ----------
+
+test('(k) thẻ vào bước 375×553 vùng an toàn, Thả đá (món chưa nấu lần nào): câu hướng dẫn đang hiện không bị cắt, còn đủ "…bấm Xong."', { timeout: 180000 }, async () => {
+  const g = await openFrame('375x553', 'm5-the-buoc-khung-thap')
+  const { page, errors } = g
+  try {
+    const { state } = cookShiftSave({ recipeId: 'ca_phe_sua_da' }, 'them_da', { tickets: 1, cooks: 0 })
+    await openCook(g, state)
+    await tapBoardStep(page, 'them_da')
+    await page.waitForSelector(T('step-hint'))
+    // đứng giờ trang (thẻ không tự vào bước); vài khung hình để thẻ đo câu (fitHint), rồi chờ hoạt ảnh vào của thẻ
+    await freeze(page)
+    await page.clock.runFor(100)
+    await page.waitForTimeout(400)
+    const m = await page.evaluate(() => {
+      const card = document.querySelector('[data-testid="step-hint"]')
+      const p = card.querySelector('.g-step-card-hint')
+      const span = [...p.querySelectorAll('span')].find(s => getComputedStyle(s).display !== 'none') || p
+      const text = span.textContent
+      // ký tự cuối của câu đang hiện phải nằm trong khung câu (line-clamp cắt thì nó rơi xuống dưới đáy khung)
+      const walker = document.createTreeWalker(span, NodeFilter.SHOW_TEXT)
+      let tn = null
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) if (n.textContent.trim()) tn = n
+      const rg = document.createRange()
+      rg.setStart(tn, tn.length - 1)
+      rg.setEnd(tn, tn.length)
+      const lr = rg.getBoundingClientRect(), pr = p.getBoundingClientRect()
+      return {
+        text, cls: p.className, sh: p.scrollHeight, ch: p.clientHeight, sw: p.scrollWidth, cw: p.clientWidth,
+        lastIn: lr.top >= pr.top - 1 && lr.bottom <= pr.bottom + 1 && lr.right <= pr.right + 1,
+        last: [lr.top, lr.bottom], box: [pr.top, pr.bottom], vh: innerHeight, fs: parseFloat(getComputedStyle(p).fontSize)
+      }
+    })
+    await g.shot('the-buoc-khung-thap')
+    const label = `375×553 Thả đá "${m.text}" (${m.cls})`
+    assert.match(m.text, /bấm Xong\.$/, `${label}: câu hướng dẫn đang hiện phải có đủ phần cuối "bấm Xong."`)
+    assert.ok(m.sh <= m.ch + 1 && m.sw <= m.cw + 1, `${label}: câu bị cắt (cao ${m.sh} > ${m.ch} hoặc rộng ${m.sw} > ${m.cw})`)
+    assert.ok(m.lastIn, `${label}: ký tự cuối (${m.last.map(v => v.toFixed(1))}) nằm ngoài khung câu (${m.box.map(v => v.toFixed(1))})`)
+    assert.ok(m.box[0] >= -0.5 && m.box[1] <= m.vh + 0.5, `${label}: câu nằm trong khung nhìn`)
+    assert.ok(m.fs >= 13, `${label}: chữ ${m.fs}px (< 13px)`)
+    assert.deepEqual(errors, [], 'có lỗi console/trang')
+  } finally {
+    await g.close()
+  }
+})
+
+// ---------- (l) Thả đá: hồng tâm khớp điểm (hồi quy D1/E3) ----------
+
+for (const c of [
+  { where: 'tâm', frac: 0, tier: 'tam', score: 100 },
+  { where: 'vành ngoài', frac: 0.85, tier: 'mep', score: 55 }
+]) {
+  test(`(l) Thả đá 390×844 thả ở ${c.where} vùng thả (${c.frac} bán kính): vùng thả data-tier="${c.tier}", bước được ${c.score} điểm — khớp bayTier / bayPlaceScore`, { timeout: 180000 }, async () => {
+    // chính hàm chấm: bậc của chỗ thả và điểm vị trí (hệ số vùng 1)
+    assert.equal(bayTier(c.frac).id, c.tier)
+    assert.equal(bayPlaceScore(c.frac), c.score)
+    const g = await openFrame('390x844', `m5-tha-da-${c.tier}`)
+    const { page, errors } = g
+    try {
+      const { state } = cookShiftSave({ recipeId: 'ca_phe_sua_da' }, 'them_da', { tickets: 1, cooks: 5 })
+      markSeen(state, Object.keys(DATA.TOURS))
+      await openCook(g, state)
+      await tapBoardStep(page, 'them_da')
+      await page.waitForSelector(`${S('bay')} .mg-foot`)
+      await page.waitForTimeout(350)
+      const cdp = await page.context().newCDPSession(page)
+      await freeze(page)
+      await page.clock.runFor(400)
+      const st = S('bay')
+      // vùng thả: tâm và bán kính bằng hộp bay-target (hợp đồng e2e của bay.js)
+      const tgt = await page.$eval(`${st} ${T('bay-target')}`, e => { const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, R: r.width / 2 } })
+      const n = await attrN(page, `${st} ${T('bay-count')}`, 'data-n')
+      const dirs = [[0, 1], [-1, 0]]
+      const tiers = []
+      for (let i = 0; i < n; i++) {
+        // nhấn giữa viên đá (chỗ thả = tâm viên đá = ngón tay), kéo 10 nấc tới chỗ thả, đọc bậc vùng thả lúc còn giữ tay
+        const from = await centerOf(page, `${st} ${T('bay-item-' + i)}`)
+        const [dx, dy] = dirs[i % 2]
+        const to = { x: tgt.x + dx * c.frac * tgt.R, y: tgt.y + dy * c.frac * tgt.R }
+        await touch(cdp, 'touchStart', from)
+        for (let k = 1; k <= 10; k++) {
+          await page.clock.runFor(16)
+          await page.waitForTimeout(12)
+          await touch(cdp, 'touchMove', { x: from.x + ((to.x - from.x) * k) / 10, y: from.y + ((to.y - from.y) * k) / 10 })
+        }
+        await page.clock.runFor(16)
+        await page.waitForTimeout(30)
+        tiers.push(await page.getAttribute(`${st} ${T('bay-target')}`, 'data-tier'))
+        if (i === 0) await g.shot('tha-da-dang-keo')
+        await touch(cdp, 'touchEnd', null)
+        await page.clock.runFor(400)
+        assert.equal(await page.getAttribute(`${st} ${T('bay-item-' + i)}`, 'data-placed'), '1', `viên ${i} đã thả vào ly`)
+      }
+      assert.deepEqual(tiers, Array(n).fill(c.tier), `vùng thả báo bậc ${tiers.join(',')} (cần ${c.tier})`)
+      const d = await centerOf(page, `${st} ${T('bay-done')}:not([disabled])`)
+      await page.touchscreen.tap(d.x, d.y)
+      await page.clock.runFor(600)
+      await page.clock.resume()
+      const r = await stepResult(page, 'them_da')
+      assert.equal(r.score, c.score, `thả ở ${c.where}: bước được ${r.score} điểm (cần ${c.score} = bayPlaceScore(${c.frac}))`)
+      assert.deepEqual(errors, [], 'có lỗi console/trang')
+    } finally {
+      await g.close()
+    }
+  })
+}
+
+// ---------- (m) Khuấy: số vòng làm tròn xuống, chưa đủ vòng thì chưa xong (hồi quy D1/E3) ----------
+
+test('(m) Khuấy 390×844 Cà phê sữa đá: 2,997 vòng ghi xoay-progress[data-v]="2.99" (làm tròn xuống), trò chưa xong; vẽ tiếp đủ vòng thì xong ≥ 90', { timeout: 180000 }, async () => {
+  const g = await openFrame('390x844', 'm5-khuay-lam-tron')
+  const { page, errors } = g
+  try {
+    const { state } = cookShiftSave({ recipeId: 'ca_phe_sua_da' }, 'khuay', { tickets: 1, cooks: 5 })
+    markSeen(state, Object.keys(DATA.TOURS))
+    await openCook(g, state)
+    await tapBoardStep(page, 'khuay')
+    const st = S('xoay')
+    await page.waitForSelector(`${st} .mg-foot`)
+    await page.waitForTimeout(350)
+    const cdp = await page.context().newCDPSession(page)
+    await freeze(page)
+    const c = await centerOf(page, `${st} ${T('xoay-bowl')}`)
+    const n = await attrN(page, `${st} ${T('xoay-progress')}`, 'data-n')
+    const R = c.w * 0.32
+    // điểm trên vòng khuấy ở `turns` vòng tính từ điểm đầu (bên phải tâm), chiều kim đồng hồ trên màn
+    const at = turns => ({ x: c.x + R * Math.cos(turns * 2 * Math.PI), y: c.y + R * Math.sin(turns * 2 * Math.PI) })
+    const short = n - 0.003
+    const pts = []
+    for (let k = 0; k < n * 24; k++) pts.push(at(k / 24))
+    pts.push(at(short))
+    // 28 ms giờ trang mỗi điểm (~1,5 vòng/giây, dưới ngưỡng sánh), không nhấc tay
+    await touch(cdp, 'touchStart', pts[0])
+    for (let i = 1; i < pts.length; i++) {
+      await page.clock.runFor(28)
+      await page.waitForTimeout(12)
+      await touch(cdp, 'touchMove', pts[i])
+    }
+    await page.clock.runFor(28)
+    await page.waitForTimeout(30)
+    const read = () => page.evaluate(s => {
+      const p = document.querySelector(`${s} [data-testid="xoay-progress"]`)
+      return {
+        v: p ? p.dataset.v : null, text: p ? p.textContent : '',
+        bowl: !!document.querySelector(`${s} [data-testid="xoay-bowl"]`),
+        stamp: !!document.querySelector('[data-testid="kitchen"] .k-layer [data-testid="step-result"]')
+      }
+    }, st)
+    const mid = await read()
+    await g.shot('khuay-2-99')
+    assert.equal(mid.v, (n - 0.01).toFixed(2), `${short} vòng: data-v="${mid.v}" (làm tròn xuống phải là ${(n - 0.01).toFixed(2)}, không phải ${n.toFixed(2)})`)
+    assert.ok(Number(mid.v) < n, 'data-v < data-n khi chưa đủ vòng')
+    assert.match(mid.text, new RegExp(`${n - 1}/${n}`), `chữ đếm vòng ghi ${n - 1}/${n} (${mid.text})`)
+    // giữ tay thêm 400 ms giờ trang (nhịp xong 260 ms chỉ chạy khi đủ hẳn n vòng): trò vẫn chưa xong
+    await page.clock.runFor(400)
+    await page.waitForTimeout(30)
+    const still = await read()
+    assert.equal(still.v, mid.v, 'số vòng không đổi khi giữ yên tay')
+    assert.ok(still.bowl && !still.stamp, 'chưa đủ vòng mà trò đã xong (có con dấu kết quả)')
+    // vẽ tiếp tới n + 0,4 vòng rồi nhấc tay: đủ vòng thì tự xong
+    for (let k = 1; k <= 12; k++) {
+      await page.clock.runFor(28)
+      await page.waitForTimeout(12)
+      await touch(cdp, 'touchMove', at(short + (k * (n + 0.4 - short)) / 12))
+    }
+    await page.clock.runFor(28)
+    await touch(cdp, 'touchEnd', null)
+    await page.clock.runFor(600)
+    await page.clock.resume()
+    const r = await stepResult(page, 'khuay')
+    assert.ok(r.score >= 90, `khuấy đủ vòng: ${r.score} điểm`)
+    assert.deepEqual(errors, [], 'có lỗi console/trang')
+  } finally {
+    await g.close()
+  }
+})
+
+// ---------- (n) Người chơi cũ ở mốc ẩn thẻ gặp loại thao tác mới (hồi quy vòng sửa F) ----------
+
+for (const c of [
+  { type: 'xoay', frame: '360x600', line: { recipeId: 'ca_phe_sua_da' }, stepId: 'khuay' },
+  { type: 'got', frame: '320x568', line: { recipeId: 'che_buoi' }, stepId: 'got_vo' },
+  { type: 'bay', frame: '375x553', line: { recipeId: 'ca_phe_muoi' }, stepId: 'them_da' }
+]) {
+  const id = 'bep_' + c.type
+  const f = FRAMES[c.frame]
+  test(`(n) người chơi cũ (món nấu ${HINT_HIDE_AFTER_COOKS} lần) lần đầu gặp ${c.type} ${c.frame}${f.safe ? ' vùng an toàn' : ''}: thẻ đầy đủ (tay mẫu, "Chạm để bắt đầu"), chạm thì vào trò, ghi đã xem ${id}`, { timeout: 180000 }, async () => {
+    const g = await openFrame(c.frame, `m5-nguoi-cu-moc-${c.type}`)
+    const { page, errors } = g
+    try {
+      const { state } = cookShiftSave(c.line, c.stepId, { tickets: f.tickets, cooks: HINT_HIDE_AFTER_COOKS })
+      markSeen(state, Object.keys(DATA.TOURS).filter(t => t !== id))
+      const step = DATA.RECIPES[c.line.recipeId].steps.find(s => s.id === c.stepId)
+      assert.equal(step.type, c.type)
+      assert.equal(state.recipes[c.line.recipeId].cooks, HINT_HIDE_AFTER_COOKS, 'save dựng sẵn: món đã nấu tới mốc ẩn thẻ')
+      assert.notEqual(state.tour.seen[id], true, 'save dựng sẵn: chưa xem hướng dẫn của loại thao tác mới')
+      assert.equal(stepCardFull(step, state, { recipeId: c.line.recipeId }), true, 'lõi: thẻ đầy đủ')
+      await openCook(g, state)
+      await tapBoardStep(page, c.stepId)
+      await page.waitForSelector(T('step-card-go'), { timeout: 1000 })
+      // đứng giờ trang: thẻ không tự vào bước trong lúc đo
+      await freeze(page)
+      await page.waitForTimeout(250)
+      const card = await page.evaluate(() => {
+        const R = e => { const r = e.getBoundingClientRect(); return { w: r.width, h: r.height } }
+        const demo = document.querySelector('[data-testid="step-card-demo"]')
+        const hand = demo && demo.querySelector('.g-demo-hand')
+        const go = document.querySelector('[data-testid="step-card-go"]')
+        return {
+          gesture: demo ? demo.dataset.gesture : null, demo: demo ? R(demo) : null, hand: hand ? R(hand) : null,
+          go: go ? go.textContent.trim() : '', mini: !!document.querySelector('[data-testid="step-card-mini"]')
+        }
+      })
+      await g.shot('nguoi-cu-the-day-du')
+      assert.equal(card.gesture, GESTURE_BY_TYPE[c.type], 'tay mẫu diễn đúng cử chỉ của loại bước')
+      assert.ok(card.demo && card.demo.w > 20 && card.demo.h > 20, `khung tay mẫu đang hiện (${JSON.stringify(card.demo)})`)
+      assert.ok(card.hand && card.hand.w > 10 && card.hand.h > 10, 'có bàn tay mẫu')
+      assert.equal(card.go, 'Chạm để bắt đầu')
+      assert.equal(card.mini, false, 'không phải ruy băng gọn')
+      await page.tap(T('step-card-go'))
+      await page.clock.resume()
+      await page.waitForSelector(`${S(c.type)} .mg-foot`, { timeout: 3000 })
+      const s = await waitSave(page, v => v.tour && v.tour.seen && v.tour.seen[id] === true)
+      assert.equal(s.recipes[c.line.recipeId].cooks, HINT_HIDE_AFTER_COOKS, 'số lần nấu không đổi khi vào bước')
       assert.deepEqual(errors, [], 'có lỗi console/trang')
     } finally {
       await g.close()

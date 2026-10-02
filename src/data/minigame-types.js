@@ -99,9 +99,11 @@ export const MINIGAME_TYPES = deepFreeze({
         name: 'Lắc bình', hint: 'Kéo bình lên xuống thật đều tay cho đủ số lượt lắc.',
         sub: 'Kéo bình lên xuống cho đủ lượt.', count: 'Lượt lắc'
       },
+      // Lắc rổ áo bột năng có maxRatio: không tự xong, lắc đủ lượt rồi nhấc tay (sân khấu ghi số lượt: "Lắc đủ 8 lượt rồi nhấc
+      // tay."); over là lời báo khi lắc quá tay.
       ro: {
-        name: 'Lắc rổ', hint: 'Kéo rổ lên xuống đều tay cho bột năng áo đều từng miếng.',
-        sub: 'Kéo rổ lên xuống cho đủ lượt.', count: 'Lượt lắc', icon: 'bot_nang'
+        name: 'Lắc rổ', hint: 'Kéo rổ lên xuống đều tay cho đủ số lượt rồi nhấc tay, lắc quá tay là bột văng ra ngoài.',
+        sub: 'Lắc đủ lượt rồi nhấc tay.', count: 'Lượt lắc', icon: 'bot_nang', over: 'Lắc quá tay, bột văng!'
       }
     }
   },

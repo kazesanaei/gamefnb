@@ -123,7 +123,8 @@ const CHANGED = {
   },
   che_buoi: {
     got_vo: { type: 'got', params: { strips: 5 } },
-    ao_bot: { type: 'lac', params: { strokes: 8 }, skin: 'ro', label: 'Lắc rổ áo bột năng' }
+    // maxRatio 1,2: lắc quá tay (r > 1,2) bị phạt cùng bậc với chạm tối thiểu cũ; lac.js không tự xong ở K, nhấc tay để xong
+    ao_bot: { type: 'lac', params: { strokes: 8, maxRatio: 1.2 }, skin: 'ro', label: 'Lắc rổ áo bột năng' }
   }
 }
 

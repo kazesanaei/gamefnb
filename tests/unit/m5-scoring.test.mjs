@@ -7,6 +7,11 @@ import {
   DAP_ZONE, scoreDap, scoreXoay, scoreGot, scoreLac, scoreBay, bayPlaceScore, zoneScore, stepLabel,
   MIN_LIMIT, minLimitSec, overtimeAt, lacOverPenalty, scoreChamMin
 } from '../../src/core/minigame-scoring.js'
+import { lacRule, lacZone, lacDoneOn } from '../../src/ui/minigames/lac.js'
+import lacPlugin from '../../src/ui/minigames/lac.js'
+import { RECIPES } from '../../src/data/recipes.js'
+import { MINIGAME_TYPES } from '../../src/data/minigame-types.js'
+import { effectiveSteps } from '../../src/core/kitchen.js'
 
 const ok = s => Number.isInteger(s) && s >= 0 && s <= 100
 const BAD = [NaN, -5, undefined, null, 'abc', {}, [], Infinity]
@@ -303,4 +308,245 @@ test('năm hàm mới luôn trả số nguyên 0..100 (quét ngẫu nhiên tất
     assert.ok(ok(scoreLac({ strokes: Math.floor(r() * 10), target: 6, cv: r(), elapsed: r() * 6, par: 2, mul: 1 })))
     assert.ok(ok(scoreBay({ placed: Array.from({ length: Math.floor(r() * 4) }, () => r() * 1.2), n, mul: 0.8 + r() })))
   }
+})
+
+// ---------- Lắc rổ áo bột năng (maxRatio 1,2): không tự xong ở K, nhấc tay để xong, lắc quá tay bị phạt ----------
+// Bản đầu 0.5.0, lac.js tự xong ngay khi đủ K lượt nên phạt lắc quá tay của lõi không bao giờ dùng tới (người chơi ẩu được
+// Hoàn hảo 100%, sao Chè bưởi +13,8% so với 0.4.1). Nay bước có maxRatio chỉ xong khi nhấc tay (hoặc hết giờ).
+
+test('lacRule / lacZone / lacDoneOn: áo bột (dữ liệu thật, 1–3 phần) không tự xong ở K; nhấc tay ở K..⌊1,2K⌋ = 100; quá 1,2K phạt đúng bậc lacOverPenalty', () => {
+  const ao = RECIPES.che_buoi.steps.find(s => s.id === 'ao_bot')
+  assert.deepEqual({ ...ao.params }, { strokes: 8, maxRatio: 1.2 })
+  for (const qty of [1, 2, 3]) {
+    const st = effectiveSteps(RECIPES.che_buoi, [], null, qty).find(s => s.id === 'ao_bot')
+    const K = st.params.strokes
+    const m = st.params.maxRatio
+    assert.equal(K, 8 * qty, 'số lượt nhân theo số phần')
+    assert.equal(m, 1.2, 'maxRatio là tỉ lệ, không nhân theo số phần')
+    const rule = lacRule(K, m)
+    assert.equal(rule.strict, true)
+    assert.equal(rule.okMax, Math.floor(1.2 * K))
+    assert.ok(rule.barMax >= rule.okMax + 2, 'thanh lượt có chỗ cho vùng quá tay')
+    // từng lượt lắc không bao giờ làm bước xong (kể cả đúng K, vượt K); nhấc tay khi chưa đủ K cũng không xong
+    for (let k = 0; k <= 3 * K; k++) assert.equal(lacDoneOn('stroke', k, rule), false, `×${qty}: lượt ${k} không tự xong`)
+    for (let k = 0; k < K; k++) {
+      assert.equal(lacDoneOn('release', k, rule), false, `×${qty}: nhấc tay ở ${k} < K chưa xong`)
+      assert.equal(lacZone(k, rule), 'thieu')
+    }
+    const elapsed = overtimeAt('lac', K, st.par) - 0.5        // đúng giờ
+    for (let k = K; k <= 3 * K; k++) {
+      assert.equal(lacDoneOn('release', k, rule), true, `×${qty}: nhấc tay ở ${k} ≥ K là xong`)
+      const score = scoreLac({ strokes: k, target: K, cv: 0.2, elapsed, par: st.par, maxRatio: m })
+      if (k <= rule.okMax) {
+        assert.equal(lacZone(k, rule), 'du', `×${qty}: ${k} vừa đủ`)
+        assert.equal(score, 100, `×${qty}: nhấc tay ở ${k} được 100`)
+      } else {
+        assert.equal(lacZone(k, rule), 'qua', `×${qty}: ${k} quá tay`)
+        const pen = lacOverPenalty(k, K, m)
+        assert.ok(pen > 0, `×${qty}: ${k} bị phạt`)
+        assert.equal(score, 100 - pen, `×${qty}: ${k} → 100 − ${pen}`)
+        assert.equal(score, scoreChamMin({ taps: k, N: K }), `×${qty}: ${k} cùng bậc chạm tối thiểu cũ`)
+      }
+    }
+  }
+  // bậc phạt 1 phần (K 8): 8, 9 → 100; 10 → 80; 11, 12 → 55; 13 trở lên → 20
+  const r8 = lacRule(8, 1.2)
+  assert.deepEqual([8, 9, 10, 11, 12, 13, 20].map(k => scoreLac({ strokes: k, target: 8, maxRatio: 1.2 })), [100, 100, 80, 55, 55, 20, 20])
+  assert.deepEqual([7, 8, 9, 10].map(k => lacZone(k, r8)), ['thieu', 'du', 'du', 'qua'])
+})
+
+test('lacRule: Lắc đều trà tắc (không maxRatio) vẫn tự xong khi đủ K lượt, nhấc tay không làm xong; maxRatio lỗi hoặc < 1 coi như không có', () => {
+  for (const rid of ['tra_tac', 'tra_tac_mat_ong']) {
+    const st = RECIPES[rid].steps.find(s => s.id === 'lac')
+    assert.equal(st.params.maxRatio, undefined)
+    const rule = lacRule(st.params.strokes, st.params.maxRatio)
+    const K = st.params.strokes
+    assert.equal(rule.strict, false)
+    assert.equal(lacDoneOn('stroke', K - 1, rule), false)
+    assert.equal(lacDoneOn('stroke', K, rule), true, 'đủ K lượt: tự xong như cũ')
+    assert.equal(lacDoneOn('release', K, rule), false)
+    assert.equal(lacZone(3 * K, rule), 'du', 'lắc dư không phải quá tay')
+  }
+  // cùng điều kiện với lacOverPenalty của lõi: chỉ maxRatio là số hữu hạn ≥ 1 mới bật luật nhấc tay
+  for (const b of [...BAD, 0.5, 0, '1.2x']) {
+    assert.equal(lacRule(8, b).strict, false, String(b))
+    assert.equal(lacOverPenalty(20, 8, b), 0, String(b))
+  }
+  assert.equal(lacRule(8, '1.2').strict, true)
+  assert.equal(lacRule(8, 1).okMax, 8)
+})
+
+// DOM giả tối giản cho sân khấu lac.js (đủ cho h(), svgBox(), buildFrame2, bindPointer; không cần trình duyệt).
+function lacMiniDom() {
+  const kebab = k => String(k).replace(/[A-Z]/g, c => '-' + c.toLowerCase())
+  class N {
+    constructor() { this.parentNode = null; this.childNodes = [] }
+    get children() { return this.childNodes.filter(c => c instanceof E) }
+    get firstChild() { return this.childNodes[0] || null }
+    appendChild(c) { if (c.parentNode) c.parentNode.removeChild(c); this.childNodes.push(c); c.parentNode = this; return c }
+    removeChild(c) { const i = this.childNodes.indexOf(c); if (i >= 0) this.childNodes.splice(i, 1); c.parentNode = null; return c }
+    remove() { if (this.parentNode) this.parentNode.removeChild(this) }
+    append(...ns) { for (const n of ns) this.appendChild(n) }
+    get textContent() { return this.childNodes.map(c => c.textContent).join('') }
+    set textContent(v) { this.childNodes.length = 0; if (v !== '') this.appendChild(new T(v)) }
+  }
+  class T extends N { constructor(s) { super(); this.data = String(s) } get textContent() { return this.data } set textContent(v) { this.data = String(v) } }
+  class E extends N {
+    constructor(tag) {
+      super()
+      const self = this
+      this.tagName = String(tag).toUpperCase()
+      this.attrs = new Map()
+      this.listeners = {}
+      this.hidden = false
+      this.style = { setProperty(k, v) { this[k] = v } }
+      this.dataset = new Proxy({}, {
+        get: (_, k) => self.attrs.get('data-' + kebab(k)),
+        set: (_, k, v) => { self.attrs.set('data-' + kebab(k), String(v)); return true }
+      })
+      const put = s => self.attrs.set('class', [...s].join(' '))
+      this.classList = {
+        add: (...c) => { const s = self.cls(); c.forEach(x => s.add(x)); put(s) },
+        remove: (...c) => { const s = self.cls(); c.forEach(x => s.delete(x)); put(s) },
+        toggle: (c, on) => { const s = self.cls(); const w = on === undefined ? !s.has(c) : !!on; if (w) s.add(c); else s.delete(c); put(s); return w },
+        contains: c => self.cls().has(c)
+      }
+    }
+    cls() { return new Set((this.attrs.get('class') || '').split(/\s+/).filter(Boolean)) }
+    get className() { return this.attrs.get('class') || '' }
+    set className(v) { this.attrs.set('class', String(v)) }
+    setAttribute(k, v) { this.attrs.set(k, String(v)) }
+    getAttribute(k) { return this.attrs.has(k) ? this.attrs.get(k) : null }
+    set innerHTML(v) { this.childNodes.length = 0; this.html = String(v) }
+    addEventListener(t, f) { (this.listeners[t] ||= []).push(f) }
+    removeEventListener(t, f) { this.listeners[t] = (this.listeners[t] || []).filter(x => x !== f) }
+    fire(t, extra = {}) { const e = { type: t, button: 0, pointerId: 1, isPrimary: true, preventDefault() {}, ...extra }; for (const f of [...(this.listeners[t] || [])]) f(e) }
+    matches(sel) { const m = /^\[([\w-]+)="([^"]*)"\]$/.exec(sel); return m ? this.attrs.get(m[1]) === m[2] : false }
+    querySelectorAll(sel) { const out = []; const walk = n => { for (const c of n.children) { if (c.matches(sel)) out.push(c); walk(c) } }; walk(this); return out }
+    querySelector(sel) { return this.querySelectorAll(sel)[0] || null }
+    getBoundingClientRect() { return { left: 0, top: 0, width: 320, height: 420, right: 320, bottom: 420 } }
+  }
+  const doc = {
+    hidden: false,
+    createElement: t => new E(t),
+    createTextNode: s => new T(s),
+    addEventListener() {},
+    removeEventListener() {}
+  }
+  return { doc, Node: N, E }
+}
+
+// Dựng sân khấu Lắc thật (lac.js mount) trên DOM giả, lắc `strokes` lượt trong một lần chạm; trả { stage, settled(), up() }.
+async function withLacStage(step, fn) {
+  const { doc, Node, E } = lacMiniDom()
+  const keep = { document: globalThis.document, Node: globalThis.Node, raf: globalThis.requestAnimationFrame, caf: globalThis.cancelAnimationFrame }
+  const perf = Object.getOwnPropertyDescriptor(globalThis, 'performance')
+  let now = 1000                                       // giờ giả (ms): mỗi điểm kéo cách nhau 60 ms, nhịp lắc đều
+  globalThis.document = doc
+  globalThis.Node = Node
+  globalThis.requestAnimationFrame = () => 1          // vòng khung hình không chạy: hết giờ không xen vào ca thử
+  globalThis.cancelAnimationFrame = () => {}
+  Object.defineProperty(globalThis, 'performance', { value: { now: () => now }, configurable: true, writable: true })
+  try {
+    const stage = new E('div')
+    const game = lacPlugin.mount(stage, step, { data: { MINIGAME_TYPES }, reduced: true })
+    let result
+    game.result.then(r => { result = r })
+    const area = stage.querySelector('[data-testid="lac-area"]')
+    const count = stage.querySelector('[data-testid="lac-count"]')
+    let y = 200
+    let side = 0
+    const go = to => { for (const yy of [y + (to - y) / 2, to]) { now += 60; area.fire('pointermove', { clientX: 160, clientY: yy }) } y = to }
+    const api = {
+      stage, count, bar: stage.querySelector('[data-testid="lac-bar"]'),
+      get result() { return result },
+      // chạm mới: kéo xuống 70px trước (đặt chiều, chưa tính lượt)
+      down() { y = 200; side = 1; area.fire('pointerdown', { clientX: 160, clientY: y }); go(270) },
+      // một lượt = đổi chiều rồi đi 140px (đếm ở lần đổi chiều vượt 24px)
+      shake(n) { for (let i = 0; i < n; i++) { side = -side; go(side > 0 ? 270 : 130) } },
+      up() { area.fire('pointerup', { clientX: 160, clientY: y }) },
+      wait: ms => new Promise(r => setTimeout(r, ms)),
+      destroy() { game.destroy() }
+    }
+    return await fn(api)
+  } finally {
+    for (const [k, v] of [['document', keep.document], ['Node', keep.Node], ['requestAnimationFrame', keep.raf], ['cancelAnimationFrame', keep.caf]]) {
+      if (v === undefined) delete globalThis[k]; else globalThis[k] = v
+    }
+    if (perf) Object.defineProperty(globalThis, 'performance', perf)
+  }
+}
+
+test('sân khấu Lắc áo bột (lac.js, maxRatio 1,2): đủ 8 lượt vẫn chưa xong khi còn giữ tay; nhấc tay ở 8–9 lượt → 100; lắc tới 10 rồi nhấc → 80; nhấc tay trước K thì lắc tiếp được', async () => {
+  const ao = RECIPES.che_buoi.steps.find(s => s.id === 'ao_bot')
+  // nhấc tay đúng lúc 8 lượt, rồi 9 lượt
+  for (const n of [8, 9]) {
+    await withLacStage(ao, async g => {
+      assert.equal(g.stage.querySelector('[data-testid="mg-time"]') !== null, true)
+      g.down()
+      g.shake(n)
+      assert.equal(Number(g.count.dataset.v), n)
+      assert.equal(g.count.dataset.n, '8')
+      assert.equal(g.count.dataset.ok, '9')
+      assert.equal(g.count.dataset.zone, 'du')
+      assert.equal(g.count.textContent, `Nhấc tay! ${n}/8`, 'bộ đếm ghi k/K cả khi vượt K, kèm việc cần làm')
+      await g.wait(300)
+      assert.equal(g.result, undefined, `${n} lượt, còn giữ tay: chưa xong`)
+      g.up()
+      await g.wait(300)
+      assert.ok(g.result, 'nhấc tay: xong')
+      assert.equal(g.result.score, 100)
+      assert.equal(g.result.details.strokes, n)
+      g.destroy()
+    })
+  }
+  // lắc quá tay: 10 lượt (r 1,25) → 80; bộ đếm đỏ, dòng hướng dẫn báo quá tay, có vệt bột văng
+  await withLacStage(ao, async g => {
+    g.down()
+    g.shake(10)
+    assert.equal(g.count.dataset.zone, 'qua')
+    assert.equal(g.count.textContent, 'Quá tay! 10/8')
+    assert.ok(g.count.classList.contains('g-pill--bad'))
+    assert.equal(g.bar.dataset.v, '10')
+    assert.match(g.stage.textContent, /Lắc quá tay, bột văng!/)
+    assert.equal(g.stage.querySelectorAll('[data-testid="lac-area"]')[0].children[0].children.length, 1, 'một vệt bột văng')
+    await g.wait(300)
+    assert.equal(g.result, undefined)
+    g.up()
+    await g.wait(300)
+    assert.equal(g.result.score, 80)
+    g.destroy()
+  })
+  // nhấc tay khi mới 5 lượt: chưa xong, chạm lại lắc tiếp tới 8 rồi nhấc → 100
+  await withLacStage(ao, async g => {
+    assert.match(g.stage.textContent, /Lắc đủ 8 lượt rồi nhấc tay\./)
+    g.down()
+    g.shake(5)
+    assert.equal(g.count.textContent, 'Lượt lắc 5/8')
+    assert.equal(g.count.dataset.zone, 'thieu')
+    g.up()
+    await g.wait(300)
+    assert.equal(g.result, undefined, 'nhấc tay khi chưa đủ: chưa xong')
+    g.down()
+    g.shake(3)
+    assert.equal(Number(g.count.dataset.v), 8)
+    g.up()
+    await g.wait(300)
+    assert.equal(g.result.score, 100)
+    g.destroy()
+  })
+})
+
+test('sân khấu Lắc đều trà tắc (lac.js, không maxRatio): vẫn tự xong ngay khi đủ K lượt, không cần nhấc tay; không có thanh lượt', async () => {
+  const st = RECIPES.tra_tac.steps.find(s => s.id === 'lac')
+  await withLacStage(st, async g => {
+    assert.equal(g.bar, null)
+    assert.equal(g.count.dataset.ok, undefined)
+    g.down()
+    g.shake(st.params.strokes)
+    await g.wait(300)
+    assert.ok(g.result, 'tự xong khi vẫn giữ tay')
+    assert.equal(g.result.score, 100)
+    g.destroy()
+  })
 })

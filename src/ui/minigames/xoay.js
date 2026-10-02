@@ -6,7 +6,9 @@
 // tô làm gợi ý tới khi quay được nửa vòng đầu. Đủ vòng thì tự xong.
 // Quay quá nhanh (> 2,2 × mul vòng/giây, gấp 1,8 lần nếu params.fast) liên tục quá 0,25 s thì sánh ra ngoài (−12 điểm mỗi
 // lần): giọt bắn ra mép tô, tô rung 3px, vệt bẩn đọng trên mặt quầy (giảm chuyển động: không giọt, không rung — chớp viền đỏ
-// tĩnh). Chấm: scoreXoay (core/minigame-scoring.js, không đổi); nấu thử (ctx.untimed) không phạt quá giờ.
+// tĩnh). Chấm: scoreXoay (core/minigame-scoring.js): 100 · min(1, vòng/K) − 12 mỗi lần sánh − 10 nếu nhịp các vòng không đều
+// (cv > 0,45 · mul) − 15 nếu quá mốc overtimeAt('xoay') = max(2 × par, sàn giờ minLimitSec 1,4 × vòng + 1 của lõi); nấu thử
+// (ctx.untimed, par = Infinity) không phạt quá giờ.
 // Hợp đồng e2e (giữ từ bản tạm gói A): xoay-bowl (tâm và bán kính lấy bằng boundingBox; tâm khuấy = tâm hộp); xoay-progress
 // [data-v = số vòng, làm tròn XUỐNG 2 chữ số (data-v = data-n nghĩa là đã đủ vòng), data-n = mục tiêu]; xoay-speed
 // [data-v = vòng/giây, data-max]. Lớp vỏ (step.skin): to | ly | chen → lớp gốc .mg-xoay.skin-<id>, stage[data-skin].

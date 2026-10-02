@@ -356,7 +356,7 @@ MVP có 5 món: `banh_mi_op_la`, `tra_tac` (có sẵn, M1); `banh_trang_tron`, `
 | `dap` (đập trứng) | `n` số quả (nguyên > 0) | `dap_trung` của Bánh mì ốp la, Bánh mì trứng gà ta (`them_trung` vá `n: 3`) | — |
 | `xoay` (khuấy, vẽ vòng) | `turns` số vòng; `fast: true` = ngưỡng văng × 1,8 | `tron` (5 vòng) của 2 món bánh tráng trộn; `khuay` (3 vòng) của 2 món cà phê; `danh_sua_muoi` (6 vòng, fast) | `to`, `ly`, `chen` |
 | `got` (gọt vỏ) | `strips` số dải vỏ | `got_xoai` của 2 món bánh tráng trộn, `got_vo` của Chè bưởi (5 dải) | — |
-| `lac` (lắc lên xuống) | `strokes` số lượt đổi chiều | `lac` của 2 món trà tắc (6 lượt), `ao_bot` của Chè bưởi (8 lượt, nhãn "Lắc rổ áo bột năng") | `binh`, `ro` |
+| `lac` (lắc lên xuống) | `strokes` số lượt đổi chiều; `maxRatio` (tùy chọn, tỉ lệ nên không nhân theo số phần): có thì trò không tự xong mà nhấc tay để xong, quá ⌊`strokes` × `maxRatio`⌋ lượt là lắc quá tay | `lac` của 2 món trà tắc (6 lượt, không `maxRatio`), `ao_bot` của Chè bưởi (8 lượt, `maxRatio` 1,2, nhãn "Lắc rổ áo bột năng") | `binh`, `ro` |
 | `bay` (kéo thả vào đích) | `n` số món cần thả (khay có `max(n + 1, 3)` món) | `them_da` của 2 món cà phê (2 viên, `it_da` vá `n: 1`; nhãn "Thả đá vào ly") | `ly` |
 
 Bước giữ loại cũ: `rua_dua` (cha — lõi nhận bước rửa nhờ `cha` + tiền tố `rua`), `boc_trung_cut` (cha, vì ghi chú vá `spots`), `xe_kho_muc`, `bop_muoi` (cha `strokes`), mọi bước `thai`, `lua`, `rot` và `cham` còn lại (`targets`, `min`, `exact`). Số lượt dùng: dap 2, lac 3, got 3, xoay 5, bay 2.
@@ -634,21 +634,28 @@ export function scoreRot({ level, zone, mul }) → score                        
 export function stepLabel(score, labels?) → 'Hoàn hảo'|'Tốt'|'Đạt'|'Hỏng'
 // bổ sung: thaiCutScore(px, mul), zoneScore(v, zone, mul), TOOL_ZONE_MUL, MASTERY_ZONE_MUL, ASSIST_ZONE_MUL (1,25)
 // M5 (0.5.0): 5 hàm chấm của thao tác mới — số nguyên 0..100, đầu vào lỗi (NaN, âm, rỗng) cho 0, không ra NaN.
-// Mỗi hàm cùng nghĩa với bước nó thay (lac/xoay/got thay cha: giữ "−15 nếu quá 2 × par" và tỉ lệ đủ lượt; bay thay cham exact).
+// Mỗi hàm cùng nghĩa với bước nó thay (lac/xoay/got thay cha: giữ mức trừ 15 vì quá giờ và tỉ lệ đủ lượt, mốc trừ là
+// overtimeAt = max(2 × par, sàn giờ); bay thay cham exact; lac có maxRatio thay cham min — phạt lắc quá tay cùng bậc).
+export const MIN_LIMIT = { dap: n → 1,5·n + 1, xoay: turns → 1,4·turns + 1, got: strips → 1,2·strips + 1,
+                           lac: strokes → 0,4·strokes + 1, bay: n → 1,3·n + 1,5 }   // { key, per, base }: sàn giờ (giây) theo số lượng
+export function minLimitSec(type, params) → giây                            // per × số lượng + base, làm tròn 0,01; loại khác 0
+export function overtimeAt(type, count, par) → giây                         // max(2 · par, minLimitSec); par không dương hữu hạn (nấu thử Infinity) → Infinity
+export function lacOverPenalty(strokes, target, maxRatio) → 0 | 20 | 45 | 80 // r = lượt/K: ≤ m 0; ≤ m + 0,15 20; ≤ m + 0,4 45; còn lại 80 (m lỗi / < 1 → 0)
 export const DAP_ZONE = [0.40, 0.70]                                        // vùng xanh của kim lực (đóng băng)
 export function scoreDap({ cracks: [{ force, split, shell }], n, zone = DAP_ZONE, mul }) → score
    // mỗi quả: đã tách → zoneScore(force, zone, mul); có vỏ rơi vào → tối đa 40; chưa tách → 0. Trung bình n quả (quả dư bỏ)
 export function scoreXoay({ turns, target, spills, cv, elapsed, par, mul }) → score
-   // 100 · min(1, turns/target) − 12 · spills − (cv thời gian mỗi vòng > 0,45 · mul ? 10 : 0) − (elapsed > 2 · par ? 15 : 0); 0 vòng → 0
+   // 100 · min(1, turns/target) − 12 · spills − (cv thời gian mỗi vòng > 0,45 · mul ? 10 : 0) − (elapsed > overtimeAt('xoay', target, par) ? 15 : 0); 0 vòng → 0
 export function scoreGot({ coverage /*[0..1 mỗi dải]*/, target, misses, elapsed, par }) → score
-   // trung bình min(1, phủ / 0,85) · 100 − min(24, 8 · misses) − (quá 2 · par ? 15 : 0); thiếu dải = 0; không có target thì K = số dải
-export function scoreLac({ strokes, target, cv, elapsed, par, mul }) → score
-   // 100 · min(1, strokes/target) − (cv nhịp > 0,6 · mul ? 10 : 0) − (quá 2 · par ? 15 : 0)
+   // trung bình min(1, phủ / 0,85) · 100 − min(24, 8 · misses) − (quá overtimeAt('got', K, par) ? 15 : 0); thiếu dải = 0; không có target thì K = số dải
+export function scoreLac({ strokes, target, cv, elapsed, par, mul, maxRatio }) → score
+   // 100 · min(1, strokes/target) − (cv nhịp > 0,6 · mul ? 10 : 0) − (quá overtimeAt('lac', target, par) ? 15 : 0)
+   //   − lacOverPenalty(strokes, target, maxRatio) (chỉ khi bước có params.maxRatio, vd áo bột 1,2; không có thì lắc dư không phạt)
 export function bayPlaceScore(d, mul) → 100 | 80 | 55 | 20                 // d = khoảng cách tới tâm / bán kính: ≤0,35·m · ≤0,6·m · ≤1 · xa hơn
 export function scoreBay({ placed: [d | { d }], n, mul }) → score
    // trung bình điểm vị trí − 30 · |số đã thả − n|; chưa thả gì → 0
 ```
-Giới hạn giờ của 5 thao tác mới (`ui/minigames/_gesture.js`): `gestureLimitSec(step, { assist, untimed })` = max(2,5 × par, `minLimitSec(type, params)`) — Hỗ trợ thao tác nhân 1,5 cả hai, nấu thử không giới hạn. **Sàn giờ** `minLimitSec`: dap 1,5·n + 1; xoay 1,1·turns + 1; got 1,2·strips + 1; lac 0,4·strokes + 1; bay 1,3·n + 1,5 (giây; loại khác 0). Sàn không đổi par (par quyết định ngân sách chờ của khách), chỉ tránh "thêm trứng"/nhiều phần không kịp làm (bảng số ở `docs/can-bang.md` mục 7.1).
+**Sàn giờ** `MIN_LIMIT`, `minLimitSec(type, params)` nằm ở lõi (`core/minigame-scoring.js`; `ui/minigames/_gesture.js` chỉ xuất lại, một nguồn duy nhất): dap 1,5·n + 1; xoay 1,4·turns + 1 (bản đầu 1,1); got 1,2·strips + 1; lac 0,4·strokes + 1; bay 1,3·n + 1,5 (giây; loại khác 0). Dùng hai chỗ: giới hạn giờ của bước `gestureLimitSec(step, { assist, untimed })` (`ui/minigames/_gesture.js`) = max(2,5 × par, sàn) — Hỗ trợ thao tác nhân 1,5 cả hai, nấu thử không giới hạn; và mốc trừ 15 vì quá giờ `overtimeAt(type, count, par)` = max(2 × par, sàn) mà `scoreXoay`/`scoreGot`/`scoreLac` tự tính từ `target` (nấu thử truyền par = Infinity → không bao giờ trừ). Sàn không đổi par (par quyết định ngân sách chờ của khách), chỉ tránh "thêm trứng"/nhiều phần không kịp làm và tránh trừ oan người làm vừa tay (bảng số ở `docs/can-bang.md` mục 7.1).
 
 `scoring.js`:
 ```js
@@ -902,8 +909,9 @@ trên ngón tay), `vfxOf(ctx)`, `reducedOf(ctx)`, `frameSteps(ctx)`.
 **Đo cử chỉ** `minigames/_gesture.js` (thuần, giây): `cvOf`, `createTurnCounter({cx, cy, minR})` (số vòng không lùi khi đổi
 chiều, `speed()`, `cv()`), `createSpillMeter({max, holdSec 0.25, cooldownSec 0.6})`, `classifySwipe(p0, p1, {axis, tolDeg 35,
 minLen 24, dir})` → `{ok, reason: 'ok'|'ngan'|'nguoc'|'lech', len, dev}`, `bandCoverage`, `mergeSegments`, `createRhythm`,
-`createReversalCounter({threshold 24})`, `NEEDLE_PERIOD` 1,1 s, `needleValue(t)` (kim đi về 0 → 1 → 0), `MIN_LIMIT`,
-`minLimitSec(type, params)`, `gestureLimitSec(step, {assist, untimed})` (mục 10). Test `tests/unit/m5-gesture.test.mjs`.
+`createReversalCounter({threshold 24})`, `NEEDLE_PERIOD` 1,1 s, `needleValue(t)` (kim đi về 0 → 1 → 0), `gestureLimitSec(step,
+{assist, untimed})` (mục 10); `MIN_LIMIT`, `minLimitSec(type, params)` xuất lại từ `core/minigame-scoring.js` (cùng đối tượng, không
+sao chép). Test `tests/unit/m5-gesture.test.mjs`.
 
 **Năm plugin mới** (hợp đồng `mount(stage, step, ctx) → { result, hold(on), destroy() }`; lớp gốc `.mg-<loại>` + `.skin-<id>`,
 `stage[data-skin]`; vùng thao tác `touch-action: none` qua `.k-layer[data-kind="stage"] …` trong CSS; tự cuộn sân khấu để vùng
@@ -920,7 +928,14 @@ chạm nằm trên thanh chân):
   xong. Thuần: `bandRect`, `trimArt`, `dropGround`; `GOT_DONE_AT`, `GOT_SWIPE_MIN`, `PEELER_OFFSET_PX`, `GOT_POSE`.
 - `lac.js` (Lắc, `css/mg-mix.css`): kéo bình/rổ lên xuống; mỗi lần đổi chiều quá 24px là một lượt (`createReversalCounter`);
   không dùng cảm biến chuyển động (iOS bắt xin quyền). Bình nghiêng theo ngón (giữ cả khi giảm chuyển động vì là phản hồi trực
-  tiếp), `shake`, bọt dâng. Đủ lượt tự xong. Thuần: `shakerOverlay`, `basketOverlay`; `LAC_THRESHOLD` 24, `LAC_TRAVEL` 70.
+  tiếp), `shake`, bọt dâng. Bước không có `params.maxRatio` (Lắc đều trà tắc): đủ lượt tự xong. Bước có `maxRatio` (Lắc rổ áo
+  bột năng, 1,2): không tự xong — lắc đủ K lượt rồi nhấc tay mới xong (nhấc tay sớm thì chạm lại lắc tiếp), hoặc hết giờ;
+  dòng hướng dẫn "Lắc đủ K lượt rồi nhấc tay.", bộ đếm ghi k/K cả khi vượt K và đổi chữ theo vùng ("Nhấc tay! 9/8", "Quá tay!
+  10/8", viên xanh / đỏ), thanh lượt `lac-bar` ở thanh chân có vạch K, vùng vừa đủ K..K × maxRatio và vùng quá tay (sọc
+  đỏ); quá tay thì chữ nổi lời của lớp vỏ ("Lắc quá tay, bột văng!"), vệt bột văng tĩnh cạnh rổ, rung nhẹ (giảm chuyển
+  động: không hạt bay, chớp viền đỏ tĩnh). Thuần: `lacRule(K, maxRatio)` → `{ K, strict, maxRatio, okMax, barMax }`,
+  `lacZone(k, rule)` (thieu | du | qua), `lacDoneOn(event, k, rule)`, `shakerOverlay`, `basketOverlay`; `LAC_THRESHOLD` 24,
+  `LAC_TRAVEL` 70, `LAC_BAR_EXTRA` 0,3.
 - `bay.js` (Thả đá, `css/mg-mix.css`): kéo từng viên từ khay (`max(n + 1, 3)` viên, nên "Ít đá" có nghĩa thật) thả vào vòng đích
   trên miệng ly; thả ngoài thì trôi về khay, không phạt; chạm viên đã thả để lấy ra; bấm Xong (bật khi đã thả ≥ 1). Squash, gợn
   nước, `plop`. Thuần: `trayCount(n)`, `cupLevel(f)`, `drinkSvg`; `BAY_ITEM_PX` 52.
@@ -1038,9 +1053,9 @@ game, không nằm trong PRECACHE. Test từ cấm quét cả `mau.html` và `ma
   - Đập trứng: `dap-pan`; `dap-egg` (`data-state` = nguyen|nut|xong, `data-i`); `dap-meter` (`data-a`, `data-b` = vùng xanh đã nhân hệ số); `dap-needle` (`data-v`, lớp `.is-in`); `dap-count` (`data-v`, `data-n`, chữ "Trứng k/n").
   - Khuấy: `xoay-bowl` (tâm và bán kính lấy bằng boundingBox; mặt hỗn hợp ≈ 0,38–0,40 cạnh, bỏ điểm trong 0,06 cạnh quanh tâm), `xoay-progress` (`data-v` số vòng 2 chữ số, `data-n` mục tiêu; chữ "Vòng k/n"), `xoay-speed` (`data-v`, `data-max`).
   - Gọt: `got-fruit`; `got-band-<i>` (`data-done` 0..1, `data-lo`, `data-hi` — dải là cột cao bằng quả); `got-count` (`data-v`, `data-n`); `got-done` (bật sau nhát đầu; không cần bấm, đủ dải tự xong).
-  - Lắc: `lac-area` (vùng kéo), `lac-shaker` (hộp đứng yên, hình bên trong `.lac-move` theo ngón), `lac-count` (`data-v`, `data-n`).
+  - Lắc: `lac-area` (vùng kéo), `lac-shaker` (hộp đứng yên, hình bên trong `.lac-move` theo ngón), `lac-count` (`data-v`, `data-n`; bước có `maxRatio` thêm `data-ok` = ⌊K × maxRatio⌋ và `data-zone` = thieu | du | qua), `lac-bar` (chỉ bước có `maxRatio`: `data-v`, `data-n`, `data-ok`, `data-max`).
   - Thả đá: `bay-target` (vòng đích, `pointer-events: none` — đừng kiểm `elementFromPoint` trên nó), `bay-item-<i>` (`data-placed` 0|1, `role=button`, cạnh 46–52px), `bay-count` (chỉ chứa "k/n", `data-v`, `data-n`; nhãn "Đá" nằm ngoài), `bay-done` (bật khi đã thả ≥ 1; `.is-ready` khi đủ).
-  - Cách giải tự động (helpers e2e): dap — chờ `data-v` của kim gần (a + b)/2, nhấn tâm `dap-egg`, kéo xuống 80px rồi thả, chờ quả kế (`data-i` tăng); xoay — nhấn ở (tâm + 0,32·cạnh), vẽ 24 điểm mỗi vòng, cách 12 ms (≈ 1 vòng/giây), tổng round((n + 0,3)·24) điểm; got — với mỗi dải nhấn (giữa, đỉnh + 2) kéo thẳng tới (giữa, đáy − 2) qua ≥ 4 bước; lac — nhấn giữa `lac-shaker`, kéo ±70px, chờ 24 ms mỗi lần, n + 2 lần; bay — kéo `bay-item-i` (≥ 8 bước) tới tâm `bay-target` lệch ±8px, rồi bấm `bay-done`.
+  - Cách giải tự động (helpers e2e): dap — chờ `data-v` của kim gần (a + b)/2, nhấn tâm `dap-egg`, kéo xuống 80px rồi thả, chờ quả kế (`data-i` tăng); xoay — nhấn ở (tâm + 0,32·cạnh), vẽ 24 điểm mỗi vòng, cách 12 ms (≈ 1 vòng/giây), tổng round((n + 0,3)·24) điểm; got — với mỗi dải nhấn (giữa, đỉnh + 2) kéo thẳng tới (giữa, đáy − 2) qua ≥ 4 bước; lac — nhấn giữa `lac-shaker`, kéo ±70px, chờ 24 ms mỗi lần, tới khi `data-v` ≥ `data-n`; `lac-count` có `data-ok` (bước có `maxRatio`) thì nhấc tay ngay (trò xong sau khoảng 220 ms; kéo quá `data-ok` là lắc quá tay), không có thì trò tự xong; bay — kéo `bay-item-i` (≥ 8 bước) tới tâm `bay-target` lệch ±8px, rồi bấm `bay-done`.
   - Đích của 5 tour thẻ bước (mục 29): `step-card-demo`, `step-card-go`.
 
 ## 15. Hệ thống meta M2 (lõi + dữ liệu)
@@ -1955,11 +1970,14 @@ mục 7.1. Giữ id bước nên `uiRand` (băm theo id bước) và seed của 
   (tránh `grabbed`, `snapAs…`, `tipOs…`); tệp hiển thị cấm thêm từ nội bộ.
 - Mỗi tệp JS/CSS mới phải vào PRECACHE (khớp tuyệt đối với cây thư mục) và CSS mới phải gắn trong `index.html`.
 
-**Ghi nhận khi viết (02/10/2026), chưa sửa trong Đợt 1:**
-- Bước Khuấy ly (`khuay`, par 2, 3 vòng): đồng hồ tính từ lúc dựng sân khấu, nên phải xong trong 4 giây (2 × par) mới không bị
-  trừ 15; bộ giải cảm ứng thử được 85. Cần đo với người chơi trung bình (`docs/can-bang.md` mục 7.1, chỉ số 30).
-- Thẻ bước đầy đủ chỉ hiện khi món nấu dưới 3 lần (`HINT_HIDE_AFTER_COOKS`), nên người chơi cũ đã nấu một món nhiều lần sẽ không
-  thấy tour thẻ bước của thao tác mới ở món đó (chỉ thấy ruy băng gọn). Tour vẫn tự hiện ở món mới mua hoặc món nấu ít.
+**Ghi nhận khi viết (02/10/2026; mục đã sửa ghi rõ "Đã sửa"):**
+- Bước Khuấy ly (`khuay`, par 2, 3 vòng): bản đầu phải xong trong 4 giây (2 × par) mới không bị trừ 15, bộ giải cảm ứng thử được
+  85. **Đã sửa** trong vòng sửa sau kiểm chứng: mốc trừ = `overtimeAt` = max(2 × par, sàn giờ), sàn khuấy 1,4 × vòng + 1, nên
+  Khuấy đều 1 phần chỉ bị trừ khi hết giờ (5,2 giây); bộ giải cảm ứng được 100. Vẫn cần đo với người chơi thật
+  (`docs/can-bang.md` mục 7.1, chỉ số 30).
+- Thẻ bước đầy đủ bản đầu chỉ hiện khi món nấu dưới 3 lần (`HINT_HIDE_AFTER_COOKS`), nên người chơi cũ đã nấu một món nhiều lần
+  không thấy tour thẻ bước của thao tác mới ở món đó. **Đã sửa** (vòng sửa F, `stepCardFull` ở `ui/screens/kitchen.js`): món đã
+  nấu từ 3 lần mà gặp loại thao tác mới chưa xem hướng dẫn (`bep_<loại>`) vẫn hiện thẻ đầy đủ; nấu thử thì không.
 - Màn rất thấp 375×553 có vùng an toàn: dù đã tập trung, panel nấu chỉ khoảng 300px; Thớt phải cuộn khi có từ 2 trạm nguyên
   liệu; bong bóng tour bước "Kệ và bẫy" đè nửa trên kệ (kệ cao hơn chỗ trống, tour vẫn trọn trong khung).
 - `art.js` vẫn giữ kiểu cũ cho các icon chỉ có ở bộ cũ (sự kiện, thư, rương, món tương lai) — Đợt 3 (gói hình meta) vẽ lại.

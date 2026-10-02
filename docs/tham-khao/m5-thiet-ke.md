@@ -168,14 +168,14 @@ Câu phản ứng của Dì Sáu tự viết, mỗi hạng 3–5 câu. Ví dụ 
 
 Mọi plugin theo đúng hợp đồng `mount(stage, step, ctx) → { result, destroy, hold? }`, import trong Node không chạm DOM. Giới hạn giờ là `max(stepLimitSec(par, assist), minLimitSec(type, params) × (assist ? 1,5 : 1))`. Nấu thử thì không giới hạn.
 
-`minLimitSec` là **sàn thời gian theo số lượng**. Nó không đổi par (par quyết định ngân sách chờ của khách), chỉ tránh trường hợp "thêm trứng" hay số phần lớn không thể làm kịp.
+`minLimitSec` là **sàn thời gian theo số lượng** (bảng `MIN_LIMIT` và hàm nằm ở `src/core/minigame-scoring.js`, `_gesture.js` xuất lại). Nó không đổi par (par quyết định ngân sách chờ của khách), chỉ tránh trường hợp "thêm trứng" hay số phần lớn không thể làm kịp. Sau vòng kiểm chứng Đợt 1, sàn còn là mốc dưới của luật trừ quá giờ: `overtimeAt(type, số lượng, par)` = max(2·par, sàn), để người làm vừa tay không bị trừ oan.
 
 | Loại | Cử chỉ | data-testid / data-* cho e2e | Phản hồi tức thì | Sàn giờ |
 |---|---|---|---|---|
 | `dap` | Hai nhịp mỗi quả. (1) Chạm quả trứng khi kim thước lực (chạy đi về, chu kỳ 1,1 s) nằm trong vùng xanh thì trứng nứt. (2) Vuốt xuống ±35°×mul để tách. Chạm thay vì vuốt, hoặc lực quá mạnh, thì vỏ rơi vào chảo. | `dap-pan`; `dap-egg` (`data-state=nguyen\|nut\|xong`); `dap-meter` (`data-a`, `data-b`); `dap-needle` (`data-v`); `dap-count`. Đủ n quả thì tự xong. | Vết nứt, tiếng `crack`, trứng rung 3px. Lòng đỏ rơi có squash, 6–10 giọt dầu, tiếng `sizzle`. Vỏ rơi thì hiện nhãn "Có vỏ!". | 1,5·n + 1 s |
-| `xoay` | Vẽ vòng quanh tâm tô hoặc ly, chiều nào cũng được. Quá nhanh (> 2,2·mul vòng/s, gấp 1,8 lần nếu `fast`) quá 0,25 s thì sánh ra ngoài. | `xoay-bowl` (lấy tâm và bán kính bằng boundingBox); `xoay-progress` (`data-v` số vòng, `data-n` mục tiêu); `xoay-speed` (`data-v`, `data-max`). Đủ vòng thì tự xong. | Vệt xoáy mờ theo ngón, màu hòa dần (opacity của lớp phủ màu), tiếng `stir` mỗi nửa vòng. Sánh ra thì giọt bắn và tô rung. | 1,1·turns + 1 s |
+| `xoay` | Vẽ vòng quanh tâm tô hoặc ly, chiều nào cũng được. Quá nhanh (> 2,2·mul vòng/s, gấp 1,8 lần nếu `fast`) quá 0,25 s thì sánh ra ngoài. | `xoay-bowl` (lấy tâm và bán kính bằng boundingBox); `xoay-progress` (`data-v` số vòng, `data-n` mục tiêu); `xoay-speed` (`data-v`, `data-max`). Đủ vòng thì tự xong. | Vệt xoáy mờ theo ngón, màu hòa dần (opacity của lớp phủ màu), tiếng `stir` mỗi nửa vòng. Sánh ra thì giọt bắn và tô rung. | 1,4·turns + 1 s (bản đầu 1,1) |
 | `got` | Vuốt dọc từ trên xuống theo từng dải vỏ (K dải trên quả to), sai lệch ±35°×mul (tối đa 50°). Độ phủ mỗi dải là phần hợp của các nhát vuốt. | `got-fruit`; `got-band-i` (`data-done` 0..1); `got-count`; `got-done`. | Dải vỏ cuộn rơi, tiếng `peel`, dải đã gọt đổi màu ruột. | 1,2·strips + 1 s |
-| `lac` | Kéo bình hoặc rổ lên xuống. Bộ đếm đổi chiều theo trục Y, ngưỡng 24px (`createReversalCounter`). Không dùng cảm biến chuyển động vì iOS bắt xin quyền. | `lac-area`; `lac-shaker`; `lac-count` (`data-v`, `data-n`). Đủ lượt thì tự xong. | Bình nghiêng theo ngón (phản hồi trực tiếp nên giữ cả khi giảm chuyển động), tiếng `shake` của đá, bọt dâng. | 0,4·strokes + 1 s |
+| `lac` | Kéo bình hoặc rổ lên xuống. Bộ đếm đổi chiều theo trục Y, ngưỡng 24px (`createReversalCounter`). Không dùng cảm biến chuyển động vì iOS bắt xin quyền. | `lac-area`; `lac-shaker`; `lac-count` (`data-v`, `data-n`; có `maxRatio` thêm `data-ok`, `data-zone`); `lac-bar` (chỉ khi có `maxRatio`). Không có `params.maxRatio`: đủ lượt thì tự xong. Có `maxRatio` (áo bột 1,2): không tự xong, lắc đủ rồi nhấc tay mới xong, quá ⌊K·maxRatio⌋ lượt là lắc quá tay. | Bình nghiêng theo ngón (phản hồi trực tiếp nên giữ cả khi giảm chuyển động), tiếng `shake` của đá, bọt dâng. | 0,4·strokes + 1 s |
 | `bay` | Kéo từng món (viên đá) từ khay thả vào vùng đích. Khay có `max(n+1, 3)` món nên ghi chú "Ít đá" có ý nghĩa thật. Chạm món đã thả để lấy ra. Bấm Xong. | `bay-target`; `bay-item-i`; `bay-count` ("1/2"); `bay-done` (bật sau khi thả ≥1). | Squash 0,88→1, gợn nước, tiếng `plop`. Thả ngoài vùng thì món trôi về khay, không phạt. | 1,3·n + 1,5 s |
 
 Hàm chấm mới trong `src/core/minigame-scoring.js` (thuần, 0–100, ra hạng theo `stepLabels`: ≥90 Hoàn hảo, ≥70 Tốt, ≥50 Đạt):
@@ -185,23 +185,27 @@ export const DAP_ZONE = Object.freeze([0.40, 0.70])
 // Đập trứng: mỗi quả = zoneScore(lực, vùng xanh, mul) nếu đã tách; vỏ rơi thì tối đa 40; quả chưa đập = 0.
 // Điểm = trung bình n quả.
 export function scoreDap({ cracks = [], n = 1, zone = DAP_ZONE, mul = 1 })
-// Khuấy: 100·min(1, vòng/K) − 12·số lần sánh − (cv thời gian mỗi vòng > 0,45·mul ? 10 : 0) − (quá 2·par ? 15 : 0)
+// Mốc trừ quá giờ (sau vòng kiểm chứng): overtimeAt(type, K, par) = max(2·par, sàn giờ của loại với số lượng K); nấu thử par = Infinity → không trừ
+// Khuấy: 100·min(1, vòng/K) − 12·số lần sánh − (cv thời gian mỗi vòng > 0,45·mul ? 10 : 0) − (quá overtimeAt ? 15 : 0)
 export function scoreXoay({ turns = 0, target = 1, spills = 0, cv = 0, elapsed = 0, par = 0, mul = 1 })
-// Gọt: trung bình min(1, phủ/0,85) của K dải × 100 − min(24, 8·nhát hụt) − (quá 2·par ? 15 : 0)
+// Gọt: trung bình min(1, phủ/0,85) của K dải × 100 − min(24, 8·nhát hụt) − (quá overtimeAt ? 15 : 0)
 export function scoreGot({ coverage = [], target, misses = 0, elapsed = 0, par = 0 })
-// Lắc: 100·min(1, lượt/K) − (cv nhịp > 0,6·mul ? 10 : 0) − (quá 2·par ? 15 : 0)   (cùng nghĩa với cha strokes cũ)
-export function scoreLac({ strokes = 0, target = 1, cv = 0, elapsed = 0, par = 0, mul = 1 })
+// Lắc: 100·min(1, lượt/K) − (cv nhịp > 0,6·mul ? 10 : 0) − (quá overtimeAt ? 15 : 0)   (cùng nghĩa với cha strokes cũ)
+//   − lacOverPenalty(lượt, K, maxRatio) khi bước có maxRatio m: r = lượt/K ≤ m → 0; ≤ m + 0,15 → 20; ≤ m + 0,4 → 45; hơn → 80
+//   (áo bột m = 1,2: cùng bậc 100/80/55/20 với cham min cũ; không có maxRatio thì lắc dư không phạt)
+export function scoreLac({ strokes = 0, target = 1, cv = 0, elapsed = 0, par = 0, mul = 1, maxRatio })
 // Bày: trung bình điểm vị trí (d = khoảng cách tới tâm / bán kính: ≤0,35·m → 100, ≤0,6·m → 80, ≤1 → 55)
 // − 30·|số đã thả − n|; chưa thả gì = 0                                      (cùng nghĩa với cham exact cũ)
 export function scoreBay({ placed = [], n = 1, mul = 1 })
 ```
 
 Mỗi hàm mới được chọn để **cùng nghĩa với bước nó thay thế**:
-- `lac`, `xoay`, `got` thay `cha`, nên giữ luật "−15 nếu quá 2·par" và tỉ lệ đủ lượt.
+- `lac`, `xoay`, `got` thay `cha`, nên giữ mức trừ 15 vì quá giờ và tỉ lệ đủ lượt. Mốc trừ ban đầu là 2·par; sau vòng kiểm chứng đổi thành max(2·par, sàn giờ) vì thao tác mới chậm hơn bước chà nó thay mà par bị khóa (Khuấy đều 3 vòng par 2 từng bị trừ 41% số lượt ở người chơi trung bình).
+- Lắc rổ áo bột năng thay `cham min` (`N 8`): giữ phạt chạm quá nhiều bằng `maxRatio` 1,2, và `lac.js` không tự xong ở K lượt (nhấc tay để xong) để phạt này dùng được.
 - `bay` thay `cham exact` (đạp −30 cho mỗi lần lệch số lượng).
 - Chỉ `dap` khó hơn bước cũ (thêm nhịp canh lực). Phần này giảm bằng vùng rộng và sàn giờ (quyết định Q7).
 
-`src/ui/minigames/_gesture.js` chứa hàm thuần: `createTurnCounter({cx,cy,minR})` (tháo vòng góc, trả về số vòng, tốc độ, cv), `classifySwipe(p0,p1,{axis,tolDeg,minLen})`, `bandCoverage(segments,y0,y1)`, `createRhythm()`, `needleValue(t,period)`, `minLimitSec(type,params)`. Có test `tests/unit/m5-gesture.test.mjs`.
+`src/ui/minigames/_gesture.js` chứa hàm thuần: `createTurnCounter({cx,cy,minR})` (tháo vòng góc, trả về số vòng, tốc độ, cv), `classifySwipe(p0,p1,{axis,tolDeg,minLen})`, `bandCoverage(segments,y0,y1)`, `createRhythm()`, `needleValue(t,period)`, `gestureLimitSec(step,{assist,untimed})`; `minLimitSec(type,params)` và `MIN_LIMIT` xuất lại từ lõi. Có test `tests/unit/m5-gesture.test.mjs`.
 
 ### 1.6 Dữ liệu công thức: chỉ đổi `type` và `params`, giữ id, par, w, critical
 
@@ -216,7 +220,7 @@ Mỗi hàm mới được chọn để **cùng nghĩa với bước nó thay th�
 | ca_phe_sua_da, ca_phe_muoi | khuay | cha `{strokes:6}` | **xoay** | `{ turns: 3 }`, `skin: 'ly'` |
 | ca_phe_muoi | danh_sua_muoi | cha `{strokes:8}` | **xoay** | `{ turns: 6, fast: true }`, `skin: 'chen'` |
 | che_buoi | got_vo | cha `{spots:5}` | **got** | `{ strips: 5 }` |
-| che_buoi | ao_bot | cham min `{N:8,T:3.5}` | **lac** | `{ strokes: 8 }`, `skin: 'ro'`, nhãn "Lắc rổ áo bột năng" |
+| che_buoi | ao_bot | cham min `{N:8,T:3.5}` | **lac** | `{ strokes: 8, maxRatio: 1.2 }` (maxRatio thêm sau vòng kiểm chứng), `skin: 'ro'`, nhãn "Lắc rổ áo bột năng" |
 
 Các bước giữ nguyên loại:
 - `rua_dua`: cha. `core/kitchen.js:517` nhận ra bước rửa nhờ `cha` + tiền tố `rua`.

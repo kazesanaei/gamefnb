@@ -172,7 +172,7 @@ export const RECIPES = deepFreeze({
       { id: 'bop_muoi', type: 'cha', label: 'Bóp muối, xả cho hết đắng', ing: 'muoi', after: ['thai_cui'],
         params: { strokes: 6 }, par: 3, w: 1 },
       { id: 'ao_bot', type: 'lac', skin: 'ro', label: 'Lắc rổ áo bột năng', ing: 'bot_nang', after: ['bop_muoi'],
-        params: { strokes: 8 }, par: 4, w: 2 },
+        params: { strokes: 8, maxRatio: 1.2 }, par: 4, w: 2 },
       { id: 'luoc', type: 'lua', skin: 'noi', label: 'Luộc tới khi trong', ing: 'bot_nang', after: ['ao_bot'], critical: true,
         params: { period: 5, zone: [0.55, 0.75] }, par: 5, w: 3, retryCost: 3000 },
       { id: 'rot_cot_dua', type: 'rot', skin: 'to', label: 'Rưới nước cốt dừa', ing: 'cot_dua',
