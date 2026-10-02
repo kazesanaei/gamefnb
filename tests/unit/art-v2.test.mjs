@@ -518,3 +518,87 @@ test('art-v2 đồ khô: hàng hiếm có sao #ffd23f (cả khô mực xé), hà
     assert.equal(s.includes('#ffd23f'), !!INGREDIENTS[k.split('.')[0]].rare, `${k}: sao theo hàng hiếm`)
   }
 })
+
+// ---------- Đợt 1, gói D1: món và dụng cụ (src/ui/art/mon.js, src/ui/art/tools.js) ----------
+const D1_MON = ['mon_banh_mi_op_la', 'mon_tra_tac', 'mon_banh_trang_tron', 'mon_ca_phe_sua_da', 'mon_che_buoi']
+// Id dụng cụ của bộ hình cũ (art.js TOOLS): game, nâng cấp, mini-game và màn meta đang dùng; phải giữ đủ.
+const D1_LEGACY_TOOLS = ['sua_muoi', 'dao_thep', 'chao_chong_dinh', 'ghe_nhua', 'may_tinh', 'loa_bao_tien', 'muong_vang', 'thot', 'ro', 'sao']
+// Biểu tượng thao tác mới (thiết kế mục 1.6): loại bước → icon.
+const D1_ACTION = { xoay: 'muong_khuay', got: 'dao_bao', lac: 'binh_lac', bay: 'khay_bay' }
+const D1_TOOLS = [...D1_LEGACY_TOOLS, ...Object.values(D1_ACTION)]
+
+test('art-v2 món/dụng cụ: đủ 5 món, 14 dụng cụ; giữ mọi id cũ; có trong ICONS_V2; không hình nào trùng', () => {
+  assert.deepEqual(Object.keys(MON).sort(), [...D1_MON].sort())
+  assert.deepEqual(Object.keys(TOOLS).sort(), [...D1_TOOLS].sort())
+  for (const id of D1_LEGACY_TOOLS) assert.ok(ICONS[id], `${id} là id của bộ hình cũ`)
+  for (const id of D1_MON) assert.ok(ICONS[id], `${id} là id món của bộ hình cũ`)
+  for (const [id, s] of [...Object.entries(MON), ...Object.entries(TOOLS)]) {
+    assert.equal(ICONS_V2[id], s, `${id} có trong ICONS_V2`)
+    assert.equal(artV2(id), s)
+  }
+  const all = [...Object.values(MON), ...Object.values(TOOLS)]
+  assert.equal(new Set(all).size, all.length, 'không có hai hình món/dụng cụ trùng chuỗi SVG')
+  // Vẽ lại theo phong cách mới: không hình nào còn là chuỗi SVG cũ.
+  for (const id of [...D1_MON, ...D1_LEGACY_TOOLS]) assert.notEqual(ICONS_V2[id], ICONS[id], `${id}: phải là hình mới`)
+})
+
+test('art-v2 món/dụng cụ: đúng quy tắc vẽ (viewBox 64, ≤ 3,5 KB, viền mực 3, bóng đất, điểm sáng, không chữ, không phần tử cấm)', () => {
+  for (const [id, s] of [...Object.entries(MON), ...Object.entries(TOOLS)]) {
+    assert.ok(s.startsWith('<svg') && s.endsWith('</svg>') && s.includes('viewBox="0 0 64 64"'), `${id}: khung svg 64`)
+    assert.ok(Buffer.byteLength(s) <= ICON_MAX, `${id}: ${Buffer.byteLength(s)} B > ${ICON_MAX} B`)
+    assert.ok(!/url\(|href|<use\b|<image\b|base64|gradient|<filter\b|filter=|clip-?path|<mask\b|mask=|<pattern\b|<text\b/i.test(s), `${id}: phần tử cấm (kể cả chữ)`)
+    assert.ok(!/undefined|NaN|null|Infinity|\[object/.test(s), `${id}: giá trị lỗi`)
+    assert.ok(s.includes(`stroke="${kit.INK}" stroke-width="3"`), `${id}: viền mực dày 3`)
+    const g = s.match(/<ellipse cx="[\d.]+" cy="([\d.]+)" rx="[\d.]+" ry="[\d.]+" fill="#3a2618" opacity="\.15" stroke="none"\/>/)
+    assert.ok(g && +g[1] >= 55 && +g[1] <= 60, `${id}: bóng đất ở y≈58`)
+    assert.ok(/fill="#fff" opacity="\.\d"|stroke="#fff"/.test(s), `${id}: điểm sáng trắng`)
+    // Nét chi tiết bên trong không dày quá viền ngoài (trừ nét ống có viền: cán muỗng, ống hút, sợi xoài…).
+    for (const m of s.matchAll(/stroke-width="([\d.]+)"/g)) assert.ok(+m[1] <= 7, `${id}: nét ${m[1]} quá dày`)
+  }
+})
+
+test('art-v2 món: món hiếm dùng hình món nền (không vẽ riêng, không sao trên hình); mỗi món có nét nhận diện riêng', async () => {
+  const { RECIPES } = await import('../../src/data/recipes.js')
+  const used = new Set()
+  for (const r of Object.values(RECIPES)) {
+    assert.ok(MON[r.icon], `${r.id}: món có hình mới ${r.icon}`)
+    assert.equal(artV2(r.icon), MON[r.icon])
+    if (r.baseRecipe) assert.equal(artV2(r.icon), MON[RECIPES[r.baseRecipe].icon], `${r.id}: món hiếm dùng hình món nền`)
+    used.add(r.icon)
+  }
+  assert.deepEqual([...used].sort(), [...D1_MON].sort(), 'mỗi hình món đều có món dùng')
+  // Huy hiệu ★ "Hiếm" do thành phần hiển thị vẽ; hình món không tự mang sao vàng của hàng hiếm.
+  for (const id of D1_MON) assert.ok(!MON[id].includes('#ffd23f'), `${id}: không có sao hàng hiếm`)
+  // Nét nhận diện: bánh tráng trộn có trứng cút lòng đỏ, lá rau răm, sợi xoài; cà phê sữa đá có đá, lớp cà phê và lớp sữa;
+  // chè bưởi trong chén sứ viền lam, có đậu xanh; trà tắc giữ ống hút đỏ. Bốn món khác hẳn nhau về màu chủ đạo.
+  const M = MON
+  assert.ok(M.mon_banh_trang_tron.includes('#f6b21a') && M.mon_banh_trang_tron.includes(kit.PAL.la[0]) && M.mon_banh_trang_tron.includes('#cbe27a'))
+  assert.ok(M.mon_ca_phe_sua_da.includes(kit.PAL.da_lanh[0]) && M.mon_ca_phe_sua_da.includes('#6e3d20') && M.mon_ca_phe_sua_da.includes('#f6e3b8'))
+  assert.ok(M.mon_che_buoi.includes(kit.PAL.xanh_nhan[0]) && M.mon_che_buoi.includes('#f6cf52') && M.mon_che_buoi.includes(kit.PAL.dia[0]))
+  assert.ok(M.mon_tra_tac.includes(kit.PAL.do[0]) && M.mon_tra_tac.includes(kit.PAL.tra[0]))
+  assert.ok(!M.mon_ca_phe_sua_da.includes(kit.PAL.tra[0]), 'cà phê không lẫn màu trà tắc')
+  assert.ok(M.mon_banh_mi_op_la.includes('var(--yolk,#f6b21a)'), 'bánh mì ốp la giữ lòng đỏ --yolk (món trứng gà ta chỉ đặt --yolk)')
+})
+
+test('art-v2 dụng cụ: phủ mọi icon nâng cấp, bước, mini-game thuộc bộ dụng cụ; đủ biểu tượng 4 thao tác mới', async () => {
+  const { UPGRADES } = await import('../../src/data/upgrades.js')
+  const { MINIGAME_TYPES } = await import('../../src/data/minigame-types.js')
+  const { RECIPES } = await import('../../src/data/recipes.js')
+  for (const u of Object.values(UPGRADES)) assert.ok(TOOLS[u.icon], `nâng cấp ${u.id}: thiếu hình mới ${u.icon}`)
+  const legacy = new Set(D1_LEGACY_TOOLS)
+  for (const [t, m] of Object.entries(MINIGAME_TYPES)) {
+    if (legacy.has(m.icon)) assert.ok(TOOLS[m.icon], `mini-game ${t}: ${m.icon}`)
+    for (const sk of Object.values(m.skins || {})) if (legacy.has(sk.icon)) assert.ok(TOOLS[sk.icon], `lớp vỏ ${t}: ${sk.icon}`)
+  }
+  for (const r of Object.values(RECIPES)) for (const st of r.steps || []) if (legacy.has(st.icon)) assert.ok(TOOLS[st.icon], `${r.id}/${st.id}: ${st.icon}`)
+  for (const [type, id] of Object.entries(D1_ACTION)) {
+    assert.ok(MINIGAME_TYPES[type], `loại thao tác ${type} có trong dữ liệu`)
+    assert.ok(TOOLS[id], `biểu tượng thao tác ${type}: ${id}`)
+  }
+  // Muỗng Vàng là đơn vị thưởng (hiện ở viên 24px): muỗng vàng, không dùng màu thép.
+  assert.ok(!TOOLS.muong_vang.includes(kit.PAL.thep[0]), 'Muỗng Vàng không dùng màu thép')
+  // Biểu tượng thao tác khác hình dụng cụ gần nghĩa: dao bào khác dao thép, muỗng khuấy khác Muỗng Vàng, khay bày khác rổ.
+  for (const [a, b] of [['dao_bao', 'dao_thep'], ['muong_khuay', 'muong_vang'], ['khay_bay', 'ro'], ['binh_lac', 'sua_muoi']]) {
+    assert.notEqual(TOOLS[a], TOOLS[b], `${a} / ${b}`)
+  }
+})
