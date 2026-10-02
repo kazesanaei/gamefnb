@@ -1,6 +1,6 @@
 // Chạy thử khâu Bếp trên trang game thật (không nằm trong bộ e2e chính: tên không có đuôi .e2e.mjs).
-// Tạo sẵn save có ca đang chạy + phiếu bếp bằng lõi (Node), nạp vào localStorage, rồi chơi đủ 6 mini-game
-// bằng Chromium 390×844 (hasTouch), chụp ảnh từng bước.
+// Tạo sẵn save có ca đang chạy + phiếu bếp bằng lõi (Node), nạp vào localStorage, rồi chơi mọi mini-game của các phiếu
+// (6 loại cũ + 5 thao tác M5: đập trứng, khuấy, gọt, lắc, bày) bằng Chromium 390×844 (hasTouch), chụp ảnh từng bước.
 // Chạy: SHOT_DIR=/đường/dẫn node tests/e2e/_kitchen-smoke.mjs
 import { createRequire } from 'node:module'
 import { mkdirSync } from 'node:fs'
@@ -14,6 +14,7 @@ import { saveTo, SAVE_KEY } from '../../src/core/save.js'
 import { requiredIngredients } from '../../src/core/scoring.js'
 import { counterStep } from '../helpers/perfect-player.mjs'
 import { startServer } from '../helpers/static-server.mjs'
+import { playStage as playStageM5 } from './helpers.mjs'
 
 const require = createRequire(import.meta.url)
 function loadPlaywright() {
@@ -238,10 +239,10 @@ async function scenarioAdvanced(browser, srv) {
   await page.waitForSelector('.k-layer', { state: 'hidden', timeout: 15000 })
   const thaiSt = await page.textContent(T('board-step-thai_dua') + ' .k-step-st')
   assert.match(thaiSt, /85/, 'sai cách phải trừ 15: ' + thaiSt)
-  // Đập trứng rồi để trứng cháy (không bấm Nhấc)
+  // Đập trứng (M5: thao tác dap — canh kim lực rồi vuốt xuống) rồi để trứng cháy (không bấm Nhấc)
   await page.click(T('board-step-dap_trung'))
   if (await page.$(T('step-sheet'))) await page.click(T('step-start'))
-  await page.waitForSelector(`${T('minigame-stage')}[data-type="cham"] .mg-foot`)
+  await page.waitForSelector(`${T('minigame-stage')}[data-type="dap"] .mg-foot`)
   await playStage(page, recipe.steps.find(s => s.id === 'dap_trung'), shot)
   await page.waitForSelector('.k-layer', { state: 'hidden', timeout: 15000 })
   await page.click(T('board-step-chien_trung'))
@@ -314,8 +315,15 @@ async function scenarioAdvanced(browser, srv) {
   assert.deepEqual(errors, [])
 }
 
+// 5 thao tác M5 (đập trứng, khuấy, gọt, lắc, bày): dùng chung bộ giải của tests/e2e/helpers.mjs (chuột, đọc data-*).
+const M5_TYPES = ['dap', 'xoay', 'got', 'lac', 'bay']
+
 // Chơi một mini-game theo loại, dùng data-* của sân khấu.
 async function playStage(page, def, shot) {
+  if (M5_TYPES.includes(def.type)) {
+    await playStageM5({ page, shot: label => shot(label) }, def, { shots: true })
+    return
+  }
   const S = `${T('minigame-stage')}[data-type="${def.type}"]`
   const stage = await page.$(S)
   const box = await stage.boundingBox()
@@ -406,6 +414,8 @@ async function playStage(page, def, shot) {
     }), S)
     await shot('rot')
     await page.click(`${S} ${T('rot-done')}`)
+  } else {
+    throw new Error('Không biết chơi mini-game: ' + def.type)
   }
 }
 

@@ -1,8 +1,8 @@
 # Bếp Khởi Nghiệp
 
-Bếp Khởi Nghiệp là game bán hàng chơi trên trình duyệt, thiết kế cho điện thoại cầm dọc. Bạn khởi nghiệp với một chiếc xe đẩy đầu hẻm: tự tay nhận order, báo tổng tiền, thối tiền, rồi vào bếp chọn nguyên liệu, rửa, thái, chiên, nêm cho từng món. Mỗi khách chấm sao riêng phần quầy và phần bếp, nên bạn biết mình sai ở đâu để sửa. Game lồng nhẹ các "Mẹo nghề" về vận hành quán ăn, dùng được để giải trí lẫn để ôn nghề cho nhân viên mới.
+Bếp Khởi Nghiệp là game bán hàng chơi trên trình duyệt, thiết kế cho điện thoại cầm dọc. Bạn khởi nghiệp với một chiếc xe đẩy đầu hẻm: tự tay nhận order, báo tổng tiền, thối tiền, rồi vào bếp chọn nguyên liệu, rửa, thái, gọt, đập trứng, chiên, khuấy, lắc, nêm cho từng món. Mỗi khách chấm sao riêng phần quầy và phần bếp, nên bạn biết mình sai ở đâu để sửa. Game lồng nhẹ các "Mẹo nghề" về vận hành quán ăn, dùng được để giải trí lẫn để ôn nghề cho nhân viên mới.
 
-Bản hiện tại (**0.4.2**) là **Chặng 1 "Xe đẩy đầu hẻm"** của bản MVP, đã xong bốn mốc: M1 (lõi chơi được), M2 (kinh tế, nhiệm vụ, sự kiện), M3 (hoàn thiện: chơi offline, sao lưu, Cài đặt, nội dung thêm) và M4 (tip mới, sự kiện thưởng/phạt tiền, nguyên liệu và món hiếm).
+Bản hiện tại (**0.5.0**) là **Chặng 1 "Xe đẩy đầu hẻm"** của bản MVP, đã xong bốn mốc: M1 (lõi chơi được), M2 (kinh tế, nhiệm vụ, sự kiện), M3 (hoàn thiện: chơi offline, sao lưu, Cài đặt, nội dung thêm) và M4 (tip mới, sự kiện thưởng/phạt tiền, nguyên liệu và món hiếm). Mốc M5 đang làm lại giao diện theo kiểu game nấu ăn: bản 0.5.0 đã xong phần **Bếp** và **5 thao tác mới** (mục "Có gì mới ở 0.5.0" bên dưới); Quầy và các màn ngoài ca làm ở bản 0.5.1, 0.5.2.
 
 ---
 
@@ -17,7 +17,7 @@ Bản hiện tại (**0.4.2**) là **Chặng 1 "Xe đẩy đầu hẻm"** của 
 | Tính tiền | Thối tiền bằng các tờ trong két, xác nhận chuyển khoản (coi chừng ảnh chụp màn hình giả), kẹp phiếu vào bếp |
 | Làm đồ | Chọn đúng và đủ nguyên liệu, sơ chế trên Thớt sơ chế, ra món, giao cho khách |
 
-**Bếp thao tác từng bước**: 6 mini-game (chọn nguyên liệu, chà rửa, thái, chạm, canh lửa, rót). Trên Thớt sơ chế bạn tự chọn làm bước nào trước và chọn cách sơ chế (ví dụ dưa leo phải thái lát, không bào). Món được chấm Tuyệt hảo, Ngon, Được, Kém hoặc Hỏng.
+**Bếp thao tác từng bước**: 11 mini-game (chọn nguyên liệu, chà rửa, thái, chạm, canh lửa, rót, và từ 0.5.0 thêm đập trứng, khuấy, gọt vỏ, lắc, thả đá). Trên Thớt sơ chế bạn tự chọn làm bước nào trước và chọn cách sơ chế (ví dụ dưa leo phải thái lát, không bào). Mỗi bước được đóng dấu Hoàn hảo, Tốt, Đạt hoặc Hỏng; món được chấm Tuyệt hảo, Ngon, Được, Kém hoặc Hỏng.
 
 **5 hệ thống giữ chân**:
 1. **Việc hôm nay**: 3 việc mỗi ngày (Quầy, Bếp, Chất lượng), đủ 3 việc mở Rương ngày.
@@ -44,6 +44,18 @@ Bản hiện tại (**0.4.2**) là **Chặng 1 "Xe đẩy đầu hẻm"** của 
 - **Tần suất sự kiện** (Cài đặt): Nhiều / Vừa / Ít, áp cho cả sự kiện ngày và tình huống; mức Ít không có khoản phạt. Không bao giờ có 2 sự kiện xấu liền nhau (xét chung sự kiện ngày và tình huống trong ca); sự kiện đã báo trước được giữ nguyên, đổi mức chỉ áp cho ngày chưa báo.
 - **Nguyên liệu và món hiếm**: 3 gánh hàng quê theo giờ Việt Nam (Chợ sớm 05:00–09:00, Xe ba gác trưa 11:00–13:30, Gánh đặc sản tối 17:30–21:00) với mini-game "Lựa hàng" (lấy đúng hàng thật, tránh hàng dễ nhầm), khách lạ ghé ca đầu mỗi ngày mang quà quê, Giỏ chợ có tỉ lệ công khai. Gom 3 mảnh công thức rồi nấu thử đạt hạng Được để mở 4 món hiếm (Trà tắc mật ong rừng, Bánh mì trứng gà ta, Bánh tráng trộn Tây Ninh, Cà phê muối); mỗi phần món hiếm dùng nguyên liệu trong kho.
 - Bản lưu cũ (kể cả đang dở ca) tự nâng cấp khi mở bản mới; người chơi cũ nhận thư "Có gì mới" kèm quà làm quen.
+
+**Có gì mới ở 0.5.0 (M5 Đợt 1: bếp mới và 5 thao tác mới)**:
+- **Hình mới** cho nguyên liệu, món, dụng cụ: to, viền mực nâu, khối 3 tông có bóng; nguyên liệu trên Thớt đổi sang hình đã sơ chế ngay khi làm xong bước (dưa leo thái lát, trứng ốp la, xoài gọt vỏ…). Món hiếm dùng hình món nền kèm huy hiệu ★.
+- **Thớt sơ chế** là thớt gỗ lớn; mỗi bước là một huy hiệu tròn có biểu tượng thao tác, dưới là chữ trạng thái ("Tốt · 85", "Chạm để làm", "Sau: Rửa dưa leo"). Chọn cách sơ chế bằng thẻ hình.
+- **Thẻ "Bước k/N"** trước mỗi bước: hình to, động từ ("Đập trứng!"), bàn tay làm mẫu đúng cử chỉ; thẻ tự chạy sau khoảng 1 giây hoặc chạm để vào ngay; nấu quen món (từ lần thứ 3) thì chỉ còn ruy băng gọn.
+- **Năm thao tác mới**: **Đập trứng** (chạm quả trứng khi kim lực nằm trong vùng xanh rồi vuốt xuống, chạm mà không vuốt là vỏ rơi vào chảo), **Khuấy** (vẽ vòng tròn quanh tô, ly hoặc chén, quay vừa tay kẻo văng), **Gọt vỏ** (vuốt thẳng từ trên xuống theo từng dải vỏ), **Lắc** (kéo bình hoặc rổ lên xuống đều tay), **Thả đá** (kéo từng viên đá thả vào giữa ly rồi bấm Xong; khay luôn dư đá để ghi chú "Ít đá" có ý nghĩa).
+- **Con dấu từng bước**: xong bước là con dấu theo hạng đập xuống ngay trên sân khấu, có hạt lấp lánh, sao bay về chấm bước; Dì Sáu phản ứng một câu ngắn.
+- **Màn ra món** khoảng 2 giây (chạm để bỏ qua): tia sáng, huy hiệu hạng món, % đếm lên, sao, ruy băng "Không tì vết", pháo giấy khi lên cấp thạo món.
+- **Chế độ tập trung** trên màn hình thấp (dưới 760 điểm ảnh): lúc đang nấu, dải khách và thanh 4 khâu tạm ẩn cho bếp rộng thêm; dây phiếu vẫn hiện để canh khách chờ.
+- Nút bấm kiểu "bánh kẹo" cho toàn game, font tiêu đề tròn đậm Baloo 2 (tự lưu, chơi offline được), âm thanh riêng cho từng thao tác mới. Hiệu ứng tôn trọng công tắc "Giảm chuyển động".
+- Hướng dẫn lần đầu có thêm 5 tour ngắn trên thẻ bước của 5 thao tác mới (người chơi cũ cũng được xem).
+- **Không đổi cân bằng**: giá bán, giá vốn, thời gian dành cho mỗi bước, trọng số bước giữ nguyên. Bản lưu cũ (kể cả đang dở một món trên Thớt) mở bình thường; bước chưa làm hiện thao tác mới, bước đã làm giữ điểm. Người chơi cũ nhận thư "Có gì mới: bếp mới và 5 thao tác mới" (không kèm quà).
 
 Tiến trình tự lưu trong trình duyệt của bạn. Game không có máy chủ, không cần đăng nhập, không có quảng cáo hay mua bán bằng tiền thật.
 
@@ -94,7 +106,7 @@ Mở qua địa chỉ IP vẫn chơi đầy đủ, nhưng các tham số kiểm 
 
 ## Phòng mẫu giao diện (mau.html)
 
-Bản 0.4.2 có thêm trang **Phòng mẫu** để duyệt giao diện mới kiểu game nấu ăn (M5 Đợt 0) trước khi ráp vào game: hình mới viền mực, khối 3 tông; màn gọi món có con dấu "ĐÃ CHỐT"; bước Thái kiểu mới có thẻ bước, tay làm mẫu, con dấu và Dì Sáu phản ứng; màn ra món 5 hạng. Nút bánh răng có 3 công tắc: Giảm chuyển động, Âm thanh, Khung thấp (mô phỏng phần chơi ~300 điểm ảnh như màn 360×600).
+Từ bản 0.4.2 có trang **Phòng mẫu** để duyệt giao diện mới kiểu game nấu ăn (M5 Đợt 0) trước khi ráp vào game (phong cách đã được duyệt; từ 0.5.0 phần Bếp đã ráp vào game, màn gọi món mẫu sẽ ráp ở 0.5.1): hình mới viền mực, khối 3 tông; màn gọi món có con dấu "ĐÃ CHỐT"; bước Thái kiểu mới có thẻ bước, tay làm mẫu, con dấu và Dì Sáu phản ứng; màn ra món 5 hạng. Nút bánh răng có 3 công tắc: Giảm chuyển động, Âm thanh, Khung thấp (mô phỏng phần chơi ~300 điểm ảnh như màn 360×600).
 
 - Trên máy tính: `npm run serve` rồi mở **http://localhost:8080/mau.html**. GitHub Pages: **https://kazesanaei.github.io/gamefnb/mau.html**.
 - Phòng mẫu không lưu gì vào bản lưu của game, không đăng ký service worker và không nằm trong danh sách tệp chơi offline.
@@ -200,7 +212,8 @@ src/core/           luật chơi: ca bán, quầy, bếp, chấm điểm, kinh t
 src/data/           nội dung và số cân bằng: món, nguyên liệu, giá, khách, lời thoại,
                     Mẹo nghề, điểm danh, việc hôm nay, hộp thư, chuỗi, sự kiện, lên chặng,
                     tình huống trong ca, hàng hiếm (gánh hàng quê, khách lạ)
-src/ui/             màn hình, mini-game, hình vẽ SVG, âm thanh
+src/ui/             màn hình, mini-game, hình vẽ SVG (src/ui/art/: nguyên liệu, món, dụng cụ, đạo cụ,
+                    hình trạng thái), hiệu ứng (vfx.js, motion.js), âm thanh
 tests/unit/         unit test
 tests/e2e/          kiểm thử giao diện bằng Playwright
 tests/helpers/      máy chủ tĩnh (npm run serve), người chơi tự động
@@ -211,7 +224,7 @@ package.json        các lệnh npm (serve, test, e2e)
 .nojekyll           tệp rỗng, bắt buộc cho GitHub Pages (đừng xóa)
 ```
 
-M3 thêm `manifest.webmanifest` (khai báo ứng dụng), `sw.js` (service worker để chơi offline), `icons/` (bộ biểu tượng) và `tools/make-icons.mjs` (dựng biểu tượng PNG). M4 thêm `src/core/rare.js`, `src/data/rare.js`, màn "Lựa hàng" `src/ui/screens/market.js` và `tools/tim-seed.mjs` (tìm seed cho e2e: `node tools/tim-seed.mjs`).
+M3 thêm `manifest.webmanifest` (khai báo ứng dụng), `sw.js` (service worker để chơi offline), `icons/` (bộ biểu tượng) và `tools/make-icons.mjs` (dựng biểu tượng PNG). M4 thêm `src/core/rare.js`, `src/data/rare.js`, màn "Lựa hàng" `src/ui/screens/market.js` và `tools/tim-seed.mjs` (tìm seed cho e2e: `node tools/tim-seed.mjs`). M5 thêm `fonts/`, `mau.html` + `mau/`, `src/ui/art/`, `src/ui/vfx.js`, `src/ui/motion.js`, các thành phần thẻ bước, con dấu, ra món (`src/ui/components/`), 5 mini-game mới (`src/ui/minigames/dap.js xoay.js got.js lac.js bay.js`) và CSS `theme.css`, `fx.css`, `counter.css`, `mg-prep.css`, `mg-heat.css`, `mg-mix.css`.
 
 Muốn đổi giá món, giá nâng cấp, phần thưởng hay lịch sự kiện: sửa trong `src/data/` (xem `docs/can-bang.md` trước), rồi chạy lại `npm test`.
 
@@ -224,6 +237,7 @@ Muốn đổi giá món, giá nâng cấp, phần thưởng hay lịch sự ki�
 - [`docs/can-bang.md`](docs/can-bang.md): bảng số cân bằng Chặng 1 (giá, giá vốn, thời gian, thưởng, sự kiện, hàng hiếm, số đo mô phỏng) và các chỉ số cần đo khi thử với người chơi thật.
 - [`docs/nghien-cuu-the-loai-game.md`](docs/nghien-cuu-the-loai-game.md): tư liệu nghiên cứu các game mô phỏng cùng thể loại: bản đồ 11 thể loại, 15 nguyên tắc thiết kế (nhịp sự kiện, phạt công bằng, hàng hiếm), 26 đề xuất xếp hạng theo tác động và chi phí; cơ sở cho M4.
 - [`docs/tham-khao/m4-thiet-ke.md`](docs/tham-khao/m4-thiet-ke.md): bản thiết kế triển khai M4 (tip, sự kiện thưởng/phạt, hàng hiếm).
+- [`docs/tham-khao/m5-thiet-ke.md`](docs/tham-khao/m5-thiet-ke.md): bản thiết kế triển khai M5 (giao diện kiểu game nấu ăn, 5 thao tác mới, 4 đợt); [`docs/tham-khao/m5-nghien-cuu-giao-dien.md`](docs/tham-khao/m5-nghien-cuu-giao-dien.md): nghiên cứu giao diện, cảm giác thao tác và hiệu ứng của các game nấu ăn, bán hàng (chỉ học cơ chế, không dùng hình, lời thoại hay âm thanh của họ).
 
 ---
 

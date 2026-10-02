@@ -1,7 +1,7 @@
 // Hành trình dài qua giao diện thật (chạy tay, KHÔNG nằm trong `npm run e2e`; khoảng 10–15 phút):
 //   node tests/e2e/hanh-trinh.mjs                 (SHOT_DIR=<thư mục> để lưu ảnh NN-ten.png + journey-report.json; SEED=6)
 // Chromium 390×844 cảm ứng, đồng hồ giả (bắt đầu 05/10/2026 07:30 giờ Việt Nam):
-// save mới → ngày 1 (chụp từng khâu quầy, bếp, 6 mini-game, phiếu chấm, Tổng kết) → ngày 2 (tải lại giữa ca) →
+// save mới → ngày 1 (chụp từng khâu quầy, bếp, thẻ vào bước, các mini-game kể cả đập trứng / lắc M5, con dấu, phiếu chấm, Tổng kết) → ngày 2 (tải lại giữa ca) →
 // ngày 3 (Cài đặt: tình huống "Nhiều", âm lượng; mua Bánh tráng trộn; mất mạng, chơi cả ca offline, gặp tình huống)
 // → rút ngắn bằng lõi (người chơi hoàn hảo, tới sát điều kiện lên chặng) → sang ngày thật mới: Hộp thư, Việc hôm nay,
 // Chợ Công Thức (mua Cà phê sữa đá), Sổ công thức (+ chi tiết, Sổ từ vùng miền), Sổ tay nghề, Cài đặt (chép mã sao lưu)
@@ -66,15 +66,19 @@ const SHOTS = {
   'quay-order': '04-quay-order', 'quay-doc-lai': '05-quay-doc-lai-don', 'thanh-toan': '06-quay-thanh-toan',
   'tinh-tien': '07-quay-tinh-tien-thoi-tien', 'phieu-thu': '08-quay-phieu-thu-kep-phieu', 'bep-day-phieu': '09-bep-day-phieu',
   'bep-ke-chon': '10-bep-ke-chon', 'bep-thot': '11-bep-thot-so-che', 'mg-cha-vet-ban': '12-mg-cha-rua',
-  'mg-thai-ngam': '13-mg-thai', 'mg-cham-dap-trung': '14-mg-cham-dap-trung', 'mg-lua': '15-mg-canh-lua',
-  'mg-cham-nem': '16-mg-cham-nem', 'mg-rot': '17-mg-rot', 'mg-cham-vat': '18-mg-cham-vat', 'mg-cha-lac': '19-mg-cha-lac',
+  'mg-thai-ngam': '13-mg-thai', 'mg-dap': '14-mg-dap-trung', 'mg-lua': '15-mg-canh-lua',
+  'mg-cham-nem': '16-mg-cham-nem', 'mg-rot': '17-mg-rot', 'mg-cham-vat': '18-mg-cham-vat', 'mg-lac': '19-mg-lac',
   'bep-cong-bo-mon': '20-bep-ra-mon', 'phieu-cham': '21-phieu-cham', 'tong-ket': '22-tong-ket',
   'cho-cong-thuc': '23-cho-cong-thuc', 'viec-hom-nay': '24-viec-hom-nay', 'hop-thu': '25-hop-thu', 'su-kien': '26-su-kien',
   'so-tay-nghe': '27-so-tay-nghe', 'so-cong-thuc': '28-so-cong-thuc', 'so-cong-thuc-chi-tiet': '29-so-cong-thuc-chi-tiet',
   'cai-dat': '30-cai-dat', 'sap-khai-truong': '31-sap-khai-truong',
   'tinh-huong': '32-tinh-huong-trong-ca', 'tinh-huong-ket-qua': '33-tinh-huong-ket-qua', 'lên-chặng-modal': '34-du-dieu-kien-len-chang',
   'qr': '35-quay-qr', 'offline': '36-offline-chuan-bi', 'mg-cham-muong': '37-mg-cham-muong', 'tong-ket-tinh-huong': '38-tong-ket-tinh-huong',
-  'nau-lai': '39-tai-lai-giua-ca'
+  'nau-lai': '39-tai-lai-giua-ca',
+  // M5 (0.5.0): thao tác mới khuấy / gọt / bày, thẻ vào bước "Bước k/N", con dấu kết quả bước; lắc-xé kiểu Chà còn lại
+  // (xé khô mực, bóp muối) giữ nhãn cũ
+  'mg-xoay': '40-mg-xoay', 'mg-got': '41-mg-got', 'mg-bay': '42-mg-bay', 'mg-the-buoc': '43-mg-the-buoc',
+  'mg-con-dau': '44-mg-con-dau', 'mg-cha-lac': '45-mg-cha-xe'
 }
 const taken = new Set()
 // Các khâu trong ca bán cũng soát bố cục (chữ < 13px, vùng chạm < 44px, tràn ngang) lần đầu gặp (vòng soát lỗi M3).
@@ -556,7 +560,8 @@ try {
     for (const c of await page.$$('[data-testid^="chain-claim-"]')) { await c.tap().catch(() => {}); await page.waitForTimeout(300) }
     await page.tap(T('open-shift'))
     await page.waitForSelector(T('screen-service'))
-    const s = await playShift(g, {})
+    // chụp ảnh: món mới mua (Bánh tráng trộn, Cà phê sữa đá) có các thao tác M5 gọt / khuấy / bày (mỗi nhãn chụp một lần)
+    const s = await playShift(g, { shots: true })
     const sv = await readSave(page)
     report.shifts.push({ day: sv.day - 1, served: s.served.length, stars: s.served.map(x => x.stars), incidents: s.incidents, ms: s.ms })
     if (s.incidents.length) await g.shot('tong-ket-tinh-huong')

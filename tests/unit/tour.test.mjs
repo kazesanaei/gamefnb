@@ -1,5 +1,6 @@
 // Hướng dẫn lần đầu (tour, bản 0.4.1): lõi thuần src/core/tour.js (đã xem, đặt lại, bật/tắt, nâng bản lưu cũ) và dữ liệu
-// src/data/tours.js (đủ bước, lời ngắn, màn có thật, trang Cách chơi có hình).
+// src/data/tours.js (đủ bước, lời ngắn, màn có thật, trang Cách chơi có hình). 0.5.0 (M5): 5 tour thẻ "Bước k/N" của các thao tác
+// mới (bep_dap, bep_xoay, bep_got, bep_lac, bep_bay — chỗ 'card-<loại>'), lời tour Thớt nhắc thao tác mới.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { DATA } from '../../src/data/index.js'
@@ -12,8 +13,12 @@ import { SAVE_V2_MID_SHIFT } from '../fixtures/save-v2.mjs'
 import { ICONS } from '../../src/ui/art.js'
 import { COUNTER_STREAK_ROLL } from '../../src/core/order.js'
 import { formatVND } from '../../src/core/money.js'
+import { GESTURE_BY_TYPE } from '../../src/ui/components/step-card.js'
+import { STICKY } from '../../src/ui/components/tour.js'
 
 const T = DATA.TOURS
+// M5 (0.5.0): năm thao tác mới, mỗi loại một tour trên thẻ "Bước k/N" (chỗ 'card-<loại>' của kitchen.tourSpot)
+const NEW_TYPES = ['dap', 'xoay', 'got', 'lac', 'bay']
 const plain = o => JSON.parse(JSON.stringify(o))
 // tour người chơi quen tay chắc chắn đã đi qua ở ngày `day` (đã bán ít nhất 1 ca)
 const veteranIds = day => Object.keys(T).filter(id => Number(T[id].veteranDay) > 0 && day >= T[id].veteranDay)
@@ -121,7 +126,8 @@ test('migrate bản cũ chưa có tour: người đã bán ca không bị bật 
   assert.ok(want.has('chuan_bi') && want.has('quay_order') && want.has('bep_thot') && want.has('tong_ket') && want.has('phieu_cham'))
   assert.equal(want.has('quay_qr'), false, 'chưa tới ngày có khách chuyển khoản')
   assert.deepEqual(Object.keys(m.tour.seen).sort(), [...want].sort())
-  for (const id of ['quay_qr', 'cho_cong_thuc', 'viec_hom_nay', 'hop_thu', 'lua_hang', 'so_cong_thuc', 'su_kien_ngay', 'hang_hiem']) {
+  for (const id of ['quay_qr', 'cho_cong_thuc', 'viec_hom_nay', 'hop_thu', 'lua_hang', 'so_cong_thuc', 'su_kien_ngay', 'hang_hiem',
+    ...NEW_TYPES.map(x => 'bep_' + x)]) {
     assert.equal(shouldShowTour(m, id, DATA), true, id + ' vẫn tự hiện lần đầu')
   }
   // qua ngày có khách chuyển khoản
@@ -142,7 +148,8 @@ test('migrate save thật bản 0.3.0 (v2, đang dở ca ngày 8): có state.tou
 
 test('dữ liệu tour: 2–6 bước, tiêu đề ngắn, lời Dì Sáu tối đa 2 câu, màn có thật, không trùng id', () => {
   const SCREENS = ['title', 'prep', 'service', 'summary', 'shop', 'quests', 'mailbox', 'market', 'recipe-book']
-  const SPOTS = ['idle', 'order', 'order-sheet', 'thanh_toan', 'tinh_tien', 'qr', 'receipt', 'rail', 'line', 'chon', 'thot', 'ready', 'score', 'day-event', 'stall']
+  const SPOTS = ['idle', 'order', 'order-sheet', 'thanh_toan', 'tinh_tien', 'qr', 'receipt', 'rail', 'line', 'chon', 'thot', 'ready', 'score', 'day-event', 'stall',
+    'card-dap', 'card-xoay', 'card-got', 'card-lac', 'card-bay']
   const spots = new Set()
   for (const [id, t] of Object.entries(T)) {
     assert.match(id, /^[a-z_]+$/, id)
@@ -195,7 +202,7 @@ test('trang Cách chơi: các thẻ có tiêu đề, lời và hình có thật;
 })
 
 // Lời tour phải khớp luật đang chạy (đối chiếu số liệu của lõi và dữ liệu, không chép tay).
-test('lời tour khớp luật: Giỏ chợ, kiên nhẫn khách, tip, dây phiếu', () => {
+test('lời tour khớp luật: Giỏ chợ, kiên nhẫn khách, tip, dây phiếu, thao tác M5', () => {
   const B = DATA.BALANCE
   const text = (id, target) => {
     const st = T[id].steps.find(x => (Array.isArray(x.target) ? x.target : [x.target]).includes(target))
@@ -224,4 +231,54 @@ test('lời tour khớp luật: Giỏ chợ, kiên nhẫn khách, tip, dây phi�
   assert.deepEqual([...T.bep_dong_mon.lead], ['bep_day_phieu'])
   // lời mở đầu không lặp lại lời Dì Sáu đã in trong khung
   assert.ok(!T.mo_dau.steps[0].text.includes('thuê lại'), 'bước 1 lặp lời Dì Sáu trong khung')
+  // M5: bước "Trò nhỏ" của tour Thớt nhắc đủ 5 thao tác mới (tên loại hoặc tên lớp vỏ, vd "thả đá" của bay.ly)
+  const tro = text('bep_thot', '.k-step.is-available').toLowerCase()
+  for (const type of NEW_TYPES) {
+    const M = DATA.MINIGAME_TYPES[type]
+    const names = [M.name, ...Object.values(M.skins || {}).map(k => k.name)].filter(Boolean).map(n => n.toLowerCase())
+    assert.ok(names.some(n => tro.includes(n) || tro.includes(n.split(' ')[0])), `Trò nhỏ chưa nhắc thao tác ${type}: "${tro}"`)
+  }
+  // M5: thẻ bước — trò tự xong khi đủ lượt thì lời nói "tự xong"; trò phải bấm Xong (bày/thả đá) thì lời dặn bấm Xong
+  for (const type of NEW_TYPES) {
+    const go = text('bep_' + type, 'step-card-go')
+    const needsDone = /bấm Xong/.test(DATA.MINIGAME_TYPES[type].hint)
+    assert.equal(/bấm Xong/.test(go), needsDone, `bep_${type}: "${go}" (hint: ${DATA.MINIGAME_TYPES[type].hint})`)
+    if (!needsDone) assert.match(go, /tự xong/, `bep_${type}: phải nói bước tự xong khi đủ lượt`)
+  }
+})
+
+test('M5 tour thẻ bước: 5 thao tác mới, chỗ card-<loại>, 2 bước (tay mẫu, nút bắt đầu), không veteranDay', () => {
+  for (const type of NEW_TYPES) {
+    const id = 'bep_' + type
+    const t = T[id]
+    assert.ok(t, `thiếu tour ${id}`)
+    assert.equal(t.screen, 'service')
+    assert.equal(t.spot, 'card-' + type, id)
+    assert.ok(DATA.MINIGAME_TYPES[type], `${id}: loại ${type} không có trong MINIGAME_TYPES`)
+    assert.ok(GESTURE_BY_TYPE[type], `${id}: thẻ bước chưa có tay mẫu cho ${type}`)
+    assert.equal(t.veteranDay, undefined, `${id}: thao tác mới, người chơi cũ cũng phải xem`)
+    assert.notEqual(t.auto, false, `${id}: phải tự hiện`)
+    assert.ok(!t.requires && !t.lead, id)
+    assert.deepEqual(t.steps.map(x => x.target), ['step-card-demo', 'step-card-go'], id)
+  }
+  // mọi chỗ card-<loại> đều là loại bước có thật; không có tour nào chiếm chỗ thẻ của loại cũ (thai, cha… vẫn chỉ có thẻ)
+  for (const [id, t] of Object.entries(T)) {
+    if (!t.spot || !t.spot.startsWith('card-')) continue
+    const type = t.spot.slice(5)
+    assert.ok(NEW_TYPES.includes(type), `${id}: chỗ ${t.spot}`)
+    assert.equal(id, 'bep_' + type)
+  }
+  // người chơi cũ (đã bán nhiều ca, save chưa có tour) vẫn được xem 5 tour này lần đầu
+  const s = defaultState(4, DATA)
+  s.shopName = 'Xe cũ'
+  s.day = 12
+  s.stats.shiftsPlayed = 11
+  const raw = plain(s)
+  delete raw.tour
+  const m = migrate(raw, DATA)
+  for (const type of NEW_TYPES) assert.equal(shouldShowTour(m, 'bep_' + type, DATA), true, type)
+  assert.equal(shouldShowTour(m, 'bep_thot', DATA), false)
+  // tour chừa chỗ cho thanh dính khi cuộn đích vào khung: thanh chân sân khấu kiểu mới vẫn là .mg-foot, Thớt .k-toolbar, Quầy .act-bar
+  const sticky = STICKY.split(',').map(x => x.trim())
+  for (const sel of ['.mg-foot', '.k-toolbar', '.act-bar', '.sticky-foot', '.meta-head']) assert.ok(sticky.includes(sel), 'STICKY thiếu ' + sel)
 })

@@ -3,7 +3,8 @@
 // Mỗi tour: {
 //   screen:     tên màn (router) nơi tour chạy
 //   spot:       (màn ca bán) chỗ đang làm: order | order-sheet | thanh_toan | tinh_tien | qr | receipt (Quầy),
-//               rail | line | chon | thot | ready (Bếp), score (phiếu chấm); không có spot = cả màn
+//               rail | line | chon | thot | ready (Bếp), card-<loại bước> (0.5.0: thẻ "Bước k/N" đầy đủ đang chờ chạm,
+//               vd card-dap — ui/screens/kitchen.js tourSpot), score (phiếu chấm); không có spot = cả màn
 //   lead:       (tùy chọn, màn ca bán) tour đi trước nếu người chơi chưa xem: tới thẳng chỗ này mà bỏ qua chỗ của tour
 //               dẫn (vd chạm phiếu trên dây ở đầu màn là mở luôn phiếu trong Bếp) thì hai tour nối tiếp nhau
 //   name:       tên ngắn (bảng Hướng dẫn)
@@ -159,7 +160,7 @@ export const TOURS = Object.freeze({
   bep_chon: Object.freeze({
     screen: 'service', spot: 'chon', name: 'Bếp · Chọn nguyên liệu', veteranDay: 2,
     steps: Object.freeze([
-      step('recipe-card', 'Thẻ công thức', 'Thẻ ghi nguyên liệu món này cần và ghi chú đỏ của khách. Ghi chú kiểu "không hành" là phải bỏ thứ đó ra.'),
+      step('recipe-card', 'Thẻ công thức', 'Hàng hình trên thẻ là nguyên liệu món này cần, chữ đỏ là ghi chú khách dặn. Ghi chú kiểu "không hành" là phải bỏ thứ đó ra.'),
       step('.chon-shelf', 'Kệ và bẫy', 'Trên kệ có cả bẫy: thứ trông giống mà khác, như nước mắm với nước tương. Lấy nhầm bẫy là món bị trừ điểm.'),
       step('chon-basket', 'Rổ', 'Đồ con đã lấy nằm trong rổ. Đối chiếu rổ với thẻ công thức cho chắc.'),
       step('chon-done', 'Xong', 'Lấy đủ rồi bấm Xong để qua Thớt sơ chế. Chọn lâu quá cũng bị trừ điểm, nên nhìn thẻ rồi lấy liền tay.')
@@ -168,8 +169,9 @@ export const TOURS = Object.freeze({
   bep_thot: Object.freeze({
     screen: 'service', spot: 'thot', name: 'Bếp · Thớt sơ chế', veteranDay: 2,
     steps: Object.freeze([
-      step('board', 'Thớt sơ chế', 'Mỗi nguyên liệu trên thớt có nút cho từng bước cần làm. Bước có ổ khóa thì chờ bước ghi bên dưới xong.'),
-      step(['.k-step.is-available', '[data-testid^="board-step-"]'], 'Trò nhỏ', 'Chạm một bước để làm, mỗi bước là một trò nhỏ: thái theo vạch, chà sạch vết, nêm, canh lửa, rót. Làm khéo thì món ngon, khách chấm sao cao.'),
+      step('board', 'Thớt sơ chế', 'Mỗi nguyên liệu trên thớt có huy hiệu cho từng bước cần làm. Huy hiệu có ổ khóa thì chờ bước ghi bên dưới xong.'),
+      // 0.5.0: bước là huy hiệu tròn (biểu tượng thao tác); lời nhắc đủ các thao tác mới (đập trứng, khuấy, gọt, lắc, thả đá)
+      step(['.k-step.is-available', '[data-testid^="board-step-"]'], 'Trò nhỏ', 'Chạm huy hiệu để làm bước đó, mỗi bước là một trò nhỏ: thái, chà, gọt, đập trứng, khuấy, lắc, thả đá, nêm, canh lửa, rót. Làm khéo thì món ngon, khách chấm sao cao.'),
       // chỉ vào bước có chọn cách (món không có bước nào như vậy thì bỏ qua bước này)
       step(['.k-step.has-method:not(.is-done)', '.k-step.has-method'], 'Chọn cách sơ chế', 'Bước này phải chọn cách trước khi làm, như thái lát hay thái sợi. Chọn sai cách là bị trừ điểm.'),
       step('finish-dish', 'Ra món', 'Làm xong các bước thì bấm Ra món, dì chấm món liền. Bước nào chưa làm thì tính 0 điểm.'),
@@ -181,6 +183,45 @@ export const TOURS = Object.freeze({
     steps: Object.freeze([
       step(['dish-result', '.k-ticket.is-ready'], 'Kết quả món', 'Món vừa ra được dì chấm hạng ở đây, kèm một lời góp ý. Món càng ngon khách chấm sao càng cao.'),
       step('serve-ticket', 'Giao cho khách', 'Phiếu đủ món thì nút này hiện ra. Giao sớm khách đỡ chờ lâu.')
+    ])
+  }),
+
+  // ---------- Bếp: thẻ "Bước k/N" của 5 thao tác mới (0.5.0) ----------
+  // Tự hiện lần đầu thẻ đầy đủ của loại bước đó đang chờ chạm (thẻ dừng tự chạy trong lúc tour hiện — kitchen.guideHold).
+  // Không đặt veteranDay: thao tác mới, người chơi cũ cũng nên xem. Đích: bàn tay làm mẫu và nút "Chạm để bắt đầu".
+  bep_dap: Object.freeze({
+    screen: 'service', spot: 'card-dap', name: 'Bếp · Đập trứng',
+    steps: Object.freeze([
+      step('step-card-demo', 'Chạm rồi vuốt xuống', 'Kim vào vùng xanh thì chạm trứng cho nứt, rồi vuốt xuống để tách vào chảo. Chạm mà không vuốt là vỏ rơi vào chảo.'),
+      step('step-card-go', 'Bắt đầu', 'Chạm đây là vào bước liền, không chạm thì thẻ tự chạy. Đập đủ số trứng ghi ở thanh dưới là bước tự xong.')
+    ])
+  }),
+  bep_xoay: Object.freeze({
+    screen: 'service', spot: 'card-xoay', name: 'Bếp · Khuấy',
+    steps: Object.freeze([
+      step('step-card-demo', 'Vẽ vòng tròn', 'Vẽ vòng tròn quanh lòng tô hay ly, chiều nào cũng được. Quay nhanh quá là văng ra ngoài, bị trừ điểm.'),
+      step('step-card-go', 'Bắt đầu', 'Chạm đây là vào bước liền. Khuấy đủ số vòng ghi ở thanh dưới là bước tự xong, quay đều tay thì điểm cao.')
+    ])
+  }),
+  bep_got: Object.freeze({
+    screen: 'service', spot: 'card-got', name: 'Bếp · Gọt vỏ',
+    steps: Object.freeze([
+      step('step-card-demo', 'Vuốt từ trên xuống', 'Vuốt thẳng từ trên xuống theo từng dải vỏ, lệch chút vẫn được. Vuốt ngược hay trượt ra ngoài là bị trừ điểm.'),
+      step('step-card-go', 'Bắt đầu', 'Chạm đây là vào bước liền. Gọt sạch hết các dải vỏ là bước tự xong.')
+    ])
+  }),
+  bep_lac: Object.freeze({
+    screen: 'service', spot: 'card-lac', name: 'Bếp · Lắc',
+    steps: Object.freeze([
+      step('step-card-demo', 'Kéo lên kéo xuống', 'Giữ bình hay rổ rồi kéo lên kéo xuống, mỗi lần đổi chiều là một lượt lắc. Lắc đều nhịp thì điểm cao.'),
+      step('step-card-go', 'Bắt đầu', 'Chạm đây là vào bước liền. Lắc đủ số lượt ghi ở thanh dưới là bước tự xong.')
+    ])
+  }),
+  bep_bay: Object.freeze({
+    screen: 'service', spot: 'card-bay', name: 'Bếp · Thả đá',
+    steps: Object.freeze([
+      step('step-card-demo', 'Kéo thả vào ly', 'Kéo từng viên đá thả vào giữa ly, càng gần tâm càng tốt. Thả trượt thì đá tự về khay, chạm viên trong ly là lấy ra.'),
+      step('step-card-go', 'Bắt đầu', 'Chạm đây là vào bước liền. Thả đủ số đá ghi ở thanh dưới rồi bấm Xong, thả dư hay thiếu đều bị trừ điểm.')
     ])
   }),
 
@@ -272,7 +313,7 @@ export const HOW_TO_PLAY = Object.freeze([
   }),
   Object.freeze({
     id: 'bep', icon: 'thot', title: 'Bếp và trò nhỏ',
-    text: 'Mở phiếu, chọn dòng món, lấy đúng nguyên liệu trên kệ (coi chừng bẫy na ná nhau). Lên Thớt làm từng bước: thái, chà, nêm, canh lửa, rót, làm bước nào trước cũng được (trừ bước có ổ khóa). Ra món rồi bấm Giao cho khách.'
+    text: 'Mở phiếu, chọn dòng món, lấy đúng nguyên liệu trên kệ (coi chừng bẫy na ná nhau). Lên Thớt làm từng bước: thái, chà, gọt, đập trứng, khuấy, lắc, thả đá, nêm, canh lửa, rót, làm bước nào trước cũng được (trừ bước có ổ khóa). Mỗi bước có thẻ bàn tay làm mẫu, xong bước dì đóng dấu chấm điểm. Ra món rồi bấm Giao cho khách.'
   }),
   Object.freeze({
     id: 'sao', icon: 'sao', title: 'Chấm sao và tip',

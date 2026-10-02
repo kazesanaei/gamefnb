@@ -49,6 +49,7 @@ Kèm theo là **Chợ Công Thức** (mua món mới bằng Tiền quán, đư�
 | **M2** – kinh tế và LiveOps | **Đã xong** | QR, ảnh chuyển khoản giả, Loa báo tiền; Chợ Công Thức 2 món và nấu thử; 5 nâng cấp; màu dù xe; thạo món cấp 1–3; điểm danh 7 ô; 3 việc ngày và Rương ngày; hộp thư; 2 chuỗi; 4 sự kiện ngày; sự kiện 20/11 với Chè bưởi, Tem và Quầy đổi; lên chặng; khóa quà khi lùi giờ; khóa một tab; nút Back |
 | **M3** – hoàn thiện | **Đã xong** | PWA offline; sao lưu bằng mã; màn Cài đặt; âm thanh; tình huống trong ca; Sổ tay nghề; Sổ công thức; tiền chẵn; vòng soát lỗi an toàn dữ liệu người chơi |
 | **M4** – tip mới, sự kiện tiền, hàng hiếm (bản 0.4.0) | **Đã xong** | Tip 5.000đ khi 5 sao và hóa đơn từ 20.000đ; sổ tiền sự kiện; tần suất sự kiện "dày"; 8 sự kiện ngày và 8 tình huống mới; 5 nguyên liệu hiếm, 4 công thức hiếm, gánh hàng quê, khách lạ, Giỏ chợ; save v3; thư phiên bản 0.4.0 |
+| **M5** – giao diện kiểu game nấu ăn (0.4.2 → 0.5.0 → 0.5.1 → 0.5.2) | **Đợt 0, Đợt 1 đã làm**; Đợt 2, 3 chưa | Đợt 0 (0.4.2): Phòng mẫu đã được duyệt. Đợt 1 (0.5.0): Bếp làm lại (hình to viền mực, thẻ "Bước k/N" có tay mẫu, con dấu từng bước, màn ra món 2 giây, chế độ tập trung ở màn thấp) và 5 thao tác mới Đập trứng, Khuấy, Gọt vỏ, Lắc, Thả đá; giá, vốn, par giữ nguyên. Đợt 2: Quầy, HUD, phố, phiếu chấm; Đợt 3: các màn ngoài ca (mục 14.4c) |
 
 ---
 
@@ -83,7 +84,7 @@ Kèm theo là **Chợ Công Thức** (mua món mới bằng Tiền quán, đư�
 | 12 | Kiên nhẫn khi khách đang ở quầy | **×0,5** | Vẫn giữ áp lực nhẹ để nhận order nhanh |
 | 13 | Giờ reset ngày | **04:00 giờ Việt Nam** | Người Việt hay chơi khuya |
 | 14 | Nhiệm vụ ngày | **3** (1 Quầy, 1 Bếp, 1 Chất lượng/Kinh doanh) kèm Rương ngày | Xong trong khoảng 2 ca, không thành việc vặt |
-| 15 | Số mini-game ở MVP | **6 cơ chế gốc**: CHON, CHA, THAI, CHAM, LUA, ROT; 6 cơ chế còn lại ở GĐ2–3 | Đủ cho 5 món MVP. Mỗi cơ chế khoác được nhiều "lớp vỏ" thao tác |
+| 15 | Số mini-game ở MVP | **6 cơ chế gốc**: CHON, CHA, THAI, CHAM, LUA, ROT; 6 cơ chế còn lại ở GĐ2–3. *M5 (0.5.0): thêm 5 thao tác DAP, XOAY, GOT, LAC, BAY thay cho các bước đang dùng CHA/CHAM, không thêm hay bớt bước (mục 6.4)* | Đủ cho 5 món MVP. Mỗi cơ chế khoác được nhiều "lớp vỏ" thao tác |
 | 16 | Món ở MVP | **5 món**: Bánh mì ốp la, Trà tắc (có sẵn); Bánh tráng trộn, Cà phê sữa đá (Shop); Chè bưởi (sự kiện 20/11) | Shop có lựa chọn thật; người dùng thấy được món chỉ lấy qua sự kiện; cả 5 món chỉ dùng 6 cơ chế có sẵn |
 | 17 | Kho ở MVP | **Không có kho.** Giá vốn bị trừ khi chốt bước Chọn. Kho theo lô và sơ chế đầu ca ở GĐ2 | Giữ MVP tập trung vào trục 4 khâu |
 | 18 | Tính tổng tiền ở Chặng 1 | **Tự nhẩm**. Nâng cấp "Máy tính cầm tay" từ ngày 7, chỉ cộng tổng, không hiện tiền thối. Máy POS là mốc của Chặng 3 | Không tự động hóa quá sớm đúng khâu người dùng muốn luyện |
@@ -215,6 +216,8 @@ Từ trên xuống:
 - **Dây phiếu bếp (khoảng 6%)**, luôn hiện.
 - **Vùng thao tác (khoảng 55%)**: Sổ order, bàn phím báo tổng, két, hoặc bếp.
 - **Thanh tab**: `[Quầy · số khách chờ] [Bếp · số phiếu]`. Chỉ chuyển tab được khi không đang ở giữa một bước mini-game.
+
+*M5:* bố cục gọi món kiểu mới đã có bản mẫu được duyệt ở Phòng mẫu (Đợt 0): bóng thoại có hình món 64px kèm huy hiệu ×n và ghi chú bằng hình (hành lá gạch đỏ, tương ớt +), bảng gỗ thực đơn với thẻ món hình to (món hiếm "★ còn n", băng "HẾT"), bảng chọn số lượng và ghi chú có hình, phiếu order giấy có hình từng dòng, "Đọc lại" sáng lần lượt từng dòng, "Chốt order" đập con dấu ĐÃ CHỐT rồi phiếu bay lên dây phiếu. Ráp vào Quầy ở Đợt 2 (bản 0.5.1); từ 0.5.0, lúc đang nấu ở màn cao dưới 760px, dải khách và thanh 4 khâu tạm ẩn (chế độ tập trung, mục 6.5b).
 
 Tín hiệu: có khách mới thì kêu chuông và hiện chấm đỏ trên tab Quầy; khách đầu hàng còn dưới 30% kiên nhẫn thì máy rung nhẹ (30 ms); phiếu đỏ thì nhấp nháy. Mọi tín hiệu âm thanh đều có tín hiệu hình đi kèm.
 
@@ -401,13 +404,13 @@ Lược đồ đầy đủ ở `docs/kien-truc.md` mục 6 (`recipes.js`). Tóm 
 - `decoys`: nguyên liệu bẫy, mỗi bẫy đi cặp với một nguyên liệu thật (trứng vịt ↔ trứng gà, nước mắm ↔ nước tương).
 - `notes`: ghi chú khách có thể dặn. `removes` bỏ nguyên liệu (và bỏ luôn bước sơ chế của nó), `adds` thêm nguyên liệu tùy chọn, `patch` ghi đè tham số một bước, `surcharge` là phụ thu.
 - `steps`: các bước. Mỗi bước có `type` (cơ chế), `ing` (nguyên liệu mà bước này xử lý), `after` (bước phải xong trước), `method` (cách sơ chế cần chọn), `par`, `w` (trọng số: 1 phụ, 2 chính, 3 linh hồn), `critical` (chí mạng), `retryCost`.
-- Hình nguyên liệu có các trạng thái dùng chung cho mọi món: nguyên → đã rửa → đã thái → đã chín → trên đĩa. Trạng thái làm bằng lớp phủ CSS.
+- Hình nguyên liệu có các trạng thái dùng chung cho mọi món: nguyên → đã rửa → đã thái → đã chín → trên đĩa. *Đến 0.4.x trạng thái làm bằng lớp phủ CSS; từ 0.5.0 (M5) mỗi trạng thái là **hình vẽ riêng** (dưa leo sạch / thái lát / thái sợi / bào; trứng nứt / ốp la sống / vừa / cháy; xoài gọt / sợi / lát / hạt lựu; vỏ bưởi gọt / áo bột / chín; trứng cút bóc; bánh tráng sợi / vuông; khô mực xé; bánh mì nướng; đá viên…), chọn theo bước đã làm và cách sơ chế đã chọn (`src/ui/art/state-map.js`).*
 - Mỗi ô nguyên liệu là **SVG tự vẽ kèm nhãn chữ**. Cặp bẫy phải khác nhau rõ về hình hoặc màu (trứng vịt vỏ xanh nhạt, to hơn; nước mắm chai nắp đỏ, nước tương chai nắp vàng…). Không dùng emoji cho nguyên liệu.
 
 ### 6.3 Thớt sơ chế [MVP]
 Thớt sơ chế biến "sơ chế đúng và đủ" thành lựa chọn thật của người chơi, thay vì một chuỗi bước do game ép.
 
-- Sau bước Chọn, các nguyên liệu đã chọn nằm trên thớt. Mỗi nguyên liệu có **icon trạng thái cần đạt** (ví dụ dưa leo: đã rửa → đã thái lát; trứng: đã đập → đã chiên).
+- Sau bước Chọn, các nguyên liệu đã chọn nằm trên thớt. Mỗi nguyên liệu có **icon trạng thái cần đạt** (ví dụ dưa leo: đã rửa → đã thái lát; trứng: đã đập → đã chiên). *Từ 0.5.0: thớt gỗ lớn, nguyên liệu là hình 64–72px đổi sang hình trạng thái ngay khi xong bước; mỗi bước là một **huy hiệu tròn** có biểu tượng thao tác (dao, vòi nước, chảo, muỗng khuấy, bình lắc…), dưới huy hiệu là tên bước và chữ trạng thái 13px ("Tốt · 85", "Chạm để làm", "Sau: Rửa dưa leo"); bước xong có dấu ✓ viền màu theo hạng, bước khóa có ổ khóa, bước chí mạng có ★.*
 - Người chơi **tự chạm vào từng nguyên liệu** để mở bước của nó. **Thứ tự tự do**, trừ các ràng buộc cứng khai báo bằng `after` (ví dụ phải rửa dưa trước khi thái, phải đập trứng trước khi chiên, phải chiên xong mới nêm).
 - Bước bị khóa do `after` hiện ổ khóa nhỏ và dòng "Cần rửa dưa leo trước".
 - **Chọn cách sơ chế** cho 1–2 nguyên liệu ở các món có bước cần chọn cách (Bánh mì ốp la: dưa leo; Bánh tráng trộn: bánh tráng, xoài; Chè bưởi: cùi bưởi): trước khi chơi bước, người chơi chọn một trong 2–3 cách (ví dụ dưa leo: Thái lát / Thái sợi / Bào). **Chọn sai thì điểm bước đó −15** và review nhắc đúng cách.
@@ -416,22 +419,32 @@ Thớt sơ chế biến "sơ chế đúng và đủ" thành lựa chọn thật 
 - Nguyên liệu phụ **không được chọn** ở bước Chọn thì các bước của nó không hiện trên thớt (đã có dòng phạt "thiếu" ở mục 6.6, không phạt lần hai).
 - Các bước Canh lửa và Rót tạm dừng nếu người chơi ẩn trang giữa chừng. Tải lại trang giữa một bước thì bước đó chơi lại từ đầu với cùng tham số.
 
-### 6.4 Thư viện 12 cơ chế mini-game gốc
+### 6.4 Thư viện cơ chế mini-game (11 cơ chế có trong game từ bản 0.5.0)
+
+Bản 0.5.0 (M5 Đợt 1) thêm 5 thao tác **DAP, XOAY, GOT, LAC, BAY** thay cho các bước trước đây phải mượn CHA/CHAM (gọt vỏ bằng chà, đập trứng bằng chạm…). Chỉ đổi cơ chế của 15 bước; **id bước, par, w, chí mạng, giá làm lại, giá bán và giá vốn giữ nguyên** (bảng bất biến ở `docs/can-bang.md` mục 7.1). Mỗi hàm chấm mới được chọn để **cùng nghĩa với bước nó thay**: LAC, XOAY, GOT thay CHA nên giữ luật "−15 nếu quá 2 × par" và tỉ lệ đủ lượt; BAY thay CHAM `exact` nên giữ −30 cho mỗi lần lệch số lượng; chỉ DAP khó hơn bước cũ (thêm nhịp canh lực), bù bằng vùng xanh rộng và sàn giờ.
 
 | Mã | Tên hiển thị | Thao tác | Dùng cho | Luật chấm | Có ở |
 |---|---|---|---|---|---|
 | CHON | Chọn nguyên liệu | Chạm ô trên kệ để bỏ vào rổ, chạm lại để lấy ra, bấm "Xong" | Mọi món | 100 − 15 × số lần chạm nhầm. Quá 2,5 × par thì −15 và các ô cần lấy nhấp nháy gợi ý. Thiếu, thừa, bẫy chấm riêng ở mục 6.6. Thiếu nguyên liệu chính thì không qua được | **MVP** |
-| CHA | Chà rửa | Vuốt qua lại lên các vết bẩn hoặc vùng vỏ được đánh dấu | Rửa, gọt, bóc, trộn, khuấy, lắc | Theo độ phủ các vết/vùng đánh dấu (không phải chỉ đủ quãng vuốt); −15 nếu quá 2 × par | **MVP** |
+| CHA | Chà rửa | Vuốt qua lại lên các vết bẩn hoặc vùng vỏ được đánh dấu; kiểu `strokes`: vuốt qua lại đổi chiều liên tục | Rửa, bóc, xé, bóp (*đến 0.4.x còn dùng cho gọt, trộn, khuấy, lắc — từ 0.5.0 chuyển sang GOT, XOAY, LAC*) | Theo độ phủ các vết/vùng đánh dấu (không phải chỉ đủ quãng vuốt); −15 nếu quá 2 × par | **MVP** |
 | THAI | Thái | **Kéo dao để ngắm, nhấc tay để cắt** tại vạch chấm. Vạch dao hiện lệch lên trên ngón tay 40 px. Nguyên liệu rộng ít nhất 280 px | Thái lát, bổ đôi, cắt sợi | Mỗi nhát theo độ lệch so với vạch: ≤6 px → 100; ≤14 px → 80; ≤24 px → 55; còn lại → 20 (ngưỡng nhân hệ số vùng). Nhát thừa −10 | **MVP** |
-| CHAM | Chạm | 3 chế độ. `exact`: đúng n lần, có thể có vùng đích. `min`: đủ N lần trong T giây. `targets`: nhiều chai, mỗi chai đúng số nấc | Đập trứng, nêm, vắt, áo bột | `exact`: lệch số lần −30 mỗi lần; điểm theo khoảng cách tới tâm (≤8% → 100, ≤15% → 80, ≤25% → 55). `min`: r = số lần / N; 1,0–1,2 → 100; 0,85–1,35 → 80; 0,65–1,6 → 55. `targets`: 100 − 30 × tổng độ lệch nấc | **MVP** |
+| CHAM | Chạm | 3 chế độ. `exact`: đúng n lần, có thể có vùng đích. `min`: đủ N lần trong T giây. `targets`: nhiều chai, mỗi chai đúng số nấc | Nêm, vắt, thêm sữa (*đến 0.4.x còn dùng cho đập trứng, thêm đá, áo bột — từ 0.5.0 chuyển sang DAP, BAY, LAC*) | `exact`: lệch số lần −30 mỗi lần; điểm theo khoảng cách tới tâm (≤8% → 100, ≤15% → 80, ≤25% → 55). `min`: r = số lần / N; 1,0–1,2 → 100; 0,85–1,35 → 80; 0,65–1,6 → 55. `targets`: 100 − 30 × tổng độ lệch nấc | **MVP** |
 | LUA | Canh lửa | Kim độ chín chạy từ 0 đến 1,2 trong `period` giây; bấm "Nhấc/Vớt" | Chiên, luộc, nướng, trụng | **Hàm liên tục, đối xứng quanh tâm vùng** (mục 6.5); **vượt 1,0 là cháy → 0** | **MVP** (bản có lửa và lật: GĐ2) |
 | ROT | Rót | Giữ để rót, thả tay ở vạch; được nhấn lần 2 để bù (dâng chậm lại) | Rót trà, chế phin, rưới nước cốt dừa | Lệch ≤4% dung tích → 100; ≤9% → 80; ≤15% → 55; **tràn > 1,02 → 0**. Tốc độ dâng tại vạch không quá 25% dung tích mỗi giây | **MVP** |
+| DAP | Đập trứng | Hai nhịp mỗi quả: (1) chạm quả trứng khi kim thước lực (chạy đi về, chu kỳ 1,1 giây) nằm trong vùng xanh thì trứng nứt; (2) vuốt xuống (lệch tối đa 35° × hệ số vùng, không quá 50°) để tách vào chảo. Chạm thay vì vuốt, hoặc chạm khi kim đã quá vùng xanh, thì vỏ rơi vào chảo ("Có vỏ!") | Đập trứng (Bánh mì ốp la, Bánh mì trứng gà ta; "Thêm trứng" đập 3 quả) | Mỗi quả theo vị trí kim lúc chạm, hàm vùng như Canh lửa với vùng xanh [0,40; 0,70] nới theo hệ số vùng; vỏ rơi vào thì tối đa 40; quả chưa đập 0; điểm là trung bình n quả | **MVP 0.5.0** |
+| XOAY | Khuấy (*kế hoạch cũ: KHUAY*) | Vẽ vòng tròn quanh lòng tô, ly hoặc chén, chiều nào cũng được. Quay nhanh hơn 2,2 vòng/giây × hệ số vùng (gấp 1,8 lần ở bước đánh bông) quá 0,25 giây thì văng ra ngoài. Lớp vỏ: tô (Trộn đều), ly (Khuấy ly), chén (Đánh bông) | Trộn bánh tráng, khuấy cà phê, đánh sữa muối | 100 × min(1, vòng / K) − 12 mỗi lần văng − 10 nếu nhịp các vòng không đều (hệ số biến thiên > 0,45 × hệ số vùng) − 15 nếu quá 2 × par; chưa quay vòng nào 0 | **MVP 0.5.0** |
+| GOT | Gọt vỏ | Vuốt thẳng từ trên xuống theo từng dải vỏ (K dải dọc cao bằng quả), lệch tối đa 35°; độ phủ mỗi dải là phần hợp của các nhát vuốt. Vuốt ngược, lệch hoặc trượt ra ngoài là nhát hụt | Gọt xoài xanh, gọt lớp vỏ xanh của bưởi | Trung bình min(1, độ phủ / 0,85) của K dải × 100 − 8 mỗi nhát hụt (tối đa −24) − 15 nếu quá 2 × par | **MVP 0.5.0** |
+| LAC | Lắc | Giữ bình hay rổ kéo lên kéo xuống; mỗi lần đổi chiều quá 24px là một lượt. Không dùng cảm biến chuyển động của máy (iOS bắt xin quyền). Lớp vỏ: bình (Lắc bình), rổ (Lắc rổ áo bột năng) | Lắc trà tắc, lắc rổ áo bột năng | 100 × min(1, lượt / K) − 10 nếu nhịp không đều (hệ số biến thiên > 0,6 × hệ số vùng) − 15 nếu quá 2 × par | **MVP 0.5.0** |
+| BAY | Bày (lớp vỏ ly: Thả đá) | Kéo từng món từ khay thả vào vùng đích rồi bấm Xong. Khay có max(n + 1, 3) món nên ghi chú "Ít đá" có nghĩa thật. Thả ngoài vùng thì món trôi về khay, không phạt; chạm món đã thả để lấy ra | Thả đá vào ly (Cà phê sữa đá, Cà phê muối) | Trung bình điểm vị trí (d = khoảng cách tới tâm / bán kính vùng: ≤ 0,35 × hệ số → 100; ≤ 0,6 × hệ số → 80; ≤ 1 → 55; xa hơn 20) − 30 × \|số đã thả − n\|; chưa thả gì 0 | **MVP 0.5.0** (bày đĩa xếp lớp có thứ tự: BAY_DIA ở GĐ2) |
 | LUC | Giữ lấy lực | Giữ tay, kim lực chạy 0 → 100 → 0 theo chu kỳ 1,2 giây; thả tay | Đập tỏi, đập gừng, ép khuôn | Vùng rộng 15 đơn vị; đúng tâm → 100 | GĐ2 |
-| KHUAY | Vẽ vòng | Xoay đủ K vòng | Khuấy, vo viên, nhào | min(1, vòng / K) × độ tròn đều; quá nhanh −10 | GĐ2 |
-| BAY_DIA | Bày đĩa | Kéo thả thành phần vào bóng mờ theo thứ tự | Xếp lớp, trình bày | Lệch tâm ≤8% → 100; sai thứ tự lớp −20 | GĐ2 |
+| BAY_DIA | Bày đĩa xếp lớp | Kéo thả thành phần vào bóng mờ theo thứ tự (mở rộng từ BAY) | Xếp lớp, trình bày | Lệch tâm ≤8% → 100; sai thứ tự lớp −20 | GĐ2 |
 | VUOT_CHUOI | Vuốt theo mũi tên | Vuốt 3–5 hướng liên tiếp | Cuốn, gấp lá, gói | Đúng hướng ±30° → 100; ±45° → 70 | GĐ2 |
 | VE_DUONG | Vẽ theo đường | Vuốt theo nét chấm | Tỉa hoa, rưới sốt, buộc lạt | % phủ nét × (1 − độ lệch) | GĐ3 |
-| LAC | Lắc chảo | Vuốt trái phải theo nhịp | Xào, lúc lắc, flambé (kết hợp LUC) | Dưới nhịp thì thanh khét tăng; quá nhanh thì văng ra | GĐ3 |
+| LAC_CHAO | Lắc chảo (*kế hoạch cũ ghi LAC; đổi mã để khỏi trùng LAC lên xuống của 0.5.0*) | Vuốt trái phải theo nhịp | Xào, lúc lắc, flambé (kết hợp LUC) | Dưới nhịp thì thanh khét tăng; quá nhanh thì văng ra | GĐ3 |
+
+**Bước đổi cơ chế ở 0.5.0** (mã trong code: `dap`, `xoay`, `got`, `lac`, `bay`): Đập trứng vào chảo (`dap_trung`) CHAM `exact` → DAP 2 quả; Lắc đều (`lac`, 2 món trà tắc) CHA 6 lần vuốt → LAC 6 lượt; Gọt vỏ xoài (`got_xoai`, 2 món bánh tráng trộn) và Gọt lớp vỏ xanh (`got_vo`, Chè bưởi) CHA 5 vùng → GOT 5 dải; Trộn đều (`tron`, 2 món bánh tráng trộn) CHA 8 lần vuốt → XOAY 5 vòng trong tô; Khuấy đều (`khuay`, 2 món cà phê) CHA 6 lần vuốt → XOAY 3 vòng trong ly; Đánh sữa muối (`danh_sua_muoi`) CHA 8 lần vuốt → XOAY 6 vòng nhanh trong chén; Thêm đá (`them_da`, 2 món cà phê) CHAM `exact` → BAY "Thả đá vào ly" 2 viên; Lăn bột năng (`ao_bot`) CHAM `min` → LAC "Lắc rổ áo bột năng" 8 lượt. Bước giữ cơ chế cũ: Rửa dưa leo, Bóc trứng cút, Xé khô mực, Bóp muối (CHA); mọi bước Thái, Canh lửa, Rót và các bước Nêm/Vắt (CHAM).
+
+**Sàn giờ của 5 thao tác mới**: giới hạn giờ = max(2,5 × par, sàn theo số lượng) — dap 1,5 giây mỗi quả + 1; xoay 1,1 mỗi vòng + 1; got 1,2 mỗi dải + 1; lac 0,4 mỗi lượt + 1; bay 1,3 mỗi viên + 1,5 (Hỗ trợ thao tác nhân 1,5 cả hai; nấu thử không giới hạn). Sàn không đổi par (par quyết định thời gian chờ của khách), chỉ để "Thêm trứng" hay đơn nhiều phần vẫn làm kịp.
 
 Thang nhãn bước: **Hoàn hảo** (≥90), **Tốt** (≥70), **Đạt** (≥50), **Hỏng** (<50).
 
@@ -440,7 +453,7 @@ Thang nhãn bước: **Hoàn hảo** (≥90), **Tốt** (≥70), **Đạt** (≥
 - Thời gian đo bằng `performance.now()`, không đếm khung hình. Mini-game tạm dừng khi tab bị ẩn.
 - Tọa độ chuẩn hóa về 0..1. Vùng chạm tối thiểu 44px và cách mép màn hình 16px.
 - Sân khấu mini-game chặn cuộn, phóng to, nhấn giữ lâu và menu chuột phải; chỉ nhận con trỏ chính; `pointercancel` coi như thả tay. Trên máy tính, phím Space thay cho nhấn hoặc giữ.
-- **Thẻ gợi ý** 0,8 giây trước bước: chạm để bỏ qua, tự ẩn sau 3 lần nấu món đó. **Nhãn kết quả** chồng lên bước kế tiếp, không bắt chờ.
+- **Thẻ gợi ý** 0,8 giây trước bước: chạm để bỏ qua, tự ẩn sau 3 lần nấu món đó. **Nhãn kết quả** chồng lên bước kế tiếp, không bắt chờ. *Từ 0.5.0 thay bằng thẻ bước, con dấu và màn ra món ở mục 6.5b.*
 - **Biến thể theo seed** [MVP]: mỗi lần nấu xáo vị trí ô trên kệ, dịch nhẹ vị trí vạch thái. [GĐ2] 10–15% lần nấu có biến cố nhỏ (trứng hai lòng đỏ, vỏ trứng rơi vào chảo phải gắp ra).
 - **Chấm Canh lửa bằng hàm liên tục đối xứng** (đề xuất ban đầu, tinh chỉnh trong `docs/can-bang.md`). Gọi d = |giá trị − tâm vùng| / nửa bề rộng vùng:
 
@@ -454,6 +467,16 @@ Thang nhãn bước: **Hoàn hảo** (≥90), **Tốt** (≥70), **Đạt** (≥
 | Giá trị > 1,0 (cháy) | 0 |
 
   Ví dụ chiên trứng vùng [0,55; 0,72] (tâm 0,635, nửa rộng 0,085): nhấc ở 0,72 (mép) được 80; nhấc ở 0,80 (d ≈ 1,94) được khoảng 42, tức Hỏng; nhấc sớm ở 0,50 (d ≈ 1,59) được khoảng 56.
+
+### 6.5b Thẻ bước, con dấu, màn ra món và phong cách (M5, bản 0.5.0)
+Thay cho thẻ gợi ý chữ, nhãn kết quả dạng viên chữ và màn công bố 1,2 giây của bản cũ. Người dùng đã duyệt phong cách ở Phòng mẫu (Đợt 0, 02/10/2026).
+
+- **Thẻ "Bước k/N"** trước mỗi bước trên Thớt: ruy băng "Bước 3/6" (N = số bước trên Thớt + 1 cho bước Chọn; k = số bước đã xong + 1), hình nguyên liệu hoặc dụng cụ **to** ở giữa, động từ chữ to ("Thái dưa leo!"), **bàn tay mẫu** diễn đúng cử chỉ của thao tác (chạm, chà, kéo dao, giữ, chạm rồi vuốt, vẽ vòng, vuốt xuống, lắc lên xuống, kéo thả) và nút "Chạm để bắt đầu". Thẻ tự vào bước sau 1,1 giây, chạm ở đâu trên thẻ cũng vào ngay. Từ lần nấu thứ 3 của món chỉ còn ruy băng gọn trong đầu sân khấu, không chờ. Lần đầu gặp thẻ của 5 thao tác mới thì Dì Sáu chỉ vào bàn tay mẫu và nút bắt đầu (hướng dẫn lần đầu; thẻ đứng chờ trong lúc đọc).
+- **Đầu sân khấu gọn** (≤ 44px): chuỗi chấm bước tròn (bước đang làm to hơn và có hình nguyên liệu, bước xong có ✓ viền màu theo hạng), tên bước, đồng hồ. Dòng hướng dẫn ngắn là một thẻ giấy nhỏ ở mép trên vùng chơi. Trong bếp, sân khấu có tường gạch men phía sau và thanh chân là mặt quầy gỗ.
+- **Con dấu kết quả bước**: xong bước là con dấu đập xuống ngay trên sân khấu (phóng 1,6 → 1, nghiêng −8°, 220 ms, dừng hình 60 ms), chữ theo 4 hạng **Hoàn hảo / Tốt / Đạt / Hỏng** kèm điểm. Hoàn hảo: 10–14 hạt vàng, ngôi sao bay về chấm bước; Tốt: vài hạt; Đạt: không hạt; Hỏng: khói xám, khung rung nhẹ. **Dì Sáu phản ứng** ở góc trên-phải bằng một câu ngắn (mỗi hạng 3–5 câu tự viết, ví dụ "Đẹp quá con ơi!", "Khá lắm, giữ vậy nha!", "Hơi lệch chút, không sao!", "Lỡ tay rồi, bước sau kỹ hơn nha!"; không dùng kiểu câu "để dì sửa giùm"). Sân khấu được giữ khoảng 0,7 giây (0,5 giây khi giảm chuyển động) rồi mới về Thớt; bước chí mạng Hỏng thì hỏi làm lại như cũ. Kết quả đã lưu ngay khi con dấu hiện.
+- **Màn ra món** khoảng 2,2 giây (1,4 giây khi giảm chuyển động), chạm để bỏ qua (quyết định Q6 của người dùng): tia sáng xoay chậm sau lưng, món nảy vào, huy hiệu hạng món rơi xuống, % đếm lên có tiếng tích tắc, sao bật lần lượt, ruy băng "Không tì vết", pháo giấy khi lên cấp thạo món, Dì Sáu góp ý đúng bước còn yếu (5 thao tác mới có câu góp ý riêng). Món hiếm dùng hình món nền kèm huy hiệu ★ (quyết định Q3).
+- **Chế độ tập trung khi nấu** (quyết định Q1): màn cao dưới 760px thì lúc đang nấu (bước Chọn, Thớt, một bước) dải khách và thanh 4 khâu tạm ẩn cho bếp rộng thêm khoảng 120px; dây phiếu (màu chờ của khách) vẫn hiện; thông báo nổi chờ tới lúc rời bếp.
+- **Phong cách vẽ và chuyển động** (áp cho mọi đợt sau): hình to là nhân vật chính, chữ chỉ là phụ; viền mực nâu dày, khối 3 tông (mảng tối dưới-phải, điểm sáng trên-trái), bóng đất dưới chân; nút "bánh kẹo" có viền mực, mặt sáng trên đậm dưới, bóng cứng, nhấn thì lún; khung giấy, gỗ, bảng phấn; tiêu đề font tròn đậm Baloo 2 (tự lưu, giấy phép mở), chữ thân giữ font hệ thống. Cặp bẫy khác nhau ở **dáng**, nhận ra được ở 48px (nước mắm chai thấp hổ phách ↔ nước tương chai cao nâu đen…). Hiệu ứng chỉ đổi vị trí/độ mờ, không chặn chạm, tôn trọng "Giảm chuyển động"; iOS không rung được nên kết quả xấu dùng rung khung hình kèm âm thanh. Chỉ học cơ chế và cảm giác của game tham khảo; hình, câu thoại, âm thanh đều tự làm (mục G của `docs/tham-khao/m5-nghien-cuu-giao-dien.md`).
 
 ### 6.6 Luật nguyên liệu "đúng và đủ"
 **Mỗi nguyên liệu chỉ tính một dòng phạt**, theo thứ tự ưu tiên: **trái ghi chú > bẫy > thiếu > thừa**. Bẫy lọt vào món thay cho nguyên liệu cặp của nó cũng chỉ tính một dòng "bẫy".
@@ -563,14 +586,15 @@ Giá dụng cụ tăng theo đường cong ở mục 11.4. Có **unit test kiể
 - Âm thanh tổng hợp bằng WebAudio (M3): dao "tách", dầu "xèo", nước, chuông Hoàn hảo, chuông ra món, tiếng tiền.
 - Rung 15 ms khi thái đúng, 80 ms khi Hỏng (tắt được).
 - Nguyên liệu đổi trạng thái ngay, có hơi nước bốc lên.
-- Màn công bố món dài 1,2 giây (chạm để bỏ qua): món phóng to, hiện hạng và Q, **Dì Sáu** hiện với 4 biểu cảm (tự hào, vui, lo, tiếc) và góp ý đúng bước sai.
+- Màn công bố món dài 1,2 giây (chạm để bỏ qua): món phóng to, hiện hạng và Q, **Dì Sáu** hiện với 4 biểu cảm (tự hào, vui, lo, tiếc) và góp ý đúng bước sai. *Từ 0.5.0: màn ra món 2,2 giây có tia sáng, huy hiệu hạng, % đếm lên, sao và pháo giấy; xong mỗi bước có con dấu và Dì Sáu phản ứng (mục 6.5b).*
+- [M5, 0.5.0] Âm riêng cho từng thao tác mới: trứng nứt "cạch", muỗng chạm thành tô, tiếng gọt vỏ, đá lách cách trong bình, đá rơi "tõm"; thêm âm con dấu, lấp lánh, kèn ra món, tích tắc khi % đếm lên. Mỗi lần phát lệch cao độ nhẹ để không nghe đều đều.
 - [GĐ2] **Chuỗi "Liên hoàn"**: nhiều bước Hoàn hảo liên tiếp thì hiệu ứng mạnh dần (chỉ hình và tiếng, không đổi tiền thưởng).
 - Tôn trọng `prefers-reduced-motion` và công tắc giảm chuyển động.
 - Nếu có hiệu ứng đứt tay (GĐ2) thì chỉ hiện băng cá nhân hài hước, không có máu.
 
 ### 6.14 Công thức
 
-Năm món MVP dưới đây chỉ dùng 6 cơ chế có sẵn. Số liệu đã đối chiếu với `src/data/recipes.js` và `src/data/ingredients.js` ngày 30/09/2026 (bản M2); nếu code đổi thì code là chuẩn và bảng này được sửa theo. Giá vốn = tổng giá nguyên liệu chính và phụ (bảng giá từng nguyên liệu ở `docs/can-bang.md` mục 2); nguyên liệu tùy chọn chỉ tính khi ghi chú đòi (ví dụ tương ớt +250đ khi "Cay"). Ghi chú phụ thu (+5.000đ) không làm tăng giá vốn vì bước Chọn không đòi thêm nguyên liệu, chỉ tăng số lần thao tác. Cột "Sau" là ràng buộc `after`. Kệ luôn có thêm vài nguyên liệu của món khác để bước Chọn không quá dễ.
+Năm món MVP dưới đây ban đầu chỉ dùng 6 cơ chế có sẵn; từ bản 0.5.0 (M5) 15 bước đổi sang 5 thao tác mới DAP, XOAY, GOT, LAC, BAY (mục 6.4) — các bảng dưới ghi cơ chế hiện tại, par và w giữ nguyên như cũ. Số liệu đã đối chiếu với `src/data/recipes.js` và `src/data/ingredients.js` ngày 30/09/2026 (bản M2); nếu code đổi thì code là chuẩn và bảng này được sửa theo. Giá vốn = tổng giá nguyên liệu chính và phụ (bảng giá từng nguyên liệu ở `docs/can-bang.md` mục 2); nguyên liệu tùy chọn chỉ tính khi ghi chú đòi (ví dụ tương ớt +250đ khi "Cay"). Ghi chú phụ thu (+5.000đ) không làm tăng giá vốn vì bước Chọn không đòi thêm nguyên liệu, chỉ tăng số lần thao tác. Cột "Sau" là ràng buộc `after`. Kệ luôn có thêm vài nguyên liệu của món khác để bước Chọn không quá dễ.
 
 **(1) Bánh mì ốp la** — Chặng 1, có sẵn (M1). Độ khó 1.
 - Giá 20.000đ, giá vốn 9.000đ.
@@ -584,7 +608,7 @@ Năm món MVP dưới đây chỉ dùng 6 cơ chế có sẵn. Số liệu đã 
 | 1 | Chọn nguyên liệu | CHON | kệ 12 ô | — | 6 | 1 |
 | 2 | Rửa dưa leo | CHA | 4 vết bẩn | — | 3 | 1 |
 | 3 | Thái dưa leo | THAI | 3 vạch; chọn cách: **Thái lát** / Thái sợi / Bào | 2 | 4 | 1 |
-| 4 | Đập trứng vào chảo | CHAM `exact` | n = 2 (3 khi "Thêm trứng"), có vùng đích | — | 2 | 2 |
+| 4 | Đập trứng vào chảo | DAP (*đến 0.4.x: CHAM `exact`*) | n = 2 quả (3 khi "Thêm trứng"); vùng xanh của kim lực [0,40; 0,70] | — | 2 | 2 |
 | 5 | Chiên trứng (**chí mạng**, linh hồn) | LUA | period 5 giây; vùng [0,55; 0,72]; làm lại 6.000đ | 4 | 5 | 3 |
 | 6 | Nêm nước tương | CHAM `targets` | nước tương 1; tương ớt 2 khi "Cay" | 5 | 2 | 1 |
 
@@ -603,7 +627,7 @@ Tổng par 22 giây, Σw = 9.
 | 3 | Vắt tắc | CHAM `min` | N = 6 trong 3 giây | 2 | 3 | 1 |
 | 4 | Rót trà | ROT | vạch [0,70; 0,82] | — | 3 | 2 |
 | 5 | Nêm đường (linh hồn) | CHAM `exact` | ít 1 / thường 2 / nhiều 3 | — | 2 | 3 |
-| 6 | Lắc đều | CHA | 6 lần vuốt | 3, 4, 5 | 2 | 1 |
+| 6 | Lắc đều | LAC, bình (*đến 0.4.x: CHA*) | 6 lượt lắc | 3, 4, 5 | 2 | 1 |
 
 Tổng par 18 giây, Σw = 9. Đá cho vào tự động khi Ra món (bỏ khi "Không đá").
 
@@ -617,12 +641,12 @@ Tổng par 18 giây, Σw = 9. Đá cho vào tự động khi Ra món (bỏ khi "
 |---|---|---|---|---|---|---|
 | 1 | Chọn nguyên liệu | CHON | kệ 12 ô | — | 8 | 1 |
 | 2 | Cắt bánh tráng | THAI | 5 vạch; chọn cách: **Cắt sợi** / Cắt miếng vuông / Để nguyên | — | 4 | 1 |
-| 3 | Gọt vỏ xoài | CHA | 5 vùng vỏ | — | 3 | 1 |
+| 3 | Gọt vỏ xoài | GOT (*đến 0.4.x: CHA*) | 5 dải vỏ | — | 3 | 1 |
 | 4 | Thái xoài | THAI | 5 vạch; chọn cách: **Thái sợi** / Thái lát / Cắt hạt lựu | 3 | 4 | 1 |
 | 5 | Bóc trứng cút | CHA | 3 vùng vỏ (5 khi thêm trứng) | — | 3 | 1 |
 | 6 | Nêm sa tế, vắt tắc | CHAM `targets` | sa tế 2 (0 / 4 theo ghi chú); tắc 2 | — | 3 | 2 |
 | 7 | Rưới dầu hành phi | ROT | vạch [0,55; 0,70] | — | 2 | 1 |
-| 8 | Trộn đều (linh hồn) | CHA | 8 lần vuốt | 2–7 | 4 | 3 |
+| 8 | Trộn đều (linh hồn) | XOAY, tô (*đến 0.4.x: CHA 8 lần vuốt*) | 5 vòng | 2–7 | 4 | 3 |
 
 Tổng par 31 giây, Σw = 11. Đây là món dài nhất Chặng 1: nếu đo thấy quá dài, bỏ bước Rưới dầu hành phi trước (xem `docs/can-bang.md` mục 15).
 
@@ -639,8 +663,8 @@ Tổng par 31 giây, Σw = 11. Đây là món dài nhất Chặng 1: nếu đo t
 | 2 | Chế nước sôi vào phin | ROT | vạch [0,60; 0,75] | — | 3 | 2 |
 | 3 | Chờ phin nhỏ giọt | LUA | period 6 giây; vùng [0,60; 0,80] | 2 | 6 | 2 |
 | 4 | Thêm sữa đặc (linh hồn) | CHAM `exact` | 2 nấc (ít ngọt 1, ngọt đậm 3) | — | 2 | 3 |
-| 5 | Thêm đá | CHAM `exact` | 2 (ít đá 1) | — | 2 | 1 |
-| 6 | Khuấy đều | CHA | 6 lần vuốt | 2–5 | 2 | 1 |
+| 5 | Thả đá vào ly | BAY, ly (*đến 0.4.x: CHAM `exact`*) | 2 viên (ít đá 1); khay luôn có ít nhất 3 viên | — | 2 | 1 |
+| 6 | Khuấy đều | XOAY, ly (*đến 0.4.x: CHA 6 lần vuốt*) | 3 vòng | 2–5 | 2 | 1 |
 
 Tổng par 20 giây, Σw = 10.
 
@@ -653,10 +677,10 @@ Tổng par 20 giây, Σw = 10.
 | # | Bước | Cơ chế | Tham số | Sau | par | w |
 |---|---|---|---|---|---|---|
 | 1 | Chọn nguyên liệu | CHON | kệ 12 ô | — | 6 | 1 |
-| 2 | Gọt lớp vỏ xanh | CHA | 5 vùng vỏ | — | 3 | 1 |
+| 2 | Gọt lớp vỏ xanh | GOT (*đến 0.4.x: CHA*) | 5 dải vỏ | — | 3 | 1 |
 | 3 | Thái cùi bưởi | THAI | 4 vạch; chọn cách: **Cắt hạt lựu** / Thái lát / Thái sợi | 2 | 4 | 1 |
 | 4 | Bóp muối, xả cho hết đắng | CHA | 6 lần vuốt | 3 | 3 | 1 |
-| 5 | Lăn bột năng | CHAM `min` | N = 8 trong 3,5 giây | 4 | 4 | 2 |
+| 5 | Lắc rổ áo bột năng | LAC, rổ (*đến 0.4.x: "Lăn bột năng", CHAM `min` N = 8 trong 3,5 giây*) | 8 lượt lắc | 4 | 4 | 2 |
 | 6 | Luộc tới khi trong (**chí mạng**, linh hồn) | LUA | period 5 giây; vùng [0,55; 0,75]; làm lại 3.000đ | 5 | 5 | 3 |
 | 7 | Rưới nước cốt dừa | ROT | vạch [0,65; 0,80] | — | 2 | 2 |
 
@@ -780,7 +804,7 @@ Ngày âm lịch lấy từ **bảng tra sẵn cho 2026–2030** trong `src/data
 | Chặng | Bối cảnh | Điều kiện lên chặng này (phải đủ tất cả; đầu tư trả một lần) | Mở khóa chính: món / khách / cơ chế | Khách mỗi ca · TNC | Thời lượng mục tiêu (người chơi trung bình, 3–4 ca/ngày thật) |
 |---|---|---|---|---|---|
 | **1 Xe đẩy đầu hẻm** | Xe đẩy cũ thuê lại của Dì Sáu, dù che, ghế nhựa; biển xe mang tên người chơi đặt | Bắt đầu với 200.000đ Tiền quán (quỹ lẻ 200.000đ nằm riêng trong két) | Bánh mì ốp la, Trà tắc; Bánh tráng trộn, Cà phê sữa đá (Shop); Chè bưởi (sự kiện). Khách: học sinh, công nhân/shipper, cô chú lớn tuổi, dân văn phòng (từ ngày 4), khó tính (từ ngày 5). Luồng 4 khâu tự nhẩm, tiền mặt + QR tĩnh, 6 cơ chế bếp, Thớt sơ chế, dây 3 phiếu | 4–8 · tăng dần 20k → 100k | Ca 1–15 · ngày thật 1–4 (mô phỏng M2: người chơi trung bình đủ điều kiện ở ca 9; người chơi hoàn hảo ở ngày thật 2–3) |
-| **2 Quán cóc vỉa hè** | 2 bàn con, 4 ghế nhựa, đèn dây | 150 danh tiếng; sao trung bình ≥3,8; 3 công thức; 2 món thạo cấp 2; xong chuỗi "Ngày đầu ra phố"; 500.000đ | Ăn tại chỗ, dọn bàn, đóng gói mang về. 6 khách quen có tên, kèm Sổ khách quen. Bếp 2 họng. Cơ chế BAY_DIA, VUOT_CHUOI, KHUAY, LUC. Kho theo lô có hạn dùng, đi chợ mặc cả. Món: Gỏi cuốn, Bún thịt nướng, Cơm tấm, Chè ba màu | 8–10 · khoảng 160k | Ca 16–45 · ngày thật 4–12 |
+| **2 Quán cóc vỉa hè** | 2 bàn con, 4 ghế nhựa, đèn dây | 150 danh tiếng; sao trung bình ≥3,8; 3 công thức; 2 món thạo cấp 2; xong chuỗi "Ngày đầu ra phố"; 500.000đ | Ăn tại chỗ, dọn bàn, đóng gói mang về. 6 khách quen có tên, kèm Sổ khách quen. Bếp 2 họng. Cơ chế BAY_DIA, VUOT_CHUOI, LUC (KHUAY đã có từ 0.5.0 với tên XOAY). Kho theo lô có hạn dùng, đi chợ mặc cả. Món: Gỏi cuốn, Bún thịt nướng, Cơm tấm, Chè ba màu | 8–10 · khoảng 160k | Ca 16–45 · ngày thật 4–12 |
 | **3 Tiệm nhỏ mặt tiền** | Mặt bằng thuê đầu tiên | 500 danh tiếng; ≥4,0 sao; 6 công thức; 3 món cấp 3; chuỗi "Tìm mặt bằng" (chọn gần trường học / văn phòng / chợ); 2tr | 2 ca/ngày. **Máy POS**, in bếp, gọi số. Khuyến mãi, QR động, thẻ, tờ 1k/2k. Chốt ca đếm két. Thu ngân NPC và kèm cặp, phụ bếp. Sơ chế đầu ca, nấu mẻ. Đơn app giao hàng hư cấu (phí 20%) và đóng gói. Kiểm tra ATTP "soi bếp 20 giây". Đối thủ Lâm. Món: Phở bò tái, Hủ tiếu, Cà phê muối | 10–12 · khoảng 300k | Ca 46–100 · ngày thật 12–25 |
 | **4 Quán ăn gia đình** | 8 bàn đánh số, gạch bông | 1.500 danh tiếng; ≥4,2 sao; 10 công thức; 1 món cấp 4; thu ngân NPC bậc 2; chuỗi "Có tên có tuổi" (tên, logo, hộ kinh doanh mô phỏng); 6tr | Khách nhóm 2–6 người, món chia cả bàn, ra món đồng bộ. Đặt bàn qua điện thoại. Ghi chú dị ứng. Thẻ thành viên. Trang trí 10 ô. Món: Cá kho tộ, Canh chua, Lẩu Thái | 12 lượt bàn · khoảng 600k | Ngày thật 25–40 |
 | **5 Nhà hàng** | Bếp mở chia trạm | 3.500 danh tiếng; ≥4,4 sao; 14 công thức; 2 món cấp 4; chuỗi "Đạt chuẩn ATTP"; 20tr | **Trả sau** (chuỗi huấn luyện "Phục vụ bàn" 3 bước). Máy order cầm tay, màn hình bếp. Tạm tính; tách, gộp, chuyển bàn; thuế GTGT (mô phỏng); xuất hóa đơn cho doanh nghiệp. Set menu 3 món, kiểm món ở Pass, bếp phó, đơn tiệc 20–50 suất. Thẩm định viên ẩn danh. Món: Bò lúc lắc, Gà nướng muối ớt | 12 bàn · khoảng 1,4tr | Ngày thật 40–60 |
@@ -938,7 +962,7 @@ Trong Cài đặt (M3) có mức **Nhiều / Vừa / Ít** thay cho nút tắt h
 | Loại | Quà | Có ở |
 |---|---|---|
 | Chào mừng | 10 Muỗng Vàng + 1 Phiếu Chợ Sớm (không tặng tiền) | MVP |
-| Phiên bản mới (thư "Có gì mới: …") | Chỉ gửi cho save cũ, save mới không nhận. `phien_ban_0_2_0`: 10 Muỗng Vàng (save từ bản M1). `phien_ban_0_4_0` (M4): giải thích luật tip "hóa đơn từ 20.000đ mà khách chấm 5 sao thì khách bỏ hũ tip 5.000đ", giới thiệu sự kiện mới, 3 gánh hàng quê và khách lạ; quà làm quen 1 mảnh Trà tắc mật ong rừng + 1 phần Mật ong rừng U Minh (save từ bản 0.1–0.3) | MVP, M4 |
+| Phiên bản mới (thư "Có gì mới: …") | Chỉ gửi cho save cũ, save mới không nhận. `phien_ban_0_2_0`: 10 Muỗng Vàng (save từ bản M1). `phien_ban_0_4_0` (M4): giải thích luật tip "hóa đơn từ 20.000đ mà khách chấm 5 sao thì khách bỏ hũ tip 5.000đ", giới thiệu sự kiện mới, 3 gánh hàng quê và khách lạ; quà làm quen 1 mảnh Trà tắc mật ong rừng + 1 phần Mật ong rừng U Minh (save từ bản 0.1–0.3). `phien_ban_0_5_0` (M5): "Có gì mới: bếp mới và 5 thao tác mới" — giới thiệu hình mới, con dấu từng bước, màn ra món, 5 thao tác, thẻ bàn tay mẫu, chế độ tập trung ở màn thấp; **không kèm quà** (quyết định Q4; save có `seenVersion` từ 0.4.x trở xuống nhận) | MVP, M4, M5 |
 | Đền bù lỗi | Theo id, không nhận trùng | MVP |
 | Quà lễ (đẩy từ 04:00 ngày lễ, trong 7 ngày) | 20/10: 20 Muỗng Vàng; 20/11: 20 Muỗng Vàng + 0,5 TNC; Tết Đinh Mùi (06/02/2027): 88 Muỗng Vàng + lì xì 1 TNC | MVP (cả 3 quà đã có trong dữ liệu M2) |
 | Quà đời thường | Từ ngày thật thứ 3, mỗi ngày 10% nhận 0,3–0,6 TNC (khách quen lì xì, trả ví rơi, bán ve chai); cần ít nhất 5 đánh giá và sao trung bình ≥ 3,8; tối đa 2 thư mỗi tháng | MVP |
@@ -1278,6 +1302,21 @@ Thiết kế chi tiết: `docs/tham-khao/m4-thiet-ke.md` (có điều chỉnh c�
 - Unit test mới: `m4-tip`, `m4-frequency`, `m4-events`, `m4-incidents`, `m4-rare`, `m4-save` (nâng save thật của bản 0.3.0 đang dở ca lên v3 rồi chơi tiếp). Mô phỏng `integration-meta` thêm phiên hàng, nấu thử món hiếm, chọn cách an toàn, quy đổi hàng hiếm vào tỉ lệ thưởng (≤ 35% mỗi ngày thật), và các hạt giống khó.
 - `npm test` và `npm run e2e` của M1–M3 vẫn xanh; save v1 và v2 vẫn nạp được; mã sao lưu v1/v2 dùng được ở bản 0.4.
 
+### 14.4c M5 — Giao diện kiểu game nấu ăn (bản 0.4.2 → 0.5.0 → 0.5.1 → 0.5.2) [Đợt 0 và Đợt 1 đã làm]
+Thiết kế chi tiết: `docs/tham-khao/m5-thiet-ke.md`; nghiên cứu giao diện, cảm giác thao tác, hiệu ứng của 25 game/dòng game nấu ăn và bán hàng: `docs/tham-khao/m5-nghien-cuu-giao-dien.md` (chỉ học cơ chế và cảm giác; hình, câu thoại, âm thanh tự làm — mục G của tài liệu đó). Hợp đồng kỹ thuật: `docs/kien-truc.md` mục 13.3 và 31.
+
+**Đợt 0 (0.4.2) — bản mẫu để duyệt.** Trang "Phòng mẫu" (`mau.html`): bộ hình mới, màn gọi món có con dấu "ĐÃ CHỐT", bước Thái kiểu mới có thẻ bước, tay mẫu, con dấu và Dì Sáu phản ứng, màn ra món 5 hạng; công tắc Giảm chuyển động, Âm thanh, Khung thấp. Game chính không đổi hành vi. **Người dùng đã duyệt phong cách (02/10/2026)** và chốt: bật chế độ tập trung khi nấu; màn ra món khoảng 2 giây, chạm để bỏ qua; phiếu chấm giữ 2 giây; món hiếm dùng hình món nền + huy hiệu ★; thư "Có gì mới" 0.5.0 không quà.
+
+**Đợt 1 (0.5.0) — Bếp và mini-game.**
+- Bộ hình mới vào game: 13 nguyên liệu tươi (21 hình trạng thái), 29 đồ khô và chai lọ (5 hình trạng thái), 5 món, 14 dụng cụ và biểu tượng thao tác, 14 đạo cụ sân khấu lớn; nguyên liệu trên Thớt đổi sang hình đã sơ chế ngay khi xong bước.
+- Bếp làm lại theo mục 6.3, 6.5b: Thớt gỗ với huy hiệu bước, bảng chọn cách sơ chế bằng thẻ hình, thẻ "Bước k/N" có tay mẫu, khung sân khấu mới (chấm bước, tường gạch, quầy gỗ), con dấu và Dì Sáu phản ứng sau mỗi bước, màn ra món 2,2 giây, chế độ tập trung ở màn cao dưới 760px.
+- Cả 11 mini-game vẽ lại (hình to là nhân vật chính, dao lệch trên ngón tay, hạt và rung khi hợp lý) và thêm 5 thao tác DAP, XOAY, GOT, LAC, BAY (mục 6.4); nút toàn game chuyển kiểu "bánh kẹo"; 5 âm thao tác mới.
+- Hướng dẫn lần đầu: lời tour Thớt nhắc thao tác mới; 5 tour trên thẻ bước của 5 thao tác mới (tự hiện cả với người chơi cũ).
+- **Không đổi cân bằng**: id bước, par, w, chí mạng, giá làm lại, giá bán, giá vốn, `BALANCE` giữ nguyên (khóa bằng test so từng bước); save giữ v3, phiên nấu dở ở Thớt của bản cũ tự dựng lại bảng bước theo thao tác mới, giữ kết quả các bước đã làm.
+- Thư "Có gì mới: bếp mới và 5 thao tác mới", không quà.
+
+**Đợt 2 (0.5.1, chưa làm)**: Quầy (gọi món theo bản mẫu đã duyệt, thu tiền, QR, phiếu thu), HUD, cảnh phố có khách bán thân, thanh 4 khâu bằng biểu tượng, dây phiếu có hình món, phiếu chấm sao bật lần lượt, tình huống. **Đợt 3 (0.5.2, chưa làm)**: các màn ngoài ca (Chuẩn bị, Chợ Công Thức, Việc hôm nay, Hộp thư, Sổ công thức, Tổng kết, Gánh hàng quê…) và hình meta.
+
 ### 14.5 Đường cắt khi thiếu thời gian (cắt từ trên xuống)
 1. Âm thanh.
 2. Tình huống trong ca (giữ sự kiện ngày).
@@ -1286,13 +1325,13 @@ Thiết kế chi tiết: `docs/tham-khao/m4-thiet-ke.md` (có điều chỉnh c�
 5. Bước chọn câu xin lỗi trong màn Xử lý phàn nàn.
 6. Chuyển tab giữa các bước (thay bằng phục vụ tuần tự: làm xong món mới quay lại quầy).
 
-**Không bao giờ cắt:** luồng 4 khâu và thanh 4 chấm; 3 lớp đơn (yêu cầu thật – phiếu – món); đọc lại đơn; báo tổng và thối tiền; Thớt sơ chế; 6 cơ chế bếp; phiếu chấm tách lỗi quầy/lỗi bếp; lưu cùng ca dở; điểm danh; nhiệm vụ ngày; hộp thư; chuỗi "Ngày đầu ra phố"; Shop 2 món; sự kiện 20/11 với Chè bưởi; unit test; các kịch bản e2e.
+**Không bao giờ cắt:** luồng 4 khâu và thanh 4 chấm; 3 lớp đơn (yêu cầu thật – phiếu – món); đọc lại đơn; báo tổng và thối tiền; Thớt sơ chế; các cơ chế bếp đang có (6 cơ chế gốc, từ 0.5.0 thêm 5 thao tác); phiếu chấm tách lỗi quầy/lỗi bếp; lưu cùng ca dở; điểm danh; nhiệm vụ ngày; hộp thư; chuỗi "Ngày đầu ra phố"; Shop 2 món; sự kiện 20/11 với Chè bưởi; unit test; các kịch bản e2e.
 
-**Để sau, không làm ở MVP:** kho, hạn dùng, sơ chế đầu ca, nấu mẻ, bếp chạy nền; 6 cơ chế còn lại; ăn tại chỗ, 6 khách quen có tên, Sổ khách quen; máy POS, khuyến mãi, thẻ, tờ 1k/2k, chốt ca đếm két; nhân viên; đổi món bằng Tem; Kệ Đặc biệt, kệ xoay, Mảnh công thức (của Tủ Kỷ Niệm; M4 chỉ có mảnh cho 4 công thức hiếm); lịch tháng, nhiệm vụ tuần, chuỗi ngày, thành tựu, giftcode; trang trí theo chặng; "Món của ngày"; Chặng 2–7; thử thách ngày; `lab.html`, Sổ số liệu chi tiết; giờ máy chủ; backend, bảng xếp hạng, Web Push; Chế độ Học việc; nhạc nền. *(Tem, Quầy đổi và màu dù xe đã làm sớm ở M2.)*
+**Để sau, không làm ở MVP:** kho, hạn dùng, sơ chế đầu ca, nấu mẻ, bếp chạy nền; các cơ chế còn lại (LUC, BAY_DIA, VUOT_CHUOI, VE_DUONG, LAC_CHAO); ăn tại chỗ, 6 khách quen có tên, Sổ khách quen; máy POS, khuyến mãi, thẻ, tờ 1k/2k, chốt ca đếm két; nhân viên; đổi món bằng Tem; Kệ Đặc biệt, kệ xoay, Mảnh công thức (của Tủ Kỷ Niệm; M4 chỉ có mảnh cho 4 công thức hiếm); lịch tháng, nhiệm vụ tuần, chuỗi ngày, thành tựu, giftcode; trang trí theo chặng; "Món của ngày"; Chặng 2–7; thử thách ngày; `lab.html`, Sổ số liệu chi tiết; giờ máy chủ; backend, bảng xếp hạng, Web Push; Chế độ Học việc; nhạc nền. *(Tem, Quầy đổi và màu dù xe đã làm sớm ở M2.)*
 
 ### 14.6 GĐ2 (mục tiêu: Chặng 2–3 chơi được, LiveOps đầy đủ khi offline)
 Hai mốc lịch: sự kiện **Giáng sinh 2026** và nội dung **Tết Đinh Mùi** chốt trước giữa tháng 01/2027.
-1. **Chặng 2**: ăn tại chỗ, dọn bàn, đóng gói; 6 khách quen và Sổ khách; LUC, KHUAY, BAY_DIA, VUOT_CHUOI; Gỏi cuốn, Bún thịt nướng, Cơm tấm, Chè ba màu; kho theo lô FIFO kèm dự báo; đi chợ mặc cả; bếp 2 họng.
+1. **Chặng 2**: ăn tại chỗ, dọn bàn, đóng gói; 6 khách quen và Sổ khách; LUC, BAY_DIA, VUOT_CHUOI (KHUAY đã làm sớm ở 0.5.0: XOAY); Gỏi cuốn, Bún thịt nướng, Cơm tấm, Chè ba màu; kho theo lô FIFO kèm dự báo; đi chợ mặc cả; bếp 2 họng.
 2. **LiveOps**: Giáng sinh, Tết (Bánh chưng); đổi món bằng Tem, nhân đôi Tem hai ngày cuối, "Món trở lại"; "Món của ngày"; Kệ Đặc biệt; Kệ Đặc sản; Mảnh công thức; nhiệm vụ tuần và Rương tuần; chuỗi ngày có vé nghỉ; thành tựu; lịch tháng và Vé Bù; quà quay lại; giftcode; Ca Hứng Khởi; `gifts.json` tải từ xa; **thử thách ngày theo seed chung** có thẻ chia sẻ.
 3. **Chặng 3**: chọn mặt bằng; máy POS, in bếp, gọi số; khuyến mãi; QR động, thẻ, 1k/2k; chốt ca đếm két; thu ngân NPC và kèm cặp; phụ bếp và truyền nghề; sơ chế đầu ca, nấu mẻ; đơn app và đóng gói; kiểm tra ATTP; đối thủ Lâm; Phở bò tái.
 4. **Chiều sâu**: thạo món cấp 4–5, nút Nếm, tình huống trong ca đầy đủ, tình huống order, đơn bất chợt, đòi hoàn tiền khi chờ quá lâu, "Mời trà đá", trang trí và Góc kỷ niệm, định giá ±20%, đơn tiệc, hũ ủ và nồi ninh, chơi lại ca có điều kiện.
@@ -1430,3 +1469,20 @@ Thiết kế chi tiết và lý do: `docs/tham-khao/m4-thiet-ke.md`; tư liệu 
 | Trần phạt ở mục 11.6 | Ghi "không quá 20% doanh thu ca" (lệch code) | min(10% doanh thu dự kiến, 0,5 TNC), khớp code; thêm trần ngày thật 1 TNC | 11.6 |
 | Save | `STATE_VERSION = 2` | `STATE_VERSION = 3`; save v1/v2 (kể cả ca đang dở của bản 0.3) nâng lên v3 khi nạp; mã v3 đưa vào bản 0.3 báo "bản mới hơn" | 14.4b |
 | Phiên bản và thư | 0.3.0, không có thư riêng | 0.4.0; thư "Có gì mới" giải thích luật tip, sự kiện mới, hàng hiếm; quà làm quen 1 mảnh Trà tắc mật ong rừng + 1 phần Mật ong rừng (chỉ save cũ nhận) | 9.5, 14.4b |
+
+## Phụ lục D. Thay đổi v0.5: M5 Đợt 1 (bản game 0.5.0)
+
+Thiết kế chi tiết: `docs/tham-khao/m5-thiet-ke.md`. Hợp đồng kỹ thuật: `docs/kien-truc.md` mục 13.3, 14, 31. Số liệu: `docs/can-bang.md` mục 7.1.
+
+| Nội dung | v0.4 (bản 0.4.x) | v0.5 (bản 0.5.0) | Mục |
+|---|---|---|---|
+| Cơ chế bếp | 6 cơ chế; gọt, trộn, khuấy, lắc mượn CHA; đập trứng, thêm đá, lăn bột mượn CHAM | 11 cơ chế: thêm DAP (đập trứng hai nhịp), XOAY (vẽ vòng), GOT (vuốt theo dải vỏ), LAC (kéo lên xuống), BAY (kéo thả vào ly); 15 bước đổi cơ chế, giữ id, par, w | 0.2 (15), 6.4, 6.14 |
+| Giới hạn giờ mỗi bước | 2,5 × par | 5 thao tác mới: max(2,5 × par, sàn theo số lượng); par không đổi | 6.4 |
+| Trước mỗi bước | Thẻ gợi ý chữ 0,8 giây | Thẻ "Bước k/N" có hình to, động từ, bàn tay mẫu; 1,1 giây hoặc chạm để vào; từ lần nấu thứ 3 chỉ còn ruy băng gọn | 6.5b |
+| Kết quả bước | Viên chữ "Tên: Tốt 85" trôi lên | Con dấu theo 4 hạng trên sân khấu, hạt và sao bay về chấm bước, Dì Sáu phản ứng; giữ sân khấu khoảng 0,7 giây | 6.5b |
+| Ra món | Hộp trắng, hình 132px, 1,2 giây | Màn ra món 2,2 giây (1,4 giây khi giảm chuyển động), chạm để bỏ qua | 6.5b, 6.13 |
+| Thớt sơ chế | Lưới thẻ chữ, trạng thái bằng lớp phủ CSS | Thớt gỗ, nguyên liệu 64–72px đổi hình theo bước đã làm, bước là huy hiệu tròn có biểu tượng thao tác | 6.2, 6.3 |
+| Màn thấp | Panel bếp 270–320px ở 360×600 | Chế độ tập trung: ẩn dải khách và thanh 4 khâu khi đang nấu (cao dưới 760px) | 6.5b |
+| Hình, nút, font | Icon nét 2,5 màu phẳng; nút phẳng; font hệ thống | Viền mực dày 3, khối 3 tông, bóng đất; nút bánh kẹo; tiêu đề Baloo 2 tự lưu | 6.5b |
+| Hướng dẫn lần đầu | 23 tour | 28 tour (thêm 5 tour thẻ bước của thao tác mới) | — |
+| Phiên bản và thư | 0.4.1 / 0.4.2, không có thư riêng | 0.5.0; thư "Có gì mới: bếp mới và 5 thao tác mới", không quà | 9.5, 14.4c |

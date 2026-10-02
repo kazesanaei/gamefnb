@@ -389,16 +389,22 @@ export function mountKitchen(root, app, opts = {}) {
       if (qty) multi.push(`${ingName(i.id)} ×${qty} (chạm 1 lần)`)
       let sub = null
       if (i.role === 'tuy_chon') {
+        // nguyên liệu tùy chọn: chỉ lấy khi phiếu dặn ghi chú thêm nó (vd Cay → Tương ớt)
         const by = (recipe.notes || []).filter(n => (n.adds || []).includes(i.id)).map(n => n.label)
-        sub = h('small', { class: 'k-card-opt' }, by.length ? `khi dặn ${by.join(', ')}` : 'tùy chọn')
+        sub = by.length
+          ? h('small', { class: 'k-card-opt' }, h('span', { class: 'k-card-opt-pre' }, 'khi dặn '), by.join(', '))
+          : h('small', { class: 'k-card-opt' }, 'tùy chọn')
       }
       // M4: nguyên liệu hiếm: số phần kho còn (luôn thấy trên thẻ, kể cả khi ô kệ có nhãn "còn n" nằm dưới thanh Xong;
       // nấu thử không trừ kho nên không ghi)
       const left = !tasting && INGS[i.id] && INGS[i.id].rare
         ? h('small', { class: 'k-card-left', 'data-testid': 'card-left-' + i.id }, `kho còn ${rareStock(S(), i.id)}`) : null
-      return h('li', { class: ['k-card-ing', 'role-' + i.role, INGS[i.id] && INGS[i.id].rare ? 'is-rare' : ''], dataset: { ing: i.id } },
-        h('span', { class: 'k-card-art', dataset: qty ? { qty } : {} }, svgBox(ingIconSvg(i.id), 'k-card-ing-icon')),
-        h('span', { class: 'k-card-name' }, ingName(i.id)), sub, left)
+      return h('li', {
+        class: ['k-card-ing', 'role-' + i.role, INGS[i.id] && INGS[i.id].rare ? 'is-rare' : ''], dataset: { ing: i.id },
+        title: ingName(i.id) + (qty ? ` ×${qty}` : '')
+      },
+      h('span', { class: 'k-card-art', dataset: qty ? { qty } : {} }, svgBox(ingIconSvg(i.id), 'k-card-ing-icon')),
+      h('span', { class: 'k-card-name' }, ingName(i.id)), sub, left)
     })
     const tip = multi.length ? h('p', { class: 'k-card-tip' }, multi.join(' · ')) : null
     const board = cook.board || effectiveSteps(recipe, cook.notes, null, cook.qty).filter(s => s.type !== 'chon')
@@ -410,12 +416,16 @@ export function mountKitchen(root, app, opts = {}) {
     const noteRow = notes.length ? h('div', { class: 'k-notes k-card-notes' }, h('span', { class: 'k-card-lbl' }, 'Ghi chú:'), notes.map(n => h('span', { class: 'k-note' }, upper(n)))) : null
     const label = 'Thẻ công thức ' + (recipe.name || '')
     if (compact) {
+      // một dòng gọn: hình món + ghi chú đỏ (không có ghi chú: chữ "Thẻ công thức") + số món / bước; chạm để mở chi tiết
       const more = h('details', { class: 'k-card-steps' },
         h('summary', null, svgBox(icon(recipe.icon || recipe.id || 'fallback'), 'k-card-sum-icon'),
-          h('span', null, 'Thẻ công thức'), h('small', { class: 'k-card-sum-n' }, `${ings.length} món · ${steps.length} bước`)),
+          notes.length
+            ? h('span', { class: 'k-notes k-card-notes' }, notes.map(n => h('span', { class: 'k-note' }, upper(n))))
+            : h('span', { class: 'k-card-sum-t' }, 'Thẻ công thức'),
+          h('small', { class: 'k-card-sum-n' }, `${ings.length} món · ${steps.length} bước`)),
         h('ul', { class: 'k-card-ings' }, ings), tip, h('ol', null, steps))
       if (open) more.open = true
-      return h('aside', { class: 'k-card is-compact', 'data-testid': 'recipe-card', 'aria-label': label }, noteRow, more)
+      return h('aside', { class: 'k-card is-compact', 'data-testid': 'recipe-card', 'aria-label': label }, more)
     }
     const details = h('details', { class: 'k-card-steps' }, h('summary', null, `Các bước (${steps.length})`), h('ol', null, steps))
     if (open) details.open = true
@@ -1233,7 +1243,8 @@ export function mountKitchen(root, app, opts = {}) {
   function update() {
     if (destroyed || !ui.visible || guide) return
     const k = computeKey()
-    if (k !== ui.key) render()
+    // con dấu đang hiện: Thớt chỉ vẽ lại khi đóng sân khấu (finishResult), để bước "đã xong" hiện cùng lúc với Thớt
+    if (k !== ui.key && !ui.result) render()
     updateWaitColors()
     const r = reduced()
     el.classList.toggle('is-reduced', r)

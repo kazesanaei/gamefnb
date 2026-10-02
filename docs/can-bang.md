@@ -58,7 +58,7 @@ Khóa bổ sung nằm ở `DEFAULT_BALANCE` (`src/core/state.js`), không bắt 
 
 ## 2. Món: giá bán, giá vốn, lãi
 
-Số liệu đã đối chiếu với `src/data/recipes.js` và `src/data/ingredients.js` ngày 30/09/2026 (bản M2): giá, giá vốn, tổng par và Σw của cả 5 món khớp code. Nếu code đổi, sửa bảng này theo code.
+Số liệu đã đối chiếu với `src/data/recipes.js` và `src/data/ingredients.js` ngày 30/09/2026 (bản M2): giá, giá vốn, tổng par và Σw của cả 5 món khớp code. Nếu code đổi, sửa bảng này theo code. Bản 0.5.0 (M5) chỉ đổi cơ chế của 15 bước, không đổi số nào ở mục này (bảng bất biến ở mục 7.1).
 
 ### 2.1 Năm món MVP
 
@@ -258,6 +258,50 @@ Nhớ rằng thời gian chờ gồm cả lúc phiếu nằm trên dây chờ b�
 | 5 trở đi | 74–76% (25.600đ, 1,7 phần) | 82–83% (29.500đ) | 74–77% | 1.660đ (có Bánh tráng trộn) |
 
 *Trước M4: tip trung bình khoảng 5.500đ mỗi khách 5 sao, tức khoảng 2.200đ mỗi khách phục vụ.* Thiết kế M4 ước 1.440đ mỗi khách (từ ngày 3) và 1.000đ (ngày 1–2); đo ra đúng như vậy với 2 món có sẵn, cao hơn một chút khi có Bánh tráng trộn (món 20.000đ). Người chơi giỏi (mọi khách 5 sao) có khoảng 2.500–4.200đ mỗi khách (trước M4 khoảng 10.000đ).
+
+
+### 7.1 M5 (bản 0.5.0): năm thao tác mới — cách chấm, sàn giờ, bảng bất biến
+
+Bản 0.5.0 đổi **cơ chế** của 15 bước sang 5 thao tác mới (`docs/de-xuat-thiet-ke.md` mục 6.4) mà **không đổi cân bằng**. Mỗi hàm chấm mới được chọn để cùng nghĩa với bước nó thay (lac/xoay/got thay chà: giữ "−15 nếu quá 2 × par" và tỉ lệ đủ lượt; bay thay chạm `exact`: giữ −30 mỗi lần lệch số lượng). Chỉ đập trứng khó hơn bước cũ (thêm nhịp canh lực), bù bằng vùng xanh rộng [0,40; 0,70] và sàn giờ (quyết định Q7).
+
+| Thao tác | Điểm bước (0–100, số nguyên; đầu vào lỗi → 0) |
+|---|---|
+| Đập trứng `scoreDap` | Mỗi quả: đã tách → hàm vùng như Canh lửa theo vị trí kim lúc chạm (vùng xanh [0,40; 0,70] × hệ số vùng); vỏ rơi vào → tối đa 40; chưa đập → 0. Trung bình n quả |
+| Khuấy `scoreXoay` | 100 × min(1, vòng / K) − 12 mỗi lần văng (quá 2,2 vòng/giây × hệ số, × 1,8 ở bước đánh bông, kéo dài quá 0,25 giây) − 10 nếu hệ số biến thiên thời gian mỗi vòng > 0,45 × hệ số − 15 nếu quá 2 × par |
+| Gọt vỏ `scoreGot` | Trung bình min(1, độ phủ / 0,85) của K dải × 100 − min(24, 8 × nhát hụt) − 15 nếu quá 2 × par |
+| Lắc `scoreLac` | 100 × min(1, lượt / K) − 10 nếu hệ số biến thiên nhịp > 0,6 × hệ số − 15 nếu quá 2 × par |
+| Thả đá `scoreBay` | Trung bình điểm vị trí (d = khoảng cách tới tâm / bán kính: ≤ 0,35 × hệ số → 100; ≤ 0,6 × hệ số → 80; ≤ 1 → 55; xa hơn 20) − 30 × \|số đã thả − n\|; chưa thả gì 0 |
+
+**Sàn giờ** (`minLimitSec` ở `src/ui/minigames/_gesture.js`): giới hạn giờ của bước = max(2,5 × par, sàn), Hỗ trợ thao tác nhân 1,5 cả hai, nấu thử không giới hạn. Sàn tính theo tham số đã nhân số phần: đập trứng 1,5 × n + 1; khuấy 1,1 × vòng + 1; gọt 1,2 × dải + 1; lắc 0,4 × lượt + 1; thả đá 1,3 × n + 1,5 (giây). **Sàn không đổi par** (par vẫn quyết định ngân sách chờ của khách, mục 6), chỉ để "Thêm trứng" hay đơn nhiều phần vẫn làm kịp. Bảng tính từ dữ liệu thật (giây; in đậm là chỗ sàn thắng 2,5 × par):
+
+| Bước | 1 phần: tham số → 2,5 × par / sàn → giới hạn | 2 phần: tham số → 2,5 × par / sàn → giới hạn |
+|---|---|---|
+| Đập trứng (`dap_trung`, par 2) | n 2 → 5 / 4 → 5; "Thêm trứng" n 3 → 5 / 5,5 → **5,5** | n 4 → 7 / 7 → 7 |
+| Lắc đều (`lac`, 2 món trà tắc, par 2) | 6 lượt → 5 / 3,4 → 5 | 12 lượt → 7 / 5,8 → 7 |
+| Gọt vỏ (`got_xoai`, `got_vo`, par 3) | 5 dải → 7,5 / 7 → 7,5 | 10 dải → 10,5 / 13 → **13** |
+| Trộn đều (`tron`, par 4) | 5 vòng → 10 / 6,5 → 10 | 10 vòng → 14 / 12 → 14 |
+| Khuấy đều (`khuay`, par 2) | 3 vòng → 5 / 4,3 → 5 | 6 vòng → 7 / 7,6 → **7,6** |
+| Đánh sữa muối (`danh_sua_muoi`, par 4) | 6 vòng → 10 / 7,6 → 10 | 12 vòng → 14 / 14,2 → **14,2** |
+| Thả đá (`them_da`, par 2) | 2 viên → 5 / 4,1 → 5; "Ít đá" 1 viên → 5 / 2,8 → 5 | 4 viên → 7 / 6,7 → 7 |
+| Lắc rổ áo bột năng (`ao_bot`, par 4) | 8 lượt → 10 / 4,2 → 10 | 16 lượt → 14 / 7,4 → 14 |
+
+Lưu ý khi đo (chỉ số 30, mục 15): luật "−15 nếu quá 2 × par" tính từ lúc dựng sân khấu như bước chà cũ. Bước Khuấy đều (par 2, 3 vòng) phải xong trong 4 giây mới không bị trừ; bộ giải cảm ứng tự động (khoảng 1 vòng/giây) được 85 điểm. Nếu người chơi trung bình hay bị trừ ở bước này thì cân nhắc tính đồng hồ từ lúc chạm đầu tiên, hoặc nới mốc trừ của riêng 5 thao tác mới — **không** đổi par (par khóa ngân sách chờ).
+
+**Bảng bất biến** (khóa bằng `tests/unit/m5-balance.test.mjs`, so **từng bước** — id, par, w, critical, retryCost, ing, after — với bảng chép từ bản 0.4.1; `BALANCE` không đổi; `STATE_VERSION` giữ 3):
+
+| Món | Tổng par (giây) | Σw | Giá | Vốn | Bước chí mạng (giá làm lại) |
+|---|---|---|---|---|---|
+| Bánh mì ốp la | 22 | 9 | 20.000đ | 9.000đ | Chiên trứng (6.000đ) |
+| Trà tắc | 18 | 9 | 10.000đ | 3.000đ | — |
+| Bánh tráng trộn | 31 | 11 | 20.000đ | 8.000đ | — |
+| Cà phê sữa đá | 20 | 10 | 15.000đ | 5.000đ | — |
+| Chè bưởi | 27 | 11 | 15.000đ | 5.000đ | Luộc tới khi trong (3.000đ) |
+| Trà tắc mật ong rừng | 19 | 9 | 15.000đ | 6.000đ | — |
+| Bánh mì trứng gà ta | 26 | 10 | 25.000đ | 11.000đ | Chiên trứng (6.000đ) |
+| Bánh tráng trộn Tây Ninh | 34 | 13 | 25.000đ | 12.000đ | — |
+| Cà phê muối | 26 | 14 | 20.000đ | 6.000đ | — |
+
+15 bước đổi cơ chế (par / w giữ nguyên): Đập trứng ×2 món (2 / 2); Lắc đều ×2 món (2 / 1); Gọt vỏ xoài ×2 món (3 / 1); Gọt lớp vỏ xanh (3 / 1); Trộn đều ×2 món (4 / 3); Khuấy đều ×2 món (2 / 1); Đánh sữa muối (4 / 2); Thả đá vào ly ×2 món (2 / 1); Lắc rổ áo bột năng (4 / 2). Ghi chú vá tham số vẫn trỏ đúng tham số (`them_trung` → `n: 3`, `it_da` → `n: 1`); `effectiveSteps` nhân thêm `turns`, `strips` theo số phần (`SCALE_KEYS`).
 
 ---
 
@@ -631,6 +675,8 @@ Chi phí cố định tăng thêm trung bình 153đ mỗi ca (Tiền điện nư
 | 27 | Tỉ lệ chọn lựa chọn an toàn ở tình huống và sự kiện ngày (M4); tỉ lệ bị phạt thật | Người mới 50–80% chọn an toàn, giảm dần khi quen; bị phạt < 10% số sự kiện có phạt | Gần 100% an toàn: lựa chọn khác chưa hấp dẫn hoặc quá rủi ro (tăng tiền thưởng trong trần); bị phạt nhiều: làm rõ lời nhắc trước, cách an toàn |
 | 28 | Số phần món hiếm bán mỗi ngày thật (M4) | Người ghé phiên hàng: 5–8 phần (mô phỏng 6,6–8,2 từ ngày thật 3); người không ghé: 1–3 phần | Thấp: tăng `orderWeight` hoặc sản lượng phiên hàng; cao làm tỉ lệ thưởng > 35%: giảm `dailyCap` |
 | 29 | Tồn kho hàng hiếm cuối ngày thật và Muỗng Vàng đổi từ phần dư (M4) | Tồn 0–3 phần mỗi loại; phần dư ≤ 30% số phần và mảnh được tặng (mô phỏng người chơi giỏi ghé đủ 3 phiên: khoảng 30%, trung vị tồn 4 phần cả 5 loại) | Tồn cao, dư nhiều: tăng `orderWeight`, giảm sản lượng (Giỏ chợ, khách lạ) hoặc giảm `overflowGold`; tồn luôn 0 và khách hay không gọi được món hiếm: tăng nguồn |
+| 30 | Điểm trung bình từng thao tác mới (M5): Đập trứng, Khuấy, Gọt vỏ, Lắc, Thả đá; tỉ lệ bị trừ 15 vì quá 2 × par (nhất là Khuấy đều par 2, mục 7.1); Q trung bình của 9 món so với bản 0.4 | Người chơi trung bình: mỗi thao tác ≥ 75, gần các bước nó thay ở bản 0.4; Q mỗi món giảm không quá 3 điểm; bị trừ vì quá giờ < 15% số lượt | Đập trứng thấp: nới vùng xanh (vd [0,38; 0,72]); Khuấy đều hay bị trừ: tính đồng hồ từ lúc chạm đầu tiên hoặc nới mốc trừ của 5 thao tác mới; không đổi par |
+| 31 | Thời gian thật mỗi lượt nấu khi có thẻ "Bước k/N" (1,1 giây mỗi bước, 3 lần nấu đầu của món), con dấu (0,7 giây) và màn ra món (2,2 giây) (M5) | Không làm khách chờ quá ngân sách nhiều hơn bản 0.4 (chỉ số 7) | Rút thời gian thẻ bước hoặc màn ra món (chạm để bỏ qua đã có); không đổi par |
 
 ---
 
@@ -650,3 +696,4 @@ Chi phí cố định tăng thêm trung bình 153đ mỗi ca (Tiền điện nư
 | 30/09/2026 | — | M4 bước 7–8: save v3, bản 0.4.0, thư phiên bản 0.4.0 (quà làm quen 1 mảnh Trà tắc mật ong rừng + 1 phần Mật ong rừng, chỉ save cũ nhận). Chuỗi "Ngày đầu ra phố" thưởng tiền bước 4 / 5 / 6: 15k / 30k / 30k → 10k / 15k / 10k (cả chuỗi 85k → 45k; mục 10.1, 11). Tỉ lệ thưởng quy đổi tính hàng hiếm lúc dùng (như Phiếu Chợ Sớm; mục 10.3). Mô hình mục 9 tính lại tip (1.000 / 1.440 / 1.660đ mỗi khách phục vụ). Thêm chỉ số 26–29 (mục 15) | Mô phỏng meta mở rộng (người chơi giỏi ghé phiên hàng, nấu thử món hiếm, chọn an toàn) với 40 hạt giống × 4 mốc bắt đầu: trước khi giảm, 44/800 ngày thật vượt trần 35% (39 ngày thật 1, 5 ngày thật 2; cao nhất 41,7% quy đổi, 40,9% tiền thật) vì luật tip mới làm lãi 3 ca đầu giảm khoảng 40% mà chuỗi hướng dẫn trả gần hết vào ngày thật 1–2 (thiết kế A.5 đã dự phòng giảm bước 5 xuống 20k; đo thấy chưa đủ: 40 hạt giống từ 05/10/2026 vẫn cao nhất 38,5% tiền thật, 44,2% quy đổi lúc nhận). Sau khi giảm: 0/800 ngày vượt, cao nhất 34,1% (tiền thật 32,5%). Người chơi trung bình: đủ điều kiện ca 9 (3 hạt giống), 40 hạt giống ca 7–9 (2 hạt giống ca 7) → giữ ngưỡng 150 (mục 13). Chỉ số 21: hoàn hảo lãi hơn ẩu 835% (ngày 1–3) |
 | 30/09/2026 | — | Vòng soát lỗi M3: ly trà "mở hàng" khi ca sau đã đủ 8 khách → +2 danh tiếng thay khách thêm (mục 14.2); save cũ ví lẻ làm tròn lên bội 500đ khi nạp (mục 14.3) | Từ ngày 9 (8 khách) lựa chọn an toàn trừ giá vốn mà không được gì; 28/36 save M1/M2 thử nạp vẫn giữ ví lẻ |
 | 30/09/2026 | — | Vòng soát lỗi M4 (lần 2): luật "không 2 sự kiện xấu liền nhau" xét chung sự kiện ngày và tình huống (14.1, 14.2); sự kiện ngày đã báo được chốt; Giỏ chợ thêm bảo hiểm mảnh (14.5: tỉ lệ thực nguyên liệu 51% → 49%); lựa hàng lưu rổ dở và lần chọn nhầm; trần tiền sự kiện ngày thật không mở lại khi lùi giờ; hủy ca dở hoàn cả tiền sự kiện; dòng tiền thưởng sự kiện ghi "tối đa" | Kết quả soát lỗi: 12,6% sự kiện ngày xấu đứng ngay sau tình huống xấu; đổi Vừa ↔ Ít ở màn Chuẩn bị bốc lại được sự kiện đã báo (606/1.120 ngày đổi); tải lại trang khi lựa hàng luôn được 100 điểm; Giỏ chợ có chuỗi 6 lượt liền không ra mảnh; Giải Nhất bị kẹp theo doanh thu ca (5/98 lần) mà thẻ hứa +20.000đ |
+| 02/10/2026 | — | M5 Đợt 1 (bản 0.5.0): 15 bước đổi sang 5 thao tác mới (đập trứng, khuấy, gọt vỏ, lắc, thả đá), giữ id, par, w, chí mạng, giá làm lại, giá, vốn và `BALANCE`; thêm sàn giờ theo số lượng cho 5 thao tác mới (mục 7.1); thêm chỉ số 30–31 (mục 15). Màn ra món 1,2 → 2,2 giây (chạm để bỏ qua), `SHEET_MS` giữ 2 giây | Thiết kế `docs/tham-khao/m5-thiet-ke.md` mục 0, 1.5, 1.6 và quyết định của người dùng (Q6, Q7); bất biến khóa bằng `tests/unit/m5-balance.test.mjs` (so từng bước với bản 0.4.1). Sàn giờ chỉ thắng 2,5 × par ở 4 chỗ (Thêm trứng 5,5 giây; gọt 2 phần 13; khuấy ly 2 phần 7,6; đánh sữa muối 2 phần 14,2). Bộ giải tự động của các gói làm mini-game đạt 100 ở các ca thử 4 khung màn hình; riêng Khuấy đều giải bằng cảm ứng CDP được 85 (bị trừ 15 vì quá 2 × par) — cần đo với người chơi thật |

@@ -487,10 +487,18 @@
    Tab Bếp đang nấu (Chọn, Thớt, sân khấu một bước) và khung cao dưới 760px: ẩn dải khách và thanh 4 khâu để panel Bếp cao
    thêm ~120px; HUD, dây phiếu (màu chờ) và thanh tab vẫn hiện. Lớp được bật trước khi dựng mini-game (plugin đo khung lúc
    dựng), tắt khi rời Bếp hoặc hết món. Đổi bố cục tức thì (không hoạt ảnh) để kích thước khung đúng ngay lúc đo. */
-.service-screen.is-focus > .street,
-.service-screen.is-focus > .progress4 { display: none; }
+.service-screen.is-focus > .street { display: none; }
+/* thanh 4 khâu: ẩn nhưng vẫn trong bố cục (cao 0), xếp ngay dưới dây phiếu — là mốc giới hạn chồng thông báo nổi
+   (service.js toastLimit): thông báo chỉ phủ HUD và dây phiếu, không xuống vùng nấu */
+.service-screen.is-focus > .progress4 {
+  order: 1; min-height: 0; height: 0; padding: 0; border: 0; overflow: hidden; visibility: hidden;
+}
+.service-screen.is-focus > .panels { order: 2; }
+.service-screen.is-focus > .tabbar { order: 3; }
 /* dây phiếu là mốc trên cùng của vùng nấu: kẻ viền mực mỏng cho tách khỏi HUD */
 .service-screen.is-focus > .ticket-rail { border-top: 2px solid rgba(58, 38, 24, .25); }
+/* thông báo đang nổi lúc bật chế độ tập trung (thông báo mới chờ tới khi thoát): sát mép trên, phủ HUD thay vì vùng nấu */
+.overlay-root.is-cook-focus > .toast-stack { top: calc(4px + var(--safe-top)); }
 
 /* ---------- M4: món hiếm ở quầy, khách lạ ở hàng chờ ---------- */
 .menu-item.is-rare { border-color: #f0d68a; background: #fffbea; position: relative; }

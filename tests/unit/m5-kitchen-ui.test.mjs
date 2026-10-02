@@ -138,7 +138,8 @@ test('chế độ tập trung: service.js bật .is-focus (khung < 760px, tab B�
   assert.match(src, /classList\.toggle\('is-focus'/)
   assert.match(src, /onFocus:/)
   const css = read('css/game.css')
-  assert.match(css, /\.service-screen\.is-focus > \.street,\s*\n?\.service-screen\.is-focus > \.progress4 \{ display: none; \}/)
+  assert.match(css, /\.service-screen\.is-focus > \.street \{ display: none; \}/)
+  assert.match(css, /\.service-screen\.is-focus > \.progress4 \{[^}]*visibility: hidden/)
   // dây phiếu không bị ẩn trong chế độ tập trung
   assert.doesNotMatch(css, /\.is-focus > \.ticket-rail \{[^}]*display: none/)
   // bếp báo trạng thái nấu trước khi dựng mini-game (render → syncFocus trước renderChon; startStep → syncFocus)

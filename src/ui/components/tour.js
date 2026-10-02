@@ -13,6 +13,8 @@
 //   after(fn)                chạy fn khi tour đóng
 // Tour hiện thì chồng thông báo bị ẩn (.is-touring) và thẻ Mẹo nghề được giữ (app.toastHold: đồng hồ thẻ đang nổi dừng,
 // thẻ mới chờ) — tour đóng thì thẻ hiện tiếp đủ thời gian.
+// 0.5.0: Bếp báo chỗ 'card-<loại>' khi thẻ "Bước k/N" đầy đủ đang chờ chạm; "giữ" màn (hold) làm thẻ dừng tự chạy
+// (kitchen.guideHold → card.hold), tour đóng thì thẻ chạy tiếp phần thời gian còn lại. Đích: step-card-demo, step-card-go.
 // }
 // Lớp phủ gắn vào lớp nổi gốc app.overlay (ngoài mọi vùng cuộn, trên thanh tab — cùng chỗ với bảng chọn món và hộp thoại
 // nên iOS Safari không cắt mất). Bong bóng không bao giờ tràn khung (cả 320×568, chừa vùng an toàn); phần tử đích nằm
@@ -85,7 +87,11 @@ function union(a, b) {
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 
 // Thanh dính (nút đáy panel, đầu màn con…) che mất một phần vùng cuộn: chiều cao phía trên/dưới cần chừa.
-const STICKY = '.act-bar, .sticky-foot, .k-toolbar, .meta-head, .mg-foot, .prep-toprow, .sum-head-row'
+// 0.5.0 (M5): thanh chân mặt quầy gỗ của sân khấu kiểu mới vẫn là .mg-foot (.mg-foot.g-foot2, cả bước Chọn); Thớt giữ
+// .k-toolbar; hàng nút của phiếu order kiểu mới (.co-pad-actions, css/counter.css) để sẵn cho Quầy Đợt 2. Thẻ "Bước k/N"
+// (step-hint) phủ kín khung sân khấu, không cuộn nên không cần chừa; chế độ tập trung chỉ ẩn dải khách và thanh 4 khâu
+// (phần tử ẩn thì bước tour chỉ vào nó tự bỏ qua, vd progress-4 lúc đang nấu ở màn thấp).
+export const STICKY = '.act-bar, .sticky-foot, .k-toolbar, .meta-head, .mg-foot, .prep-toprow, .sum-head-row, .co-pad-actions'
 function stickyCover(box, el) {
   let top = 0
   let bottom = 0

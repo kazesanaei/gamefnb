@@ -76,6 +76,8 @@ export default {
       if (on === focusOn) return
       focusOn = on
       el.classList.toggle('is-focus', on)
+      // chồng thông báo nổi (lớp nổi gốc của app) lên sát HUD: không phủ xuống vùng nấu (css/game.css)
+      if (app.overlay && app.overlay.classList) app.overlay.classList.toggle('is-cook-focus', on)
       if (!on) flushToasts()
     }
     const realToast = app.toast
@@ -92,14 +94,15 @@ export default {
     }
     if (typeof realToast === 'function') app.toast = focusToast
     // Thông báo nổi chỉ che dải khách (đặc tả mục 12): chồng thông báo không vượt xuống thanh 4 khâu; thông báo không
-    // vừa thì chờ thông báo trước tắt (toast.js). Chế độ tập trung (thanh 4 khâu ẩn): không vượt quá dây phiếu.
+    // vừa thì chờ thông báo trước tắt (toast.js). Chế độ tập trung: thanh 4 khâu ẩn nhưng vẫn nằm trong bố cục (cao 0) ngay
+    // dưới dây phiếu (css/game.css), nên mốc này là mép trên vùng nấu. Không bao giờ trả số ≤ 0 (toast.js coi là "không
+    // giới hạn").
     if (typeof app.toastLimit === 'function') {
       app.toastLimit(() => {
         const stack = app.overlay && app.overlay.querySelector('.toast-stack')
-        const bar = focusOn ? rail.el : progress.el
+        const bar = progress.el
         if (!stack || !bar || !bar.isConnected) return 0
-        const r = bar.getBoundingClientRect()
-        return Math.max(1, (focusOn ? r.bottom : r.top) - stack.getBoundingClientRect().top - 4)
+        return Math.max(1, bar.getBoundingClientRect().top - stack.getBoundingClientRect().top - 4)
       })
     }
 
@@ -682,10 +685,12 @@ export default {
         destroyed = true
         for (const off of offs) off()
         if (typeof app.toastLimit === 'function') app.toastLimit(null)
-        // trả lại hàm thông báo của app; thông báo còn chờ (đang tập trung) hiện ở màn kế tiếp
+        // trả lại hàm thông báo của app; thông báo còn chờ lúc rời màn (hết ca) là tin trong ca đã cũ: bỏ (thẻ Mẹo nghề vẫn
+        // nằm trong Sổ tay nghề)
         if (app.toast === focusToast) app.toast = realToast
         focusOn = false
-        flushToasts()
+        heldToasts.length = 0
+        if (app.overlay && app.overlay.classList) app.overlay.classList.remove('is-cook-focus')
         if (app.switchTab === showTab) app.switchTab = null
         counter.unmount()
         if (kitchen && kitchen.unmount) { try { kitchen.unmount() } catch (err) { console.error(err) } }

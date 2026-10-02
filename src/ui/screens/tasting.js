@@ -1,4 +1,4 @@
-// Màn NẤU THỬ (Chợ Công Thức): dùng lại Thớt sơ chế và 6 mini-game của bếp trên một "hộp cát"
+// Màn NẤU THỬ (Chợ Công Thức): dùng lại Thớt sơ chế và các mini-game của bếp trên một "hộp cát"
 // (state.tasting.shift, tách biệt ca thật): không đếm giờ, không tốn tiền, không tính thạo món, không đếm nhiệm vụ.
 // Ra món xong → ghi "đã nấu thử" (finishTasting), hiện kết quả, quay về Chợ Công Thức.
 // M4: công thức hiếm đủ mảnh: đạt hạng Được là mở món (grantReward), chưa đạt thì thử lại; không trừ kho hàng hiếm.
@@ -38,7 +38,9 @@ export default {
       state: sb.state, ctx: sb.ctx, data: app.data, bus: createBus(), overlay: app.overlay,
       save: () => app.save(), saveNow: o => app.saveNow(o),
       toast: (t, o) => app.toast(t, o), modal: o => app.modal(o), modalOpen: () => app.modalOpen(),
-      sound: n => app.sound(n), vibrate: ms => app.vibrate(ms), settings: () => app.settings()
+      sound: n => app.sound(n), vibrate: ms => app.vibrate(ms), settings: () => app.settings(),
+      // M5: hiệu ứng dùng chung của app (con dấu, hạt, ra món) — bếp và mini-game không tự tạo hệ hiệu ứng riêng
+      vfx: app.vfx || null
     }
     const sh = sb.state.shift
     // chưa bắt đầu (hoặc tải lại trước khi chọn nguyên liệu): mở phiếu nấu thử; đang dở thì làm tiếp

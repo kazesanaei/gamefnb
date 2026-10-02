@@ -18,10 +18,14 @@
 //     leo); Việc hôm nay: bước "Nhận thưởng" chỉ vào nút Nhận đang bật.
 //  7. Nút "?" luôn bấm được: màn Chuẩn bị và Tổng kết cuộn tới đáy (sau khi tour tự cuộn xuống) vẫn thấy "?" ở đầu màn; HUD,
 //     đầu màn con, Chuẩn bị, Tổng kết chừa vùng an toàn trên (mô phỏng tai thỏ 47px).
+//  9. M5 (0.5.0) tour trên thẻ vào bước "Bước k/N" của 5 thao tác mới (bep_dap, bep_xoay, bep_got, bep_lac, bep_bay; chỗ
+//     'card-<loại>'): món chưa nấu lần nào → chạm bước trên Thớt → thẻ đầy đủ hiện, tour tự hiện ngay trên thẻ (bước 1 khoét
+//     sáng tay mẫu step-card-demo, bước 2 nút step-card-go), ca TẠM DỪNG và thẻ đứng chờ (không tự vào trò dù quá 1,1 giây);
+//     "Bỏ qua hướng dẫn" → tour ghi đã xem, ca chạy tiếp, thẻ chạy tiếp phần thời gian còn lại rồi tự vào trò, chơi tiếp được.
 // Không có lỗi console ở mọi kịch bản.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { T, openGame, seedSave, readSave, waitSave, resolveIncidentIfShown } from './helpers.mjs'
+import { T, openGame, seedSave, readSave, waitSave, resolveIncidentIfShown, cookShiftSave, COOK_OPEN_MS, playStage } from './helpers.mjs'
 import { DATA } from '../../src/data/index.js'
 import { newRecipeProgress } from '../../src/core/state.js'
 import { makeNowInfo } from '../../src/core/clock.js'
@@ -732,3 +736,81 @@ test('đích của bước đúng chỗ: Dây phiếu + Dòng món khi mở th�
     await g.close()
   }
 })
+
+// ---------- 9. M5: tour trên thẻ vào bước của 5 thao tác mới ----------
+
+const CARD_TOURS = [
+  { type: 'dap', vp: { width: 375, height: 553 }, line: { recipeId: 'banh_mi_op_la' }, stepId: 'dap_trung' },
+  { type: 'xoay', vp: { width: 390, height: 844 }, line: { recipeId: 'ca_phe_sua_da' }, stepId: 'khuay' },
+  { type: 'got', vp: { width: 375, height: 553 }, line: { recipeId: 'che_buoi' }, stepId: 'got_vo' },
+  { type: 'lac', vp: { width: 390, height: 844 }, line: { recipeId: 'tra_tac' }, stepId: 'lac' },
+  { type: 'bay', vp: { width: 375, height: 553 }, line: { recipeId: 'ca_phe_sua_da' }, stepId: 'them_da' }
+]
+
+for (const c of CARD_TOURS) {
+  const id = 'bep_' + c.type
+  const label = `${vpName(c.vp)} ${id}`
+  test(`tour thẻ vào bước ${id} (${vpName(c.vp)}): tour hiện trên thẻ "Bước k/N", ca dừng, thẻ đứng chờ; Bỏ qua → ca và thẻ chạy tiếp`, { timeout: 120000 }, async () => {
+    // ca thật dựng sẵn (ngày 5, phiếu đã kẹp, nấu tới bước cần thử), món chưa nấu lần nào nên thẻ vào bước là bản đầy đủ;
+    // mọi tour đã xem trừ tour của thẻ này. Đồng hồ giả đúng giờ ca (chạy như thường).
+    const { state } = cookShiftSave(c.line, c.stepId, { tickets: 1, cooks: 0, name: 'Xe Thẻ Bước' })
+    markSeen(state, Object.keys(DATA.TOURS).filter(t => t !== id))
+    const g = await openGame({
+      clock: { time: COOK_OPEN_MS }, viewport: c.vp, name: 'tour-the-' + c.type,
+      contextOptions: { userAgent: UA, deviceScaleFactor: 3, isMobile: true, hasTouch: true }
+    })
+    const { page, errors } = g
+    try {
+      await seedSave(page, state)
+      await page.goto(g.url('/?tour=1'))
+      await page.waitForSelector(T('screen-service'))
+      await resolveIncidentIfShown(g, { waitMs: 300 })
+      await page.tap(T('tab-kitchen'))
+      await page.waitForSelector(T('board'))
+      assert.ok(!(await page.$(T('tour'))), `${label}: tour thẻ bước hiện khi chưa có thẻ`)
+      await page.tap(T('board-step-' + c.stepId))
+      const sheet = await page.waitForSelector(T('step-sheet'), { timeout: 500 }).catch(() => null)
+      if (sheet) await page.tap(T('step-start'))
+      await page.waitForSelector(T('step-hint'))
+      // tour tự hiện ngay trên thẻ (trước khi thẻ tự chạy sau 1,1 giây)
+      await page.waitForSelector(tourSel(id), { timeout: 1000 })
+      await stable(page)
+      const m1 = await page.evaluate(measureTour)
+      checkMeasure(m1, `${label} 1`)
+      assert.equal(m1.target, 'step-card-demo', `${label}: bước 1 chỉ vào tay mẫu`)
+      assert.equal(m1.title, DATA.TOURS[id].steps[0].title)
+      await g.shot(id)
+      // ca dừng, thẻ đứng chờ (không tự vào trò dù quá thời gian tự chạy)
+      await waitSave(page, s => s.shift && s.shift.paused === true)
+      const t0 = await shiftT(page)
+      await page.waitForTimeout(1600)
+      assert.equal(await shiftT(page), t0, `${label}: tour đang hiện mà giờ ca vẫn chạy`)
+      assert.ok(await page.$(`${T('step-hint')}.is-held`), `${label}: thẻ vào bước không đứng chờ`)
+      assert.ok(!(await page.$(`${T('minigame-stage')}[data-type="${c.type}"]`)), `${label}: thẻ tự vào trò trong lúc tour hiện`)
+      // bước 2: nút bắt đầu
+      const before = await countText(page)
+      await page.tap(T('tour-next'))
+      await waitChange(page, before)
+      await stable(page)
+      const m2 = await page.evaluate(measureTour)
+      checkMeasure(m2, `${label} 2`)
+      assert.equal(m2.target, 'step-card-go', `${label}: bước 2 chỉ vào nút "Chạm để bắt đầu"`)
+      assert.equal(m2.count, `2/${DATA.TOURS[id].steps.length}`)
+      // Bỏ qua hướng dẫn → tour ghi đã xem, ca chạy tiếp, thẻ chạy tiếp rồi tự vào trò (không cần chạm)
+      await page.tap(T('tour-skip'))
+      await page.waitForSelector(T('tour'), { state: 'detached' })
+      await waitSave(page, s => s.tour.seen[id] === true && s.shift && s.shift.paused === false)
+      await page.waitForSelector(`${T('minigame-stage')}[data-type="${c.type}"] .mg-foot`, { timeout: 4000 })
+      const t1 = await shiftT(page)
+      await page.waitForTimeout(1200)
+      assert.ok(await shiftT(page) > t1, `${label}: bỏ qua hướng dẫn mà ca không chạy tiếp`)
+      // chơi tiếp bước (bộ giải chung) → bước xong, tour không hiện lại
+      await playStage(g, state.shift.cook.board.find(s => s.id === c.stepId))
+      await page.waitForSelector(`${T('board-step-' + c.stepId)}.is-done`, { timeout: 8000 })
+      assert.ok(!(await page.$(T('tour'))), `${label}: tour hiện lại sau khi đã bỏ qua`)
+      assert.deepEqual(errors, [], `${label}: có lỗi console/trang`)
+    } finally {
+      await g.close()
+    }
+  })
+}

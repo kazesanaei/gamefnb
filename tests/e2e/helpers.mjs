@@ -10,6 +10,14 @@ import { requiredIngredients } from '../../src/core/scoring.js'
 import { priceOfLines } from '../../src/core/order.js'
 import { minBillsChange, BILLS } from '../../src/core/money.js'
 import { decodeSave, encodeSave, SAVE_KEY, DEV_SAVE_KEY } from '../../src/core/save.js'
+import { newRecipeProgress } from '../../src/core/state.js'
+import { makeNowInfo } from '../../src/core/clock.js'
+import { refreshMeta } from '../../src/core/meta.js'
+import { startShift, advance } from '../../src/core/shift.js'
+import { startCook, submitChon, availableSteps, getStep, submitStep } from '../../src/core/kitchen.js'
+import { playedSave } from '../helpers/m4-saves.mjs'
+import { counterStep } from '../helpers/perfect-player.mjs'
+import { makeMetaCtx, vn } from '../helpers/meta-helpers.mjs'
 
 const require = createRequire(import.meta.url)
 
@@ -130,6 +138,57 @@ export async function waitController(page, timeout = 20000) {
     if (Date.now() > end) throw new Error('service worker chưa kích hoạt')
     await page.waitForTimeout(200)
   }
+}
+
+// ---------- Ca thật dựng sẵn bằng lõi (M5: m5-bep, m5-save, tour thẻ bước) ----------
+
+// Mốc mở ca của save dựng sẵn (giờ Việt Nam). Mở trang bằng đồng hồ giả bắt đầu ở COOK_OPEN_MS (2 phút sau khi mở ca):
+// openGame({ clock: { time: COOK_OPEN_MS } }) — không dùng ?devNow nên không có dải "Giờ giả" 24px, bố cục như máy thật.
+export const COOK_SHIFT_AT = '2026-09-30T09:00'
+export const COOK_OPEN_MS = vn(COOK_SHIFT_AT) + 2 * 60 * 1000
+
+/**
+ * Ca thật đang dở (người chơi hoàn hảo 4 ca, seed 3, tần suất sự kiện "Ít"; mở ca ngày 5): khách đầu gọi `line`
+ * ({ recipeId, qty = 1, notes = [], extra = [] }: extra là id các món thêm vào cùng phiếu), các khách sau (tickets > 1) gọi
+ * Trà tắc; mọi phiếu đã kẹp lên dây. stopAt (tùy chọn): nấu sẵn dòng 0 bằng lõi (chọn đủ, các bước 100 điểm) tới khi bước
+ * stopAt mở ('all': làm hết các bước, chỉ còn Ra món). cooks: số lần đã nấu món (< 3 thì thẻ vào bước đầy đủ hiện trước mỗi
+ * bước, từ 3 trở đi chỉ còn ruy băng gọn). Nguyên liệu hiếm của các món được bổ sung đủ kho. → { state, ticket }.
+ */
+export function cookShiftSave(line, stopAt = null, { tickets = 1, cooks = null, seed = 3, name = 'Xe Bếp Mới' } = {}) {
+  const { state } = playedSave(seed, 4, { name, freq: 'it' })
+  const R = DATA.RECIPES[line.recipeId]
+  const extra = line.extra || []
+  for (const rid of [line.recipeId, ...extra]) {
+    if (!state.recipes[rid]) state.recipes[rid] = newRecipeProgress(0)
+    for (const ing of Object.keys(DATA.RECIPES[rid].rare || {})) state.rare.stock[ing] = Math.max(Number(state.rare.stock[ing]) || 0, 4)
+  }
+  if (cooks !== null) state.recipes[line.recipeId].cooks = cooks
+  const ctx = makeMetaCtx({ at: COOK_SHIFT_AT, attach: true })
+  ctx.setState(state)
+  refreshMeta(state, makeNowInfo(state, ctx.clock.t), ctx)
+  const sh = startShift(state, ctx)
+  for (let i = 0; i < tickets; i++) {
+    sh.customers[sh.plan[i].customerId].request = i === 0
+      ? [{ recipeId: line.recipeId, qty: line.qty || 1, notes: (line.notes || []).slice() }, ...extra.map(rid => ({ recipeId: rid, qty: 1, notes: [] }))]
+      : [{ recipeId: 'tra_tac', qty: 1, notes: [] }]
+  }
+  for (let guard = 0; sh.tickets.length < tickets; guard++) {
+    if (guard > 20000) throw new Error('không kẹp đủ phiếu')
+    if (!counterStep(state, ctx)) advance(state, 0.5, ctx)
+  }
+  const ticket = sh.tickets[0]
+  if (stopAt) {
+    const cook = startCook(state, ticket.id, 0, ctx)
+    if (!submitChon(state, requiredIngredients(R, cook.notes).required, 0, ctx).ok) throw new Error('chọn bị chặn')
+    const more = () => (stopAt === 'all' ? availableSteps(state).length > 0 : !availableSteps(state).includes(stopAt))
+    for (let k = 0; more(); k++) {
+      const av = availableSteps(state)
+      if (!av.length || k > 30) throw new Error('không tới được bước ' + stopAt)
+      const st = getStep(state, av[0])
+      submitStep(state, av[0], { score: 100, method: st.method ? st.method.correct : undefined }, ctx)
+    }
+  }
+  return { state, ticket }
 }
 
 // ---------- Bắt đầu game ----------
@@ -449,16 +508,25 @@ export async function playBoard(g, recipe, { shots = false } = {}) {
       if (def.method) await page.click(T('method-' + def.method.correct))
       else await page.click(T('step-start'))
     }
+    // M5: thẻ vào bước "Bước k/N" (vẫn là step-hint; món nấu dưới 3 lần) — chạm để vào ngay, không thì tự vào sau 1,1 giây
     const hint = await page.waitForSelector(T('step-hint'), { timeout: 400 }).catch(() => null)
-    if (hint) await hint.tap().catch(() => {})     // chạm để bỏ qua thẻ gợi ý
+    if (hint) {
+      if (shots) await g.shot('mg-the-buoc')
+      await hint.tap().catch(() => {})     // chạm để bỏ qua thẻ (thẻ đã tự vào thì thôi)
+    }
     await page.waitForSelector(`${T('minigame-stage')}[data-type="${def.type}"] .mg-foot`)
     await playStage(g, def, { shots })
+    // con dấu kết quả bước nằm trên sân khấu ~0,7 giây trước khi lớp đóng
+    if (shots && await page.waitForSelector(`.k-layer ${T('step-result')}`, { timeout: 1500 }).catch(() => null)) await g.shot('mg-con-dau')
     await page.waitForSelector('.k-layer', { state: 'hidden', timeout: 60000 })
     await page.waitForSelector(`${T('board-step-' + stepId)}.is-done`)
   }
   const left = await page.$$('[data-testid^="board-step-"]:not(.is-done)')
   assert.equal(left.length, 0, 'còn bước chưa làm')
 }
+
+// Khuấy (xoay): khoảng cách tối thiểu giữa hai điểm vẽ vòng (24 điểm/vòng → ≤ 1,4 vòng/giây).
+export const XOAY_POINT_MS = 30
 
 async function center(page, sel) {
   const b = await (await page.$(sel)).boundingBox()
@@ -580,7 +648,109 @@ export async function playStage(g, def, { shots = false } = {}) {
       [`${S} ${T('rot-level')}`, target], { polling: 'raf', timeout: 20000 })
     await page.mouse.up()
     await page.click(`${S} ${T('rot-done')}:not([disabled])`)
+  } else if (def.type === 'dap') {
+    // M5 đập trứng: mỗi quả chờ kim sắp tới giữa vùng xanh [a, b], nhấn giữ quả trứng (nứt), kéo xuống 80px rồi thả (tách).
+    // Đủ n quả thì tự xong; quả kế tiếp hiện sau ~260 ms với data-i tăng.
+    const n = Number(await page.getAttribute(`${S} ${T('dap-count')}`, 'data-n'))
+    const a = Number(await page.getAttribute(`${S} ${T('dap-meter')}`, 'data-a'))
+    const b = Number(await page.getAttribute(`${S} ${T('dap-meter')}`, 'data-b'))
+    for (let i = 0; i < n; i++) {
+      await page.waitForFunction(([sel, k]) => {
+        const e = document.querySelector(sel)
+        return !e || (e.dataset.state === 'nguyen' && e.dataset.i === String(k))
+      }, [`${S} ${T('dap-egg')}`, i], { timeout: 8000 })
+      const egg = await page.$(`${S} ${T('dap-egg')}`)
+      if (!egg) break
+      const e = await egg.boundingBox()
+      const x = e.x + e.width / 2, y = e.y + e.height / 2
+      await page.mouse.move(x, y)
+      await waitNeedleNear(page, `${S} ${T('dap-needle')}`, (a + b) / 2)
+      await page.mouse.down()
+      if (i === 0) await snap('dap')
+      await page.mouse.move(x, y + 80, { steps: 6 })
+      await page.mouse.up()
+      await page.waitForTimeout(120)
+    }
+  } else if (def.type === 'xoay') {
+    // M5 khuấy: vẽ vòng quanh tâm tô (bán kính 0,32 cạnh hộp xoay-bowl), 24 điểm mỗi vòng. Mỗi điểm cách điểm trước ít nhất
+    // XOAY_POINT_MS (≤ 1,4 vòng/giây: dưới ngưỡng sánh 2,2 vòng/giây kể cả khi máy chạy giật, vẫn đủ nhanh để 3 vòng
+    // xong trong 2·par = 4 giây của bước Khuấy).
+    const bb = await (await page.$(`${S} ${T('xoay-bowl')}`)).boundingBox()
+    const cx = bb.x + bb.width / 2, cy = bb.y + bb.height / 2, R = bb.width * 0.32
+    const n = Number(await page.getAttribute(`${S} ${T('xoay-progress')}`, 'data-n'))
+    await page.mouse.move(cx + R, cy)
+    await page.mouse.down()
+    let last = Date.now()
+    for (let k = 1; k <= Math.round((n + 0.3) * 24); k++) {
+      const ang = (k / 24) * Math.PI * 2
+      const wait = XOAY_POINT_MS - (Date.now() - last)
+      if (wait > 0) await page.waitForTimeout(wait)
+      last = Date.now()
+      await page.mouse.move(cx + R * Math.cos(ang), cy + R * Math.sin(ang))
+      if (k === 12) await snap('xoay')
+      if (k % 6 === 0 && !(await page.$(`${S} ${T('xoay-bowl')}`))) break
+    }
+    await page.mouse.up().catch(() => {})
+  } else if (def.type === 'got') {
+    // M5 gọt: vuốt thẳng từ đỉnh xuống đáy từng dải (cột cao bằng quả); mọi dải phủ ≥ 85% thì tự xong
+    const bands = await page.$$(`${S} [data-testid^="got-band-"]`)
+    for (const [k, el] of bands.entries()) {
+      const b = await el.boundingBox()
+      if (!b) continue
+      await page.mouse.move(b.x + b.width / 2, b.y + 2)
+      await page.mouse.down()
+      await page.mouse.move(b.x + b.width / 2, b.y + b.height - 2, { steps: 6 })
+      await page.mouse.up()
+      await page.waitForTimeout(50)
+      if (k === 1) await snap('got')
+    }
+  } else if (def.type === 'lac') {
+    // M5 lắc: giữ bình (rổ) kéo lên xuống ±70px trong một lần chạm, chờ ~1 khung hình giữa các lần đổi chiều
+    const sb = await (await page.$(`${S} ${T('lac-shaker')}`)).boundingBox()
+    const n = Number(await page.getAttribute(`${S} ${T('lac-count')}`, 'data-n'))
+    const x = sb.x + sb.width / 2, y = sb.y + sb.height / 2
+    await page.mouse.move(x, y)
+    await page.mouse.down()
+    for (let k = 0; k < n + 2; k++) {
+      await page.mouse.move(x, y + (k % 2 ? -70 : 70), { steps: 5 })
+      await page.waitForTimeout(30)
+      if (k === 2) await snap('lac')
+      if (!(await page.$(`${S} ${T('lac-count')}`))) break
+    }
+    await page.mouse.up().catch(() => {})
+  } else if (def.type === 'bay') {
+    // M5 bày: kéo bay-item-i (nhấn giữa viên) tới tâm bay-target (lệch ±8px), thả; đủ n viên thì bấm Xong
+    const n = Number(await page.getAttribute(`${S} ${T('bay-count')}`, 'data-n'))
+    for (let i = 0; i < n; i++) {
+      const ib = await (await page.$(`${S} ${T('bay-item-' + i)}`)).boundingBox()
+      const tb = await (await page.$(`${S} ${T('bay-target')}`)).boundingBox()
+      await page.mouse.move(ib.x + ib.width / 2, ib.y + ib.height / 2)
+      await page.mouse.down()
+      await page.mouse.move(tb.x + tb.width / 2 + (i % 2 ? 8 : -8), tb.y + tb.height / 2, { steps: 8 })
+      await page.mouse.up()
+      await page.waitForSelector(`${S} ${T('bay-item-' + i)}[data-placed="1"]`, { timeout: 3000 })
+      await page.waitForTimeout(80)
+    }
+    await snap('bay')
+    await page.click(`${S} ${T('bay-done')}:not([disabled])`)
   } else {
     throw new Error('Không biết chơi mini-game: ' + def.type)
   }
+}
+
+// Đập trứng: chờ kim thước lực (data-v, chạy đi về 0 → 1 → 0) sắp tới điểm m theo chiều đang chạy — vừa vượt mốc
+// m ∓ lead — để lúc lần nhấn tới trang (trễ vài khung hình) kim nằm sát giữa vùng xanh. Kim biến mất (bước đã xong) thì thôi.
+export async function waitNeedleNear(page, sel, m, { lead = 0.035, timeout = 8000 } = {}) {
+  await page.waitForFunction(([s, mid, ld]) => {
+    const nd = document.querySelector(s)
+    if (!nd) return true
+    const v = Number(nd.dataset.v)
+    const w = window.__e2eNeedle
+    window.__e2eNeedle = v
+    if (typeof w !== 'number' || v === w) return false
+    const dir = v > w ? 1 : -1
+    const mark = mid - dir * ld
+    return (v - mark) * dir >= 0 && (w - mark) * dir < 0 && Math.abs(v - mid) <= ld + 0.04
+  }, [sel, m, lead], { polling: 'raf', timeout })
+  await page.evaluate(() => { delete window.__e2eNeedle })
 }

@@ -13,8 +13,8 @@
 //  (e) "Click ma" khi chạm cảm ứng: Nhấc của bước lửa (chốt ở pointerdown) không mở nhầm hộp "Bỏ món này?" nằm dưới ngón;
 //      chạm thẻ gợi ý đúng chỗ nút Xong sắp hiện không chốt bước Nêm 0 điểm; chạm bảng công bố món không giao nhầm phiếu.
 //  (f) Quá giờ bước Chọn rồi đổi tab, tải lại trang: phạt quá giờ vẫn tính (cờ overtime trong rổ dở) → 85 điểm.
-//  (g) Màn thấp: ca đông 3 khách chờ (360×600) chai Nêm trọn phía trên thanh chân; bước Chà (rửa dưa leo, gọt xoài) ở
-//      360×600 mọi vết bẩn trọn phía trên thanh chân, không phải cuộn.
+//  (g) Màn thấp: ca đông 3 khách chờ (360×600) chai Nêm trọn phía trên thanh chân; bước Chà (rửa dưa leo, bóc trứng cút)
+//      ở 360×600 mọi vết bẩn trọn phía trên thanh chân, không phải cuộn.
 //  (h) Bước Chà vừa khung: thớt chà co theo chỗ còn lại của sân khấu (vết theo tọa độ chuẩn hóa, vùng chạm ≥ 44px) — ở
 //      360×600 (3 khách chờ, kể cả ghi chú "Thêm trứng cút" làm đầu sân khấu cao thêm), 360×640, 390×844: sân khấu không
 //      cuộn, mọi vết trọn trong khung giữa đầu sân khấu và thanh chân, elementFromPoint tại tâm từng vết trúng thớt; chà
@@ -23,6 +23,8 @@
 //      thớt lắc bị thanh chân che nửa dưới.) Thêm các ca đông khách có ghi chú / phiếu 3 món (Tây Ninh + Thêm trứng cút, Không
 //      rau răm; Trà tắc mật ong + Không đá…): đầu sân khấu bước Chà gọn một dòng ở màn ≤ 700px, sàn thớt lắc 56px, sàn
 //      thớt vết 44px → vẫn trọn khung, không cuộn.
+//      M5 (0.5.0): gọt xoài / gọt vỏ bưởi (nay là thao tác got), trộn (xoay) và lắc (lac) không còn là bước Chà nên đã rời
+//      khỏi (g2) và (h); khung màn thấp của các thao tác này được kiểm ở tests/e2e/m5-bep.e2e.mjs.
 // Save dựng bằng lõi thật: 4 ca người chơi hoàn hảo (seed 3, mức tần suất Ít), mở ca ngày 5, khách đầu gọi đúng món cần thử,
 // phiếu đã kẹp lên dây; (a) nấu sẵn bằng lõi tới khi bước Nêm mở.
 import test from 'node:test'
@@ -532,7 +534,7 @@ test('(g1) ca đông 3 khách chờ ở 360×600: chai Nêm trọn phía trên t
 
 for (const c of [
   { recipeId: 'banh_mi_op_la', stepId: 'rua_dua' },
-  { recipeId: 'banh_trang_tron_tay_ninh', stepId: 'got_xoai' }
+  { recipeId: 'banh_trang_tron_tay_ninh', stepId: 'boc_trung_cut' }
 ]) {
   test(`(g2) bước Chà ${c.stepId} ở 360×600: mọi vết bẩn trọn phía trên thanh chân, chà sạch không phải tự cuộn`, { timeout: 240000 }, async () => {
     const g = await openGame({ clock: true, name: 'cha-' + c.stepId, viewport: { width: 360, height: 600 } })
@@ -643,14 +645,14 @@ function assertChaFits(m, label) {
 
 const CHA_FIT_CASES = [
   { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_mi_op_la', stepId: 'rua_dua' },
-  { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_trang_tron', stepId: 'got_xoai' },
+  { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_trang_tron_tay_ninh', stepId: 'boc_trung_cut' },
   { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_trang_tron', stepId: 'boc_trung_cut', notes: ['them_trung_cut'] },
-  { vp: { width: 360, height: 640 }, tickets: 3, recipeId: 'che_buoi', stepId: 'got_vo' },
-  { vp: { width: 360, height: 640 }, tickets: 1, recipeId: 'banh_trang_tron', stepId: 'got_xoai' },
+  { vp: { width: 360, height: 640 }, tickets: 3, recipeId: 'banh_trang_tron_tay_ninh', stepId: 'boc_trung_cut' },
+  { vp: { width: 360, height: 640 }, tickets: 1, recipeId: 'banh_trang_tron_tay_ninh', stepId: 'boc_trung_cut', notes: ['them_trung_cut'] },
   { vp: { width: 390, height: 844 }, tickets: 3, recipeId: 'banh_mi_op_la', stepId: 'rua_dua' },
   // ca đông + phiếu có ghi chú (dây phiếu và đầu sân khấu cao hơn): trước vòng kiểm chứng thớt chạm sàn 48px, sân khấu tràn
   // 14–18px phải tự cuộn, vùng chạm vài vết bị thanh chân che một phần
-  { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_trang_tron_tay_ninh', stepId: 'got_xoai', notes: ['them_trung_cut'] },
+  { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_trang_tron_tay_ninh', stepId: 'boc_trung_cut', notes: ['them_trung_cut'] },
   { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_trang_tron_tay_ninh', stepId: 'boc_trung_cut', notes: ['khong_rau_ram'] },
   { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_trang_tron_tay_ninh', stepId: 'boc_trung_cut', notes: ['khong_rau_ram', 'them_trung_cut'], extra: ['banh_mi_trung_ga_ta', 'tra_tac_mat_ong'] }
 ]
@@ -696,11 +698,8 @@ for (const c of [
   { vp: { width: 360, height: 640 }, tickets: 3, recipeId: 'che_buoi', stepId: 'bop_muoi' },
   // ca đông + phiếu có ghi chú: trước vòng kiểm chứng thớt lắc kẹt ở sàn 96px, khuất 13–43px dưới thanh chân
   { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_trang_tron_tay_ninh', stepId: 'xe_kho_muc', notes: ['them_trung_cut'] },
-  { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_trang_tron_tay_ninh', stepId: 'tron', notes: ['khong_rau_ram'] },
-  { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_trang_tron', stepId: 'tron', notes: ['khong_rau_ram'] },
-  { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'tra_tac_mat_ong', stepId: 'lac', notes: ['khong_da'] },
   { vp: { width: 360, height: 600 }, tickets: 3, recipeId: 'banh_trang_tron_tay_ninh', stepId: 'xe_kho_muc', notes: ['khong_rau_ram', 'them_trung_cut'], extra: ['banh_mi_trung_ga_ta', 'tra_tac_mat_ong'] },
-  { vp: { width: 360, height: 640 }, tickets: 3, recipeId: 'banh_trang_tron_tay_ninh', stepId: 'tron', notes: ['khong_rau_ram', 'them_trung_cut'], extra: ['banh_mi_trung_ga_ta', 'tra_tac_mat_ong'] }
+  { vp: { width: 360, height: 640 }, tickets: 3, recipeId: 'banh_trang_tron_tay_ninh', stepId: 'xe_kho_muc', notes: ['khong_rau_ram', 'them_trung_cut'], extra: ['banh_mi_trung_ga_ta', 'tra_tac_mat_ong'] }
 ]) {
   const label = `${c.vp.width}×${c.vp.height} ${c.tickets} phiếu ${c.recipeId}.${c.stepId}${c.notes ? ' (' + c.notes.join(',') + ')' : ''}${c.extra ? ' + ' + c.extra.join(',') : ''}`
   test(`(h) bước lắc/xé vừa khung ${label}: thớt trọn phía trên thanh chân, vuốt cảm ứng đủ lượt → 100 điểm`, { timeout: 240000 }, async () => {

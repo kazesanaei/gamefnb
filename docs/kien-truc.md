@@ -26,9 +26,20 @@ sw.js                      service worker (M3): PRECACHE toàn bộ tệp, cache
 .nojekyll                  tệp rỗng cho GitHub Pages (không chạy Jekyll, giữ tệp tên bắt đầu bằng "_"; ngoài PRECACHE, mục 27)
 icons/                     icon.svg (gốc) + icon-192.png, icon-512.png, apple-touch-icon.png (dựng bằng tools/make-icons.mjs)
 tools/make-icons.mjs       dựng PNG từ icon.svg bằng Chromium (Playwright); chạy tay `npm run icons`, PNG được commit
-css/base.css               biến màu, font hệ thống, reset, bố cục khung điện thoại
-css/game.css               giao diện các màn và mini-game
+css/base.css               biến màu, font hệ thống, reset, bố cục khung điện thoại; M5: nút .btn kiểu "bánh kẹo" toàn game
+css/game.css               giao diện các màn; M5: chế độ tập trung khi nấu (.service-screen.is-focus)
+css/kitchen.css            màn Bếp (dây phiếu, thẻ công thức, Thớt huy hiệu bước, lớp sân khấu, ra món)
+css/mg-prep.css            (M5) khung sân khấu bếp kiểu mới (tường gạch men, thanh chân mặt quầy gỗ) + Chọn, Chà, Thái, Gọt
+css/mg-heat.css            (M5) Nêm, Canh lửa, Rót, Đập trứng
+css/mg-mix.css             (M5) Khuấy, Lắc, Thả đá
+css/theme.css              (M5) @font-face Baloo 2, biến --g-*, nút .g-btn, khung giấy/gỗ/phấn (.g-paper/.g-wood/.g-chalk)
+css/fx.css                 (M5) thẻ "Bước k/N", tay mẫu, con dấu, màn ra món, Dì Sáu phản ứng, lớp .vfx-layer
+css/counter.css            (M5) màn gọi món kiểu mới (bản mẫu Đợt 0, ráp vào Quầy ở Đợt 2)
+css/meta.css, tour.css     các màn ngoài ca; lớp phủ hướng dẫn lần đầu (mục 29)
 css/settings.css           (M3) màn Cài đặt, nút Cài đặt/nhắc sao lưu/"Có bản mới" ở màn Chuẩn bị, hộp thoại sao lưu
+fonts/                     (M5) baloo2-800-latin.woff2, baloo2-800-vi.woff2 (font tiêu đề tự lưu, có trong PRECACHE) + OFL.txt
+mau.html, mau/             (M5) Phòng mẫu giao diện (mau.js, mau.css); KHÔNG nằm trong PRECACHE, không đăng ký service worker
+tools/dong-goi-artifact.mjs  dựng trang artifact claude.ai theo PRECACHE (--entry mau.html cho Phòng mẫu)
 src/main.js                khởi động: nạp save, tạo app, router, vòng lặp
 src/core/                  logic thuần
   rng.js  money.js  clock.js  bus.js  state.js  save.js
@@ -38,10 +49,15 @@ src/data/                  nội dung + cân bằng (export const … = Object.f
   index.js  balance.js  ingredients.js  recipes.js  minigame-types.js  customers.js
   dialogue.js  reviews.js  upgrades.js  tips.js  strings.js
 src/ui/
-  dom.js  app.js  router.js  loop.js  input.js  format.js  art.js  audio.js
+  dom.js  app.js  router.js  loop.js  input.js  format.js  art.js  audio.js  motion.js (M5)  vfx.js (M5)
+  art/        (M5) kit.js (hàm vẽ, bảng màu cel-shading) ing-tuoi.js ing-kho.js mon.js tools.js props.js (đạo cụ lớn,
+              PROP_META) state-map.js (bước → hình trạng thái) v2.js (lớp tương thích); art.js là mặt tiền gộp lại
   components/ hud.js toast.js modal.js progress4.js patience.js ticket-rail.js cash-drawer.js numpad.js
+              M5: step-card.js stamp.js dish-reveal.js disau-react.js (bếp) order-bubble.js menu-board.js order-pad.js
+              order-sheet.js note-icons.js (gọi món kiểu mới, ráp ở Đợt 2)
   screens/    title.js prep.js service.js counter.js kitchen.js summary.js
-  minigames/  index.js chon.js cha.js thai.js cham.js lua.js rot.js
+  minigames/  index.js _util.js _frame.js (M5: buildFrame2) _gesture.js (M5: đo cử chỉ) chon.js cha.js thai.js cham.js
+              lua.js rot.js; M5: dap.js xoay.js got.js lac.js bay.js
 tests/unit/*.test.mjs      node:test (integration-shift.test.mjs: DATA thật, 3 ca liên tiếp, người chơi hoàn hảo/ẩu;
                            integration-meta.test.mjs: 5 ngày thật × 3 ca kèm toàn bộ hệ thống meta M2 và người chơi
                            trung bình, mục 15.10; review-m2-fixes.test.mjs: hồi quy vòng soát lỗi M2, mục 15.11)
@@ -78,13 +94,14 @@ Sửa 2 lỗi tồn đọng sau M4 (mục 24): test `tests/unit/fix-chon-draft.t
 Triển khai dưới đường dẫn con / GitHub Pages (mục 27): `.nojekyll`, e2e `tests/e2e/subpath.e2e.mjs`, hướng dẫn cho người dùng `docs/huong-dan-trien-khai.md`.
 Sửa lớp phủ bị thanh tab che trên iPhone (bản 0.4.1, mục 28): `createPortal` trong `ui/dom.js`, lớp nổi của bếp (`.k-pop`), biến vùng an toàn `--safe-top/--safe-bottom` (`css/base.css`); e2e `tests/e2e/iphone-overlays.e2e.mjs`.
 Hướng dẫn lần đầu và nút "?" (bản 0.4.1, mục 29): `core/tour.js`, `data/tours.js` (`TOURS`, `TOUR_SCREENS`, `HOW_TO_PLAY`), `ui/components/tour.js` (lớp phủ tour, `app.tour`), `ui/components/help.js` (nút "?", bảng Hướng dẫn, Cách chơi), `css/tour.css` (gắn trong `index.html`); test `tests/unit/tour.test.mjs`, e2e `tests/e2e/tour.e2e.mjs`.
+M5 — giao diện kiểu game nấu ăn (Đợt 0 bản 0.4.2, Đợt 1 bản 0.5.0, mục 31): font `fonts/`, `css/theme.css fx.css counter.css mg-prep.css mg-heat.css mg-mix.css`, `ui/motion.js vfx.js`, thư mục `ui/art/`, thành phần bếp và gọi món ở `ui/components/`, `ui/minigames/_frame.js _gesture.js dap.js xoay.js got.js lac.js bay.js`, 5 hàm chấm mới trong `core/minigame-scoring.js`, `save.migrateCookBoard`; Phòng mẫu `mau.html` + `mau/`, `tools/dong-goi-artifact.mjs`; test `tests/unit/art-v2 vfx m5-components m5-order-ui m5-scoring m5-gesture m5-save m5-balance m5-kitchen-ui .test.mjs`, e2e `tests/e2e/mau.e2e.mjs` (Đợt 0), `m5-bep.e2e.mjs`, `m5-save.e2e.mjs` (Đợt 1, gói kiểm thử).
 
 ## 3. package.json
 
 ```json
 {
   "name": "bep-khoi-nghiep",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -96,7 +113,7 @@ Hướng dẫn lần đầu và nút "?" (bản 0.4.1, mục 29): `core/tour.js`
 }
 ```
 
-`version` trùng `VERSION` của `sw.js` và `APP_VERSION` của `src/ui/app.js` (có test). Đổi tệp của game khi phát hành thì tăng cả ba. Bản hiện tại **0.4.1** (M4 + sửa lớp phủ trên iPhone, mục 28 + hướng dẫn lần đầu và nút "?", mục 29); thư phiên bản ở `MAIL_CONFIG.currentVersion` vẫn là 0.4.0 (bản sửa lỗi không có thư riêng, mục 15.5).
+`version` trùng `VERSION` của `sw.js` và `APP_VERSION` của `src/ui/app.js` (có test). Đổi tệp của game khi phát hành thì tăng cả ba. Bản hiện tại **0.5.0** (M5 Đợt 1: Bếp kiểu game nấu ăn, 5 thao tác mới, mục 31). Các bản trước: 0.4.1 (sửa lớp phủ trên iPhone, mục 28; hướng dẫn lần đầu và nút "?", mục 29), 0.4.2 (M5 Đợt 0: Phòng mẫu, font tiêu đề, sửa điều hướng của service worker). Thư phiên bản `MAIL_CONFIG.currentVersion` = 0.5.0: thư "Có gì mới: bếp mới và 5 thao tác mới" (`phien_ban_0_5_0`, không kèm quà; bản sửa lỗi 0.4.1/0.4.2 không có thư riêng, mục 15.5).
 E2E nạp Playwright bằng `createRequire`, thử `require('playwright')` rồi tới `/opt/node22/lib/node_modules/playwright`. Biến `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers` đã có sẵn trong môi trường.
 
 ## 4. Cấu trúc save (state gốc)
@@ -311,7 +328,7 @@ export const RECIPES = Object.freeze({
       { id: 'rua_dua', type: 'cha', label: 'Rửa dưa leo', ing: 'dua_leo', params: { spots: 4 }, par: 3, w: 1 },
       { id: 'thai_dua', type: 'thai', label: 'Thái dưa leo', ing: 'dua_leo', after: ['rua_dua'],
         method: { options: ['thai_lat','thai_soi','bao'], correct: 'thai_lat' }, params: { cuts: 3 }, par: 4, w: 1 },
-      { id: 'dap_trung', type: 'cham', label: 'Đập trứng vào chảo', ing: 'trung_ga', params: { mode: 'exact', n: 2, target: true }, par: 2, w: 2 },
+      { id: 'dap_trung', type: 'dap', label: 'Đập trứng vào chảo', ing: 'trung_ga', params: { n: 2 }, par: 2, w: 2 },   // M5; trước 0.5.0: cham exact
       { id: 'chien_trung', type: 'lua', label: 'Chiên trứng', ing: 'trung_ga', after: ['dap_trung'], critical: true,
         params: { period: 5, zone: [0.55, 0.72] }, par: 5, w: 3, retryCost: 6000 },
       { id: 'nem', type: 'cham', label: 'Nêm nước tương', ing: 'nuoc_tuong', after: ['chien_trung'],
@@ -331,6 +348,18 @@ Quy tắc:
 - `method` (tùy chọn): trước khi chơi bước, người chơi chọn cách sơ chế; chọn sai → điểm bước −15.
 
 MVP có 5 món: `banh_mi_op_la`, `tra_tac` (có sẵn, M1); `banh_trang_tron`, `ca_phe_sua_da` (Shop, M2); `che_buoi` (sự kiện 20/11, M2). Dữ liệu của cả 5 món được viết ngay từ M1 (món Shop/sự kiện chưa bán được cho tới M2).
+
+**M5 (0.5.0): 5 loại bước mới.** Chỉ đổi `type` và `params` (thêm `skin`, nhãn ở 2 bước) của 15 bước; **giữ nguyên id bước, par, w, critical, retryCost, ing, after** (ghi chú vá tham số theo id bước nên vẫn đúng; bảng bất biến ở `docs/can-bang.md` mục 7.1, khóa bằng `tests/unit/m5-balance.test.mjs`):
+
+| Loại | Tham số (đã nhân theo số phần) | Bước dùng | Lớp vỏ (`skin`) |
+|---|---|---|---|
+| `dap` (đập trứng) | `n` số quả (nguyên > 0) | `dap_trung` của Bánh mì ốp la, Bánh mì trứng gà ta (`them_trung` vá `n: 3`) | — |
+| `xoay` (khuấy, vẽ vòng) | `turns` số vòng; `fast: true` = ngưỡng văng × 1,8 | `tron` (5 vòng) của 2 món bánh tráng trộn; `khuay` (3 vòng) của 2 món cà phê; `danh_sua_muoi` (6 vòng, fast) | `to`, `ly`, `chen` |
+| `got` (gọt vỏ) | `strips` số dải vỏ | `got_xoai` của 2 món bánh tráng trộn, `got_vo` của Chè bưởi (5 dải) | — |
+| `lac` (lắc lên xuống) | `strokes` số lượt đổi chiều | `lac` của 2 món trà tắc (6 lượt), `ao_bot` của Chè bưởi (8 lượt, nhãn "Lắc rổ áo bột năng") | `binh`, `ro` |
+| `bay` (kéo thả vào đích) | `n` số món cần thả (khay có `max(n + 1, 3)` món) | `them_da` của 2 món cà phê (2 viên, `it_da` vá `n: 1`; nhãn "Thả đá vào ly") | `ly` |
+
+Bước giữ loại cũ: `rua_dua` (cha — lõi nhận bước rửa nhờ `cha` + tiền tố `rua`), `boc_trung_cut` (cha, vì ghi chú vá `spots`), `xe_kho_muc`, `bop_muoi` (cha `strokes`), mọi bước `thai`, `lua`, `rot` và `cham` còn lại (`targets`, `min`, `exact`). Số lượt dùng: dap 2, lac 3, got 3, xoay 5, bay 2.
 M4 bước 6 thêm 4 công thức hiếm `source: 'hiem'` (`tra_tac_mat_ong`, `banh_mi_trung_ga_ta`, `banh_trang_tron_tay_ninh`, `ca_phe_muoi`): `baseRecipe` + `requires` (món nền phải có), `rare: {ingId: số phần kho mỗi phần món}`, `icon` của món nền (giao diện gắn huy hiệu ★), `eventId: null`; bảng giá/par ở mục 21 và `docs/can-bang.md` mục 14.5.
 
 ### minigame-types.js
@@ -341,7 +370,13 @@ export const MINIGAME_TYPES = Object.freeze({
   thai: { name: 'Thái', hint: 'Kéo dao tới vạch chấm, nhấc tay để cắt.' },
   cham: { name: 'Chạm', hint: '…' },
   lua:  { name: 'Canh lửa', hint: 'Nhấc chảo khi kim nằm trong vùng xanh.', skins: { chao, phin, noi } },
-  rot:  { name: 'Rót', hint: 'Giữ để rót, thả tay đúng vạch.', skins: { ly, to } }
+  rot:  { name: 'Rót', hint: 'Giữ để rót, thả tay đúng vạch.', skins: { ly, to } },
+  // M5 (0.5.0): mỗi loại có name, hint, icon; sub (dòng hướng dẫn trên sân khấu), count (chữ bộ đếm) ở loại hoặc ở lớp vỏ
+  dap:  { name: 'Đập trứng', sub, count: 'Trứng', icon: 'trung_ga' },
+  xoay: { name: 'Khuấy', icon: 'muong_khuay', skins: { to /*Trộn đều*/, ly /*Khuấy ly*/, chen /*Đánh bông, icon sua_muoi*/ } },  // count 'Vòng'
+  got:  { name: 'Gọt vỏ', sub, count: 'Dải', icon: 'dao_bao' },
+  lac:  { name: 'Lắc', icon: 'binh_lac', skins: { binh /*Lắc bình*/, ro /*Lắc rổ, icon bot_nang*/ } },              // count 'Lượt lắc'
+  bay:  { name: 'Bày', icon: 'khay_bay', skins: { ly /*Thả đá, icon da*/ } }                                     // count 'Đá'
 })
 ```
 Lớp vỏ (vòng soát lỗi M3): bước trong `recipes.js` có thể khai báo `skin` (`u_phin` → `phin`, `luoc` → `noi`, `rot_dau_hanh`/`rot_cot_dua` → `to`); mỗi skin có `name, hint, icon` (thẻ gợi ý) và `act, over, sub, overTip, sound` (lua: nút "Nhấc phin"/"Vớt ra", vạch "Quá đặc"/"Nhũn", không xèo) hoặc `act, actMore, actResume, count` (rot: "Giữ để rưới", "Lần rưới"). `minigames/index.js` xuất thêm `skinFor(step, data)`; `hintFor` dùng tên/gợi ý của skin. Lõi: bước lua có skin khác chảo quá lửa vẫn gắn tag `chay` nhưng không mở thẻ "Chảo dầu bốc cháy".
@@ -536,7 +571,8 @@ CookSession = { ticketId, lineIndex, recipeId, qty, notes,
 
 export function effectiveSteps(recipe, notes, picked = null, qty = 1) → steps[]
    // áp removes/patch; bỏ bước của nguyên liệu bị loại, nguyên liệu tùy chọn không được dặn, hoặc (khi có picked) không được chọn;
-   // nhân n/N/cuts/strokes/targets × qty; par × (1 + 0,4(qty − 1)); lọc `after` theo bước còn lại
+   // nhân SCALE_KEYS × qty (n, N, cuts, strokes; M5 thêm turns, strips) và targets; par × (1 + 0,4(qty − 1)); lọc `after` theo bước còn lại
+export const SCALE_KEYS = ['n', 'N', 'cuts', 'strokes', 'turns', 'strips']
 export function startCook(state, ticketId, lineIndex, ctx) → CookSession | null   // null khi đang nấu dở món khác / dòng đã xong; trừ giá vốn khi chốt bước chọn
    // (mục 25) dòng có ticket.chonMistakes[lineIndex] = n > 0: cook.chonMistakes = n, cook.chonDraft = {picked: [], mistakes: n} (rổ trống, mang lần nhầm)
 export function submitChon(state, picked, mistakes, ctx) → { ok, blockedMissingMain, missing?, score, errors, cost }   // thiếu nguyên liệu chính → ok:false, không trừ tiền
@@ -597,7 +633,22 @@ export function scoreLua({ value, zone, mul }) → score                        
 export function scoreRot({ level, zone, mul }) → score                                       // tràn > 1,02 → 0
 export function stepLabel(score, labels?) → 'Hoàn hảo'|'Tốt'|'Đạt'|'Hỏng'
 // bổ sung: thaiCutScore(px, mul), zoneScore(v, zone, mul), TOOL_ZONE_MUL, MASTERY_ZONE_MUL, ASSIST_ZONE_MUL (1,25)
+// M5 (0.5.0): 5 hàm chấm của thao tác mới — số nguyên 0..100, đầu vào lỗi (NaN, âm, rỗng) cho 0, không ra NaN.
+// Mỗi hàm cùng nghĩa với bước nó thay (lac/xoay/got thay cha: giữ "−15 nếu quá 2 × par" và tỉ lệ đủ lượt; bay thay cham exact).
+export const DAP_ZONE = [0.40, 0.70]                                        // vùng xanh của kim lực (đóng băng)
+export function scoreDap({ cracks: [{ force, split, shell }], n, zone = DAP_ZONE, mul }) → score
+   // mỗi quả: đã tách → zoneScore(force, zone, mul); có vỏ rơi vào → tối đa 40; chưa tách → 0. Trung bình n quả (quả dư bỏ)
+export function scoreXoay({ turns, target, spills, cv, elapsed, par, mul }) → score
+   // 100 · min(1, turns/target) − 12 · spills − (cv thời gian mỗi vòng > 0,45 · mul ? 10 : 0) − (elapsed > 2 · par ? 15 : 0); 0 vòng → 0
+export function scoreGot({ coverage /*[0..1 mỗi dải]*/, target, misses, elapsed, par }) → score
+   // trung bình min(1, phủ / 0,85) · 100 − min(24, 8 · misses) − (quá 2 · par ? 15 : 0); thiếu dải = 0; không có target thì K = số dải
+export function scoreLac({ strokes, target, cv, elapsed, par, mul }) → score
+   // 100 · min(1, strokes/target) − (cv nhịp > 0,6 · mul ? 10 : 0) − (quá 2 · par ? 15 : 0)
+export function bayPlaceScore(d, mul) → 100 | 80 | 55 | 20                 // d = khoảng cách tới tâm / bán kính: ≤0,35·m · ≤0,6·m · ≤1 · xa hơn
+export function scoreBay({ placed: [d | { d }], n, mul }) → score
+   // trung bình điểm vị trí − 30 · |số đã thả − n|; chưa thả gì → 0
 ```
+Giới hạn giờ của 5 thao tác mới (`ui/minigames/_gesture.js`): `gestureLimitSec(step, { assist, untimed })` = max(2,5 × par, `minLimitSec(type, params)`) — Hỗ trợ thao tác nhân 1,5 cả hai, nấu thử không giới hạn. **Sàn giờ** `minLimitSec`: dap 1,5·n + 1; xoay 1,1·turns + 1; got 1,2·strips + 1; lac 0,4·strokes + 1; bay 1,3·n + 1,5 (giây; loại khác 0). Sàn không đổi par (par quyết định ngân sách chờ của khách), chỉ tránh "thêm trứng"/nhiều phần không kịp làm (bảng số ở `docs/can-bang.md` mục 7.1).
 
 `scoring.js`:
 ```js
@@ -707,6 +758,13 @@ export function migrateCookDraft(sh, data?) → sh | bản sao nông   // mục 
 export function migrateLineMistakes(sh) → sh | bản sao nông   // mục 25: ticket.chonMistakes của ca thật và phiên nấu thử (gọi sau migrateCookDraft):
    //   normalizeLineMistakes theo số dòng phiếu (không phải số → 0, âm → 0, thừa dòng cắt); không phải mảng → bỏ trường;
    //   save cũ không có trường này và dữ liệu hợp lệ giữ nguyên (lưu rồi tải lại không đổi); không sửa object đầu vào
+export function migrateCookBoard(sh, data?) → sh | bản sao nông   // M5 (0.5.0): bước đổi loại thao tác (vd Lắc đều: cha → lac).
+   //   Chỉ khi cook.phase === 'thot', có board, có công thức trong data và cook.picked là mảng: dựng lại
+   //   board = effectiveSteps(R, notes, picked, qty) bỏ bước chon (như lúc chốt bước Chọn) để bước chưa làm hiện thao tác mới;
+   //   giữ cook.steps (kết quả cùng id), tiền, phiếu, cost, retriesLeft; activeStepId/retryPending giữ nếu bước còn trên bảng,
+   //   không thì null. Bảng đã giống → trả chính sh; chạy lại nhiều lần không đổi. migrate() gọi cho s.shift và
+   //   s.tasting.shift theo thứ tự migrateLineMistakes(migrateCookBoard(migrateCookDraft(sh, data), data)).
+   //   STATE_VERSION giữ 3 (cấu trúc save không đổi). Test tests/unit/m5-save.test.mjs (8 ca của thiết kế M5 mục 1.7).
 // Vòng soát lỗi M3: bản lưu không đọc được (sai checksum, định dạng lạ, save chương trình khác) không bị ghi đè im lặng
 export function unreadableSaves(storage, data?, { keys }?) → [{ key, raw }]      // khóa save/dự phòng có chuỗi không nạp được (trùng thì 1)
 export function archiveUnreadable(storage, ms, data?, { keys }?) → { ok, archived: [khóa] } | { ok: false, reason: 'loi_ghi', archived }
@@ -730,7 +788,7 @@ UI gọi `writeSave(localStorage, state, { guard: true, lastCode, keys })` có d
   0.4.1 thêm (mục 29): `tour` (hướng dẫn lần đầu: `offer`, `want`, `start`, `skip`, `hold`, `onHold`, `provide`, `screenTours`…); `app.go` gọi `tour.onRoute(name)`; Back của điện thoại khi tour đang hiện = bỏ qua tour.
   Vòng soát lỗi M3: `saveProblem()`, `setSaveProblem(kind | null, { block })`, `openBackup` (main.js gắn), `toastLimit(fn | null)` (màn ca bán giới hạn chiều cao chồng thông báo tới mép trên thanh 4 khâu: thông báo không vừa xếp hàng theo thứ tự đến, thông báo thường chờ quá 3,5 giây thì bỏ vì tin đã cũ; thẻ Mẹo nghề vẫn mỗi lần 1 thẻ). Màn ca bán gộp tiến độ Việc hôm nay đến cùng lúc thành 1 thông báo và không báo tiến độ việc khi khách hướng dẫn ngày 1 còn trong ca.
   Tham số URL: `?seed=N` chỉ có tác dụng khi chưa có save; `?test=1` (chỉ trên localhost/127.0.0.1) bật `settings.assistMotion` cho kiểm thử tự động.
-- `screens/counter.js`: `mountCounter(root, app, { switchTab })` → `{ el, update, onShow, onHide, unmount }`. Nút hành động mỗi khâu (Đọc lại đơn/Chốt order, Đưa tiền thối, QR, Kẹp phiếu bếp) nằm trong thanh `.act-bar` dính đáy panel; sang khâu mới panel tự cuộn để thấy phần thao tác. Phiếu chấm có 5 hàng: Order, Báo tổng (`bao_du`, `bao_thieu`), Thối tiền (`thoi_thieu`, `thoi_du`, `qr_gia`), Bếp, Thời gian chờ. `screens/kitchen.js`: `mountKitchen(root, app)` → `{ unmount, update, onShow, onHide, selectTicket(ticketId) }`; nút "‹ Phiếu" (và chạm phiếu trên dây chung) đưa về dây phiếu ở cả bước chọn lẫn Thớt, rổ đang chọn được giữ (trong state: `cook.chonDraft`, nên tải lại trang cũng giữ, mục 24); ô "Đang làm" trên dây phiếu có "Bỏ món" + "Làm tiếp"; trên Thớt thẻ công thức thu gọn (chỉ ghi chú đỏ, nguyên liệu và các bước gập lại); màn `service` nạp bếp bằng `import()` động, gọi `update(dt)` mỗi khung hình và `onShow/onHide` khi đổi tab (rời tab giữa mini-game → bước đó chơi lại từ đầu).
+- `screens/counter.js`: `mountCounter(root, app, { switchTab })` → `{ el, update, onShow, onHide, unmount }`. Nút hành động mỗi khâu (Đọc lại đơn/Chốt order, Đưa tiền thối, QR, Kẹp phiếu bếp) nằm trong thanh `.act-bar` dính đáy panel; sang khâu mới panel tự cuộn để thấy phần thao tác. Phiếu chấm có 5 hàng: Order, Báo tổng (`bao_du`, `bao_thieu`), Thối tiền (`thoi_thieu`, `thoi_du`, `qr_gia`), Bếp, Thời gian chờ. `screens/kitchen.js`: `mountKitchen(root, app, { tasting?, onFocus?(want) })` → `{ unmount, update, onShow, onHide, selectTicket(ticketId), tourSpot, busy, guideHold, focusWanted }` (0.4.1 thêm tourSpot/busy/guideHold, M5 thêm onFocus/focusWanted — mục 13.3); nút "‹ Phiếu" (và chạm phiếu trên dây chung) đưa về dây phiếu ở cả bước chọn lẫn Thớt, rổ đang chọn được giữ (trong state: `cook.chonDraft`, nên tải lại trang cũng giữ, mục 24); ô "Đang làm" trên dây phiếu có "Bỏ món" + "Làm tiếp"; trên Thớt thẻ công thức thu gọn (chỉ ghi chú đỏ, nguyên liệu và các bước gập lại); màn `service` nạp bếp bằng `import()` động, gọi `update(dt)` mỗi khung hình và `onShow/onHide` khi đổi tab (rời tab giữa mini-game → bước đó chơi lại từ đầu).
 - `router.js`: mỗi màn là module `export default { mount(root, app, params) → { unmount(), update?(dt), onBack?() } }`. M3: `ROOT_SCREENS = ['title', 'prep']`, `isSubScreen(name)` (mọi màn khác là màn con, Back → Chuẩn bị), `createRouter(...)` có thêm `register(name, screen)`, `has(name)`, `names()`; bảng màn `SCREENS` ở `src/main.js` (mục 16.4). Các màn: `title` (lần đầu: đặt tên xe; sau đó: vào game), `prep` (màn Chuẩn bị ca: thông tin ngày, nút "Mở hàng", nâng cấp — M2 thêm shop/nhiệm vụ/điểm danh), `service` (ca bán: chứa HUD + thanh tab Quầy/Bếp, gắn `counter` và `kitchen` làm panel con), `summary` (tổng kết ca).
 - `loop.js`: `requestAnimationFrame`, gọi `advance(state, dt)` (dt kẹp 0,05 s) và `screen.update(dt)`; tạm dừng khi tab ẩn (`visibilitychange`).
 - `input.js`: tiện ích Pointer Events: `bindPointer(el, {down, move, up, cancel}, { space }?) → unbind` với `setPointerCapture`, chỉ nhận con trỏ chính, `pointercancel` coi như thả tay; phím Space mô phỏng nhấn/giữ trên máy tính khi bật `{ space: true }` (lua, rot, cham bật sẵn). Mỗi handler nhận `(p, e)`, `p = {x, y, rx, ry, clientX, clientY, rect, t, pointerId, pointerType, synthetic, …}`.
@@ -742,17 +800,21 @@ UI gọi `writeSave(localStorage, state, { guard: true, lastCode, keys })` có d
 
 ### Mini-game plugin — `src/ui/minigames/index.js`
 ```js
-// mỗi file chon.js, cha.js, thai.js, cham.js, lua.js, rot.js:
+// mỗi file chon.js, cha.js, thai.js, cham.js, lua.js, rot.js (M5 thêm dap.js, xoay.js, got.js, lac.js, bay.js):
 export default {
   type: 'thai',
   mount(stage /*HTMLElement*/, step /*bước đã áp patch*/, ctx /*{ app, recipe, zoneMul, assist, data, notes, qty, rand, slowBurn, (chon:) shelf, basketHint }*/)
-    → { result: Promise<{ score, details }>, destroy() }       // destroy() → result nhận null
+    → { result: Promise<{ score, details }>, destroy(), hold?(on) }   // destroy() → result nhận null; M5: mọi plugin có hold(on)
 }
-// index.js: export const MINIGAMES = { chon, cha, thai, cham, lua, rot }; export function playStep(stage, step, ctx); export function hintFor(step, data)
+// index.js: export const MINIGAMES = { chon, cha, thai, cham, lua, rot, dap, xoay, got, lac, bay }   // M5: 11 loại
+//           export function playStep(stage, step, ctx); export function hintFor(step, data); export function skinFor(step, data)
+// M5: ctx có thêm vfx (app.vfx), reduced (hàm), stepIndex, stepTotal, stepGrades (chấm bước của buildFrame2), method (cách
+//     sơ chế đã chọn, Thái vẽ hình "xong" theo cách này). Plugin lấy qua _util.js: vfxOf(ctx), reducedOf(ctx), frameSteps(ctx).
 ```
 Handle có thể có thêm `snapshot()` (chon: `{picked, mistakes, overtime?}`); ctx của chon nhận `initial: {picked, mistakes, overtime?}` để khôi phục rổ (và phạt quá giờ đã mắc) khi người chơi về dây phiếu/đổi tab/tải lại trang rồi quay lại, và `onChange(snapshot)` sau mỗi lần chạm ô kệ và lúc vừa quá giờ (bếp lưu `kitchen.saveChonDraft`, màn `market` lưu `rare.saveStallDraft` — chỉ lấy `picked`, `mistakes`). Sân khấu bước trên Thớt (lớp phủ `.k-layer[data-kind="stage"]`) cuộn dọc khi cao hơn panel, thanh chân `.mg-foot` (Xong, Rót, Nhấc…) dính đáy ngay trên thanh tab Quầy/Bếp; mở bước thì bếp cuộn sẵn vừa đủ để chai (Nêm) nằm trọn phía trên thanh chân (mục 24); thớt chà (Chà) tự co vừa chỗ còn lại của sân khấu nên mọi vết bẩn / cả thớt lắc nằm trọn phía trên thanh chân không phải cuộn (mục 26; cuộn sẵn chỉ còn là dự phòng). Bếp chặn "click ma": click của lần chạm bắt đầu trước khi lớp phủ đổi (đóng/mở ở pointerdown) bị bỏ (mục 24). Hỗ trợ thao tác ở bước chọn **không** gợi ý ngay: ô cần lấy chỉ nhấp nháy sau 1,5 × par (thường là 2,5 × par, kèm phạt). Rót (rot) rời tab khi đang giữ: chỉ tạm dừng, lượt đó rót tiếp được, không bật "Xong", không tự kết thúc.
 `details` theo loại (bếp chuyển thẳng vào `submitStep`): chon `{picked, mistakes, tapMistakes, overtime, elapsed}`; cha `{spots[] | reversals, strokes, elapsed}`; thai `{cuts[], extra, guides, elapsed}`; cham `{mode, taps, n, distances | taps, N, T | counts, targets, elapsed}`; lua `{value, zone, shown, elapsed}`; rot `{level, pours, zone, shown, elapsed}`. `rand` là bộ ngẫu nhiên tất định theo seed:ngày:phiếu:dòng:bước nên chơi lại một bước giữ nguyên vạch/vết.
-Mini-game chỉ đo thao tác và gọi hàm chấm trong `core/minigame-scoring.js`; không tự sửa state. Màn `kitchen` nhận `result` rồi gọi `submitStep`. Thời gian đo bằng `performance.now()`. Mỗi bước tự kết thúc ở 2,5 × par (trừ `chon`). Thẻ gợi ý 0,8 s trước bước, chạm để bỏ qua, tự ẩn sau 3 lần nấu món đó.
+`details` của 5 loại M5: dap `{cracks, n, zone, shown, elapsed}`; xoay `{turns, target, spills, cv, maxSpeed, elapsed}`; got `{coverage, strips, strokes, misses, elapsed}`; lac `{strokes, target, cv, elapsed}`; bay `{placed, n, tray, elapsed}`.
+Mini-game chỉ đo thao tác và gọi hàm chấm trong `core/minigame-scoring.js`; không tự sửa state. Màn `kitchen` nhận `result` rồi gọi `submitStep`. Thời gian đo bằng `performance.now()`. Mỗi bước tự kết thúc ở 2,5 × par (trừ `chon`; 5 loại M5 theo `gestureLimitSec` có sàn giờ, mục 10). *Trước 0.5.0:* thẻ gợi ý chữ 0,8 s trước bước; *từ 0.5.0:* thẻ "Bước k/N" có tay mẫu (1,1 s, chạm để vào ngay), từ lần nấu thứ 3 của món chỉ còn ruy băng gọn (mục 13.3).
 
 ### 13.1 Giao diện M2
 
@@ -771,6 +833,165 @@ Mini-game chỉ đo thao tác và gọi hàm chấm trong `core/minigame-scoring
 - `service`: đầu ca hiện thông báo nợ (`debt-toast`, khách quen trả nợ / quá hạn chưa trả). Mỗi khung hình và ngay khi `ticket.clipped` (trước khi khách kế tiếp bước lên quầy) gọi `checkIncident()`: chỉ khi tab đang mở là Quầy, không có hộp thoại, tab không bị khóa và `incidentDue(state, ctx)` đúng thì mở hộp thoại chặn `incident-modal` (vòng lặp không chạy `advance` khi hộp thoại chặn → thời gian ca và kiên nhẫn của khách đứng yên). Hộp thoại: nhãn "Tình huống đầu ca" / "Tình huống giữa hai khách" (+ "chuyện vui"), `incident-text`, các nút `incident-choice-<id>` (`data-safe`, `data-choice`, dòng cái giá; lựa chọn không dùng được bị khóa kèm lý do), sau khi chọn đổi sang `incident-result` (`data-choice`), `incident-effects` (tiền, giá vốn, danh tiếng, khách thêm…), `incident-tip` (thẻ Mẹo nghề mở được, nếu có) và nút `incident-ok` "Bán tiếp". `screen-service` có `data-t` = giờ trong ca (giây, 2 số lẻ) để test đo thời gian đứng yên. Phiếu chấm món có dòng `score-sheet-incident` khi món bị trừ sao vì từ chối đổi món.
 - `summary`: bảng tiền có dòng "Khách quen trả nợ" (`sh.debtIn`); thẻ `summary-incident` (`data-incident`, `data-choice`: tình huống, lựa chọn, kết quả), `summary-debt` (sổ nợ), `summary-notebook` (tiến độ Sổ tay nghề, nhóm chờ nhận thưởng).
 - Màn mới `notebook` (`ui/screens/notebook.js`) và `recipe-book` (`ui/screens/recipe-book.js`), đăng ký ở `SCREENS` của `src/main.js`; mở từ lưới màn Chuẩn bị và từ mục Chơi của Cài đặt (`settings-open-notebook`, `settings-open-recipe-book`). Chi tiết mục 17.
+
+### 13.3 Giao diện M5: Bếp kiểu game nấu ăn (Đợt 0 bản 0.4.2, Đợt 1 bản 0.5.0)
+
+Thiết kế: `docs/tham-khao/m5-thiet-ke.md` (mục 1 hợp đồng, 6 quy chuẩn vẽ/âm/hiệu ứng, 9 quyết định đã chốt); nghiên cứu:
+`docs/tham-khao/m5-nghien-cuu-giao-dien.md`; bản đồ mã trước khi làm: `docs/tham-khao/m5-ban-do-ma.md`. Tóm tắt kết quả ở mục 31.
+
+**Phong cách (người dùng đã duyệt ở Phòng mẫu Đợt 0).** Hết "ô vuông có chữ": hình to là nhân vật chính; viền mực nâu
+`#3a2618` dày 3; khối 3 tông kiểu cel-shading (mảng tối dưới-phải, điểm sáng trên-trái) và bóng đất; nút "bánh kẹo" (viền mực,
+mặt sáng trên đậm dưới, bóng cứng `0 4px 0`, nhấn thì lún 3px); khung giấy, gỗ, phấn; chữ chỉ là phụ. Font tiêu đề **Baloo 2
+ExtraBold** (800) tự lưu ở `fonts/` (latin + tiếng Việt, khoảng 23 KB, OFL), chữ thân vẫn `system-ui`. Chỉ học cơ chế và cảm
+giác của game tham khảo; mọi hình, câu thoại, âm thanh tự làm.
+
+**Nền móng.**
+- `css/theme.css`: `@font-face 'Baloo 2'` (`font-display: swap`), biến `--g-*` (màu, viền, bóng, đường cong `--g-ease-*`), nút
+  `.g-btn` (`--go`, `--small`…), khung `.g-paper`/`.g-wood`/`.g-chalk`, `.g-ribbon`, `.g-pill`. Mọi lớp mới có tiền tố `g-`, biến
+  có tiền tố `--g-` (không đè lớp cũ). `css/base.css` (Đợt 1): `.btn` của toàn game chuyển sang kiểu bánh kẹo, màu vẽ bằng
+  `--btn-top/--btn-bot/--btn-edge` (luật riêng đặt `background` vẫn thắng), giữ `min-height: var(--tap)`, không đổi `--brick`.
+- `ui/motion.js`: `EASE`, `isReduced(app?)` = công tắc "Giảm chuyển động" trong game, lớp `reduce-motion` trên `<html>` hoặc
+  `prefers-reduced-motion`. Luật CSS ở `base.css` chỉ ép thời lượng hoạt ảnh CSS; hiệu ứng JS (WAAPI, canvas, rAF) phải tự hỏi
+  `isReduced`. Import trong Node an toàn.
+- `ui/vfx.js` — `createVfx({ host, reduced })` → `{ layer, burst(target, kind, {n, colors}), floatText(target, text, {tone}),
+  ripple(x, y), shake(el, 1..3), squash(el), pop(el), hitstop(ms), fly(from, to, {node, html, ms, arc}), coins(from, to, n),
+  confetti(target, n), stats() → {dom, particles}, clear(), destroy() }`; thuần: `VFX_LIMITS {dom 30, particles 150, dpr 2}`,
+  `VFX_KINDS`, `easeOutBack`, `easeOutCubic`, `bezier`, `particlePlan(kind, reduced)`, `spawnParticles`, `stepParticles`.
+  Luật: chỉ animate `transform`/`opacity`; lớp `.vfx-layer` (z-index 25 trong `.overlay-root`, `pointer-events: none`, không phải
+  `.k-layer`); pool DOM ≤ 30 nút, canvas tạo lười (DPR ≤ 2), rAF chỉ chạy khi còn hạt; giảm chuyển động → tối đa 3 hạt đứng yên,
+  không rung/bay; trang ẩn → `clear()` và không nhận hiệu ứng mới; đích đã rời DOM / `display: none` → bỏ qua; `fly`/`coins` bị
+  `clear()` giữa chừng trả `false`; **không phát sự kiện VFX lên bus** (`bus.on('*', save)`); hiệu ứng kích theo sự kiện, không
+  trong `render()`; kỹ thuật "nhân bản rồi bay" (chụp `getBoundingClientRect` + `cloneNode` trước khi panel vẽ lại). `app.js`
+  tạo `app.vfx = createVfx({ host: app.overlay, reduced: () => isReduced(app) })` **một lần**; tự dọn khi `app.go()` và khi bật
+  Giảm chuyển động. iOS không có `navigator.vibrate`: kết quả xấu thay bằng `shake(stage, 1)` (giảm chuyển động: chớp viền đỏ).
+- `ui/audio.js`: `SOUND_NAMES` 22 âm = 12 âm cũ + Đợt 0 `stamp, sparkle, fanfare, tick, whoosh` + Đợt 1 `crack, stir, peel,
+  shake, plop`; `ACTION_SOUNDS = { dap: 'crack', xoay: 'stir', got: 'peel', lac: 'shake', bay: 'plop' }`. Mỗi lần phát lệch
+  cao độ ngẫu nhiên khoảng ±4%. Lời gọi luôn là chuỗi viết thẳng (`sound('crack')`, `cue(ctx, 'crack', …)`) để test quét được.
+
+**Hình** (`src/ui/art/`, mặt tiền `src/ui/art.js`; thuần, import trong Node được).
+- `art/kit.js`: `INK`, `OUTLINE` 3, `PAL`, `svg(body, vb)`, `ground`, `hilite`, `tone3`, `ball`, `rareStar`… Quy chuẩn vẽ ở thiết kế
+  M5 mục 6.1 (viewBox 64 cho icon và hình trạng thái, đạo cụ viewBox riêng trong `PROP_META`; cấm gradient, filter, `clipPath`,
+  `mask`, `<use>`, `href`, `url(`, base64; ≤ 3,5 KB mỗi icon/hình trạng thái, ≤ 6 KB mỗi đạo cụ; lòng đỏ `var(--yolk, …)` để trứng
+  gà ta dùng chung khuôn). Test `tests/unit/art-v2.test.mjs`.
+- `art/ing-tuoi.js`, `ing-kho.js` (nguyên liệu + 35 hình trạng thái), `mon.js`, `tools.js` (dụng cụ + biểu tượng thao tác
+  `muong_khuay`, `dao_bao`, `binh_lac`, `khay_bay`), `props.js` (14 đạo cụ lớn: `thot_lon dao_lon tay chao_lon noi_lon phin_lon
+  ly_lon to_lon chen_lon ro_lon binh_lac_lon bep_ga dia_lon voi_nuoc`, kèm `PROP_META`).
+- `art.js` (Đợt 1): giữ mọi export cũ; `ICONS` (đóng băng, viewBox 64) = bộ cũ đè bởi `ICONS_V2` + `fallback` (84 id, mọi id cũ
+  còn); `icon(id)` như cũ; **`art(id, state)`** = `STATES['id.state']` hoặc `icon(id)` (luôn có hình); **`prop(id)`** = `PROPS[id]`
+  hoặc `''` (bên gọi tự dự phòng); `PROP_META`, `PROPS`, `STATES`, `ICONS_V2`; `LEGACY_ICONS` + `legacyIcon(id)` (bộ cũ nguyên vẹn,
+  cho Phòng mẫu so cũ/mới). Hình trạng thái và đạo cụ **không** nằm trong `ICONS`. `art/v2.js` chỉ còn là lớp tương thích
+  (`artV2 = art`, `propV2 = prop`, `STATES_V2`), chỉ import `../art.js` (không vòng import); mã mới import thẳng từ `art.js`.
+  Món hiếm dùng hình món nền + huy hiệu ★ (quyết định Q3).
+- `art/state-map.js` (thuần, không import): bước → hình trạng thái. `METHOD_STATE` (`thai_lat → lat`, `thai_soi → soi`, `bao`,
+  `hat_luu`, `cat_soi → soi`, `cat_vuong → vuong`, `de_nguyen → null`), `STEP_STATE` (theo id bước: `rua_dua → sach`, `got_* →
+  got`, `dap_trung → op_la_song`, `chien_trung → op_la` theo ghi chú/nhãn, `ao_bot → vo_buoi.ao_bot`, `them_da → vien`…),
+  `methodState`, `stepState(step, result, { notes })`, `activeState(step)`, `boardStates(board, results, { notes, activeId })` →
+  `{ ing: state }` (bước sau đè bước trước), `statesOfStep`.
+
+**Khung sân khấu** `minigames/_frame.js`: `buildFrame2(stage, { icon, title, sub, steps: {index, total, grades}, timeLabel, vfx })`
+→ `{ head, area, foot, fx, subEl, setTime(frac), setSub(text), setSteps(steps), destroy() }`. Đầu màn gọn ≤ 44px: chuỗi chấm bước
+tròn (bước hiện tại 1,2× có hình nguyên liệu, bước xong có ✓ và viền màu theo hạng; `.is-crowded` khi ≥ 5 chấm), tên bước, thanh
+giờ `[mg-time]`; `.mg-sub` là thẻ giấy ở mép trên vùng chơi; lớp `.mg-fx` (không nhận chạm) cho con dấu, Dì Sáu, chữ nổi. Giữ
+lớp móc cũ `.mg-head`, `.mg-sub`, `.mg-area`, `.mg-foot`, `.mg-time-fill`, `.mg-time.is-late`. Thuần: `stepDots`. Trong bếp
+(`css/mg-prep.css`, áp cho `.k-layer[data-kind="stage"] .mg-stage.g-frame2`): nền tường gạch men kem, thanh chân là mặt quầy gỗ có
+viền mực (`--g-foot-h` 61px; chữ ở thanh chân luôn nằm trên `.g-pill` hoặc nút), `--g-stage-pt` 8px (≤ 760px) / 6px (≤ 700px).
+`_util.js` thêm: `feedback(ctx, kind, target)` (âm + rung như cũ, có `target` thì gọi vfx: good/done/hit lấp lánh, cut/chop vụn,
+spill/pour giọt, sizzle dầu, peel vỏ; bad/spill rung khung), `popLabel(host, text, x, y, cls, ctx)` (có vfx thì `floatText` đặt
+trên ngón tay), `vfxOf(ctx)`, `reducedOf(ctx)`, `frameSteps(ctx)`.
+
+**Đo cử chỉ** `minigames/_gesture.js` (thuần, giây): `cvOf`, `createTurnCounter({cx, cy, minR})` (số vòng không lùi khi đổi
+chiều, `speed()`, `cv()`), `createSpillMeter({max, holdSec 0.25, cooldownSec 0.6})`, `classifySwipe(p0, p1, {axis, tolDeg 35,
+minLen 24, dir})` → `{ok, reason: 'ok'|'ngan'|'nguoc'|'lech', len, dev}`, `bandCoverage`, `mergeSegments`, `createRhythm`,
+`createReversalCounter({threshold 24})`, `NEEDLE_PERIOD` 1,1 s, `needleValue(t)` (kim đi về 0 → 1 → 0), `MIN_LIMIT`,
+`minLimitSec(type, params)`, `gestureLimitSec(step, {assist, untimed})` (mục 10). Test `tests/unit/m5-gesture.test.mjs`.
+
+**Năm plugin mới** (hợp đồng `mount(stage, step, ctx) → { result, hold(on), destroy() }`; lớp gốc `.mg-<loại>` + `.skin-<id>`,
+`stage[data-skin]`; vùng thao tác `touch-action: none` qua `.k-layer[data-kind="stage"] …` trong CSS; tự cuộn sân khấu để vùng
+chạm nằm trên thanh chân):
+- `dap.js` (Đập trứng, `css/mg-heat.css`): kim thước lực chạy đi về (chu kỳ 1,1 s); chạm quả trứng khi kim trong vùng xanh →
+  nứt (`crack`), vuốt xuống (±35° × mul, ≥ 36px) → lòng trứng rơi vào chảo (squash, dầu bắn, `sizzle`); chạm thay vì vuốt hoặc
+  kim quá vùng xanh → vỏ rơi vào ("Có vỏ!", quả đó tối đa 40). Đủ n quả tự xong. Trứng gà ta đặt `--yolk` đậm (`DAP_YOLK_TA`).
+  Thuần: `dapLayout(W, H, n, meta)`; hằng `DAP_SWIPE_MIN` 36, `DAP_TAP_MAX` 12, `DAP_METER_H` 44.
+- `xoay.js` (Khuấy, `css/mg-mix.css`): vẽ vòng quanh tâm tô/ly/chén (cả cảnh `.xoay-scene` nhận cử chỉ, chiều nào cũng được);
+  nhanh quá `2,2 · mul` vòng/s (× 1,8 khi `fast`) quá 0,25 s → văng (giọt bắn, tô rung). Vệt xoáy, màu hòa dần, `stir` mỗi
+  nửa vòng. Đủ vòng tự xong. Thuần: `bowlGeometry(skin)`, `ringSegments`, `mixLayers`; `XOAY_MAX_SPEED` 2,2, `XOAY_FAST_MUL` 1,8.
+- `got.js` (Gọt vỏ, `css/mg-prep.css`): K dải dọc cao bằng quả; vuốt thẳng từ trên xuống (lệch ≤ 35°, ≥ 24px); độ phủ mỗi dải là
+  hợp các nhát; nhát ngược/lệch/trượt là nhát hụt. Dải vỏ cuộn rơi (`peel`), dải đã gọt đổi màu ruột. Mọi dải phủ ≥ 85% thì tự
+  xong. Thuần: `bandRect`, `trimArt`, `dropGround`; `GOT_DONE_AT`, `GOT_SWIPE_MIN`, `PEELER_OFFSET_PX`, `GOT_POSE`.
+- `lac.js` (Lắc, `css/mg-mix.css`): kéo bình/rổ lên xuống; mỗi lần đổi chiều quá 24px là một lượt (`createReversalCounter`);
+  không dùng cảm biến chuyển động (iOS bắt xin quyền). Bình nghiêng theo ngón (giữ cả khi giảm chuyển động vì là phản hồi trực
+  tiếp), `shake`, bọt dâng. Đủ lượt tự xong. Thuần: `shakerOverlay`, `basketOverlay`; `LAC_THRESHOLD` 24, `LAC_TRAVEL` 70.
+- `bay.js` (Thả đá, `css/mg-mix.css`): kéo từng viên từ khay (`max(n + 1, 3)` viên, nên "Ít đá" có nghĩa thật) thả vào vòng đích
+  trên miệng ly; thả ngoài thì trôi về khay, không phạt; chạm viên đã thả để lấy ra; bấm Xong (bật khi đã thả ≥ 1). Squash, gợn
+  nước, `plop`. Thuần: `trayCount(n)`, `cupLevel(f)`, `drinkSvg`; `BAY_ITEM_PX` 52.
+- Các plugin cũ ở Đợt 1: Thái kiểu mới là mặc định (dao SVG lệch 40px trên ngón, lát tách và vụn; pointer gắn trên cả `.mg-area`,
+  bộ giải theo `data-x` cũ vẫn chạy; `ctx.method` chọn hình "xong"); Chà vẽ cảnh theo tiền tố id bước (`CHA_LOOKS`: `rua` → chậu
+  nước, `boc` → đĩa, `xe`/`bop` → thớt; thuật toán vừa khung giữ nguyên, `cha-fit.test`); kệ Chọn nhiều tầng tự co cỡ hình
+  (`shelfIconSize`), rổ nằm trong thanh chân, ở màn ≤ 700px ẩn đầu sân khấu trừ khi đang tập trung; Nêm, Canh lửa, Rót vẽ lại cảnh
+  (chai một hàng trên kệ, kim lửa, khối nước dâng bằng transform) với `luaLayout`, `rotLayout`, `levelY`, `bottleArt`…; mọi
+  testid và `data-*` cũ giữ nguyên.
+
+**Thành phần bếp** (`src/ui/components/`, import trong Node an toàn):
+- `step-card.js` — thẻ "Bước k/N": `GESTURE_BY_TYPE` (11 loại: chon tap, cha rub, thai drag-cut, cham tap, lua tap-zone, rot
+  hold, dap tap-swipe, xoay circle, got swipe-down, lac shake, bay drag), `STEP_CARD_AUTO_MS` 1.100, `stepVerb(label)`,
+  `stepProgress(cook, stepId?)` → `{ index, total, done, grades }` (N = số bước trên Thớt + 1 cho bước Chọn), `stepCardModel(step,
+  { index, total, data, recipe, cook })` → `{ ribbon: 'Bước k/N', verb, ingId, propId, gesture, hint, type, label, index, total }`,
+  `PROP_BY_SKIN`, `createStepCard(model, { full = true, onStart, autoMs, reduced, stage })` → `{ el, start(), hold(on), destroy(),
+  full, model, started, held, waiting }`. Bản đầy đủ `div.g-step-card[step-hint]` phủ `.k-stage-wrap`, có tay mẫu
+  `[step-card-demo][data-gesture]` và nút `[step-card-go]` "Chạm để bắt đầu"; tự vào bước sau 1,1 s hoặc chạm ở đâu cũng vào ngay
+  (click ma bị nuốt, `guardNextClick`); `hold(true)` dừng tự chạy (hướng dẫn lần đầu). Bản gọn `[step-card-mini]` (từ lần nấu thứ
+  `HINT_HIDE_AFTER_COOKS` = 3): không chờ, ruy băng chuyển vào `.mg-head` rồi tự gỡ sau 1,3 s (0,9 s khi giảm chuyển động).
+- `stamp.js` — con dấu kết quả bước: `gradeKey(score)` → `hoan_hao|tot|dat|hong` (theo `BALANCE.stepLabels`), `gradeText`,
+  `createStamp({ score, label, note })` → `[step-result][data-score][data-grade]`, `playStamp(el, { vfx, sound, reduced, shake,
+  starTo })` (1,6 → 1, xoay −8°, 220 ms, dừng hình 60 ms; Hoàn hảo 10–14 hạt vàng và sao bay về chấm bước; Tốt 4 hạt; Hỏng khói
+  xám, rung 4px; giảm chuyển động: hiện bằng độ mờ 150 ms), `showStepResult(stage, {…})` → `{ stamp, react, played, holdMs }`
+  (gắn dấu + Dì Sáu vào `.mg-fx`), `stageFx`, `RESULT_HOLD_MS` 700 / `RESULT_HOLD_MS_REDUCED` 500.
+- `disau-react.js` — `createDiSauReact({ key, text, reduced, rand, data })` → `[disau-react][data-grade]` (mặt 48px + bong bóng ở
+  góc trên-phải, không che vùng chơi), `reactLine(key, rand, data)` lấy `DIALOGUE.diSau.stepReact[key]` (mỗi hạng 3–5 câu tự viết;
+  tránh kiểu câu "để dì sửa giùm"), `MOOD_BY_KEY`. Góp ý theo loại thao tác: `DIALOGUE.diSau.typeTips[type]`, ghép
+  `${label} ${typeTips[type]}` trong `dishComment.byType`.
+- `dish-reveal.js` — màn ra món: `REVEAL_MS` 2.200, `REVEAL_MS_REDUCED` 1.400 (quyết định Q6), `revealMs(reduced)`, `starsOf`,
+  `revealPlan(dish, { reduced })` → `{ stars, beats: [{at, kind}], totalMs }`, `createDishReveal({ dish, recipe, name, mood,
+  comment, lvUpText, data, reduced, vfx, sound, onClose })` → `{ el, plan, play(), finish(), close(), destroy() }`. `el =
+  [dish-reveal][data-grade][data-q]` ghi giá trị cuối ngay (chỉ chữ hiển thị mới đếm dần — giữ `sheetSettled`), có `.k-bubble`;
+  tia sáng xoay, món nảy (easeOutBack), huy hiệu hạng rơi, % đếm 700 ms có `tick`, sao cách 120 ms, ruy băng "Không tì vết", pháo
+  giấy khi lên cấp thạo món. Chạm (pointerdown) = đóng ngay.
+
+**Màn Bếp** (`screens/kitchen.js`, `css/kitchen.css`; luồng thiết kế M5 mục 1.8):
+1. Thớt gỗ lớn: mỗi nguyên liệu là hình 64–72px đổi theo hình trạng thái (`boardStates`); mỗi bước là **huy hiệu tròn** có biểu
+   tượng thao tác (`stepBadge(step)` → `{ kind: 'icon'|'glyph'|'prop', id, state? }`), chữ trạng thái 13px dưới tên
+   (`stepStatus(s, byId)` → "Tốt · 85" | "Tự làm · 80" | "Sau: X" | "Sau n bước" | "Chạm để làm" | "Chọn cách"). Giữ lớp móc
+   `.k-step` (`.is-available|.is-locked|.is-done.grade-<key>|.is-critical|.has-method`), `.k-step-st`, `data-step-id`, `data-type`.
+   Bảng chọn cách sơ chế là 3 thẻ hình (`method-<id>`, `.k-method-art`).
+2. Chạm bước → thẻ "Bước k/N" (đầy đủ khi món nấu dưới 3 lần, `ui.layerKind = 'card'`) → dựng plugin với `ctx` mở rộng.
+3. Có kết quả: `submitStep` ngay (lưu tức thì), **giữ sân khấu khoảng 700 ms** (500 ms khi giảm chuyển động) cho con dấu, dừng
+   hình, Dì Sáu phản ứng (`.k-stage-wrap.is-result` thôi nhận chạm), rồi `closeLayer()`, `render()`, `criticalPrompt` nếu bước chí
+   mạng Hỏng. Bước Chọn và Tự làm vẫn hiện nhãn ở `.k-flash-host` (`FLASH_MS` 1.600 / 1.200).
+4. Ra món: `createDishReveal` trên `.k-pop[data-kind="reveal"]`, tự đóng sau `plan.totalMs`; nấu thử gọi `onDone` sau
+   `plan.totalMs + 150`.
+5. Export: `HINT_MS` (= 1.100), `REVEAL_MS`, `REVEAL_MS_REDUCED`, `HINT_HIDE_AFTER_COOKS` 3, `TAP_GUARD_MS`, `FLASH_MS`,
+   `FLASH_MS_REDUCED`, `TASTING_PAR_MUL`, `waitLevel`, `waitRatio`, `moodForGrade`, `dishComment`, `stepBadge`, `stepStatus`.
+   `tourSpot()` trả thêm **`'card-<loại>'`** khi thẻ đầy đủ đang chờ chạm (mọi loại, kể cả thai, lua…); `busy()` true cả khi
+   con dấu đang hiện; `guideHold(true)` với thẻ đang chờ thì `card.hold(true)` (không đóng lớp như với sân khấu). Bếp gửi phản hồi
+   tức thì của chính nó bằng `app.toast(text, { now: true })`.
+
+**Chế độ tập trung khi nấu** (quyết định Q1; `screens/service.js`, `css/game.css`): `FOCUS_MAX_H = 760`. Khi tab Bếp đang nấu
+(bước Chọn, Thớt hoặc sân khấu một bước — bếp báo qua `onFocus(want)` **trước khi** dựng plugin, vì plugin đo khung lúc dựng) và
+`.service-screen` cao dưới 760px: bật `.service-screen.is-focus` và `.overlay-root.is-cook-focus`. Lúc đó `.street` ẩn hẳn
+(`display: none`), `.progress4` ở lại bố cục ngay dưới dây phiếu nhưng cao 0, `visibility: hidden` (bước tour chỉ vào nó tự bỏ
+qua); dây phiếu (màu chờ) vẫn hiện; chồng thông báo dời lên sát HUD. Thông báo mới chờ tới khi thoát (trừ `{ now: true }`), khi
+thoát hiện tối đa 3 thông báo thường và 2 thẻ Mẹo nghề; rời màn ca bỏ hết thông báo đang chờ; `toastLimit` luôn ≥ 1. Panel Bếp
+tăng từ khoảng 286–318px lên khoảng 404–437px ở 320×568 và 360×600.
+
+**Gọi món kiểu mới** (bản mẫu Đợt 0, chưa ráp vào Quầy — Đợt 2): `components/order-bubble.js` (bong bóng hình món + huy hiệu ×n,
+ghi chú bằng hình), `menu-board.js` (bảng gỗ, món hiếm "★ còn n", băng "HẾT"), `order-pad.js` và `order-sheet.js` (bảng số lượng
+và ghi chú có hình, phiếu giấy, "Đọc lại" sáng từng dòng, dấu ĐÃ CHỐT rồi phiếu bay lên dây), `note-icons.js`, `css/counter.css`;
+giữ đúng testid của Quầy (`menu-item-<id>`, `order-sheet`, `qty-*`, `note-chip-*`, `add-line`, `order-line-<i>`, `readback`,
+`confirm-order`, `speech-bubble[data-request]`). Test `tests/unit/m5-order-ui.test.mjs`.
+
+**Phòng mẫu** (`mau.html`, `mau/mau.js`, `mau/mau.css`): trang duyệt giao diện 4 thẻ (Hình, Gọi món, Bếp: Thái, Ra món), công tắc
+Giảm chuyển động, Âm thanh, Khung thấp; app "hộp cát" (bus, audio, vfx riêng), không đăng ký service worker, không ghi bản lưu của
+game, không nằm trong PRECACHE. Test từ cấm quét cả `mau.html` và `mau/`. E2E `tests/e2e/mau.e2e.mjs`.
 
 ## 14. data-testid bắt buộc (cho e2e)
 
@@ -812,6 +1033,15 @@ Mini-game chỉ đo thao tác và gọi hàm chấm trong `core/minigame-scoring
   - Ca bán: `stranger-badge` (dấu ★ trên mặt khách lạ ở hàng chờ), `score-sheet-stranger`; quầy `rare-left-<recipeId>` (menu "★ còn n", `menu-item-<id>` có `data-left`), bếp `shelf-left-<ingId>` ("còn n" trên ô kệ nguyên liệu hiếm); phàn nàn `complaint-remake-blocked` (nút `complaint-remake` bị khóa khi hết hàng hiếm).
   - Tổng kết `summary-rare`; Sổ công thức `book-recipe-<id>` có `data-status` = hiem, `book-rare-<id>` (`data-n`, `data-ready`), `book-taste-<id>`; Nấu thử món hiếm `tasting-unlocked`, `tasting-not-yet`, `tasting-retry`; Túi đồ `bag-rare-<ingId>`.
 - 0.4.1 hướng dẫn lần đầu và nút "?" (mục 29): `tour`, `tour-hole`, `tour-bubble` (`data-tour`, `data-step`, `data-target`, `data-span`, `data-side`), `tour-count`, `tour-title`, `tour-text`, `tour-skip`, `tour-next`; `help-button`, `help-sheet`, `help-replay`, `help-how`, `how-to-play`, `how-card-<id>`, `help-back`, `help-close`, `help-reset`, `help-reset-text`, `help-reset-confirm`, `help-reset-cancel`, `help-reset-done`; Cài đặt `setting-tour`; đích của tour: `hud`, `prep-stats`, `title-talk`, `qty-row`, `note-block`.
+- M5 Đợt 1 (bản 0.5.0, mục 13.3 và 31). **Giữ nguyên** mọi testid và `data-*` đo đạc cũ (`data-x`, `data-v`, `data-a/b`, `data-n`, `data-score`, `data-grade`, `data-q`, `data-step-id`, `data-ticket-id`, `data-amount`…) và các lớp "móc" mà e2e/tour bám (`.k-layer`, `.k-main[data-view]`, `.k-step(.is-available/.is-done/.has-method)`, `.k-step-st`, `.k-ticket(.is-open/.is-ready)`, `.k-line`, `.chon-cell`, `.chon-in`, `.chon-msg`, `.chon-shelf`, `.mg-foot/.mg-head/.mg-sub`, `.cha-spot`, `.thai-food`, `.cham-bottle`, `.k-stage-wrap`, `.k-bubble`). Mới:
+  - Thẻ bước: `step-hint` (thẻ đầy đủ `.g-step-card`, chạm ở đâu cũng vào bước), `step-card-demo` (`data-gesture`: tap | rub | drag-cut | tap-zone | hold | tap-swipe | circle | swipe-down | shake | drag), `step-card-go` ("Chạm để bắt đầu"), `step-card-mini` (ruy băng gọn, `aria-hidden`, không nhận chạm). Kết quả bước: `step-result` thêm `data-grade` (`hoan_hao|tot|dat|hong`; bước trên Thớt nằm trong `.mg-fx` của sân khấu khoảng 700 ms rồi mất cùng lớp; bước Chọn/Tự làm vẫn ở `.k-flash-host`), `disau-react` (`data-grade`). Ra món: `dish-reveal` (`data-grade`, `data-q` ghi giá trị cuối ngay, `.k-bubble`) trong `.k-pop[data-kind="reveal"]`. Thớt: `board-step-<id>` có thêm `data-type`; `.k-ing[data-ing][data-state]` (hình trạng thái); `method-<id>` có `data-method`.
+  - Đập trứng: `dap-pan`; `dap-egg` (`data-state` = nguyen|nut|xong, `data-i`); `dap-meter` (`data-a`, `data-b` = vùng xanh đã nhân hệ số); `dap-needle` (`data-v`, lớp `.is-in`); `dap-count` (`data-v`, `data-n`, chữ "Trứng k/n").
+  - Khuấy: `xoay-bowl` (tâm và bán kính lấy bằng boundingBox; mặt hỗn hợp ≈ 0,38–0,40 cạnh, bỏ điểm trong 0,06 cạnh quanh tâm), `xoay-progress` (`data-v` số vòng 2 chữ số, `data-n` mục tiêu; chữ "Vòng k/n"), `xoay-speed` (`data-v`, `data-max`).
+  - Gọt: `got-fruit`; `got-band-<i>` (`data-done` 0..1, `data-lo`, `data-hi` — dải là cột cao bằng quả); `got-count` (`data-v`, `data-n`); `got-done` (bật sau nhát đầu; không cần bấm, đủ dải tự xong).
+  - Lắc: `lac-area` (vùng kéo), `lac-shaker` (hộp đứng yên, hình bên trong `.lac-move` theo ngón), `lac-count` (`data-v`, `data-n`).
+  - Thả đá: `bay-target` (vòng đích, `pointer-events: none` — đừng kiểm `elementFromPoint` trên nó), `bay-item-<i>` (`data-placed` 0|1, `role=button`, cạnh 46–52px), `bay-count` (chỉ chứa "k/n", `data-v`, `data-n`; nhãn "Đá" nằm ngoài), `bay-done` (bật khi đã thả ≥ 1; `.is-ready` khi đủ).
+  - Cách giải tự động (helpers e2e): dap — chờ `data-v` của kim gần (a + b)/2, nhấn tâm `dap-egg`, kéo xuống 80px rồi thả, chờ quả kế (`data-i` tăng); xoay — nhấn ở (tâm + 0,32·cạnh), vẽ 24 điểm mỗi vòng, cách 12 ms (≈ 1 vòng/giây), tổng round((n + 0,3)·24) điểm; got — với mỗi dải nhấn (giữa, đỉnh + 2) kéo thẳng tới (giữa, đáy − 2) qua ≥ 4 bước; lac — nhấn giữa `lac-shaker`, kéo ±70px, chờ 24 ms mỗi lần, n + 2 lần; bay — kéo `bay-item-i` (≥ 8 bước) tới tâm `bay-target` lệch ±8px, rồi bấm `bay-done`.
+  - Đích của 5 tour thẻ bước (mục 29): `step-card-demo`, `step-card-go`.
 
 ## 15. Hệ thống meta M2 (lõi + dữ liệu)
 
@@ -997,7 +1227,8 @@ Lệch so với `docs/can-bang.md`: lãi bán hàng của người chơi hoàn h
 
 ### 16.1 PWA — `manifest.webmanifest`, `sw.js`, `icons/`
 - Manifest: `name` "Bếp Khởi Nghiệp", `short_name` "Bếp KN", `display: standalone`, `orientation: portrait`, `start_url`/`scope` `./`, `theme_color` = `--brick` (#b9472f, trùng `<meta name="theme-color">`), `background_color` = `--bg` (#fbf3e2); biểu tượng PNG 192/512 (`any`) + 512/192 (`maskable`, hình nằm trong vùng an toàn 40%) + SVG. `index.html` gắn manifest, `icons/icon.svg`, `apple-touch-icon.png` (180), `mobile-web-app-capable`, `apple-mobile-web-app-title` (không dùng `apple-mobile-web-app-capable` vì Chrome cảnh báo trên console).
-- `sw.js`: `VERSION` = "version" của package.json; cache `bkn-<VERSION>`; `PRECACHE` liệt kê **toàn bộ** tệp chơi offline: `index.html`, `manifest.webmanifest`, mọi `.js` trong `src/`, mọi `.css` trong `css/`, mọi tệp trong `icons/` (test đối chiếu với cây thư mục thật: thiếu hay thừa đều hỏng; mọi import tương đối trong `src/` phải có trong PRECACHE). Cài: `cache.addAll` với `cache: 'reload'`, **không** `skipWaiting` tự động. Kích hoạt: xóa các cache `bkn-*` khác bản này (chỉ cache của chính game), `clients.claim()`. Tải tệp: chỉ GET cùng nguồn; cache-first, so khóa `ignoreSearch` (bỏ `?devNow`, `?test`, `?seed`…); mở trang (`navigate`) luôn trả `index.html` đã lưu; tệp chưa có thì lấy mạng (tệp của game được cất thêm). Ở `localhost`/`127.0.0.1` còn tải lại nền sau khi trả cache (khi phát triển thấy code mới ở lần mở sau). Tin nhắn: `{type: 'SKIP_WAITING'}` → kích hoạt bản mới; `{type: 'GET_VERSION'}` → trả `{type: 'VERSION', version}`.
+- `sw.js`: `VERSION` = "version" của package.json; cache `bkn-<VERSION>`; `PRECACHE` liệt kê **toàn bộ** tệp chơi offline: `index.html`, `manifest.webmanifest`, mọi `.js` trong `src/`, mọi `.css` trong `css/`, mọi tệp trong `icons/` (test đối chiếu với cây thư mục thật: thiếu hay thừa đều hỏng; mọi import tương đối trong `src/` phải có trong PRECACHE). Cài: `cache.addAll` với `cache: 'reload'`, **không** `skipWaiting` tự động. Kích hoạt: xóa các cache `bkn-*` khác bản này (chỉ cache của chính game), `clients.claim()`. Tải tệp: chỉ GET cùng nguồn; cache-first, so khóa `ignoreSearch` (bỏ `?devNow`, `?test`, `?seed`…); tệp chưa có thì lấy mạng (tệp của game được cất thêm). Mở trang (`navigate`): *đến 0.4.1* mọi lượt mở trang trong scope đều trả `index.html` đã lưu (nên trên máy đã cài game, link `mau.html` cũng ra game); **từ 0.4.2** chỉ gốc scope (vd `/gamefnb/`) và `index.html` (bỏ query, `#`) trả trang game đã lưu (`isGamePage`), trang khác cùng nguồn (vd `mau.html`) lấy từ mạng, mất mạng mới trả trang game (`networkFirstPage`); test trong `pwa.test.mjs` gồm cả biến thể đường dẫn con.
+- **Font và PRECACHE (M5)**: `PRECACHE` có thêm `fonts/baloo2-800-latin.woff2`, `fonts/baloo2-800-vi.woff2` (`pwa.test` đối chiếu `fonts/*.woff2`), các CSS và module M5 (0.5.0 thêm `src/ui/art/state-map.js`, `src/ui/minigames/{_gesture,bay,dap,got,lac,xoay}.js`); `fonts/OFL.txt`, `mau.html`, `mau/` **không** nằm trong PRECACHE. `index.html` gắn mọi `css/*.css` (có test) và một dòng preload duy nhất, đặt trước mọi stylesheet: `<link rel="preload" as="font" type="font/woff2" href="fonts/baloo2-800-latin.woff2" crossorigin>`. Máy chủ tĩnh của test trả MIME `font/woff2`. Mỗi lần nâng bản người chơi tải lại toàn bộ (bản 0.5.0 khoảng 2,25 MB, cache `bkn-<VERSION>`); font thiếu thì chữ tự lùi về `system-ui` (`font-display: swap`). Artifact dựng bằng `tools/dong-goi-artifact.mjs` đi theo PRECACHE nên tự kèm font. Ở `localhost`/`127.0.0.1` còn tải lại nền sau khi trả cache (khi phát triển thấy code mới ở lần mở sau). Tin nhắn: `{type: 'SKIP_WAITING'}` → kích hoạt bản mới; `{type: 'GET_VERSION'}` → trả `{type: 'VERSION', version}`.
 - `main.js` (`setupPwa`): không đăng ký khi `file://`; `beforeinstallprompt` → `preventDefault()` và giữ lại (`app.setPwa({installPrompt})`), `appinstalled`; `navigator.storage.persist()` sau thao tác đầu tiên (nếu chưa bền vững); đăng ký `./sw.js`: worker mới `installed` khi đã có controller → `app.setUpdateReady(worker)`; `controllerchange` chỉ tải lại khi người chơi đã bấm Tải lại (`app.pwa.reloading`); kiểm tra bản mới khi quay lại tab (tối đa 30 phút/lần).
 - Bản mới: `app.updateSlot()` (ô tự điền khi có bản mới, cả khi đang mở màn) chỉ được đặt ở màn **Chuẩn bị** và **Tổng kết**: thẻ `update-ready` "Có bản mới" + nút `update-reload` "Tải lại" → `app.applyUpdate()` (từ chối khi đang có ca; lưu, gửi SKIP_WAITING, tải lại). Giữa ca không bao giờ hiện, tải lại giữa ca vẫn dùng bản cũ (bản mới chờ **khi game còn mở**).
 - Giới hạn của trình duyệt (vòng soát lỗi M3): khi người chơi đóng **hết** tab/ứng dụng rồi mở lại, trình duyệt tự kích hoạt bản đang chờ, có thể rơi vào giữa ca; không chặn được. Cách giữ ca: giao diện ghi `shift.appVersion` lúc mở ca; mở lại ở bản khác mà ca vẫn đủ cấu trúc thì chơi tiếp và báo `version-toast`; bản sau có đổi cấu trúc ca thì `save.migrate` hủy ca và hoàn giá vốn đã trừ (`report.shiftDropped`, hộp thoại `save-notice`) — không bỏ ca im lặng. E2E `pwa-backup` (máy chủ `bkn.localhost`, không phải localhost nên không có tải lại nền) kiểm hành vi này.
@@ -1027,7 +1258,7 @@ Màn mở đầu lần đầu (chưa đặt tên xe) có nút `title-import` "Đ
 Viết `src/ui/screens/<tên>.js` theo mục 13, import rồi thêm vào bảng `SCREENS` ở `src/main.js` (khóa = tên dùng trong `app.go`). Màn không nằm trong `ROOT_SCREENS` tự là màn con (Back điện thoại → Chuẩn bị, có thể tự xử lý bằng `onBack()`); `router.register(name, screen)` dùng được lúc chạy. Thêm tệp vào `PRECACHE` của `sw.js` (test `pwa.test.mjs` báo thiếu).
 
 ### 16.5 Âm thanh — `ui/audio.js`
-`createAudio(getSettings, env = globalThis)` → `{ play(name) → boolean, unlock(), ready(), names }`; `SOUND_NAMES`: `click, coin` (tiền vào túi/nhận thưởng), `cash` (tiền vào két: "cạch" + "keng"), `ding` (Hoàn hảo), `bell` (chuông ra món, khách tới), `chop` (dao thái "tách"), `sizzle` (dầu "xèo"), `pour` (rót nước), `error` (lỗi), `nudge` (nhắc nhẹ), `chest` (mở rương), `paper`. Tổng hợp bằng dao động + ồn trắng qua bộ lọc (không tệp âm thanh). AudioContext chỉ tạo sau thao tác đầu tiên (`pointerdown`/`keydown`) khi đang bật tiếng; âm lượng tổng = 0,9 × `settings.volume`; tắt tiếng/âm lượng 0 → không phát; trình duyệt không hỗ trợ/chặn → im lặng, không lỗi. Gắn âm: mini-game qua `feedback(ctx, kind)` (`cut`/`chop` thái, `hit` chạm trúng, `sizzle` lúc bắt đầu Canh lửa, `pour` mỗi lần giữ Rót), quầy (`cash` khi thối đúng/nhận QR), ca bán (`nudge` khi khách sắp hết kiên nhẫn/bỏ về), Việc hôm nay (`chest` mở Rương ngày), điểm danh (`chest` ô 7). Mọi âm luôn có tín hiệu hình đi kèm.
+`createAudio(getSettings, env = globalThis)` → `{ play(name) → boolean, unlock(), ready(), names }`; `SOUND_NAMES`: `click, coin` (tiền vào túi/nhận thưởng), `cash` (tiền vào két: "cạch" + "keng"), `ding` (Hoàn hảo), `bell` (chuông ra món, khách tới), `chop` (dao thái "tách"), `sizzle` (dầu "xèo"), `pour` (rót nước), `error` (lỗi), `nudge` (nhắc nhẹ), `chest` (mở rương), `paper`; M5 Đợt 0: `stamp` (con dấu), `sparkle`, `fanfare` (ra món, lên cấp), `tick` (% đếm lên), `whoosh`; M5 Đợt 1: `crack` (trứng nứt), `stir` (muỗng chạm thành tô), `peel` (gọt), `shake` (đá trong bình), `plop` (thả đá) — `ACTION_SOUNDS` gắn 5 âm này với 5 thao tác mới. Mỗi lần phát lệch cao độ ngẫu nhiên khoảng ±4%. Tổng hợp bằng dao động + ồn trắng qua bộ lọc (không tệp âm thanh). AudioContext chỉ tạo sau thao tác đầu tiên (`pointerdown`/`keydown`) khi đang bật tiếng; âm lượng tổng = 0,9 × `settings.volume`; tắt tiếng/âm lượng 0 → không phát; trình duyệt không hỗ trợ/chặn → im lặng, không lỗi. Gắn âm: mini-game qua `feedback(ctx, kind)` (`cut`/`chop` thái, `hit` chạm trúng, `sizzle` lúc bắt đầu Canh lửa, `pour` mỗi lần giữ Rót), quầy (`cash` khi thối đúng/nhận QR), ca bán (`nudge` khi khách sắp hết kiên nhẫn/bỏ về), Việc hôm nay (`chest` mở Rương ngày), điểm danh (`chest` ô 7). Mọi âm luôn có tín hiệu hình đi kèm.
 
 ### 16.6 Kiểm chứng M3 nền tảng
 - Unit: `pwa.test.mjs` (PRECACHE ↔ cây thư mục, VERSION ↔ package.json ↔ APP_VERSION, import tương đối có trong PRECACHE, manifest + kích thước PNG, index.html gắn mọi CSS; chạy `sw.js` trong `vm` với cache/fetch giả: cài đủ tệp, không tự kích hoạt, dọn cache cũ, mất mạng vẫn trả trang và module kể cả có query, bỏ qua khác nguồn/POST; router màn con), `backup-code.test.mjs` (định dạng, nhập lại y hệt, nén < 40% save thô, nén/giải nén từng byte, dữ liệu hỏng ném lỗi, sai 1 ký tự → `sai_ma`, dán kèm chữ thừa, save v1, cất bản cũ không ghi đè, nhắc 7 ngày, cài đặt M3), `audio.test.mjs` (AudioContext giả: chỉ tạo sau thao tác, đủ âm, âm lượng, tắt tiếng, trình duyệt chặn; mọi tên âm giao diện gọi đều có).
@@ -1536,7 +1767,7 @@ thiệu giao diện; lời nhắc tại chỗ của khách hướng dẫn ngày 
 không lặp lại các lời đó.
 
 **Dữ liệu** `src/data/tours.js` (có trong `DISPLAY_FILES` của test từ cấm):
-- `TOURS` — 23 tour `{ screen, spot?, lead?, name, auto?, requires?, veteranDay?, steps: [{ target, span?, title, text, place, when? }] }`.
+- `TOURS` — 28 tour (0.4.1: 23; 0.5.0 thêm 5 tour thẻ bước) `{ screen, spot?, lead?, name, auto?, requires?, veteranDay?, steps: [{ target, span?, title, text, place, when? }] }`.
   `target`: data-testid, bộ chọn CSS, hoặc mảng lựa chọn (lấy phần tử đầu tiên đang hiện); `null` = bong bóng giữa khung; không tìm
   thấy thì bỏ qua bước. `span`: vùng sáng phủ từ `target` tới phần tử này (một hàng ô lối vào). `requires`: phần tử phải có thì
   tour mới TỰ hiện (ô đặt tên xe, nút bắt đầu lựa hàng). `auto: false`: chỉ chạy bằng nút "?". `when`: điều kiện thêm
@@ -1545,7 +1776,9 @@ không lặp lại các lời đó.
   Màn mở đầu `mo_dau`; Chuẩn bị `chuan_bi` (+ `su_kien_ngay` khi có thẻ sự kiện ngày, `hang_hiem` khi có thẻ gánh hàng quê — tự
   hiện lần đầu thẻ xuất hiện, nối tiếp nếu cùng lúc); ca bán theo chỗ đang làm (`spot`): Quầy `quay_order`, `quay_bang_mon`,
   `quay_thanh_toan`, `quay_tinh_tien`, `quay_qr`, `quay_phieu_thu`; Bếp `bep_day_phieu`, `bep_dong_mon` (phiếu đã mở; dẫn
-  bởi `bep_day_phieu`), `bep_chon`, `bep_thot`, `bep_ra_mon`;
+  bởi `bep_day_phieu`), `bep_chon`, `bep_thot`, `bep_ra_mon`; 0.5.0: `bep_dap`, `bep_xoay`, `bep_got`, `bep_lac`, `bep_bay` (chỗ
+  `card-<loại>`: thẻ "Bước k/N" đầy đủ của loại đó đang chờ chạm; 2 bước chỉ vào `step-card-demo` và `step-card-go`; không đặt
+  `veteranDay` vì là cơ chế mới, người chơi cũ cũng được xem; thẻ chỉ đầy đủ khi món nấu dưới 3 lần);
   phiếu chấm `phieu_cham`; `ca_ban` (tổng quan, chỉ bằng nút "?" khi quầy trống); Tổng kết `tong_ket`; màn con `cho_cong_thuc`,
   `viec_hom_nay`, `hop_thu`, `lua_hang`, `so_cong_thuc`.
 - `TOUR_SCREENS`: màn → các tour tự hiện khi vào màn / xem lại bằng "?". `HOW_TO_PLAY`: 6 thẻ của trang Cách chơi (hình từ `art.js`).
@@ -1582,8 +1815,10 @@ dữ liệu, `disabled` boolean.
   dừng: bản lưu có `shift.paused` (tải lại trang giữa tour) → mở màn ca bán là chạy tiếp (tour chưa xem thì hiện lại).
 - Không chen ngang: chỉ mời tour khi không có hộp thoại và Bếp không bận (`kitchen.busy()`: mini-game, bảng chọn cách, hộp hỏi lại,
   công bố món). Chỗ đang làm: phiếu chấm đang hiện → `score` (ưu tiên); tab Quầy `counter.tourSpot()` = `idle | order |
-  order-sheet | thanh_toan | tinh_tien | qr | receipt`; tab Bếp `kitchen.tourSpot()` = `chon | thot | ready | line | rail` (null khi
-  bận; `line` = phiếu đang mở còn dòng chưa làm). Phiếu chấm chỉ tính là `score` khi đã trượt lên xong (`sheetSettled`: hết hiệu
+  order-sheet | thanh_toan | tinh_tien | qr | receipt`; tab Bếp `kitchen.tourSpot()` = `card-<loại> | chon | thot | ready | line | rail` (null khi
+  bận; `line` = phiếu đang mở còn dòng chưa làm; 0.5.0: `card-<loại>` khi thẻ bước đầy đủ đang chờ — có trước cả kiểm tra bận —
+  tour giữ màn thì thẻ dừng tự chạy qua `guideHold` → `card.hold(true)`, tour đóng thì thẻ chạy tiếp phần thời gian còn lại; chỉ
+  5 loại mới có tour, loại khác thì chỗ này không có tour nào). Phiếu chấm chỉ tính là `score` khi đã trượt lên xong (`sheetSettled`: hết hiệu
   ứng, độ mờ ≥ 0,9) — trước đó các bước chỉ vào phiếu bị coi là chưa hiện.
 
 **Nút "?"** `src/ui/components/help.js`: `helpButton(app)` (44px, `aria-label` "Hướng dẫn") ở HUD ca bán (lề âm nên HUD không cao
@@ -1608,6 +1843,13 @@ trong Cài đặt, xem lại tất cả (Thôi / xác nhận); (3) bước Chiê
 (4) tour bước Chọn hiện lâu hơn 2,5 × par: không bị tính quá giờ, bước Chọn vẫn 100 điểm (bỏ phần giữ đồng hồ thì kịch bản này
 trượt). Ngoài repo (scratchpad): chụp và đo cả 22 tour ở 375×553, 390×844 và 320×568 mô phỏng iOS (cắt vùng cuộn bằng
 `clip-path`, vùng an toàn trên 20px / dưới 34px).
+0.5.0: unit thêm ca "M5 tour thẻ bước" (5 tour, chỗ `card-<loại>`, 2 đích, không `veteranDay`, người chơi cũ vẫn được xem,
+`STICKY`) và luật lời tour (bước "Trò nhỏ" nhắc đủ 5 thao tác mới theo `MINIGAME_TYPES`; tour thẻ của trò phải bấm Xong thì dặn
+bấm Xong, trò tự xong thì nói "tự xong"); e2e `tour` thêm 5 ca (9–13): món chưa nấu lần nào → chạm bước → tour tự hiện trên thẻ,
+ca tạm dừng, thẻ đứng chờ quá 1,1 giây, Bỏ qua → ca và thẻ chạy tiếp vào đúng trò. Đo tay ngoài repo (scratchpad `m5/d1/H`): Thớt,
+5 tour thẻ bước, Dây phiếu + Dòng món, Chọn, Giao món ở 390×844, 360×600, 320×568 và 375×553 có vùng an toàn 47/34 (có chế độ
+tập trung): bong bóng trọn khung, nút "Tiếp" không bị che, vùng sáng khớp đích ±1,5px; lời bước tay mẫu giữ ≤ 3 dòng để bong
+bóng không che tay mẫu ở 375×553.
 
 ## 30. Vòng kiểm chứng độc lập tour và iPhone: 9 phát hiện đã sửa (01/10/2026)
 
@@ -1655,3 +1897,69 @@ khi sửa (kịch bản đo ở `tour/after-fix/`), sửa tận gốc và có te
    mô phỏng tai thỏ 47px: "?" ở HUD, Tổng kết và Chuẩn bị cuộn tới đáy, Việc hôm nay đều nằm dưới vùng an toàn và chạm trúng.
 
 Phiên bản vẫn 0.4.1 (chưa phát hành); không thêm tệp nên PRECACHE không đổi.
+
+## 31. M5: giao diện kiểu game nấu ăn — Đợt 0 (bản 0.4.2) và Đợt 1 (bản 0.5.0) (02/10/2026)
+
+Mục tiêu: bỏ cảm giác "ô vuông có chữ", làm lại giao diện trong ca theo kiểu game giả lập nấu ăn (hình to, cel-shading viền
+mực, nút bánh kẹo, thẻ bước có tay mẫu, con dấu, màn ra món), thêm 5 thao tác bếp mới, **không đổi cân bằng**. Kế hoạch 4 đợt
+(`docs/tham-khao/m5-thiet-ke.md`): Đợt 0 bản mẫu (dừng chờ duyệt), Đợt 1 nền tảng + Bếp + mini-game (0.5.0), Đợt 2 Quầy/HUD/
+phố/phiếu chấm (0.5.1), Đợt 3 các màn ngoài ca (0.5.2). Mọi thay đổi là thêm hoặc sửa tệp; chuyển CSS/hàm sang tệp mới là cắt-dán
+nội dung, không xóa tệp.
+
+**Quyết định đã chốt với người dùng (02/10/2026, sau khi duyệt Phòng mẫu Đợt 0):** duyệt phong cách mẫu, không yêu cầu chỉnh;
+Q1 **bật chế độ tập trung khi nấu** (màn cao dưới 760px); Q6 màn ra món khoảng 2 giây (`REVEAL_MS` 2.200, chạm để bỏ qua; giảm
+chuyển động 1.400), `SHEET_MS` giữ 2.000; Q3 món hiếm dùng hình món nền + huy hiệu ★; Q4 thư "Có gì mới" 0.5.0 không quà; Q2 bước
+Bày cho bánh mì/trà tắc để M6; Q5 không dùng mẹo rung iOS; Q7 vùng xanh đập trứng 0,40–0,70 + sàn giờ; Q8 giữ `mau.html`; Q9 giữ
+`system-ui` cho chữ thân.
+
+**Đợt 0 (0.4.2).** Font Baloo 2 800 tự lưu; `css/theme.css`, `css/fx.css`, `css/counter.css`; `ui/vfx.js`, `ui/motion.js`;
+5 âm `stamp, sparkle, fanfare, tick, whoosh`; 19 hình mẫu (12 chủ thể) đúng tệp đích trong `ui/art/` nhưng chưa vào `ICONS`;
+thành phần thẻ bước, con dấu, ra món, Dì Sáu phản ứng; màn gọi món mẫu; `buildFrame2` và nhánh `ctx.look === 2` của Thái; trang
+Phòng mẫu `mau.html` + `mau/`; `tools/dong-goi-artifact.mjs --entry mau.html`; sửa điều hướng của service worker (mục 16.1); test
+từ cấm quét thêm `mau.html`, `mau/`. Game chính không đổi hành vi.
+
+**Đợt 1 (0.5.0)** — chia gói theo tệp sở hữu (thiết kế mục 3.2):
+- Bước 0: cắt CSS sân khấu từ `kitchen.css` sang `mg-prep.css` (khung, Chọn, Chà, Thái), `mg-heat.css` (Nêm, Canh lửa, Rót),
+  `mg-mix.css` (mới), gắn vào `index.html` và PRECACHE, không đổi luật.
+- A (lõi và dữ liệu): 5 hàm chấm (mục 10), `SCALE_KEYS` thêm `turns`, `strips` (mục 9), `migrateCookBoard` (mục 12), 15 bước đổi
+  loại (mục 6), 5 mục `MINIGAME_TYPES`, `DIALOGUE.diSau.stepReact` và `typeTips`, `_gesture.js` (mục 13.3).
+- Hình: nguyên liệu tươi (13 + 21 trạng thái), đồ khô/chai lọ (29 + 5 trạng thái), 5 món, 14 dụng cụ (4 biểu tượng thao tác mới),
+  14 đạo cụ sân khấu; ráp nối gộp thành mặt tiền `art.js` (mục 13.3).
+- E1/E2/E3: 11 plugin vẽ lại theo `buildFrame2`, 5 plugin mới; giữ mọi testid và `data-*` cũ (mục 14).
+- F: màn Bếp (Thớt huy hiệu, hình trạng thái, thẻ bước, con dấu giữ sân khấu ~700 ms, ra món 2,2 s, tour trên thẻ bước) và chế
+  độ tập trung (mục 13.3).
+- G: `app.vfx`, 5 âm thao tác và `ACTION_SOUNDS`, `stepProgress`, `showStepResult`, `.btn` bánh kẹo toàn game.
+- H: 5 tour thẻ bước, lời tour Thớt và trang Cách chơi nhắc thao tác mới, `STICKY` của tour (mục 29); tài liệu này,
+  `docs/de-xuat-thiet-ke.md` (mục 6.4, 6.5, 6.13, 6.14, 14.4c), `docs/can-bang.md` (mục 7.1), `README.md`.
+- I: bộ giải 5 thao tác trong `tests/e2e/helpers.mjs`, `_kitchen-smoke.mjs`, `hanh-trinh.mjs`; sửa `fix-leftovers` theo thiết kế
+  mục 3.3; e2e mới `m5-bep`, `m5-save`; 5 ca tour thẻ bước trong `tour.e2e`.
+- Ráp nối: `art.js` mặt tiền, `minigames/index.js` (11 loại), `minigame-ui-contract.test`, `sw.js` (VERSION, PRECACHE),
+  `package.json`, `APP_VERSION`, dòng preload font trong `index.html`, thư phiên bản 0.5.0 (`phien_ban_0_5_0`, không quà; save có
+  `seenVersion` ≤ 0.4.x nhận thư, save mới chỉ ghi `seenVersion` 0.5.0).
+
+**Bất biến cân bằng** (khóa bằng `tests/unit/m5-balance.test.mjs`, so **từng bước** với bảng chép từ 0.4.1): id bước, par, w,
+critical, retryCost, ing, after; tổng par / Σw / giá / vốn của 9 món; `BALANCE`; `STATE_VERSION` = 3. Bảng ở `docs/can-bang.md`
+mục 7.1. Giữ id bước nên `uiRand` (băm theo id bước) và seed của e2e gần như không lệch.
+
+**Save.** Cấu trúc không đổi; phiên nấu dở ở Thớt của bản cũ được dựng lại bảng bước theo công thức mới (`migrateCookBoard`)
+để bước chưa làm hiện thao tác mới; kết quả bước đã làm, tiền, phiếu, giá vốn, lượt làm lại giữ nguyên.
+
+**Ràng buộc kỹ thuật nhắc lại cho các đợt sau.**
+- Lõi `src/core` thuần; module giao diện import được trong Node (không chạm `document`/`window`/`matchMedia` ở cấp module).
+- Hiệu ứng chỉ animate `transform`/`opacity`; lớp hiệu ứng `pointer-events: none`; tôn trọng giảm chuyển động (lớp
+  `reduce-motion` + `prefers-reduced-motion`, `isReduced`; WAAPI/canvas tự kiểm); hoạt ảnh trên phần tử con, thời lượng hữu hạn
+  (giữ `sheetSettled` của phiếu chấm).
+- Vùng chạm ≥ 44px, chữ ≥ 13px (chữ tour ≥ 14px), nút không bị che (`elementFromPoint`), không tràn ngang; chạy được ở 390×844,
+  360×600, 320×568 và 375×553 có vùng an toàn 47/34 (`--safe-top`/`--safe-bottom`).
+- Test từ cấm quét chuỗi con (chữ thường) cả tên biến và chú thích trong `src/`, `css/`, `index.html`, `sw.js`, `mau.html`, `mau/`
+  (tránh `grabbed`, `snapAs…`, `tipOs…`); tệp hiển thị cấm thêm từ nội bộ.
+- Mỗi tệp JS/CSS mới phải vào PRECACHE (khớp tuyệt đối với cây thư mục) và CSS mới phải gắn trong `index.html`.
+
+**Ghi nhận khi viết (02/10/2026), chưa sửa trong Đợt 1:**
+- Bước Khuấy ly (`khuay`, par 2, 3 vòng): đồng hồ tính từ lúc dựng sân khấu, nên phải xong trong 4 giây (2 × par) mới không bị
+  trừ 15; bộ giải cảm ứng thử được 85. Cần đo với người chơi trung bình (`docs/can-bang.md` mục 7.1, chỉ số 30).
+- Thẻ bước đầy đủ chỉ hiện khi món nấu dưới 3 lần (`HINT_HIDE_AFTER_COOKS`), nên người chơi cũ đã nấu một món nhiều lần sẽ không
+  thấy tour thẻ bước của thao tác mới ở món đó (chỉ thấy ruy băng gọn). Tour vẫn tự hiện ở món mới mua hoặc món nấu ít.
+- Màn rất thấp 375×553 có vùng an toàn: dù đã tập trung, panel nấu chỉ khoảng 300px; Thớt phải cuộn khi có từ 2 trạm nguyên
+  liệu; bong bóng tour bước "Kệ và bẫy" đè nửa trên kệ (kệ cao hơn chỗ trống, tour vẫn trọn trong khung).
+- `art.js` vẫn giữ kiểu cũ cho các icon chỉ có ở bộ cũ (sự kiện, thư, rương, món tương lai) — Đợt 3 (gói hình meta) vẽ lại.
