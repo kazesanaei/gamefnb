@@ -2,6 +2,7 @@
 // dải (gọt), đổi chiều và nhịp (lắc), kim thước lực (đập trứng), sàn giờ theo số lượng. Không chạm DOM, không đọc đồng hồ:
 // bên gọi đưa tọa độ (px) và thời điểm (giây) vào → test được trong Node (tests/unit/m5-gesture.test.mjs).
 import { stepLimitSec } from './_util.js'
+import { MIN_LIMIT, minLimitSec } from '../../core/minigame-scoring.js'
 
 const TAU = Math.PI * 2
 const fin = (v, d = 0) => { const x = Number(v); return Number.isFinite(x) ? x : d }
@@ -242,22 +243,9 @@ export function needleValue(t, period = NEEDLE_PERIOD) {
 }
 
 // Sàn giờ theo số lượng (giây) của từng thao tác mới: không đổi par (par quyết định ngân sách chờ của khách), chỉ tránh
-// trường hợp nhiều trứng / nhiều phần không thể làm kịp. Tham số đã nhân theo số phần (effectiveSteps).
-export const MIN_LIMIT = Object.freeze({
-  dap: Object.freeze({ key: 'n', per: 1.5, base: 1 }),
-  xoay: Object.freeze({ key: 'turns', per: 1.1, base: 1 }),
-  got: Object.freeze({ key: 'strips', per: 1.2, base: 1 }),
-  lac: Object.freeze({ key: 'strokes', per: 0.4, base: 1 }),
-  bay: Object.freeze({ key: 'n', per: 1.3, base: 1.5 })
-})
-
-/** Sàn giờ (giây) của loại bước với tham số params; loại khác → 0. */
-export function minLimitSec(type, params) {
-  const r = MIN_LIMIT[type]
-  if (!r) return 0
-  const q = Math.max(1, fin(params && params[r.key], 1))
-  return Math.round((r.per * q + r.base) * 100) / 100
-}
+// trường hợp nhiều trứng / nhiều phần không thể làm kịp. Tham số đã nhân theo số phần (effectiveSteps). Bảng và hàm nằm ở
+// lõi (core/minigame-scoring.js) vì hàm chấm cũng dùng sàn này làm mốc trừ quá giờ (overtimeAt); ở đây chỉ xuất lại.
+export { MIN_LIMIT, minLimitSec }
 
 /**
  * Giới hạn giờ của một bước thao tác mới: max(2,5 × par, sàn giờ) — Hỗ trợ thao tác nhân 1,5 cả hai; nấu thử: Infinity.

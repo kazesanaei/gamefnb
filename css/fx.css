@@ -90,8 +90,11 @@
   font-size: 14px;
   line-height: 1.3;
   text-align: center;
+  text-wrap: pretty;
   color: var(--g-ink-soft, #6e5340);
 }
+/* câu ngắn (model.hintShort) chỉ hiện khi câu đầy đủ bị cắt (khung thấp; .use-short do step-card.js fitHint gắn) */
+.g-step-card-hint-short { display: none; }
 .g-step-card-go { min-width: 210px; margin-top: 2px; }
 .g-step-card-timer {
   flex: none;
@@ -461,8 +464,11 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-/* thanh giờ: viên thuốc có đồng hồ (giữ [mg-time], .mg-time-fill, .is-late) */
+/* thanh giờ: viên thuốc có đồng hồ (giữ [mg-time], .mg-time-fill, .is-late). Nằm trên hàng chấm bước (z-index, nền
+   đặc): hàng chấm dài đến đâu cũng không bao giờ che được biểu tượng đồng hồ hay vạch giờ. */
 .mg-stage.g-frame2 .g-head2 > .mg-time.g-time {
+  position: relative;
+  z-index: 2;
   flex: none;
   display: flex;
   align-items: center;
@@ -535,6 +541,16 @@
 
 @media (max-width: 400px) {
   .g-head2.is-crowded .g-head2-title { display: none; }
+}
+/* Món nhiều bước (≥ 8 chấm, .is-lots) ở đầu sân khấu hẹp (≤ 300px — màn 320px): chấm nhỏ (css/mg-prep.css) vẫn chưa đủ chỗ
+   khi đã xong 7–8 bước (chín chấm rộng ~203px > ~190px còn lại cạnh thanh giờ, chấm hiện tại lấn sát đồng hồ), nên các
+   chấm đã xong khít lại, chồng mép lên nhau như chuỗi xu — vẫn thấy dấu ✓ và màu hạng của từng bước, chấm xong gần nhất nằm
+   trên cùng; chấm hiện tại giữ to, có hình nguyên liệu. Chín chấm (8 xong + 1 đang làm) còn ~167px. Khai báo lại khung
+   chứa g-head ở đây (trùng mg-prep.css, vô hại) để luật này không phụ thuộc tệp khác. */
+.mg-stage.g-frame2 > .mg-head.g-head2 { container: g-head / inline-size; }
+@container g-head (max-width: 300px) {
+  .mg-stage.g-frame2 .g-head2.is-lots .g-dots { gap: 2px; }
+  .mg-stage.g-frame2 .g-head2.is-lots .g-dot.is-done + .g-dot.is-done { margin-left: -4px; }
 }
 /* sân khấu thấp (panel Bếp ~300px): bỏ thẻ hướng dẫn (thẻ bước vừa nói rồi) để thớt to hơn; con dấu lệch trái, nhỏ lại và
    NEO THEO MÉP TRÊN THANH CHÂN (--g-foot-h: thanh chân 48px + đệm 4/6px của sân khấu bếp; +8px chừa góc xoay −8°), Dì Sáu
@@ -692,7 +708,29 @@
 .g-reveal-name { position: relative; z-index: 3; display: flex; align-items: center; gap: 4px; max-width: 100%; animation: g-reveal-down .35s var(--g-ease-back, ease-out) both; }
 .g-reveal-title { max-width: calc(100cqw - 76px); margin: 0 24px; font-size: 20px; }
 .g-reveal-title > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.g-reveal-rare { flex: none; font-size: 13px; }
+/* Món hiếm: huy hiệu "★ Hiếm" là nhãn dán nghiêng ở góc trên-phải ruy băng tên, NẰM NGOÀI dòng chảy (không chiếm bề ngang
+   của hàng tên): tên dài như "Bánh tráng trộn Tây Ninh" vẫn đủ chỗ và huy hiệu không bao giờ bị đẩy ra ngoài mép màn
+   (mép phải huy hiệu ≈ mép phải đuôi ruy băng, luôn cách mép khung ≥ 10px). Đáy huy hiệu chỉ chạm viền trên ruy băng, không
+   đè chữ tên. Bật vào ở nhịp huy hiệu hạng (--at). Khung thấp: lề trên của cột chừa đủ chỗ cho phần nhô lên (mục khung
+   thấp bên dưới). */
+.g-reveal-rare {
+  position: absolute;
+  top: -18px;
+  right: 0;
+  z-index: 4;
+  height: 24px;
+  min-width: 0;
+  padding: 0 8px;
+  font-size: 13px;
+  box-shadow: 0 2px 0 var(--g-ink, #3a2618), 0 0 0 2px rgba(255, 250, 240, .75);
+  transform: rotate(7deg);
+  animation: g-reveal-rare .36s var(--g-ease-back, ease-out) both;
+  animation-delay: var(--at, 0ms);
+}
+/* tên dài ở khung hẹp (màn 320px): chữ ruy băng nhỏ lại, đệm hẹp lại — đủ cả tên, không cắt "…" */
+@container g-reveal (max-width: 340px) {
+  .g-reveal.is-long-name .g-reveal-title { padding: 1px 10px 0; font-size: 17px; }
+}
 .g-reveal-main { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .g-reveal-hero {
   position: relative;
@@ -830,7 +868,7 @@
 .g-reveal-tap b { font-size: 1.35em; line-height: .8; }
 /* chạm để bỏ qua: hiện thẳng mọi phần (tia sáng và nhịp nhún vẫn chạy) */
 .g-reveal.is-skipped :is(.g-reveal-name, .g-reveal-dish-wrap, .g-reveal-badge, .g-reveal-gradeline, .g-reveal-star,
-  .g-reveal-flawless, .g-reveal-lvup, .g-reveal-disau, .g-reveal-tap, .g-reveal-smoke) { animation: none !important; }
+  .g-reveal-flawless, .g-reveal-lvup, .g-reveal-disau, .g-reveal-tap, .g-reveal-smoke, .g-reveal-rare) { animation: none !important; }
 
 /* Dòng lên cấp: không xuống dòng (mũi tên đỏ là biểu tượng, chữ thu gọn bằng dấu … nếu quá hẹp) */
 .g-reveal-lvup { grid-area: lv; max-width: 100%; white-space: nowrap; }
@@ -914,6 +952,8 @@
 }
 @container g-reveal (max-height: 400px) {
   .g-reveal-col { --g-rv-rest: 150px; --g-rv-lv: 30px; gap: 4px; padding: 16px 10px 6px; }
+  /* món hiếm: chừa chỗ cho huy hiệu "★ Hiếm" nhô lên trên ruy băng tên */
+  .g-reveal.is-rare .g-reveal-col { --g-rv-rest: 158px; padding-top: 24px; }
   .g-reveal-title { font-size: 17px; }
   .g-reveal-hero { width: max(72px, min(40cqw, calc(100cqh - var(--g-rv-rest)), 150px)); }
   .g-reveal.has-lvup .g-reveal-hero { width: max(72px, min(40cqw, calc(100cqh - var(--g-rv-rest) - var(--g-rv-lv)), 150px)); }
@@ -948,6 +988,8 @@
   .g-reveal-hero { align-self: center; }
   .g-reveal-lvup { justify-self: start; }
   .g-reveal-title { height: 30px; margin: 0 22px; padding: 1px 12px 0; font-size: 15px; }
+  .g-reveal.is-long-name .g-reveal-title { padding: 1px 10px 0; font-size: 15px; }
+  .g-reveal.is-rare .g-reveal-col { --g-rv-rest: 140px; padding-top: 22px; }
   .g-reveal-title::before, .g-reveal-title::after { top: 4px; width: 18px; height: 30px; }
   .g-reveal-title::before { left: -20px; }
   .g-reveal-title::after { right: -20px; }
@@ -973,19 +1015,32 @@
   .g-step-card-verb { font-size: 25px; }
   .g-step-card-go { min-height: 46px; font-size: 18px; }
 }
+/* Khung thấp (vd 375×553 có vùng an toàn: thẻ ~280–300px): câu hướng dẫn tối đa 2 dòng (trước đây 1 dòng, mất phần cuối
+   câu như "rồi bấm Xong"); câu đầy đủ không vừa 2 dòng thì step-card.js (fitHint) đổi sang câu ngắn — dòng hướng dẫn của
+   sân khấu, vd Đập trứng "Chạm trứng khi kim vào vùng xanh, rồi vuốt xuống." Hình nhỏ lại chút để nhường chỗ dòng hai. */
 @container g-card (max-height: 320px) {
   .g-step-card-panel { padding: 22px 10px 8px; }
   .g-step-card-ribbon { top: -19px; height: 34px; font-size: 17px; }
-  .g-step-card-stage { width: min(40cqw, 33cqh, 140px); }
+  .g-step-card-stage { width: min(40cqw, 29cqh, 140px); }
   .g-step-card-verb { --g-tw: 1.5px; font-size: 22px; }
-  .g-step-card-hint { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; font-size: 13px; }
+  .g-step-card-hint { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 13px; line-height: 1.25; }
+  .g-step-card-hint.use-short .g-step-card-hint-full { display: none; }
+  .g-step-card-hint.use-short .g-step-card-hint-short { display: inline; }
   .g-step-card-go { min-height: 44px; padding: 5px 14px; font-size: 17px; }
 }
-/* trình duyệt chưa có container query: dựa vào chiều cao khung nhìn */
+/* thẻ rất thấp (≤ 270px): hình và động từ nhỏ thêm, câu hướng dẫn vẫn đủ 2 dòng */
+@container g-card (max-height: 270px) {
+  .g-step-card-panel { gap: 3px; padding-top: 20px; }
+  .g-step-card-stage { width: min(36cqw, 25cqh, 120px); }
+  .g-step-card-verb { font-size: 20px; }
+}
+/* trình duyệt chưa có container query: dựa vào chiều cao khung nhìn — câu ngắn 2 dòng thay vì ẩn hẳn câu hướng dẫn */
 @supports not (container-type: size) {
   @media (max-height: 700px) {
-    .g-step-card-stage { width: 130px; }
-    .g-step-card-hint { display: none; }
+    .g-step-card-stage { width: 110px; }
+    .g-step-card-hint { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 13px; }
+    .g-step-card-hint.use-short .g-step-card-hint-full { display: none; }
+    .g-step-card-hint.use-short .g-step-card-hint-short { display: inline; }
     .g-reveal-hero { width: 140px; }
   }
 }
@@ -1115,6 +1170,7 @@
   100% { opacity: 1; transform: rotate(-10deg); }
 }
 @keyframes g-reveal-star { 0% { opacity: 0; transform: scale(.2) rotate(-40deg); } 100% { opacity: 1; transform: none; } }
+@keyframes g-reveal-rare { 0% { opacity: 0; transform: scale(.3) rotate(-20deg); } 100% { opacity: 1; transform: rotate(7deg); } }
 @keyframes g-reveal-smoke { 0% { opacity: 0; transform: translateY(18%) scale(.7); } 100% { opacity: .92; transform: none; } }
 @keyframes g-reveal-slide { 0% { opacity: 0; transform: translateX(-40px) scale(.9); } 100% { opacity: 1; transform: none; } }
 

@@ -655,3 +655,166 @@ test('css/fx.css: hoạt ảnh chỉ đổi transform/opacity; lớp hiệu ứn
   for (const sel of ['.g-step-card *', '.g-reveal *', '.g-dot', '.g-step-mini']) assert.ok(reducedBlock.includes(sel), 'khối giảm chuyển động thiếu ' + sel)
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/)
 })
+
+// ---------- Vòng sửa gói G (M5 Đợt 1): chấm bước món nhiều bước, huy hiệu món hiếm, dọn chữ nổi lúc hiện dấu, câu hướng dẫn
+// ở khung thấp ----------
+
+test('thẻ bước: câu hướng dẫn ngắn cho khung thấp (dòng hướng dẫn của sân khấu), giữ ý "bấm Xong" của bước Bày', async () => {
+  const { stepCardModel, shortHint } = await import('../../src/ui/components/step-card.js')
+  const T = DATA.MINIGAME_TYPES
+  const step = (rid, sid) => DATA.RECIPES[rid].steps.find(s => s.id === sid)
+  const themDa = stepCardModel(step('ca_phe_sua_da', 'them_da'), { data: DATA })
+  assert.equal(themDa.hint, T.bay.skins.ly.hint)
+  assert.equal(themDa.hintShort, T.bay.skins.ly.sub)
+  assert.ok(themDa.hint.includes('bấm Xong') && themDa.hintShort.includes('bấm Xong'), 'câu ngắn của Thả đá vẫn dặn bấm Xong')
+  assert.equal(stepCardModel(step('banh_mi_op_la', 'dap_trung'), { data: DATA }).hintShort, T.dap.sub)
+  // không có dòng hướng dẫn riêng (Chạm nhanh): câu ngắn chính là câu đầy đủ
+  const vat = stepCardModel(step('tra_tac', 'vat_tac'), { data: DATA })
+  assert.equal(vat.hintShort, vat.hint)
+  // không truyền data vẫn ra cùng kết quả (dữ liệu mặc định)
+  assert.equal(stepCardModel(step('ca_phe_sua_da', 'them_da')).hintShort, T.bay.skins.ly.sub)
+  assert.equal(shortHint({ type: 'khong_co' }, T, ''), '')
+  // mọi bước thật: câu ngắn có chữ, không dài hơn câu đầy đủ; bước Bày luôn còn "Xong"
+  for (const r of Object.values(DATA.RECIPES)) {
+    for (const s of r.steps) {
+      const m = stepCardModel(s, { data: DATA, recipe: r })
+      assert.ok(m.hintShort && m.hintShort.length <= m.hint.length, `${r.id}.${s.id}: câu ngắn "${m.hintShort}"`)
+      if (s.type === 'bay') assert.ok(m.hintShort.includes('Xong'), `${r.id}.${s.id}: câu ngắn thiếu "Xong"`)
+    }
+  }
+})
+
+test('createStepCard: câu hướng dẫn có cả câu đầy đủ và câu ngắn; fitHint đổi sang câu ngắn khi câu đầy đủ bị cắt', async () => {
+  const { createStepCard, stepCardModel, fitHint } = await import('../../src/ui/components/step-card.js')
+  await withMiniDom(async doc => {
+    const step = DATA.RECIPES.ca_phe_sua_da.steps.find(s => s.id === 'them_da')
+    const m = stepCardModel(step, { data: DATA, index: 2, total: 6 })
+    const card = createStepCard(m, { full: true, autoMs: 0, reduced: true })
+    const p = card.el.querySelector('.g-step-card-hint')
+    assert.ok(p && p.classList.contains('has-short'))
+    assert.equal(p.querySelector('.g-step-card-hint-full').textContent, m.hint)
+    assert.equal(p.querySelector('.g-step-card-hint-short').textContent, m.hintShort)
+    // câu đầy đủ bị cắt (khung thấp chỉ cho 2 dòng) → câu ngắn; vừa thì giữ câu đầy đủ
+    Object.assign(p, { scrollHeight: 50, clientHeight: 33, scrollWidth: 300, clientWidth: 300 })
+    assert.equal(fitHint(p), true)
+    assert.ok(p.classList.contains('use-short'))
+    Object.assign(p, { scrollHeight: 33 })
+    assert.equal(fitHint(p), false)
+    assert.ok(!p.classList.contains('use-short'))
+    card.destroy()
+    // câu ngắn trùng câu đầy đủ: chỉ một câu, không đổi
+    const vat = createStepCard(stepCardModel(DATA.RECIPES.tra_tac.steps.find(s => s.id === 'vat_tac'), { data: DATA }), { full: true, autoMs: 0, reduced: true })
+    const p2 = vat.el.querySelector('.g-step-card-hint')
+    assert.ok(p2 && !p2.classList.contains('has-short'))
+    assert.equal(p2.querySelector('.g-step-card-hint-short'), null)
+    Object.assign(p2, { scrollHeight: 50, clientHeight: 33 })
+    assert.equal(fitHint(p2), false)
+    vat.destroy()
+    assert.equal(fitHint(null), false)
+  })
+})
+
+test('createDishReveal: món hiếm có huy hiệu "★ Hiếm" (lớp is-rare, bật vào ở nhịp huy hiệu hạng); tên dài có is-long-name', async () => {
+  const { createDishReveal, isLongName, LONG_NAME } = await import('../../src/ui/components/dish-reveal.js')
+  assert.equal(LONG_NAME, 22)
+  assert.equal(isLongName('Bánh tráng trộn Tây Ninh'), true)
+  assert.equal(isLongName('Trà tắc mật ong rừng'), false)
+  assert.equal(isLongName(''), false)
+  await withMiniDom(async () => {
+    const R = DATA.RECIPES.banh_trang_tron_tay_ninh
+    const r = createDishReveal({ dish: { grade: 'tuyet_hao', q: 97 }, recipe: R, name: R.name, data: DATA, reduced: false })
+    assert.ok(r.el.classList.contains('is-rare'))
+    assert.ok(r.el.classList.contains('is-long-name'))
+    const badge = r.el.querySelector('.g-reveal-rare')
+    assert.ok(badge, 'thiếu huy hiệu món hiếm')
+    assert.equal(badge.textContent, '★ Hiếm')
+    assert.equal(badge.parentNode, r.el.querySelector('.g-reveal-name'), 'huy hiệu dán ở hàng tên (góc ruy băng)')
+    const beat = r.plan.beats.find(b => b.kind === 'badge')
+    assert.equal(badge.style['--at'], beat.at + 'ms')
+    assert.equal(r.el.querySelector('.g-reveal-title').textContent, R.name)
+    r.destroy()
+    // món thường: không huy hiệu, không lớp
+    const N = DATA.RECIPES.banh_mi_op_la
+    const n = createDishReveal({ dish: { grade: 'ngon', q: 80 }, recipe: N, name: N.name, data: DATA, reduced: true })
+    assert.ok(!n.el.classList.contains('is-rare') && !n.el.classList.contains('is-long-name'))
+    assert.equal(n.el.querySelector('.g-reveal-rare'), null)
+    n.destroy()
+    // món hiếm tên ngắn: có huy hiệu, không thu chữ
+    const M = DATA.RECIPES.ca_phe_muoi
+    const m = createDishReveal({ dish: { grade: 'duoc', q: 60 }, recipe: M, name: M.name, data: DATA, reduced: true })
+    assert.ok(m.el.classList.contains('is-rare') && !m.el.classList.contains('is-long-name'))
+    m.destroy()
+  })
+})
+
+test('showStepResult: gỡ ruy băng gọn còn neo, làm mờ chữ nổi vfx đang bay trên sân khấu (chữ ngoài sân khấu giữ nguyên), dấu neo theo thanh chân thật', async () => {
+  const { showStepResult, clearStageChatter, anchorStampToFoot } = await import('../../src/ui/components/stamp.js')
+  await withMiniDom(async doc => {
+    const box = (left, top, width, height) => () => ({ left, top, width, height, right: left + width, bottom: top + height })
+    const stage = doc.createElement('div')
+    stage.className = 'mg-stage g-frame2'
+    doc.body.appendChild(stage)
+    const head = doc.createElement('div')
+    head.className = 'mg-head g-head2 g-head-dock'
+    const mini = doc.createElement('div')
+    mini.className = 'g-step-mini is-docked'
+    head.appendChild(mini)
+    const foot = doc.createElement('div')
+    foot.className = 'mg-foot g-foot2'
+    foot.getBoundingClientRect = box(0, 230, 320, 70)   // thanh chân cao 70px (nút "Nhấc" to), mép trên 230
+    const fx = doc.createElement('div')
+    fx.className = 'mg-fx'
+    fx.getBoundingClientRect = box(0, 0, 320, 300)
+    stage.append(head, foot, fx)
+    // lớp vfx chung: một chữ nổi trong sân khấu, một chữ ở ngoài (vd HUD)
+    const layer = doc.createElement('div')
+    layer.className = 'vfx-layer'
+    doc.body.appendChild(layer)
+    const fades = []
+    const mk = (rect, name) => {
+      const t = doc.createElement('div')
+      t.className = 'vfx-text'
+      t.getBoundingClientRect = rect
+      t.animate = (kf, opts) => { fades.push({ name, kf, opts }); return { finished: Promise.resolve(), cancel() {} } }
+      layer.appendChild(t)
+      return t
+    }
+    mk(box(100, 60, 60, 24), 'trong')
+    mk(box(500, 60, 60, 24), 'ngoai')
+    const vfx = { layer, hitstop: async () => {}, burst: () => 0, fly: () => {}, shake: () => {} }
+    const r = showStepResult(stage, { score: 92, label: 'Hoàn hảo', vfx, sound: () => {}, reduced: false, rand: () => 0, data: DATA })
+    await r.played
+    await sleep(30)
+    assert.equal(mini.parentNode, null, 'ruy băng gọn đã gỡ khỏi đầu sân khấu')
+    const inStage = fades.filter(f => f.name === 'trong')
+    assert.ok(inStage.length >= 1, 'chữ nổi trong sân khấu được làm mờ')
+    assert.equal(inStage[0].kf[inStage[0].kf.length - 1].opacity, 0)
+    assert.ok(inStage[0].opts.duration <= 150, 'mờ nhanh')
+    assert.equal(fades.filter(f => f.name === 'ngoai').length, 0, 'chữ nổi ngoài sân khấu không bị đụng')
+    assert.equal(fx.style['--g-foot-h'], '70px', 'dấu neo theo mép trên thật của thanh chân')
+    // không có thanh chân / không đo được: giữ giá trị CSS
+    const bare = doc.createElement('div')
+    assert.equal(anchorStampToFoot(bare, fx), null)
+    assert.equal(clearStageChatter(null, null, null), 0)
+  })
+})
+
+test('css/fx.css (vòng sửa G): thanh giờ luôn trên hàng chấm; chấm xong khít lại ở đầu sân khấu hẹp; huy hiệu hiếm ngoài dòng chảy; thẻ bước khung thấp 2 dòng', async () => {
+  const { readFileSync } = await import('node:fs')
+  const css = readFileSync(new URL('../../css/fx.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+  const block = sel => { const i = css.indexOf(sel + ' {'); assert.ok(i >= 0, 'thiếu ' + sel); return css.slice(i, css.indexOf('}', i)) }
+  const at = head => { const i = css.indexOf(head); assert.ok(i >= 0, 'thiếu ' + head); let d = 0; for (let j = css.indexOf('{', i); j < css.length; j++) { if (css[j] === '{') d++; else if (css[j] === '}' && --d === 0) return css.slice(i, j) } return '' }
+  const time = block('.mg-stage.g-frame2 .g-head2 > .mg-time.g-time')
+  assert.match(time, /position: relative/)
+  assert.match(time, /z-index: 2/)
+  assert.match(at('@container g-head (max-width: 300px)'), /\.is-lots \.g-dot\.is-done \+ \.g-dot\.is-done \{ margin-left: -\d+px; \}/)
+  const rare = block('.g-reveal-rare')
+  assert.match(rare, /position: absolute/)
+  assert.match(css, /\.g-reveal\.is-skipped :is\([^)]*\.g-reveal-rare/)
+  assert.match(at('@container g-reveal (max-width: 340px)'), /\.g-reveal\.is-long-name \.g-reveal-title/)
+  const low = at('@container g-card (max-height: 320px)')
+  assert.match(low, /\.g-step-card-hint \{[^}]*-webkit-line-clamp: 2/)
+  assert.match(low, /\.use-short \.g-step-card-hint-short \{ display: inline; \}/)
+  assert.doesNotMatch(css, /\.g-step-card-hint \{[^}]*-webkit-line-clamp: 1/)
+  assert.match(block('.g-step-card-hint-short'), /display: none/)
+})

@@ -310,7 +310,7 @@ function mount(stage, step, ctx = {}) {
     const strokes = rc.count
     const cv = rc.cv()
     // Nấu thử (ctx.untimed): không phạt quá giờ (par = Infinity → bỏ luật −15), như cha.js
-    const score = scoreLac({ strokes, target: K, cv, elapsed, par: ctx.untimed ? Infinity : step.par, mul })
+    const score = scoreLac({ strokes, target: K, cv, elapsed, par: ctx.untimed ? Infinity : step.par, mul, maxRatio: params.maxRatio })
     feedback(ctx, score >= 90 ? 'good' : score < 50 ? 'bad' : 'ok')
     out.settle({ score, details: { strokes, target: K, cv, elapsed } })
   }

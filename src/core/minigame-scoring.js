@@ -154,9 +154,12 @@ export function stepLabel(score, labels = DEFAULT_BALANCE.stepLabels) {
 }
 
 // ---------- M5 (0.5.0): năm thao tác mới — đập trứng, khuấy, gọt, lắc, bày ----------
-// Mỗi hàm chọn để cùng nghĩa với bước nó thay (thiết kế M5 mục 1.5): lắc/khuấy/gọt thay chà (giữ "−15 nếu quá 2 × par" và tỉ
+// Mỗi hàm chọn để cùng nghĩa với bước nó thay (thiết kế M5 mục 1.5): lắc/khuấy/gọt thay chà (giữ "−15 nếu quá giờ" và tỉ
 // lệ đủ lượt), bày thay chạm đúng số lần (−30 mỗi lần lệch số lượng). Đầu vào lỗi (NaN, âm, rỗng, sai kiểu) cho 0 hoặc bỏ
 // qua phần lỗi, không bao giờ ra NaN; kết quả là số nguyên 0..100.
+// Mốc "quá giờ" của thao tác mới = max(2 × par, sàn giờ theo số lượng) (overtimeAt): thao tác mới chậm hơn bước chà nó thay
+// (vẽ 3 vòng lâu hơn chà 6 lượt) mà par bị khóa (par quyết định ngân sách chờ của khách), nên mốc trừ không được thấp hơn
+// sàn giờ — người khuấy vừa tay không bị trừ oan.
 
 // Vùng xanh của thước lực khi đập trứng (phần của thước 0..1; nới quanh tâm theo mul như zoneScore).
 export const DAP_ZONE = Object.freeze([0.40, 0.70])
@@ -165,8 +168,44 @@ const num = (v, d = 0) => { const x = Number(v); return Number.isFinite(x) ? x :
 const posInt = (v, d = 1) => { const x = Math.floor(Number(v)); return Number.isFinite(x) && x >= 1 ? x : d }
 const mulOf = m => { const x = Number(m); return Number.isFinite(x) && x > 0 ? x : 1 }
 const zoneOf = z => (Array.isArray(z) && z.length >= 2 && Number.isFinite(Number(z[0])) && Number.isFinite(Number(z[1])) ? z : DAP_ZONE)
-// −15 khi làm quá 2 × par (cùng luật với chà).
-const overtime = (elapsed, par) => (num(par) > 0 && num(elapsed) > 2 * num(par) ? 15 : 0)
+
+// Sàn giờ theo số lượng (giây) của từng thao tác mới = per × số lượng + base, với số lượng là tham số `key` đã nhân theo số
+// phần (effectiveSteps). Dùng hai chỗ: giới hạn giờ của bước = max(2,5 × par, sàn) (gestureLimitSec ở
+// ui/minigames/_gesture.js, Hỗ trợ thao tác nhân 1,5 cả hai) và mốc trừ quá giờ = max(2 × par, sàn) (overtimeAt). Sàn không
+// đổi par, chỉ tránh "Thêm trứng" hay đơn nhiều phần không làm kịp, và tránh trừ oan người làm vừa tay.
+// Khuấy 1,4 giây mỗi vòng (≈ 0,7 vòng/giây, người khuấy chậm; bản đầu 1,1). Mô phỏng người chơi trung bình (1,2 ± 0,3
+// vòng/giây, chạm sau 0,9 ± 0,25 giây) ở Khuấy đều (3 vòng, par 2), tính cả lượt hết giờ: 1,1 → bị trừ 28% số lượt (mức
+// nghiệm thu < 15%, docs/can-bang.md chỉ số 30); 1,3 → 13% nhưng tỉ lệ 5 sao Cà phê muối thấp hơn bản 0.4.1 khoảng 6
+// điểm; 1,4 → 9%, điểm trung bình 97,7 (bản 0.4.1 chà 6 lượt: 99,3). Sàn vượt 2,5 × par thì giới hạn giờ của bước cũng là
+// sàn (gestureLimitSec), nên Khuấy đều 1 phần chỉ bị trừ khi hết giờ (5,2 giây).
+export const MIN_LIMIT = Object.freeze({
+  dap: Object.freeze({ key: 'n', per: 1.5, base: 1 }),
+  xoay: Object.freeze({ key: 'turns', per: 1.4, base: 1 }),
+  got: Object.freeze({ key: 'strips', per: 1.2, base: 1 }),
+  lac: Object.freeze({ key: 'strokes', per: 0.4, base: 1 }),
+  bay: Object.freeze({ key: 'n', per: 1.3, base: 1.5 })
+})
+
+/** Sàn giờ (giây) của loại bước với tham số params (số lượng thiếu / lỗi / < 1 → 1); loại khác → 0. */
+export function minLimitSec(type, params) {
+  const r = MIN_LIMIT[type]
+  if (!r) return 0
+  const q = Math.max(1, num(params && params[r.key], 1))
+  return Math.round((r.per * q + r.base) * 100) / 100
+}
+
+/**
+ * Mốc trừ 15 vì quá giờ (giây) của thao tác mới: max(2 × par, sàn giờ của loại `type` với số lượng `count`).
+ * par không phải số dương hữu hạn (0, lỗi, Infinity khi nấu thử) → Infinity: không bao giờ trừ.
+ */
+export function overtimeAt(type, count, par) {
+  const p = num(par)
+  if (!(p > 0)) return Infinity
+  const r = MIN_LIMIT[type]
+  return Math.max(2 * p, r ? minLimitSec(type, { [r.key]: count }) : 0)
+}
+// −15 khi elapsed vượt mốc (cùng mức trừ với chà).
+const overtime = (elapsed, mark) => (num(elapsed) > mark ? 15 : 0)
 
 // Đập trứng: cracks = [{ force /*vị trí kim 0..1 lúc chạm*/, split /*đã tách*/, shell /*vỏ rơi vào chảo*/ }] theo thứ tự quả.
 // Mỗi quả = zoneScore(lực, vùng xanh, mul) nếu đã tách; vỏ rơi thì tối đa 40; quả chưa đập / chưa tách = 0.
@@ -188,18 +227,20 @@ export function scoreDap({ cracks = [], n = 1, zone = DAP_ZONE, mul = 1 } = {}) 
   return clampScore(sum / N)
 }
 
-// Khuấy: 100 · min(1, vòng/K) − 12 · số lần sánh − (cv thời gian mỗi vòng > 0,45 · mul ? 10 : 0) − (quá 2 · par ? 15 : 0).
+// Khuấy: 100 · min(1, vòng/K) − 12 · số lần sánh − (cv thời gian mỗi vòng > 0,45 · mul ? 10 : 0)
+// − (quá max(2 · par, sàn giờ 'xoay' của K vòng) ? 15 : 0). Nấu thử: par = Infinity → không trừ quá giờ.
 export function scoreXoay({ turns = 0, target = 1, spills = 0, cv = 0, elapsed = 0, par = 0, mul = 1 } = {}) {
   const t = Math.max(0, num(turns))
   if (t <= 0) return 0
-  let s = 100 * Math.min(1, t / posInt(target))
+  const K = posInt(target)
+  let s = 100 * Math.min(1, t / K)
   s -= 12 * Math.max(0, Math.floor(num(spills)))
   if (num(cv) > 0.45 * mulOf(mul)) s -= 10
-  s -= overtime(elapsed, par)
+  s -= overtime(elapsed, overtimeAt('xoay', K, par))
   return clampScore(s)
 }
 
-// Gọt: trung bình min(1, phủ/0,85) của K dải × 100 − min(24, 8 · nhát hụt) − (quá 2 · par ? 15 : 0).
+// Gọt: trung bình min(1, phủ/0,85) của K dải × 100 − min(24, 8 · nhát hụt) − (quá max(2 · par, sàn giờ 'got') ? 15 : 0).
 // coverage[i] = phần dải i đã gọt (0..1); thiếu dải → 0. K = target (số dải), không có thì số phần tử coverage.
 export function scoreGot({ coverage = [], target, misses = 0, elapsed = 0, par = 0 } = {}) {
   const list = Array.isArray(coverage) ? coverage : []
@@ -209,17 +250,33 @@ export function scoreGot({ coverage = [], target, misses = 0, elapsed = 0, par =
   if (sum <= 0) return 0
   let s = (sum / K) * 100
   s -= Math.min(24, 8 * Math.max(0, Math.floor(num(misses))))
-  s -= overtime(elapsed, par)
+  s -= overtime(elapsed, overtimeAt('got', K, par))
   return clampScore(s)
 }
 
-// Lắc: 100 · min(1, lượt/K) − (cv nhịp > 0,6 · mul ? 10 : 0) − (quá 2 · par ? 15 : 0). Cùng nghĩa với chà kiểu strokes cũ.
-export function scoreLac({ strokes = 0, target = 1, cv = 0, elapsed = 0, par = 0, mul = 1 } = {}) {
+// Phạt lắc quá tay theo r = lượt/K khi bước có maxRatio (m): cùng bậc với chạm tối thiểu cũ (scoreChamMin: r ≤ 1,2 → 100;
+// ≤ 1,35 → 80; ≤ 1,6 → 55; còn lại 20) — r ≤ m: 0; ≤ m + 0,15: 20; ≤ m + 0,4: 45; hơn nữa: 80.
+export function lacOverPenalty(strokes, target, maxRatio) {
+  const m = num(maxRatio)
+  if (!(m >= 1)) return 0
+  const r = Math.max(0, Math.floor(num(strokes))) / posInt(target)
+  if (r <= m + 1e-9) return 0
+  if (r <= m + 0.15 + 1e-9) return 20
+  if (r <= m + 0.4 + 1e-9) return 45
+  return 80
+}
+
+// Lắc: 100 · min(1, lượt/K) − (cv nhịp > 0,6 · mul ? 10 : 0) − (quá max(2 · par, sàn giờ 'lac') ? 15 : 0)
+// − phạt lắc quá tay (chỉ khi bước có params.maxRatio, vd áo bột: lắc quá tay thì bột văng — lacOverPenalty).
+// Không có maxRatio: lắc dư không phạt — cùng nghĩa với chà kiểu strokes cũ.
+export function scoreLac({ strokes = 0, target = 1, cv = 0, elapsed = 0, par = 0, mul = 1, maxRatio } = {}) {
   const k = Math.max(0, Math.floor(num(strokes)))
   if (k <= 0) return 0
-  let s = 100 * Math.min(1, k / posInt(target))
+  const K = posInt(target)
+  let s = 100 * Math.min(1, k / K)
   if (num(cv) > 0.6 * mulOf(mul)) s -= 10
-  s -= overtime(elapsed, par)
+  s -= overtime(elapsed, overtimeAt('lac', K, par))
+  s -= lacOverPenalty(k, K, maxRatio)
   return clampScore(s)
 }
 

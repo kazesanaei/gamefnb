@@ -229,11 +229,90 @@ export function stageFx(stage) {
   return fx
 }
 
+const FADE_MS = 100
+const FADE_ID = 'g-result-fade'
+
+// Mờ nhanh rồi gỡ một phần tử (WAAPI opacity, đè được hoạt ảnh CSS / WAAPI đang chạy trên nó — kể cả chữ vừa sinh còn
+// trong suốt: giữ nguyên trong suốt); không có WAAPI thì gỡ ngay (remove) hoặc ẩn. Hoạt ảnh mang id FADE_ID.
+function fadeOut(el, remove = true) {
+  try {
+    if (typeof el.animate === 'function') {
+      const a = el.animate([{ opacity: getOpacity(el) }, { opacity: 0 }], { id: FADE_ID, duration: FADE_MS, easing: 'linear', fill: 'forwards' })
+      if (remove) a.finished.then(() => el.remove(), () => el.remove())
+      return
+    }
+  } catch { /* gỡ ngay bên dưới */ }
+  if (remove) el.remove()
+  else if (el.style) el.style.visibility = 'hidden'
+}
+function getOpacity(el) {
+  try {
+    const v = el.ownerDocument && el.ownerDocument.defaultView
+    const o = v && typeof v.getComputedStyle === 'function' ? parseFloat(v.getComputedStyle(el).opacity) : 1
+    return Number.isFinite(o) ? o : 1
+  } catch { return 1 }
+}
+function fading(el) {
+  try { return typeof el.getAnimations === 'function' && el.getAnimations().some(a => a.id === FADE_ID) } catch { return false }
+}
+const overlaps = (a, b) => !!(a && b && a.right > b.left && b.right > a.left && a.bottom > b.top && b.bottom > a.top)
+
+/**
+ * Dọn đầu sân khấu và lớp hiệu ứng chung cho lúc hiện kết quả bước (con dấu + Dì Sáu):
+ * - ruy băng gọn "Bước k/N · …" (createStepCard bản gọn) còn neo trên hàng chấm bước → mờ nhanh rồi gỡ (bước xong nhanh
+ *   hơn 1,3 s thì nó còn đè hàng chấm, che chấm hiện tại — nơi sao của dấu Hoàn hảo bay về);
+ * - chữ nổi của vfx (.vfx-text: "Chuẩn!", "Đủ đá rồi!", "Vừa!"…) còn đang bay trong phần sân khấu đang thấy → mờ nhanh
+ *   (không còn bay đè bong bóng Dì Sáu hay con dấu: con dấu đã thay chúng báo kết quả). Nút về pool của vfx như thường
+ *   (vfx gỡ mọi hoạt ảnh của nút khi nhận lại). Chữ nổi ở ngoài sân khấu không bị đụng tới.
+ * Trả số phần tử đã dọn (để test).
+ */
+export function clearStageChatter(stage, fx, vfx) {
+  let n = 0
+  try {
+    if (stage && typeof stage.querySelectorAll === 'function') {
+      for (const mini of stage.querySelectorAll('.g-step-mini')) { fadeOut(mini, true); n++ }
+    }
+    const layer = vfx && vfx.layer
+    if (layer && typeof layer.querySelectorAll === 'function' && fx && typeof fx.getBoundingClientRect === 'function') {
+      const box = fx.getBoundingClientRect()
+      for (const t of layer.querySelectorAll('.vfx-text')) {
+        // không đánh dấu lên nút (nút của vfx được dùng lại); chữ đang mờ dần theo lần dọn trước thì bỏ qua
+        if (fading(t) || !overlaps(t.getBoundingClientRect(), box)) continue
+        fadeOut(t, false)
+        n++
+      }
+    }
+  } catch { /* dọn lỗi không chặn luồng chơi */ }
+  return n
+}
+
+/**
+ * Neo con dấu theo mép trên THẬT của thanh chân sân khấu (--g-foot-h trên lớp .mg-fx = khoảng từ mép trên thanh chân tới
+ * đáy lớp hiệu ứng): thanh chân cao hơn mặc định (vd nút "Nhấc" / "Giữ để rót" to) thì dấu vẫn không lấn xuống thanh chân ở
+ * khung thấp (css/fx.css: bottom = --g-foot-h + 8px chừa góc xoay −8°). Không đo được thì giữ giá trị của CSS.
+ */
+export function anchorStampToFoot(stage, fx) {
+  try {
+    let foot = null
+    for (const c of (stage && stage.children) || []) if (c.classList && c.classList.contains('mg-foot')) { foot = c; break }
+    if (!foot || typeof foot.getBoundingClientRect !== 'function' || typeof fx.getBoundingClientRect !== 'function') return null
+    const fr = foot.getBoundingClientRect()
+    const xr = fx.getBoundingClientRect()
+    if (!(fr.height > 0) || !(xr.height > 0)) return null
+    const h = Math.round(xr.bottom - fr.top)
+    if (!(h > 0) || h >= xr.height) return null
+    fx.style.setProperty('--g-foot-h', h + 'px')
+    return h
+  } catch { return null }
+}
+
 /**
  * showStepResult(stage, { score, label, note, react = true, text, rand, data, vfx, sound, reduced, shake, starTo })
  *   → { stamp, react, played: Promise, holdMs } — kết quả một bước trên sân khấu thật (màn Bếp gọi ngay sau submitStep).
  * - Gỡ dấu / Dì Sáu cũ trong lớp .mg-fx (stageFx), gắn con dấu createStamp({ score, label, note }) và Dì Sáu phản ứng
  *   (createDiSauReact, câu theo hạng; react: false thì bỏ), rồi playStamp (đập dấu, dừng hình 60 ms, hạt, âm).
+ * - Dọn ruy băng gọn và chữ nổi đang bay trên sân khấu (clearStageChatter, lặp lại ở khung hình kế cho chữ nổi sinh cùng
+ *   lúc với kết quả); dấu neo theo mép trên thật của thanh chân (anchorStampToFoot).
  * - shake mặc định là chính sân khấu (Hỏng: rung 4px; giảm chuyển động: chớp viền đỏ tĩnh của vfx); starTo mặc định là
  *   chấm bước hiện tại (.g-dot.is-now) — Hoàn hảo có sao bay về đó.
  * - holdMs: thời gian nên giữ sân khấu trước khi đóng lớp (RESULT_HOLD_MS / RESULT_HOLD_MS_REDUCED). played xong ~300 ms.
@@ -249,6 +328,8 @@ export function showStepResult(stage, {
   for (const old of [...fx.children]) {
     if (old.classList && (old.classList.contains('g-stamp') || old.classList.contains('g-disau-react'))) old.remove()
   }
+  clearStageChatter(stage, fx, vfx)
+  anchorStampToFoot(stage, fx)
   const stamp = createStamp({ score, label, note })
   fx.appendChild(stamp)
   let reactEl = null
@@ -256,6 +337,10 @@ export function showStepResult(stage, {
     reactEl = createDiSauReact({ key: stamp.dataset.grade, text, rand, data, reduced: red })
     fx.appendChild(reactEl)
   }
+  // chữ nổi sinh cùng lúc với kết quả (cú chạm cuối) có thể vào lớp sau lời gọi này: dọn thêm một lần ở khung hình kế
+  const again = () => { if (stamp.isConnected) clearStageChatter(stage, fx, vfx) }
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(again)
+  else setTimeout(again, 16)
   const dot = starTo || (typeof stage.querySelector === 'function' ? stage.querySelector('.g-dot.is-now') : null)
   const played = playStamp(stamp, { vfx, sound, reduced: red, shake: shake || stage, starTo: dot }).catch(() => {})
   return { stamp, react: reactEl, played, holdMs: resultHoldMs(red) }

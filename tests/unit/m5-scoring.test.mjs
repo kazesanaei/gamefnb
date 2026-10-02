@@ -4,7 +4,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  DAP_ZONE, scoreDap, scoreXoay, scoreGot, scoreLac, scoreBay, bayPlaceScore, zoneScore, stepLabel
+  DAP_ZONE, scoreDap, scoreXoay, scoreGot, scoreLac, scoreBay, bayPlaceScore, zoneScore, stepLabel,
+  MIN_LIMIT, minLimitSec, overtimeAt, lacOverPenalty, scoreChamMin
 } from '../../src/core/minigame-scoring.js'
 
 const ok = s => Number.isInteger(s) && s >= 0 && s <= 100
@@ -119,7 +120,9 @@ test('scoreGot: 100 khi mọi dải phủ ≥ 85%; trung bình min(1, phủ/0,85
   assert.equal(scoreGot({ coverage: [1, 1, 1, 1, 1], target: 5, misses: 1 }), 92)
   assert.equal(scoreGot({ coverage: [1, 1, 1, 1, 1], target: 5, misses: 3 }), 76)
   assert.equal(scoreGot({ coverage: [1, 1, 1, 1, 1], target: 5, misses: 10 }), 76, 'nhát hụt tối đa −24')
-  assert.equal(scoreGot({ coverage: [1, 1, 1, 1, 1], target: 5, elapsed: 6.5, par: 3 }), 85)
+  // mốc quá giờ = max(2 × par 6, sàn giờ gọt 5 dải 7) = 7 giây
+  assert.equal(scoreGot({ coverage: [1, 1, 1, 1, 1], target: 5, elapsed: 7.1, par: 3 }), 85)
+  assert.equal(scoreGot({ coverage: [1, 1, 1, 1, 1], target: 5, elapsed: 6.5, par: 3 }), 100, 'quá 2 × par nhưng chưa quá sàn giờ')
   assert.equal(scoreGot({ coverage: [1, 1, 1] }), 100, 'không có target: K = số dải')
 })
 
@@ -127,7 +130,7 @@ test('scoreGot: sát ngưỡng 90 / 70 / 50', () => {
   assert.equal(scoreGot({ coverage: [1, 1, 1, 1, 0.85 / 2], target: 5 }), 90)
   assert.equal(stepLabel(scoreGot({ coverage: [1, 1, 1, 1, 0.4], target: 5 })), 'Tốt')
   assert.equal(scoreGot({ coverage: [1, 1, 1, 0.85 / 2, 0], target: 5 }), 70)
-  assert.equal(scoreGot({ coverage: [1, 1, 1, 1, 1], target: 5, misses: 2, elapsed: 7, par: 3 }), 69)
+  assert.equal(scoreGot({ coverage: [1, 1, 1, 1, 1], target: 5, misses: 2, elapsed: 7.5, par: 3 }), 69)
   assert.equal(scoreGot({ coverage: [1, 1, 0.85 / 2, 0, 0], target: 5 }), 50)
   assert.equal(stepLabel(scoreGot({ coverage: [1, 1, 0.4, 0, 0], target: 5 })), 'Hỏng')
 })
@@ -175,6 +178,77 @@ test('scoreLac: đầu vào lỗi không ra NaN; chưa lắc = 0', () => {
       assert.ok(ok(scoreLac({ strokes: 6, target: 6, [key]: b })), `${key} ${String(b)}`)
     }
   }
+})
+
+test('overtimeAt: mốc trừ quá giờ = max(2 × par, sàn giờ theo số lượng), không bao giờ thấp hơn sàn giờ', () => {
+  // Khuấy đều (khuay, par 2, 3 vòng): sàn 1,4 × 3 + 1 = 5,2 > 2 × par = 4
+  assert.equal(overtimeAt('xoay', 3, 2), 5.2)
+  // ×2 phần: 6 vòng, par 2 × 1,4 = 2,8 → sàn 9,4 > 5,6
+  assert.equal(overtimeAt('xoay', 6, 2.8), 9.4)
+  // Đánh sữa muối (6 vòng, par 4): sàn 9,4 > 8
+  assert.equal(overtimeAt('xoay', 6, 4), 9.4)
+  // Trộn đều (5 vòng, par 4): 2 × par thắng
+  assert.equal(overtimeAt('xoay', 5, 4), 8)
+  assert.equal(overtimeAt('got', 5, 3), 7)
+  assert.equal(overtimeAt('lac', 6, 2), 4)
+  assert.equal(overtimeAt('lac', 8, 4), 8)
+  // đập trứng, thả đá không có luật quá giờ trong hàm chấm, nhưng mốc vẫn tính cùng một luật (thống nhất 5 thao tác)
+  assert.equal(overtimeAt('dap', 3, 2), 5.5)
+  assert.equal(overtimeAt('bay', 2, 2), 4.1)
+  assert.equal(overtimeAt('thai', 3, 4), 8, 'loại không có sàn: 2 × par')
+  for (const type of Object.keys(MIN_LIMIT)) {
+    for (const count of [1, 2, 3, 5, 8, 12, 18]) {
+      for (const par of [1, 2, 2.8, 3, 4, 5.6]) {
+        const m = overtimeAt(type, count, par)
+        assert.ok(m >= minLimitSec(type, { [MIN_LIMIT[type].key]: count }), `${type} ${count} ${par}: không thấp hơn sàn giờ`)
+        assert.ok(m >= 2 * par, `${type} ${count} ${par}: không thấp hơn 2 × par`)
+      }
+    }
+  }
+  // nấu thử (par = Infinity) và par lỗi: không bao giờ trừ
+  for (const par of [Infinity, 0, -2, NaN, undefined, null, 'abc']) assert.equal(overtimeAt('xoay', 3, par), Infinity, String(par))
+})
+
+test('Khuấy đều không trừ oan người khuấy vừa tay (hồi quy: mốc trừ cũ 2 × par = 4 giây không tính sàn giờ)', () => {
+  // elapsed = chạm sau t0 giây + 3 vòng / tốc độ + 0,26 giây hoạt ảnh xong (xoay.js later(finish, 260))
+  const el = (t0, v, turns = 3) => t0 + turns / v + 0.26
+  const khuay = (elapsed, par = 2, target = 3) => scoreXoay({ turns: target, target, cv: 0.1, elapsed, par, mul: 1.104 })
+  assert.equal(khuay(el(0.9, 1.1)), 100, '3 vòng, 1,1 vòng/giây, chạm sau 0,9 giây')
+  assert.ok(el(0.9, 1.0) > 4, 'ca này từng bị trừ 15 với mốc 2 × par')
+  assert.equal(khuay(el(0.9, 1.0)), 100, '3 vòng, 1,0 vòng/giây, chạm sau 0,9 giây')
+  assert.equal(khuay(el(1.0, 0.9)), 100, '0,9 vòng/giây, chạm sau 1 giây (4,59 giây) vẫn dưới mốc 5,2 giây')
+  assert.equal(khuay(5.25), 85, 'quá sàn giờ (hết giờ) vẫn bị trừ')
+  // ×2 phần: 6 vòng, par 2,8 — 1,2 vòng/giây chạm sau 0,9 giây = 6,16 giây (từng bị trừ: mốc cũ 5,6)
+  assert.equal(khuay(el(0.9, 1.2, 6), 2.8, 6), 100)
+  assert.equal(khuay(9.45, 2.8, 6), 85)
+  // nấu thử: không trừ dù chậm
+  assert.equal(khuay(60, Infinity), 100)
+  assert.equal(scoreGot({ coverage: [1, 1, 1, 1, 1], target: 5, elapsed: 60, par: Infinity }), 100)
+  assert.equal(scoreLac({ strokes: 6, target: 6, elapsed: 60, par: Infinity }), 100)
+})
+
+test('scoreLac maxRatio: lắc quá tay phạt cùng bậc với chạm tối thiểu cũ (áo bột: N 8, phạt r > 1,2); không có maxRatio thì lắc dư không phạt', () => {
+  assert.equal(scoreLac({ strokes: 8, target: 8, maxRatio: 1.2 }), 100)
+  assert.equal(scoreLac({ strokes: 9, target: 8, maxRatio: 1.2 }), 100, 'r 1,125')
+  assert.equal(scoreLac({ strokes: 10, target: 8, maxRatio: 1.2 }), 80, 'r 1,25')
+  assert.equal(scoreLac({ strokes: 11, target: 8, maxRatio: 1.2 }), 55, 'r 1,375')
+  assert.equal(scoreLac({ strokes: 12, target: 8, maxRatio: 1.2 }), 55, 'r 1,5')
+  assert.equal(scoreLac({ strokes: 13, target: 8, maxRatio: 1.2 }), 20, 'r 1,625')
+  assert.equal(scoreLac({ strokes: 30, target: 8, maxRatio: 1.2 }), 20)
+  assert.equal(scoreLac({ strokes: 30, target: 8 }), 100, 'không có maxRatio: lắc dư không phạt (như chà)')
+  // trùng scoreChamMin ở mọi số lượt từ đủ trở lên (1 phần N 8 và 2 phần N 16)
+  for (const K of [8, 16]) {
+    for (let k = K; k <= 3 * K; k++) assert.equal(scoreLac({ strokes: k, target: K, maxRatio: 1.2 }), scoreChamMin({ taps: k, N: K }), `${k}/${K}`)
+  }
+  // cộng dồn với nhịp không đều và quá giờ
+  assert.equal(scoreLac({ strokes: 10, target: 8, maxRatio: 1.2, cv: 1, elapsed: 9, par: 4 }), 55)
+  // maxRatio lỗi / < 1 → bỏ qua
+  for (const b of [...BAD, 0.5, 0, '1.2x']) {
+    assert.ok(ok(scoreLac({ strokes: 20, target: 8, maxRatio: b })), String(b))
+    assert.equal(lacOverPenalty(20, 8, b), 0, String(b))
+  }
+  assert.equal(lacOverPenalty(20, 8, 1.2), 80)
+  assert.equal(lacOverPenalty(0, 8, 1.2), 0)
 })
 
 test('scoreBay: điểm vị trí (≤0,35·m 100, ≤0,6·m 80, ≤1 55); −30 mỗi món lệch số lượng; chưa thả = 0', () => {

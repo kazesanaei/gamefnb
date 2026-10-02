@@ -120,6 +120,14 @@ const STAR_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" ar
 const easeOutCubic = t => 1 - Math.pow(1 - Math.max(0, Math.min(1, t)), 3)
 const nowMs = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now())
 
+// Tên món từ chừng này ký tự trở lên là "tên dài" (vd "Bánh tráng trộn Tây Ninh", 24 ký tự): ở khung hẹp (≤ 340px)
+// chữ ruy băng tên nhỏ lại để tên không bị cắt "…".
+export const LONG_NAME = 22
+/** Tên món có dài (≥ LONG_NAME ký tự, đếm theo ký tự hiển thị) không. Thuần. */
+export function isLongName(name) {
+  return [...String(name || '').trim()].length >= LONG_NAME
+}
+
 function gradeLabelOf(grade, data) {
   const L = (data && data.BALANCE && data.BALANCE.gradeLabels) || BALANCE.gradeLabels
   return L[grade] || grade
@@ -149,6 +157,7 @@ export function createDishReveal({
   const art = artV2((recipe && recipe.icon) || (recipeId ? 'mon_' + recipeId : 'fallback'))
   const yolk = recipe && recipe.rare && recipe.rare.trung_ga_ta ? '#e8730c' : null
   const isRare = !!(recipe && (recipe.baseRecipe || recipe.source === 'hiem'))
+  const title = name || (recipe && recipe.name) || ''
   const faceMood = mood || ({ tuyet_hao: 'tu_hao', ngon: 'vui', hong: 'tiec' }[grade] || 'lo')
   const v = (ms) => ({ '--at': ms + 'ms' })
 
@@ -176,15 +185,18 @@ export function createDishReveal({
   const lvup = lvUpText
     ? h('div', { class: 'g-pill g-pill--gold g-reveal-lvup', style: v(at('levelup')) }, h('b', { class: 'g-reveal-lvup-ico', 'aria-hidden': 'true', html: UP_SVG }), h('span', null, lvUpText))
     : null
+  // is-rare: huy hiệu "★ Hiếm" dán ở góc ruy băng tên (không chiếm bề ngang của tên); is-long-name: tên dài (≥ LONG_NAME
+  // ký tự) thì khung hẹp thu chữ ruy băng lại cho đủ cả tên (css/fx.css).
   const el = h('div', {
-    class: ['g-reveal', 'grade-' + grade, red ? 'is-reduced' : '', plan.flawless ? 'has-flawless' : '', lvup ? 'has-lvup' : ''],
+    class: ['g-reveal', 'grade-' + grade, red ? 'is-reduced' : '', plan.flawless ? 'has-flawless' : '', lvup ? 'has-lvup' : '',
+      isRare ? 'is-rare' : '', isLongName(title) ? 'is-long-name' : ''],
     'data-testid': 'dish-reveal',
-    dataset: { grade, q }, role: 'status', 'aria-label': `${name || ''}: ${gradeLabelOf(grade, data)} ${q}%`
+    dataset: { grade, q }, role: 'status', 'aria-label': `${name || ''}${isRare ? ' (món hiếm)' : ''}: ${gradeLabelOf(grade, data)} ${q}%`
   },
   h('div', { class: 'g-reveal-col' },
     h('div', { class: 'g-reveal-name' },
-      h('span', { class: 'g-ribbon g-ribbon--gold g-reveal-title' }, h('span', null, name || (recipe && recipe.name) || '')),
-      isRare ? h('span', { class: 'g-badge g-badge--gold g-reveal-rare' }, '★ Hiếm') : null),
+      h('span', { class: 'g-ribbon g-ribbon--gold g-reveal-title' }, h('span', null, title)),
+      isRare ? h('span', { class: 'g-badge g-badge--gold g-reveal-rare', style: v(at('badge')) }, '★ Hiếm') : null),
     h('div', { class: 'g-reveal-main' }, hero, info, lvup),
     h('div', { class: 'g-reveal-disau', style: v(at('disau')) },
       svgBox(DI_SAU[faceMood] || DI_SAU.vui, 'g-reveal-face'),

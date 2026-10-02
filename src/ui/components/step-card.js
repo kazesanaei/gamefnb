@@ -124,13 +124,28 @@ export function stepProgress(cook, stepId = null) {
 }
 
 /**
+ * shortHint(step, types, hint) → câu hướng dẫn NGẮN của bước cho thẻ ở khung thấp (thuần): dòng hướng dẫn trên sân khấu
+ * của lớp vỏ / loại bước (MINIGAME_TYPES[type].skins[skin].sub, rồi MINIGAME_TYPES[type].sub — vd Thả đá "Kéo đá thả vào
+ * ly, đủ số thì bấm Xong.") nếu nó ngắn hơn câu đầy đủ; không có thì chính câu đầy đủ. Khung thấp cho câu hướng dẫn tối
+ * đa 2 dòng (css/fx.css); câu đầy đủ dài hơn thế (vd Đập trứng) thì thẻ hiện câu ngắn này (fitHint) thay vì cắt mất phần
+ * cuối câu.
+ */
+export function shortHint(step, types = MINIGAME_TYPES, hint = '') {
+  const T = types || {}
+  const t = (step && T[step.type]) || {}
+  const skin = (step && step.skin && t.skins && t.skins[step.skin]) || null
+  const sub = (skin && skin.sub) || t.sub || ''
+  return sub && (!hint || sub.length < hint.length) ? sub : (hint || sub)
+}
+
+/**
  * stepCardModel(step, { index, total, data, recipe, cook })
- *   → { ribbon, verb, ingId, propId, gesture, hint, type, label, index, total }.
+ *   → { ribbon, verb, ingId, propId, gesture, hint, hintShort, type, label, index, total }.
  * index: số thứ tự bước hiện tại (đếm từ 1, tính cả bước Chọn), total: tổng số bước. Không truyền index/total mà có cook
  * (phiên nấu của lõi) thì tự tính "Bước k/N" bằng stepProgress(cook, step.id): N = số bước Thớt + 1, k = số bước xong + 1.
  * ingId: nguyên liệu của bước, không có thì hình riêng của bước (step.icon) hoặc hình món (id chưa có hình thì bỏ qua).
  * propId: đạo cụ lớn theo loại và lớp vỏ (PROP_BY_SKIN; thẻ vẽ đạo cụ nếu art/props.js đã có hình, không thì vẽ ingId).
- * hint: câu hướng dẫn của loại bước (MINIGAME_TYPES, kể cả lớp vỏ).
+ * hint: câu hướng dẫn của loại bước (MINIGAME_TYPES, kể cả lớp vỏ); hintShort: câu ngắn cho khung thấp (shortHint).
  */
 export function stepCardModel(step = {}, { index = null, total = null, data = null, recipe = null, cook = null } = {}) {
   let idx = index
@@ -145,7 +160,8 @@ export function stepCardModel(step = {}, { index = null, total = null, data = nu
   const type = (step && step.type) || ''
   const label = (step && step.label) || ''
   let hint = ''
-  try { hint = hintFor(step || {}, data && data.MINIGAME_TYPES ? data : { MINIGAME_TYPES }).text || '' } catch { hint = '' }
+  const types = data && data.MINIGAME_TYPES ? data.MINIGAME_TYPES : MINIGAME_TYPES
+  try { hint = hintFor(step || {}, { MINIGAME_TYPES: types }).text || '' } catch { hint = '' }
   // hình to của thẻ: nguyên liệu → hình riêng của bước → hình món; bỏ qua id chưa có hình (tránh hình dự phòng "?")
   const cands = [step && step.ing, step && step.icon, recipe && recipe.icon].filter(x => typeof x === 'string' && x)
   const skin = (step && step.skin) || ''
@@ -157,6 +173,7 @@ export function stepCardModel(step = {}, { index = null, total = null, data = nu
     propId: PROP_BY_SKIN[type + '.' + skin] || PROP_BY_SKIN[type] || null,
     gesture: GESTURE_BY_TYPE[type] || 'tap',
     hint,
+    hintShort: shortHint(step, types, hint),
     type,
     label,
     index: k,
@@ -213,6 +230,31 @@ function gestureExtras(gesture, m) {
     if (m && m.ingId) out.carry.push(svgBox(artV2(m.ingId), 'g-demo-carry'))
   }
   return out
+}
+
+// Câu hướng dẫn của thẻ: câu đầy đủ, kèm câu ngắn (nếu khác). Khung thấp (≤ 320px) cắt câu còn tối đa 2 dòng (css/fx.css);
+// câu đầy đủ không vừa 2 dòng thì thẻ đổi sang câu ngắn (fitHint, lớp .use-short) — không bao giờ mất phần cuối câu như
+// "rồi bấm Xong". Phần bị ẩn là display:none nên trình đọc màn hình chỉ đọc một câu.
+function hintEl(m) {
+  const full = m.hint || m.hintShort || ''
+  if (!full) return null
+  const short = m.hintShort && m.hintShort !== full ? m.hintShort : ''
+  return h('p', { class: ['g-step-card-hint', short ? 'has-short' : ''] },
+    h('span', { class: 'g-step-card-hint-full' }, full),
+    short ? h('span', { class: 'g-step-card-hint-short' }, short) : null)
+}
+
+/**
+ * fitHint(p) → true nếu đã đổi sang câu ngắn. Đo câu hướng dẫn đang hiện (đã gắn vào trang): câu đầy đủ bị cắt (cao/rộng
+ * nội dung > khung, vd khung thấp chỉ cho 2 dòng) mà có câu ngắn thì thêm lớp .use-short. Chỉ đọc kích thước bố cục (không
+ * phụ thuộc hoạt ảnh transform của thẻ).
+ */
+export function fitHint(p) {
+  if (!p || !p.classList || !p.classList.contains('has-short')) return false
+  p.classList.remove('use-short')
+  const cut = p.scrollHeight > p.clientHeight + 1 || p.scrollWidth > p.clientWidth + 1
+  if (cut) p.classList.add('use-short')
+  return cut
 }
 
 /**
@@ -282,7 +324,7 @@ export function createStepCard(model, { full = true, onStart = null, autoMs = ST
         svgBox((m.propId && propV2(m.propId)) || artV2(m.ingId), 'g-step-card-art', { dataset: { art: (m.propId && propV2(m.propId)) ? m.propId : (m.ingId || '') } }),
         demo),
       h('h3', { class: 'g-title g-step-card-verb' }, m.verb),
-      m.hint ? h('p', { class: 'g-step-card-hint' }, m.hint) : null,
+      hintEl(m),
       go,
       autoMs > 0 ? bar : null))
     // Chạm bất kỳ đâu (kể cả nút) là vào bước ngay. Thẻ thôi nhận chạm ngay lúc đó và sân khấu được dựng dưới ngón tay,
@@ -346,8 +388,20 @@ export function createStepCard(model, { full = true, onStart = null, autoMs = ST
     el.remove()
   }
 
-  if (full) arm(autoMs)
-  else {
+  if (full) {
+    arm(autoMs)
+    // câu hướng dẫn: đo khi thẻ đã gắn vào trang (bên gọi gắn ngay sau khi tạo) — thử vài khung hình
+    const p = el.querySelector('.g-step-card-hint.has-short')
+    if (p && typeof requestAnimationFrame === 'function') {
+      let tries = 0
+      const fit = () => {
+        if (destroyed || started) return
+        if (!p.isConnected) { if (++tries < 6) requestAnimationFrame(fit); return }
+        fitHint(p)
+      }
+      requestAnimationFrame(fit)
+    }
+  } else {
     // bản gọn: không chờ — vào bước ở khung hình kế (để thẻ kịp gắn vào khung chứa)
     const kick = () => { raf = 0; start() }
     raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame(kick) : 0

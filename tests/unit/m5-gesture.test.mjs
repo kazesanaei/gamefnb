@@ -8,6 +8,7 @@ import {
   needleValue, NEEDLE_PERIOD, minLimitSec, MIN_LIMIT, gestureLimitSec, cvOf
 } from '../../src/ui/minigames/_gesture.js'
 import { stepLimitSec } from '../../src/ui/minigames/_util.js'
+import * as SCORING from '../../src/core/minigame-scoring.js'
 
 // Vẽ vòng tròn bán kính r quanh (cx, cy): `turns` vòng, `perTurn` điểm mỗi vòng, mỗi vòng `sec` giây; dir 1 / −1.
 function circle(tc, { cx = 100, cy = 100, r = 80, turns = 1, perTurn = 24, sec = 1, dir = 1, t0 = 0, a0 = 0 } = {}) {
@@ -188,10 +189,13 @@ test('needleValue: kim chạy đi về 0 → 1 → 0, chu kỳ 1,1 s; đầu và
   }
 })
 
-test('minLimitSec: sàn giờ theo bảng thiết kế (dap 1,5n+1; xoay 1,1·turns+1; got 1,2·strips+1; lac 0,4·strokes+1; bay 1,3n+1,5)', () => {
+test('minLimitSec: sàn giờ theo số lượng (dap 1,5n+1; xoay 1,4·turns+1; got 1,2·strips+1; lac 0,4·strokes+1; bay 1,3n+1,5)', () => {
   assert.equal(minLimitSec('dap', { n: 2 }), 4)
   assert.equal(minLimitSec('dap', { n: 3 }), 5.5)
-  assert.equal(minLimitSec('xoay', { turns: 5 }), 6.5)
+  // khuấy: 1,4 giây mỗi vòng (bản đầu 1,1 làm người khuấy vừa tay hay bị trừ quá giờ ở Khuấy đều — sàn giờ cũng là mốc trừ)
+  assert.equal(minLimitSec('xoay', { turns: 3 }), 5.2)
+  assert.equal(minLimitSec('xoay', { turns: 5 }), 8)
+  assert.equal(minLimitSec('xoay', { turns: 6 }), 9.4)
   assert.equal(minLimitSec('got', { strips: 5 }), 7)
   assert.equal(minLimitSec('lac', { strokes: 6 }), 3.4)
   assert.equal(minLimitSec('bay', { n: 2 }), 4.1)
@@ -199,6 +203,10 @@ test('minLimitSec: sàn giờ theo bảng thiết kế (dap 1,5n+1; xoay 1,1·tu
   assert.equal(minLimitSec('dap', {}), 2.5, 'thiếu tham số → 1')
   assert.equal(minLimitSec('dap', null), 2.5)
   assert.deepEqual(Object.keys(MIN_LIMIT).sort(), ['bay', 'dap', 'got', 'lac', 'xoay'])
+  // một nguồn duy nhất: bảng ở lõi (hàm chấm dùng làm mốc trừ quá giờ), _gesture.js chỉ xuất lại
+  assert.equal(MIN_LIMIT, SCORING.MIN_LIMIT)
+  assert.equal(minLimitSec, SCORING.minLimitSec)
+  assert.ok(Object.isFrozen(MIN_LIMIT) && Object.values(MIN_LIMIT).every(Object.isFrozen))
 })
 
 test('gestureLimitSec = max(2,5 × par, sàn giờ) (Hỗ trợ thao tác × 1,5 cả hai); nấu thử: không giới hạn', () => {
@@ -207,10 +215,37 @@ test('gestureLimitSec = max(2,5 × par, sàn giờ) (Hỗ trợ thao tác × 1,5
   // bình thường: 2,5 × par lớn hơn
   assert.equal(gestureLimitSec({ type: 'dap', params: { n: 2 }, par: 2 }), Math.max(stepLimitSec(2), 4))
   assert.equal(gestureLimitSec({ type: 'xoay', params: { turns: 5 }, par: 4 }), 10)
+  // Khuấy đều: sàn thắng 2,5 × par — 1 phần 5,2 > 5; 2 phần 9,4 > 7
+  assert.equal(gestureLimitSec({ type: 'xoay', params: { turns: 3 }, par: 2 }), 5.2)
+  assert.equal(gestureLimitSec({ type: 'xoay', params: { turns: 6 }, par: 2.8 }), 9.4)
   assert.equal(gestureLimitSec({ type: 'got', params: { strips: 5 }, par: 3 }), 7.5)
   assert.equal(gestureLimitSec({ type: 'got', params: { strips: 10 }, par: 4.2 }), 13)
   assert.equal(gestureLimitSec({ type: 'dap', params: { n: 6 }, par: 2.8 }, { assist: true }), 15)
   assert.equal(gestureLimitSec({ type: 'bay', params: { n: 2 }, par: 2 }, { untimed: true }), Infinity)
   assert.equal(gestureLimitSec({ type: 'thai', params: { cuts: 3 }, par: 4 }), stepLimitSec(4))
   assert.ok(Number.isFinite(gestureLimitSec(null)))
+})
+
+test('Khuấy đều đo bằng bộ đếm vòng thật: 1 vòng/giây, chạm sau 0,9 giây → 100 (mốc trừ không thấp hơn sàn giờ); quá chậm vẫn bị trừ', () => {
+  // vẽ 24 điểm mỗi vòng quanh tâm, bắt đầu ở t0; xoay.js tự xong 0,26 giây sau khi đủ vòng
+  const stir = (v, t0, target, par) => {
+    const tc = createTurnCounter({ cx: 0, cy: 0, minR: 10 })
+    let t = t0, k = 0
+    while (tc.turns < target && k < 10000) {
+      const a = (k / 24) * 2 * Math.PI
+      tc.push(87 * Math.cos(a), 87 * Math.sin(a), t)
+      k++
+      t += 1 / (24 * v)
+    }
+    const elapsed = t - 1 / (24 * v) + 0.26
+    return { elapsed, score: SCORING.scoreXoay({ turns: Math.round(tc.turns * 100) / 100, target, cv: tc.cv(), elapsed, par, mul: 1 }) }
+  }
+  const a = stir(1, 0.9, 3, 2)
+  assert.ok(a.elapsed > 2 * 2, `${a.elapsed} giây: quá 2 × par (mốc cũ)`)
+  assert.equal(a.score, 100)
+  const b = stir(1.2, 0.9, 6, 2.8)          // ×2 phần
+  assert.ok(b.elapsed > 2 * 2.8)
+  assert.equal(b.score, 100)
+  const c = stir(0.65, 0.9, 3, 2)           // 0,65 vòng/giây: 5,78 giây > mốc 5,2 (trong game: hết giờ ở 5,2 giây)
+  assert.equal(c.score, 85)
 })

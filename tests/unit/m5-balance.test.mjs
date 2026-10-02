@@ -8,6 +8,8 @@ import assert from 'node:assert/strict'
 import { DATA } from '../../src/data/index.js'
 import { effectiveSteps, linePar } from '../../src/core/kitchen.js'
 import { STATE_VERSION } from '../../src/core/state.js'
+import { overtimeAt, minLimitSec, MIN_LIMIT } from '../../src/core/minigame-scoring.js'
+import { gestureLimitSec } from '../../src/ui/minigames/_gesture.js'
 
 const { RECIPES, BALANCE } = DATA
 
@@ -247,4 +249,37 @@ test('par của dòng phiếu (ngân sách chờ của khách) không đổi so 
       assert.ok(Math.abs(got - sum(rid, qty)) < 1e-9, `${rid} ×${qty}: ${got} ≠ ${sum(rid, qty)}`)
     }
   }
+})
+
+test('mốc trừ quá giờ của 5 thao tác mới: không thấp hơn sàn giờ, không vượt giới hạn giờ (mọi bước, 1–3 phần, mọi ghi chú); par không đổi', () => {
+  const types = Object.keys(MIN_LIMIT)
+  let n = 0
+  for (const [rid, r] of Object.entries(RECIPES)) {
+    const noteSets = [[], ...(r.notes || []).map(x => [x.id])]
+    for (const notes of noteSets) {
+      for (const qty of [1, 2, 3]) {
+        for (const st of effectiveSteps(r, notes, null, qty)) {
+          if (!types.includes(st.type)) continue
+          n++
+          const tag = `${rid} ${notes.join(',')} ×${qty} ${st.id}`
+          const count = st.params[MIN_LIMIT[st.type].key]
+          const mark = overtimeAt(st.type, count, st.par)
+          assert.ok(mark >= minLimitSec(st.type, st.params) - 1e-9, `${tag}: mốc ${mark} ≥ sàn giờ`)
+          assert.ok(mark >= 2 * st.par - 1e-9, `${tag}: mốc ≥ 2 × par`)
+          assert.ok(mark <= gestureLimitSec(st) + 1e-9, `${tag}: mốc ${mark} ≤ giới hạn giờ ${gestureLimitSec(st)}`)
+          assert.equal(overtimeAt(st.type, count, Infinity), Infinity, `${tag}: nấu thử không trừ`)
+        }
+      }
+    }
+  }
+  assert.ok(n >= 15 * 3, `đã quét ${n} bước`)
+  // bảng mốc trừ 1 phần (giây) — par giữ như bản 0.4.1
+  const mark1 = (rid, sid) => {
+    const st = RECIPES[rid].steps.find(s => s.id === sid)
+    return overtimeAt(st.type, st.params[MIN_LIMIT[st.type].key], st.par)
+  }
+  assert.deepEqual({
+    khuay: mark1('ca_phe_sua_da', 'khuay'), danh_sua_muoi: mark1('ca_phe_muoi', 'danh_sua_muoi'), tron: mark1('banh_trang_tron', 'tron'),
+    got_xoai: mark1('banh_trang_tron', 'got_xoai'), got_vo: mark1('che_buoi', 'got_vo'), lac: mark1('tra_tac', 'lac'), ao_bot: mark1('che_buoi', 'ao_bot')
+  }, { khuay: 5.2, danh_sua_muoi: 9.4, tron: 8, got_xoai: 7, got_vo: 7, lac: 4, ao_bot: 8 })
 })
