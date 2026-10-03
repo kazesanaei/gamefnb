@@ -189,7 +189,7 @@
 /* thẻ tiền thu trong ca (chưa vào ví): hiện khi > 0, đếm lên khi xu bay về ví */
 .hud-take {
   position: absolute; left: 50%; top: calc(100% - 1px); z-index: 7; display: none; transform: translateX(-50%);
-  padding: 0 7px; border: 2px solid var(--g-ink); border-radius: 999px; background: linear-gradient(180deg, #3c9937, #2a7f27);
+  padding: 0 7px; border: 2px solid var(--g-ink); border-radius: 999px; background: linear-gradient(180deg, #2c8429, #1f6a23);
   color: #fff; text-shadow: var(--g-text-outline-thin); box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, .3), 0 2px 0 rgba(58, 38, 24, .35);
   font-family: var(--g-font-display); font-weight: 800; font-size: 13px; line-height: 15px; white-space: nowrap; pointer-events: none;
 }
