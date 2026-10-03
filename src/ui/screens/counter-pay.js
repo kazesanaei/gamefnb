@@ -58,7 +58,35 @@ export function renderPayment(ctx, customer, c) {
   })
   padOf.set(ctx, pad)
   body.appendChild(pad.el)
+  // Lần đầu khâu này hiện cho khách (vào khâu / mở lại game giữa khâu): sau khi counter.js gắn panel và tự cuộn theo khâu,
+  // cuộn tiếp cho trọn máy tính tiền lọt panel. Chỉ một lần theo lượt vào khâu (vẽ lại không cuộn lại).
+  if (!ctx.ui.padShown) afterRender(() => { if (revealPad(ctx)) ctx.ui.padShown = true })
   return body
+}
+
+// Chạy fn sau khi lượt vẽ hiện tại xong (panel đã gắn nút mới, counter.js đã cuộn theo khâu), trước khi trình duyệt vẽ.
+function afterRender(fn) {
+  if (typeof queueMicrotask === 'function') queueMicrotask(fn)
+  else Promise.resolve().then(fn)
+}
+
+// Cuộn panel Quầy cho trọn máy tính tiền (màn LED, mọi phím, "Báo tổng") nằm trong phần nhìn thấy; máy cao hơn panel thì
+// đặt mép trên máy (màn LED) sát mép trên panel. Phần phía trên máy (bảng giá, phiếu order) lộ được bao nhiêu thì lộ.
+// → true nếu đã đo được (panel đang hiện).
+function revealPad(ctx) {
+  if (ctx.destroyed()) return false
+  const sc = ctx.root
+  const pos = ctx.el.querySelector('.cs-pos')
+  if (!sc || !pos || !pos.isConnected || typeof sc.getBoundingClientRect !== 'function') return false
+  const box = sc.getBoundingClientRect()
+  const r = pos.getBoundingClientRect()
+  if (!box.height || !r.height) return false
+  const top = box.top + 4, bottom = box.bottom - 6
+  let d = 0
+  if (r.bottom > bottom) d = r.bottom - bottom
+  if (r.top - d < top) d = r.top - top
+  if (d) sc.scrollTop += d
+  return true
 }
 
 // "Báo tổng": số không hợp lệ → rung màn số; báo dư → khách chê, báo lại; đúng / thiếu → sang Tính tiền
@@ -76,8 +104,11 @@ export function doReport(ctx, customer, amount) {
     app.sound('error')
     app.vibrate(40)
     ctx.ui.digits = ''
-    if (r.reason === 'phieu_thua') app.toast('Phiếu ghi thừa món. Sửa phiếu rồi đọc lại cho khách nhé.', { kind: 'bad' })
-    else app.toast('Khách thấy tổng cao quá. Cộng lại theo bảng giá rồi báo lại nhé.', { kind: 'bad' })
+    if (r.reason === 'phieu_thua') {
+      // quay lại Order sửa phiếu: lần vào Thanh toán sau lại cuộn máy tính tiền vào màn
+      ctx.ui.padShown = false
+      app.toast('Phiếu ghi thừa món. Sửa phiếu rồi đọc lại cho khách nhé.', { kind: 'bad' })
+    } else app.toast('Khách thấy tổng cao quá. Cộng lại theo bảng giá rồi báo lại nhé.', { kind: 'bad' })
   } else {
     app.sound('keng')
     ctx.ui.digits = ''
@@ -85,10 +116,13 @@ export function doReport(ctx, customer, amount) {
   }
   app.save()
   ctx.rerender()
-  if (r.result === 'du') { if (r.reason !== 'phieu_thua') ledWrong(ctx) } else { revealStageTop(ctx); okStamp(app, ghost) }
+  if (r.result === 'du') { if (r.reason !== 'phieu_thua') ledWrong(ctx); return }
+  // tiền mặt: counter-cash.js tự cuộn khay + két vào màn khi khâu Tính tiền hiện lần đầu
+  if (r.method === 'qr') revealStageTop(ctx)
+  okStamp(app, ghost)
 }
 
-// Sang khâu Tính tiền mà panel còn cuộn ở bàn phím (khung thấp): kéo đầu khâu mới (tiền khách đưa, tổng) vào màn hình.
+// Sang khâu chuyển khoản mà panel còn cuộn ở bàn phím (khung thấp): kéo đầu khâu mới vào màn hình.
 function revealStageTop(ctx) {
   const sc = ctx.root
   const st = ctx.el.querySelector('.stage')
@@ -119,7 +153,9 @@ function captureLed(ctx, led) {
     const p = sc.getBoundingClientRect()
     top = Math.max(p.top + 6, Math.min(top, p.bottom - r.height - 6))
   }
-  return { node: frame, rect: { left: r.left, top, width: r.width, height: r.height } }
+  // lớp bố cục gọn của panel (co-fit-*) đi theo bản sao: màn LED ở lớp hiệu ứng giữ đúng cỡ chữ / khung như trên máy
+  const fit = [...ctx.el.classList].filter(k => k.startsWith('co-fit-'))
+  return { node: frame, fit, rect: { left: r.left, top, width: r.width, height: r.height } }
 }
 
 // Khách nhận tổng: bản sao màn LED (số vừa báo) đứng tại chỗ cũ ở lớp hiệu ứng, dấu ✓ nảy lên rồi cả hai mờ đi (~0,8 giây).
@@ -135,7 +171,8 @@ function okStamp(app, ghost) {
   const L = layer.getBoundingClientRect()
   const { rect } = ghost
   const wrap = doc.createElement('div')
-  wrap.className = 'cs-fx-ok'
+  wrap.className = ['cs-fx-ok', ...(ghost.fit || [])].join(' ')
+  wrap.style.padding = '0'   // luật riêng của panel (.co-fit-tiny có padding) không áp vào khung bản sao
   wrap.style.left = `${(rect.left - L.left).toFixed(1)}px`
   wrap.style.top = `${(rect.top - L.top).toFixed(1)}px`
   wrap.style.width = `${rect.width.toFixed(1)}px`

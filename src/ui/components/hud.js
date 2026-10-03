@@ -2,6 +2,8 @@
 //   - giờ ca: biểu tượng đồng hồ, "Ngày N" và giờ trong ca; vạch dưới viên có mặt trời đi từ 06:00 tới cuối ca;
 //   - ví "Tiền quán" (biểu tượng ví): số ví thật (data-amount luôn là state.wallet); ví đổi giữa ca (giá vốn, phạt…) thì số
 //     đếm dần tới số mới. Tiền bán hàng trong ca chỉ vào ví lúc đóng ca (lõi tất toán), nên dưới ví có thẻ nhỏ "+45.000đ"
+//     (dán vào mép dưới viên ví; chồng thông báo nổi của màn Ca bán nằm ngay dưới đáy thẻ — css/game.css — nên thẻ đếm lên
+//     không bị thông báo che)
 //     là tiền đã thu trong ca (tiền mặt + chuyển khoản + tip − hoàn tiền): xu bay về ví (vfx.coins của quầy, mỗi xu phát sự
 //     kiện DOM 'vfx-coin' trên [hud-wallet]) thì thẻ đếm lên theo từng xu; tiền vào mà không có xu bay (tip, thối thiếu…)
 //     thì thẻ tự đếm lên sau một nhịp;

@@ -1,5 +1,7 @@
 // Máy tính tiền của khâu Báo tổng (M5 Đợt 2): thân máy xanh ngọc viền mực, màn LED xanh đậm (số gõ theo nghìn, phần
 // ".000đ" in mờ để nhắc cách gõ), phím "bánh kẹo" ≥ 48px và cột phím hành động bên phải (nút "Báo tổng" do bên gọi đưa vào).
+// Panel Quầy thấp (.co-fit-low / .co-fit-tiny, css/cashier.css): cùng các phím đó xếp lại bằng CSS thành máy gọn 3 hàng
+// [màn LED | Báo tổng] / [1 2 3 4 5 Xóa] / [6 7 8 9 0 ⌫] để màn số, mọi phím và "Báo tổng" cùng lọt panel.
 // Gõ theo nghìn: 30 → 30.000đ. Màu máy theo hình máy tính tiền / màn LED của src/ui/art/scene.js (gói hình Q-F).
 // Thuần ở cấp module (import trong Node được): DOM chỉ tạo khi gọi createNumpad.
 // Hiệu ứng chỉ chạy theo SỰ KIỆN (chạm phím, báo sai): số trên màn nảy nhẹ khi gõ, màn rung + viền đỏ khi báo sai;
@@ -63,13 +65,19 @@ export function createNumpad({ value = '', maxDigits = 4, onChange, action = nul
   const big = h('span', { class: 'cs-led-num' })
   const small = h('span', { class: 'cs-led-k' })
   const display = h('div', { class: 'cs-led', testid: 'numpad-display', 'aria-live': 'polite' }, big, small)
-  const frame = h('div', { class: 'cs-led-frame' }, h('span', { class: 'cs-led-dot', 'aria-hidden': 'true' }), display)
+  // Khung thấp (css/cashier.css): dòng "Gõ theo nghìn" chuyển vào góc trái màn LED, chỉ hiện khi chưa gõ (nằm ngoài
+  // numpad-display để chữ của màn số chỉ có con số).
+  const frame = h('div', { class: 'cs-led-frame' },
+    h('span', { class: 'cs-led-dot', 'aria-hidden': 'true' }),
+    display,
+    h('span', { class: 'cs-led-tip', 'aria-hidden': 'true' }, 'Gõ theo nghìn'))
   const paint = () => {
     const p = ledParts(digits)
     big.textContent = p.big
     small.textContent = p.small
     display.dataset.amount = String(p.amount)
     display.classList.toggle('is-empty', p.empty)
+    frame.classList.toggle('is-empty', p.empty)
   }
   // số vừa gõ nảy nhẹ (chỉ transform; không chạy khi giảm chuyển động hoặc trình duyệt không có WAAPI)
   const nudge = () => {

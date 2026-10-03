@@ -1,8 +1,10 @@
 // Phiếu chấm từng khách (hiện ở .sheet-host của màn Ca bán): thẻ giấy viền mực kiểu game.
 // M5 Đợt 2 (gói Q-E): chân dung khách bán thân (src/ui/art/people.js) đổi tâm trạng theo số sao kèm biểu cảm, 5 ngôi sao
 // bật lần lượt 180 ms mỗi sao, 5 hàng có biểu tượng khâu và dấu ✓/✗ (Order, Báo tổng, Thối tiền, Bếp, Thời gian chờ),
-// tem "Lỗi tại quầy" / "Lỗi tại bếp" đóng lên phiếu, tên lỗi, phạt do tình huống, dòng tip có xu vàng (xu bay về ví HUD,
-// chữ "+5.000đ" nổi lên, âm coin2), khách lạ, lời khen chê của khách.
+// tem mực "Lỗi tại quầy" / "Lỗi tại bếp" (chữ trắng) đóng lên phiếu, tên lỗi, phạt do tình huống, tem tip vàng dán chờm
+// góc trên phải (xu bay về ví HUD, chữ "+5.000đ" nổi lên phía trên tem, âm coin2), khách lạ, lời khen chê của khách.
+// Khung thấp (cao ≤ 600px): phiếu gọn (tên + sao một dòng, 5 hàng xếp lưới 2 cột, lời khách tối đa 3 dòng) để không che
+// thanh 4 khâu; dưới phiếu có lớp nền mờ (css/sheet.css) tách phiếu khỏi chữ của panel phía sau.
 //
 // Chỉ đổi giao diện: không đổi luật, sao, tip. Hàng đợi phiếu, thời gian hiện (SHEET_MS) và sheetSettled vẫn ở service.js.
 // Giữ: score-sheet (data-customer-id, data-stars), .ss-rows (li.ok / li.bad), .ss-tags, score-sheet-tip (data-tip, chữ
@@ -33,18 +35,20 @@ export const CHANGE_CODES = ['thoi_thieu', 'thoi_du', 'qr_gia']
 /**
  * Nhịp diễn của phiếu (ms, tính từ lúc dựng phiếu): phiếu trượt lên trong khoảng 220 ms rồi sao thứ k (0..4) bật lúc
  * starStart + k × starGap, mỗi sao nảy trong starMs; mặt khách đổi tâm trạng sau sao cuối (react); tem đóng sau đó (stamp);
- * xu tip bay lúc tip. Tổng khoảng 1,3 giây, lọt trong SHEET_MS 2.000 của service.js.
+ * tem tip dán lên góc phiếu lúc tip, dán xong (tipLand) thì xu bay về ví (coins). Hoạt ảnh trên phiếu xong trong khoảng
+ * 1,5 giây, lọt trong SHEET_MS 2.000 của service.js (xu là bản sao trong lớp hiệu ứng, bay tiếp được khi phiếu đã ẩn).
  */
-export const SHEET_FX = Object.freeze({ starStart: 220, starGap: 180, starMs: 320, reactGap: 120, stampGap: 220, tipLead: 60 })
+export const SHEET_FX = Object.freeze({ starStart: 220, starGap: 180, starMs: 320, reactGap: 120, stampGap: 220, tipLead: 60, tipLand: 240 })
 
-/** Lịch diễn theo số sao (thuần, test được): { stars: [ms bật từng sao đạt], react, stamp, tip }. */
+/** Lịch diễn theo số sao (thuần, test được): { stars: [ms bật từng sao đạt], react, stamp, tip, coins }. */
 export function sheetTimeline(stars) {
   const n = Math.max(0, Math.min(5, Math.round(Number(stars) || 0)))
   const F = SHEET_FX
   const at = []
   for (let k = 0; k < n; k++) at.push(F.starStart + k * F.starGap)
   const last = n ? at[n - 1] : F.starStart
-  return { stars: at, react: last + F.reactGap, stamp: last + F.stampGap, tip: last + F.tipLead }
+  const tip = last + F.tipLead
+  return { stars: at, react: last + F.reactGap, stamp: last + F.stampGap, tip, coins: tip + F.tipLand }
 }
 
 /** Tâm trạng khách theo số sao: 4–5 vui, 3 bình thường, 2 bực, 0–1 giận. */
@@ -159,8 +163,10 @@ function starRow(stars) {
 export function tipLine(app, sheet) {
   const L = app.data.STRINGS.labels || {}
   if (sheet.tip > 0) {
-    return h('div', { class: 'ss-tip', testid: 'score-sheet-tip', dataset: { tip: sheet.tip } },
-      svgBox(icon64('dong_xu'), 'ss-coin'), h('span', { class: 'ss-tip-k' }, 'Tip: '), h('b', { class: 'ss-tip-v' }, '+' + formatVND(sheet.tip)))
+    // tem tip: đồng xu + chữ "TIP: +5.000đ" (CSS viết hoa chữ Tip; textContent vẫn đúng nguyên văn "Tip: +5.000đ")
+    return h('div', { class: 'ss-tip is-sticker', testid: 'score-sheet-tip', dataset: { tip: sheet.tip } },
+      svgBox(icon64('dong_xu'), 'ss-coin'),
+      h('span', { class: 'ss-tip-txt' }, h('span', { class: 'ss-tip-k' }, 'Tip: '), h('b', { class: 'ss-tip-v' }, '+' + formatVND(sheet.tip))))
   }
   if (sheet.stars !== 5 || sheet.bill === undefined || sheet.bill === null) return null
   const min = Number(app.data.BALANCE && app.data.BALANCE.tipMinBill) || 20000
@@ -187,12 +193,17 @@ export function renderScoreSheet(app, sheet) {
     svgBox(icon64(ROW_ICONS[key]), 'ss-ico'),
     h('span', { class: 'ss-label' }, label),
     h('i', { class: 'ss-dots', 'aria-hidden': 'true' }),
-    h('b', { class: 'ss-verdict' }, svgBox(bad ? MARK_BAD : MARK_OK, 'ss-mark'), h('span', null, (bad ? 'Sai' : 'Đạt') + (extra ? ' · ' + extra : ''))))
+    // chữ phụ (hạng món, tốc độ) bọc riêng để khung thấp ẩn được mà chữ của hàng (textContent) vẫn giữ nguyên
+    h('b', { class: 'ss-verdict' }, svgBox(bad ? MARK_BAD : MARK_OK, 'ss-mark'),
+      h('span', { class: 'ss-vtxt' }, bad ? 'Sai' : 'Đạt', extra ? h('span', { class: 'ss-extra' }, ' · ' + extra) : null)))
   const labels = []
   // modifier riêng (err-tag--quay/--bep): tên '.counter'/'.kitchen' là class bố cục của panel Quầy/Bếp, dùng chung thì
-  // nhãn bị nhiễm kiểu panel (chữ màu mực trên nền gạch, cao lệch nhau). M5: nhãn là con tem đóng lên phiếu.
-  if (counterErr.length) labels.push(h('span', { class: 'err-tag err-tag--quay', testid: 'score-sheet-tag-quay' }, S.labels.counterError))
-  if (kitchenErr.length || kitchenBad) labels.push(h('span', { class: 'err-tag err-tag--bep', testid: 'score-sheet-tag-bep' }, S.labels.kitchenError))
+  // nhãn bị nhiễm kiểu panel (chữ màu mực trên nền gạch, cao lệch nhau). M5: nhãn là con tem mực (chữ trắng trên nền mực
+  // xanh / đỏ) đóng lên phiếu. Hình tem, độ nghiêng và hoạt ảnh đóng dấu nằm ở lớp con .err-tag-ink: khung của chính
+  // .err-tag không xoay, không phóng to nên hai tem luôn cao bằng nhau (e2e review-m3-ux đo ngay lúc phiếu gắn vào).
+  const tag = (kind, testid, text) => h('span', { class: ['err-tag', 'err-tag--' + kind], testid }, h('span', { class: 'err-tag-ink' }, text))
+  if (counterErr.length) labels.push(tag('quay', 'score-sheet-tag-quay', S.labels.counterError))
+  if (kitchenErr.length || kitchenBad) labels.push(tag('bep', 'score-sheet-tag-bep', S.labels.kitchenError))
   const errNames = [...counterErr, ...kitchenErr].map(c => S.errors[c] || c)
   // M3: phạt do tình huống trong ca (vd từ chối đổi món) — không phải lỗi quầy/bếp nhưng ghi rõ vì sao mất sao
   const incidentPen = (sheet.penalties || []).filter(p => p.source === 'tinh_huong')
@@ -201,19 +212,24 @@ export function renderScoreSheet(app, sheet) {
   played.add(sheet)
   const reduced = isReduced(app)
   const plan = sheetTimeline(sheet.stars)
+  const sticker = !!(tip && sheet.tip > 0)
   const node = h('div', {
-    class: ['score-sheet', again || reduced ? 'is-static' : ''],
+    class: ['score-sheet', again || reduced ? 'is-static' : '', sticker ? 'has-tip' : ''],
     testid: 'score-sheet', dataset: { customerId: sheet.customerId, stars: sheet.stars, mood: sheetMood(sheet.stars) }, 'aria-live': 'polite',
-    // mốc diễn cho css/sheet.css: mặt đổi tâm trạng, tem đóng, đồng xu tip nảy
+    // mốc diễn cho css/sheet.css: mặt đổi tâm trạng, tem đóng, tem tip dán lên góc phiếu
     style: { '--ss-react': plan.react + 'ms', '--ss-stamp': plan.stamp + 'ms', '--ss-tip': plan.tip + 'ms' }
   },
   h('div', { class: 'ss-head' },
     portrait(app, sheet, again || reduced),
     h('div', { class: 'ss-who' },
-      h('b', { class: 'ss-name' }, sheet.name),
-      starRow(sheet.stars),
+      // tên + hàng sao: màn cao xếp hai dòng; khung thấp (≤ 600px) chung một dòng cho phiếu thấp bớt
+      h('div', { class: 'ss-line' }, h('b', { class: 'ss-name' }, sheet.name), starRow(sheet.stars)),
       sheet.tutorial ? h('div', { class: 'ss-note' }, S.messages.tutorialNoPenalty) : null,
-      sheet.review ? h('p', { class: 'ss-review' }, '“' + sheet.review + '”') : null)),
+      // lời khách bọc trong span để khung thấp cắt còn tối đa 3 dòng mà đuôi bong bóng (::before của p) không bị cắt theo
+      sheet.review ? h('p', { class: 'ss-review' }, h('span', { class: 'ss-review-t' }, '“' + sheet.review + '”')) : null)),
+  // M5 vòng sửa: tip (có tiền) là tem vàng dán chờm lên mép trên, góc phải của phiếu (không chiếm chiều cao phiếu); chữ
+  // "+5.000đ" nổi lên phía trên tem và xu bay lên ví HUD, không bay ngang qua các hàng chấm.
+  sticker ? tip : null,
   h('ul', { class: 'ss-rows' },
     row('order', 'Order', orderBad),
     row('total', 'Báo tổng', totalBad),
@@ -224,7 +240,7 @@ export function renderScoreSheet(app, sheet) {
   errNames.length ? h('div', { class: 'ss-errors' }, errNames.join(' · ')) : null,
   incidentPen.length ? h('div', { class: 'ss-errors', testid: 'score-sheet-incident' },
     incidentPen.map(p => `${S.errors[p.code] || p.code}: −${p.stars} sao`).join(' · ')) : null,
-  tip,
+  sticker ? null : tip,
   // M4: khách lạ: quà quê theo số sao (trao cuối ca)
   sheet.stranger ? h('div', { class: 'ss-tip ss-stranger', testid: 'score-sheet-stranger' },
     sheet.stars >= 3 ? '★ Khách lạ hẹn gửi quà quê lúc cuối ca' : '★ Khách lạ cảm ơn rồi đi') : null)
@@ -253,12 +269,13 @@ function scheduleFx(app, node, sheet, reduced, plan) {
       }
     }, ms + Math.round(SHEET_FX.starMs * 0.45)))
   }
-  if (sheet.tip > 0) later(() => playTip(app, node, sheet), reduced ? 120 : plan.tip)
+  if (sheet.tip > 0) later(() => playTip(app, node, sheet), reduced ? 120 : plan.coins)
 }
 
 /**
- * Xu tip: âm coin2, chữ "+5.000đ" nổi trên dòng tip, 4–6 xu bay từ đồng xu của dòng tip về ví HUD ([hud-wallet]); mỗi xu
- * chạm ví phát 'vfx-coin' (source 'tip') để HUD đếm dòng "thu trong ca". Giảm chuyển động / trang ẩn: vfx giao gộp một lần.
+ * Xu tip: âm coin2, chữ "+5.000đ" nổi lên ngay phía trên tem tip (tem dán chờm mép trên phiếu nên chữ bay ra ngoài phiếu,
+ * không đè các hàng chấm), 4–6 xu bay từ đồng xu của tem về ví HUD ([hud-wallet]); mỗi xu chạm ví phát 'vfx-coin'
+ * (source 'tip') để HUD đếm dòng "thu trong ca". Giảm chuyển động / trang ẩn: vfx giao gộp một lần.
  */
 function playTip(app, node, sheet) {
   if (!live(node)) return
@@ -269,7 +286,13 @@ function playTip(app, node, sheet) {
   if (!f || !coin) return
   const doc = node.ownerDocument
   const wallet = doc && doc.querySelector('[data-testid="hud-wallet"]')
-  try { f.floatText(coin, '+' + formatVND(sheet.tip), { tone: 'gold', size: 'small' }) } catch { /* bỏ qua */ }
+  // điểm đặt chữ: floatText đặt chữ cao hơn điểm 48px → tâm chữ nằm 14px trên mép trên của tem, rồi bay lên tiếp
+  let at = coin
+  try {
+    const r = line.getBoundingClientRect()
+    if (r.width > 0) at = { x: r.left + r.width / 2, y: r.top + 34 }
+  } catch { /* bỏ qua: đặt theo đồng xu */ }
+  try { f.floatText(at, '+' + formatVND(sheet.tip), { tone: 'gold', size: 'small' }) } catch { /* bỏ qua */ }
   if (!wallet) return
   const onArrive = info => {
     try { wallet.dispatchEvent(new CustomEvent('vfx-coin', { detail: { ...info, source: 'tip' } })) } catch { /* bỏ qua */ }

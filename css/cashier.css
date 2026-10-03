@@ -15,6 +15,13 @@
 .cs-bill-ghost svg > rect:first-of-type { stroke: var(--g-ink); stroke-width: 3.4px; }
 .cs-bill { filter: drop-shadow(0 2px 0 rgba(58, 38, 24, .32)); }
 
+/* ---------- Neo cuộn ----------
+   Panel Quầy dựng lại khâu mỗi lần vẽ (stateSig): trình duyệt (scroll anchoring) lấy khối khâu đang lộ làm mốc neo, khối đó
+   bị thay nên panel tự nhảy vài px sau lần chạm két đầu (khay bị đẩy khuất mép trên). Không cho khối khâu làm mốc neo.
+   Hai luật riêng: trình duyệt chưa hiểu :has() chỉ bỏ luật thứ hai. */
+.stage-pay { overflow-anchor: none; }
+.stage-cash:has(> .cs-cash) { overflow-anchor: none; }
+
 /* ---------- Tiêu đề khâu (có hình máy tính) ---------- */
 .cs-title {
   display: flex; align-items: center; gap: 6px;
@@ -160,6 +167,8 @@
 .cs-led-num { display: inline-block; transform-origin: 100% 70%; }
 .cs-led-k { font-size: .6em; opacity: .5; margin-left: 1px; }
 .cs-led.is-empty .cs-led-num { opacity: .45; }
+/* "Gõ theo nghìn" trong màn LED: chỉ ở panel thấp (thay dòng giấy .cs-pos-hint), chỉ khi chưa gõ */
+.cs-led-tip { display: none; }
 .cs-led-frame.is-wrong { border-color: var(--g-bad-dark); box-shadow: 0 0 0 3px var(--g-bad), 0 3px 0 rgba(23, 26, 33, .55); }
 .cs-led.is-wrong { color: #ffb1a3; background-color: #4a1f1a; text-shadow: 0 0 8px rgba(255, 110, 90, .6); }
 .cs-led-frame.is-ok .cs-led { color: #d6ffe3; text-shadow: 0 0 10px rgba(150, 255, 190, .9); }
@@ -308,6 +317,7 @@
   background: radial-gradient(circle at 35% 28%, var(--g-tomato-light) 0 30%, var(--g-tomato) 75%);
   color: #fff; font-family: var(--g-font-display); font-weight: 800; font-size: 14px; line-height: 20px; text-align: center;
   text-shadow: var(--g-text-outline-thin);
+  pointer-events: none;
 }
 
 /* Ngăn kéo két mở: hình ket_tien, mỗi ngăn là một nút đặt đúng ô trong hình */
@@ -315,7 +325,8 @@
 .cs-drawer-art { position: absolute; inset: 0; display: block; line-height: 0; pointer-events: none; }
 .cs-drawer-art svg { display: block; width: 100%; height: 100%; }
 .cs-slot {
-  position: absolute; display: block; min-width: 44px; min-height: 44px; padding: 0;
+  position: absolute; left: var(--sx); top: var(--sy); width: var(--sw); height: var(--sh);
+  display: block; min-width: 44px; min-height: 44px; padding: 0;
   border: 0; border-radius: 7px; background: transparent; color: var(--g-ink);
   touch-action: manipulation; cursor: pointer;
 }
@@ -333,6 +344,8 @@
   background: radial-gradient(circle at 35% 28%, #fff3b0 0 25%, var(--g-gold) 70%);
   color: var(--g-ink); font-family: var(--g-font-display); font-weight: 800; font-size: 14px; line-height: 20px; text-align: center;
   box-shadow: 0 2px 0 rgba(58, 38, 24, .35);
+  /* huy hiệu ngăn hàng dưới nhô lên mép ngăn hàng trên: chạm vào đó vẫn trúng ngăn bên dưới điểm chạm */
+  pointer-events: none;
 }
 .cs-slot.is-empty .cs-slot-count { background: #d6cab5; color: #6f5f4e; }
 .cs-slot-label {
@@ -340,6 +353,7 @@
   padding: 0 7px; border: 2px solid var(--g-ink); border-radius: 999px;
   background: var(--g-paper); color: var(--g-ink);
   font-family: var(--g-font-display); font-weight: 800; font-size: 13px; line-height: 16px; white-space: nowrap;
+  pointer-events: none;
 }
 .cs-slot.is-empty .cs-slot-label { background: #efe7d8; color: #6f5f4e; }
 
@@ -362,6 +376,8 @@
 
 /* Nút "Đưa tiền thối" dính đáy (.act-bar của panel Quầy) */
 .cs-give.g-btn { min-height: 54px; font-size: 21px; }
+/* Dải số liệu cạnh nút (chỉ panel thấp, xem cuối tệp) */
+.cs-sum { display: none; }
 
 /* ==================== Hiệu ứng (đặt trong .vfx-layer, tự dọn) ==================== */
 /* bản sao màn LED + dấu ✓ khi khách nhận tổng */
@@ -407,6 +423,168 @@
   .cs-pay-top { grid-template-columns: minmax(0, 1fr); }
   .cs-mat { padding: 8px 6px 7px; }
 }
+/* ==================== Panel Quầy thấp (.co-fit-low: 360×600, 320×568; .co-fit-tiny: iPhone có thanh Safari) ==========
+   Lớp do counter.js đặt theo chiều cao vùng cuộn. Mục tiêu (ca kiểm ở tests/e2e/m5-quay.e2e.mjs):
+   - Thanh toán: lúc vào khâu thấy trọn màn LED, mọi phím và "Báo tổng" (counter-pay.js cuộn máy vào màn), bảng giá + phiếu
+     order gọn nằm ngay trên máy để vừa gõ vừa liếc. Máy xếp lại 3 hàng: [LED | Báo tổng] / [1–5 Xóa] / [6–9 0 ⌫].
+   - Tính tiền: số liệu (Khách đưa / Tổng / Cần thối / Khay) thành dải giấy nằm cạnh nút "Đưa tiền thối" trong hàng nút dính
+     đáy (luôn thấy khi cuộn tới két); tiền khách đưa + khay gọn cùng một hàng; lúc vào khâu counter-cash.js cuộn cho hàng
+     đó + két lọt trên hàng nút. */
+
+/* ---- Thanh toán ---- */
+.co-fit-low .cs-pay { gap: 8px; padding-bottom: 8px; }
+.co-fit-low .cs-title { font-size: 16px; }
+.co-fit-low .cs-title-ico { width: 24px; height: 24px; }
+.co-fit-low .cs-pay-top { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 8px; }
+.co-fit-low .cs-board { border-width: 6px; padding: 4px 7px 5px; border-radius: 13px; }
+.co-fit-low .cs-board-title { margin-bottom: 2px; padding-bottom: 1px; font-size: 14px; line-height: 1.15; }
+.co-fit-low .cs-board-list { gap: 1px; }
+.co-fit-low .cs-board-row,
+.co-fit-low .cs-board-row.is-sub { grid-template-columns: 20px minmax(0, 1fr) auto; column-gap: 5px; font-size: 13px; }
+.co-fit-low .cs-board-dish { width: 20px; height: 20px; }
+.co-fit-low .cs-board-price { font-size: 14px; }
+.co-fit-low .cs-board-row.is-sub .cs-board-price { font-size: 13px; }
+.co-fit-low .cs-board-note.co-note-ico { width: 20px; height: 20px; }
+.co-fit-low .cs-slip { padding: 7px 7px 6px; border-radius: 12px; background-position: 0 24px; background-size: 100% calc(100% - 24px); }
+.co-fit-low .cs-slip-pin { top: -8px; width: 15px; height: 15px; margin-left: -7.5px; }
+.co-fit-low .cs-slip-title { margin-bottom: 3px; font-size: 14px; line-height: 1.15; }
+.co-fit-low .cs-slip-list { gap: 4px; }
+.co-fit-low .cs-slip-line { grid-template-columns: 32px minmax(0, 1fr); column-gap: 6px; }
+.co-fit-low .cs-slip-art, .co-fit-low .cs-slip-dish { width: 32px; height: 32px; }
+.co-fit-low .cs-slip-qty { right: -6px; bottom: -4px; min-width: 24px; height: 20px; padding: 0 4px; font-size: 13px; line-height: 16px; }
+.co-fit-low .cs-slip-name { font-size: 13px; }
+.co-fit-low .cs-slip-note.co-note-ico { width: 20px; height: 20px; }
+.co-fit-low .cs-assist { padding: 3px 10px 2px; font-size: 14px; }
+.co-fit-low .cs-assist b { font-size: 16px; }
+
+/* Máy tính tiền gọn: lưới 6 cột trên chính .cs-pos (.cs-keys "tan" vào lưới), phím số ≥ 44px bề ngang, cao 48px */
+.co-fit-low .cs-pos {
+  display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: repeat(3, 48px); gap: 5px;
+  margin: 0 -6px; padding: 6px 6px 8px; border-radius: 18px;
+}
+.co-fit-low .cs-pos-slip, .co-fit-low .cs-pos-hint { display: none; }
+.co-fit-low .cs-keys { display: contents; }
+.co-fit-low .cs-pos-top { grid-column: 1 / span 4; grid-row: 1; min-width: 0; }
+.co-fit-low .cs-led-frame { height: 100%; padding: 4px 6px; border-radius: 13px; }
+.co-fit-low .cs-led {
+  height: 100%; min-height: 0; align-items: center; padding: 0 9px; border-radius: 8px;
+  font-size: 26px; line-height: 1;
+}
+.co-fit-low .cs-led-num, .co-fit-low .cs-led-k { position: relative; top: 1px; }
+.co-fit-low .cs-led-dot { right: 6px; bottom: 2px; width: 6px; height: 6px; }
+.co-fit-low .cs-led-frame.is-empty .cs-led-tip {
+  display: block; position: absolute; left: 17px; top: 50%; transform: translateY(-50%);
+  color: #aef7c6; opacity: .8; font-size: 13px; font-weight: 700; line-height: 1.1; white-space: nowrap;
+  pointer-events: none;
+}
+.co-fit-low .cs-key.g-btn { min-height: 0; height: 100%; border-radius: 13px; font-size: 24px; }
+.co-fit-low .cs-key-fn.g-btn { font-size: 16px; }
+.co-fit-low .cs-key-back.g-btn { font-size: 24px; }
+.co-fit-low .cs-key-1 { grid-area: 2 / 1; }
+.co-fit-low .cs-key-2 { grid-area: 2 / 2; }
+.co-fit-low .cs-key-3 { grid-area: 2 / 3; }
+.co-fit-low .cs-key-4 { grid-area: 2 / 4; }
+.co-fit-low .cs-key-5 { grid-area: 2 / 5; }
+.co-fit-low .cs-key-clear { grid-area: 2 / 6; }
+.co-fit-low .cs-key-6 { grid-area: 3 / 1; }
+.co-fit-low .cs-key-7 { grid-area: 3 / 2; }
+.co-fit-low .cs-key-8 { grid-area: 3 / 3; }
+.co-fit-low .cs-key-9 { grid-area: 3 / 4; }
+.co-fit-low .cs-key-0 { grid-area: 3 / 5; }
+.co-fit-low .cs-key-back { grid-area: 3 / 6; }
+.co-fit-low .cs-key-act.g-btn {
+  grid-column: 5 / span 2; grid-row: 1;
+  flex-direction: row; gap: 4px; padding: 3px 6px; border-radius: 14px; font-size: 17px; line-height: 1;
+}
+.co-fit-low .cs-key-act.g-btn::before { top: 3px; height: 12px; left: 12%; right: 12%; }
+.co-fit-low .cs-report-bell { flex: none; width: 24px; height: 24px; }
+.co-fit-low .cs-report-text { max-width: 3.3em; text-align: center; }
+.co-fit-tiny .cs-pay { gap: 6px; }
+.co-fit-tiny .cs-pos { grid-template-rows: repeat(3, 46px); gap: 4px; padding: 5px 6px 7px; }
+
+/* ---- Tính tiền ----
+   Hàng 1: [tiền khách đưa | khay] cạnh nhau, hàng 2: két. Phiếu số liệu (và nhãn "Khách đưa" dưới tờ tiền, dòng tiêu đề
+   khay) nhường chỗ cho dải số liệu trong hàng nút dính đáy (cùng con số, luôn thấy khi cuộn tới két). */
+.co-fit-low .cs-cash { grid-template-columns: minmax(0, .9fr) minmax(0, 1.6fr); grid-template-areas: "mat tray" "drawer drawer"; gap: 8px; }
+.co-fit-low .cs-cash > .cs-facts { display: none; }
+.co-fit-low .cs-mat { padding: 4px; border-radius: 14px; }
+.co-fit-low .cs-given { gap: 0; }
+.co-fit-low .cs-given-cap { display: none; }
+.co-fit-low .cs-given-bills { min-height: 0; padding: 0 4px; }
+.co-fit-low .cs-given-bill { width: 64px; height: 36px; }
+.co-fit-low .cs-given-bill + .cs-given-bill { margin-left: -34px; }
+.co-fit-low .cs-given-bills[data-n="3"] .cs-given-bill + .cs-given-bill,
+.co-fit-low .cs-given-bills[data-n="4"] .cs-given-bill + .cs-given-bill,
+.co-fit-low .cs-given-bills[data-n="5"] .cs-given-bill + .cs-given-bill,
+.co-fit-low .cs-given-bills[data-n="6"] .cs-given-bill + .cs-given-bill { margin-left: -50px; }
+/* khay gọn: lưới chồng tiền cùng cỡ (chật thì mỗi chồng hẹp lại, tờ co theo; ≥ 4–5 mệnh giá thì xuống hàng, mọi chồng vẫn
+   bằng nhau) */
+.co-fit-low .cs-tray { padding: 0; border-radius: 14px; }
+.co-fit-low .cs-tray-head { display: none; }
+.co-fit-low .cs-tray-bed {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(50px, 1fr)); align-content: center; justify-items: center;
+  gap: 4px 3px; min-height: 52px; height: 100%; padding: 4px 6px;
+  border: 0; border-radius: 11px;
+}
+.co-fit-low .cs-tray.is-empty .cs-tray-bed { display: flex; }
+.co-fit-low .cs-tray-stack { width: min(76px, 100%); min-width: 44px; height: 44px; }
+/* tờ trong chồng co theo bề ngang chồng (giữ tỉ lệ tờ tiền), không lòi khỏi mép khay */
+.co-fit-low .cs-tray-stack .cs-tray-bill { left: 2px; top: 3px; width: calc(100% - 6px); max-width: 68px; height: auto; aspect-ratio: 80 / 44; }
+.co-fit-low .cs-stack-count { top: -5px; right: -3px; min-width: 24px; height: 20px; font-size: 13px; line-height: 16px; }
+.co-fit-low .cs-tray-empty { padding: 2px 2px; font-size: 13px; line-height: 1.25; }
+.co-fit-low .cs-drawer { margin-top: 0; }
+/* hàng nút dính đáy: [dải số liệu | Đưa tiền thối] */
+.co-fit-low .cs-act.act-bar { flex-direction: row; align-items: stretch; gap: 8px; }
+.co-fit-low .cs-sum {
+  flex: 0 1 46%; min-width: 0;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 2px 8px;
+  border: 2.5px solid var(--g-ink); border-radius: 12px;
+  background: var(--g-paper); color: var(--g-ink);
+  box-shadow: inset 0 -3px 0 var(--g-paper-shade), 0 3px 0 rgba(58, 38, 24, .22);
+}
+.co-fit-low .cs-sum-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; line-height: 14px; }
+.co-fit-low .cs-sum-k { color: var(--g-ink-soft); font-size: 13px; font-weight: 700; white-space: nowrap; }
+.co-fit-low .cs-sum-v { font-family: var(--g-font-display); font-weight: 800; font-size: 15px; white-space: nowrap; }
+.co-fit-low .cs-sum-row.is-can .cs-sum-k { color: var(--g-ink); }
+.co-fit-low .cs-sum-row.is-can .cs-sum-v { color: var(--g-tomato-dark); }
+.co-fit-low .cs-sum-row.is-khay { margin-top: 1px; padding-top: 1px; border-top: 2px dashed rgba(58, 38, 24, .3); }
+.co-fit-low .cs-sum-row.is-khay .cs-sum-k { color: var(--g-ink); }
+.co-fit-low .cs-sum-row.is-over .cs-sum-k, .co-fit-low .cs-sum-row.is-over .cs-sum-v { color: var(--g-bad-dark); }
+.co-fit-low .cs-sum-row.is-over .cs-sum-k::before { content: '⚠ '; }
+.co-fit-low .cs-sum-row.is-ok .cs-sum-v { color: var(--g-go-dark); }
+.co-fit-low .cs-sum-row.is-ok .cs-sum-v::after { content: ' ✓'; }
+.co-fit-low .cs-give.g-btn {
+  flex: 1 1 54%; min-width: 0; min-height: 52px; padding: 4px 8px;
+  font-size: 18px; line-height: 1.1; white-space: normal; text-align: center;
+}
+.co-fit-tiny .cs-act.act-bar { padding-top: 5px; padding-bottom: 6px; }
+.co-fit-tiny .cs-give.g-btn { min-height: 50px; }
+.co-fit-tiny .cs-cash { row-gap: 6px; }
+.co-fit-tiny .cs-tray-bed { min-height: 48px; padding: 2px 6px; }
+/* panel rất thấp (iPhone có thanh Safari): 7 ngăn két một hàng (khung kim loại tối như hình ket_tien, vẽ bằng CSS), ngăn
+   ≥ 44px bề ngang — chỉ khi đủ rộng; hẹp hơn thì giữ hình két 4 + 3 ngăn */
+@media (min-width: 341px) {
+  .co-fit-tiny .cs-drawer {
+    aspect-ratio: auto; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px;
+    padding: 5px 4px 4px;
+    border: 3px solid var(--g-ink); border-radius: 12px;
+    background: linear-gradient(180deg, #6b7283 0%, #3d4250 26%, #2a2e38 100%);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, .18), 0 4px 0 rgba(23, 26, 33, .45);
+  }
+  .co-fit-tiny .cs-drawer-art { display: none; }
+  .co-fit-tiny .cs-slot {
+    position: relative; left: auto; top: auto; width: auto; height: 48px; min-width: 0;
+    border: 2px solid var(--g-ink); border-radius: 6px;
+    background: linear-gradient(180deg, #fff 0%, #dfe5ec 22%, #c9d3de 100%);
+    box-shadow: inset 0 -3px 0 #aebbc9;
+  }
+  .co-fit-tiny .cs-slot.is-empty { background: linear-gradient(180deg, #e9edf2, #c4ccd6); }
+  .co-fit-tiny .cs-slot-bills { left: 3px; right: 3px; top: 4px; bottom: 16px; }
+  .co-fit-tiny .cs-slot-count { top: -8px; right: -6px; min-width: 20px; height: 20px; padding: 0 4px; font-size: 13px; line-height: 16px; }
+  .co-fit-tiny .cs-slot-label { bottom: 0; padding: 0 3px; border-width: 1.5px; font-size: 13px; line-height: 14px; }
+}
+
 @media (max-height: 700px) {
   .cs-cash { row-gap: 10px; }
   .cs-mat { padding: 6px 6px 6px; }

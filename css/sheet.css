@@ -24,11 +24,24 @@
 .sheet-host .score-sheet.hide { opacity: 0; transform: translateY(30px); transition-duration: .2s; }
 /* băng dính giấy ở mép trên (trang trí tĩnh) */
 .sheet-host .score-sheet::before {
-  content: ''; position: absolute; top: -12px; left: 50%; width: 76px; height: 20px; margin-left: -38px;
+  content: ''; position: absolute; top: -10px; left: 50%; width: 76px; height: 20px; margin-left: -38px;
   border: 2px solid rgba(58, 38, 24, .35); border-radius: 3px;
   background: repeating-linear-gradient(135deg, rgba(255, 210, 63, .78) 0 7px, rgba(255, 226, 122, .78) 7px 14px);
   transform: rotate(-3deg); pointer-events: none;
 }
+/* có tem tip ở góc phải: băng dính dời sang trái cho hai thứ không chồng nhau ở khung hẹp */
+.sheet-host .score-sheet.has-tip::before { left: 32%; }
+/* Lớp nền mờ dưới phiếu (vòng sửa V3): chữ của panel phía sau (dây phiếu, dòng "Chưa có phiếu nào…") lùi xuống, băng
+   dính và mép phiếu không còn cắt ngang chữ rõ nét. Trang trí thuần: không nhận chạm (elementFromPoint bỏ qua), chỉ đổi
+   opacity, hiện theo phiếu đang .show và tan cùng lúc phiếu trượt xuống (.hide). Phủ từ trên mép phiếu ~76px (đậm dần) xuống tới
+   thanh tab, không phủ thanh tab. Trình duyệt chưa có :has() thì chỉ không có lớp mờ. */
+.sheet-host::before {
+  content: ''; position: absolute; left: 0; right: 0; top: -64px; bottom: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(58, 38, 24, 0) 0, rgba(58, 38, 24, .22) 32px, rgba(58, 38, 24, .4) 60px, rgba(58, 38, 24, .42) 100%);
+  opacity: 0; transition: opacity .2s var(--g-ease-out);
+}
+.sheet-host:has(> .score-sheet.show)::before { opacity: 1; }
+html.reduce-motion .sheet-host::before { transition-duration: .001ms; }
 
 /* ---- Đầu phiếu: chân dung khách + tên, sao, lời khách ---- */
 .score-sheet .ss-head { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; }
@@ -51,7 +64,9 @@
 .ss-emote svg { display: block; width: 100%; height: 100%; }
 
 .ss-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ss-line { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
 .ss-name {
+  max-width: 100%;
   font-family: var(--g-font-display); font-weight: 800; font-size: 19px; line-height: 1.1; color: var(--g-ink);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -61,10 +76,11 @@
 .ss-star svg { display: block; width: 100%; height: 100%; }
 .ss-note { font-size: 13px; font-weight: 700; color: var(--g-ink-soft); }
 .score-sheet .ss-review {
-  position: relative; margin: 4px 0 0; padding: 4px 9px 5px;
+  position: relative; align-self: stretch; margin: 4px 0 0; padding: 4px 9px 5px;
   border: 2px solid var(--g-ink); border-radius: 12px; background: #fff;
   font-size: 14px; font-style: italic; line-height: 1.3; color: var(--g-ink-soft);
 }
+.ss-review-t { display: block; }
 /* đuôi bong bóng chỉ về phía khách */
 .score-sheet .ss-review::before {
   content: ''; position: absolute; left: -8px; top: 9px; width: 12px; height: 12px;
@@ -92,17 +108,27 @@
 .score-sheet .ss-rows li.bad b { color: var(--g-bad-dark); }
 .ss-mark { flex: none; width: 20px; height: 20px; line-height: 0; }
 
-/* ---- Tem lỗi: con dấu mực đóng lên phiếu ---- */
-.score-sheet .ss-tags { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 8px; padding-left: 4px; }
+/* ---- Tem lỗi: con dấu mực đặc đóng lên phiếu, chữ trắng ----
+   .err-tag là ô giữ chỗ KHÔNG xoay, không phóng to, không nền (chữ trắng kế thừa xuống lớp con): khung của nó luôn đúng
+   bằng một dòng tem nên hai tem cao bằng nhau ở mọi lúc, kể cả khi đang đóng dấu. Hình tem (nền mực xanh / đỏ, viền
+   trắng lót trong như con dấu, hạt mực lấm tấm), độ nghiêng và hoạt ảnh đóng dấu nằm ở lớp con .err-tag-ink.
+   Tương phản chữ trắng: 6,7:1 trên mực xanh #1f5f9e, 6,4:1 trên mực đỏ #b3261a. */
+.score-sheet .ss-tags { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 12px; margin-top: 8px; padding-left: 6px; }
 .score-sheet .err-tag {
-  --rot: -5deg;
-  display: inline-block; padding: 2px 10px 1px; border: 2.5px solid currentColor; border-radius: 8px;
-  background: rgba(255, 255, 255, .55); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .8);
-  font-family: var(--g-font-display); font-weight: 800; font-size: 14px; line-height: 1.3; letter-spacing: .05em; text-transform: uppercase;
+  --rot: -4deg; --tag-ink: #1f5f9e;
+  display: inline-block; flex: none; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none;
+  color: #fff; font-family: var(--g-font-display); font-weight: 800; font-size: 14px; line-height: 1.25;
+}
+.score-sheet .err-tag--bep { --rot: 3deg; --tag-ink: #b3261a; }
+.score-sheet .err-tag-ink {
+  display: block; padding: 4px 11px 2px; border-radius: 9px; white-space: nowrap;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, .16) 0 1px, transparent 1.5px) 0 0 / 9px 7px,
+    var(--tag-ink);
+  box-shadow: inset 0 0 0 2px var(--tag-ink), inset 0 0 0 3.5px rgba(255, 255, 255, .85), 0 2px 0 rgba(58, 38, 24, .28);
+  color: #fff; letter-spacing: .05em; text-transform: uppercase;
   transform: rotate(var(--rot));
 }
-.score-sheet .err-tag--quay { color: #1f5f9e; }
-.score-sheet .err-tag--bep { --rot: 4deg; color: #b3261a; }
 .score-sheet .ss-errors { margin-top: 4px; font-size: 14px; font-weight: 700; line-height: 1.3; color: var(--g-bad-dark); }
 
 /* ---- Tip: viên vàng có đồng xu; tip 0 ghi lý do (chữ giữ nguyên văn) ---- */
@@ -114,6 +140,19 @@
 }
 .ss-coin { flex: none; width: 28px; height: 28px; line-height: 0; }
 .ss-tip-v { color: var(--g-go-dark); font-size: 18px; }
+/* tem tip (có tiền): dán chờm mép trên, góc phải phiếu, nghiêng nhẹ; không chiếm chiều cao phiếu. Chỉ chờm lên vùng
+   viền + đệm trên của phiếu (đáy tem cao hơn dòng tên) nên không che chữ nào của phiếu. */
+.score-sheet .ss-tip.is-sticker {
+  --tilt: 4deg;
+  position: absolute; z-index: 2; top: -27px; right: -6px; margin: 0; padding: 3px 12px 3px 4px; gap: 5px;
+  border-radius: 14px; background: linear-gradient(180deg, #fff8cf 0%, #ffe680 55%, var(--g-gold-light) 100%);
+  box-shadow: inset 0 -3px 0 rgba(233, 164, 0, .4), 0 3px 0 rgba(58, 38, 24, .32);
+  transform: rotate(var(--tilt));
+}
+.ss-tip-txt { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
+.score-sheet .ss-tip.is-sticker .ss-tip-k { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: #7a5200; }
+.score-sheet .ss-tip.is-sticker .ss-tip-v { font-size: 19px; line-height: 1.1; color: var(--g-go-dark); }
+.score-sheet .ss-tip.is-sticker .ss-coin { width: 26px; height: 26px; }
 .score-sheet .ss-tip.is-zero {
   padding: 2px 12px 2px 3px; background: #f4ecdc; border-color: rgba(58, 38, 24, .45); box-shadow: none;
   font-family: inherit; font-weight: 700; font-size: 14px; color: var(--g-ink-soft);
@@ -132,9 +171,10 @@
 .score-sheet .ss-face.has-swap .ss-face-b { animation: ss-react 420ms var(--g-ease-back) both; animation-delay: var(--ss-react, 1000ms); }
 .score-sheet .ss-face:not(.has-swap) .ss-face-b { animation: ss-nod 420ms ease-in-out both; animation-delay: var(--ss-react, 1000ms); }
 .score-sheet .ss-emote { animation: ss-emote 420ms var(--g-ease-back) both; animation-delay: var(--ss-react, 1000ms); }
-.score-sheet .err-tag { animation: ss-stamp 260ms cubic-bezier(.3, 0, .6, 1) both; animation-delay: var(--ss-stamp, 1100ms); }
-.score-sheet .err-tag--bep { animation-delay: calc(var(--ss-stamp, 1100ms) + 120ms); }
-.score-sheet .ss-tip:not(.is-zero) .ss-coin { animation: ss-coin 460ms var(--g-ease-back) both; animation-delay: var(--ss-tip, 1000ms); }
+.score-sheet .err-tag-ink { animation: ss-stamp 260ms cubic-bezier(.3, 0, .6, 1) both; animation-delay: var(--ss-stamp, 1100ms); }
+.score-sheet .err-tag--bep .err-tag-ink { animation-delay: calc(var(--ss-stamp, 1100ms) + 120ms); }
+.score-sheet .ss-tip.is-sticker { animation: ss-slap 260ms cubic-bezier(.3, 0, .6, 1) both; animation-delay: var(--ss-tip, 1000ms); }
+.score-sheet .ss-tip.is-sticker .ss-coin { animation: ss-coin 420ms var(--g-ease-back) both; animation-delay: calc(var(--ss-tip, 1000ms) + 120ms); }
 
 @keyframes ss-pop { 0% { opacity: 0; transform: scale(.5); } 60% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
 @keyframes ss-star {
@@ -158,6 +198,11 @@
   0% { opacity: 0; transform: scale(1.9) rotate(calc(var(--rot) - 10deg)); }
   70% { opacity: 1; transform: scale(.93) rotate(var(--rot)); }
   100% { opacity: 1; transform: scale(1) rotate(var(--rot)); }
+}
+@keyframes ss-slap {
+  0% { opacity: 0; transform: translateY(-10px) scale(1.7) rotate(calc(var(--tilt) - 14deg)); }
+  70% { opacity: 1; transform: scale(.94) rotate(var(--tilt)); }
+  100% { opacity: 1; transform: scale(1) rotate(var(--tilt)); }
 }
 @keyframes ss-coin {
   0% { opacity: 0; transform: translateY(-14px) scale(.3) rotate(-90deg); }
@@ -189,6 +234,56 @@
   .ss-face-img { width: 64px; margin-left: -32px; top: -3px; }
   .ss-star { width: 24px; height: 24px; }
   .ss-label, .score-sheet .ss-verdict { font-size: 14px; }
+}
+/* Khung thấp (cao ≤ 600px: 375×553 có vùng an toàn, 320×568, 360×600). Phiếu neo ngay trên thanh tab, chỗ trống chỉ còn
+   từ dây phiếu xuống → gọn tối đa để không che thanh 4 khâu (vòng sửa V1/V2): tên + sao chung một dòng, lời khách tối đa
+   3 dòng (khung 375 rộng: hầu hết 1–2 dòng), 5 hàng xếp lưới 2 cột (hàng lẻ cuối "Thời gian chờ" trải hết bề ngang, giữ chấm dẫn và chữ phụ), 4 ô lưới bỏ
+   chấm dẫn và chữ phụ (hạng món đã có ở dòng tên lỗi). Chữ vẫn ≥ 13px; dấu ✓/✗ và chữ Đạt / Sai giữ nguyên. */
+@media (max-height: 600px) {
+  .sheet-host .score-sheet { margin-top: 8px; padding: 5px 9px 6px; border-radius: 16px; }
+  .sheet-host .score-sheet::before { top: -10px; width: 64px; height: 17px; margin-left: -32px; }
+  .score-sheet .ss-head { gap: 8px; }
+  .ss-face { width: 46px; height: 48px; margin-top: 2px; }
+  .ss-face-frame { border-width: 2.5px; border-radius: 12px; }
+  .ss-face-img { width: 52px; margin-left: -26px; top: -2px; }
+  .ss-emote { left: -8px; top: -8px; width: 24px; height: 24px; padding: 3px; border-width: 2px; }
+  .ss-who { gap: 1px; }
+  .ss-line { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0 8px; }
+  .ss-name { min-width: 0; font-size: 16px; line-height: 1.25; }
+  .ss-star { width: 20px; height: 20px; }
+  .score-sheet .ss-stars { gap: 2px; }
+  .ss-note { font-size: 13px; line-height: 1.2; }
+  .score-sheet .ss-review { margin-top: 1px; padding: 1px 8px; border-radius: 10px; font-size: 13px; line-height: 1.22; }
+  .score-sheet .ss-review::before { left: -7px; top: 7px; width: 10px; height: 10px; }
+  .ss-review-t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+  .score-sheet .ss-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; margin-top: 3px; padding-top: 3px; }
+  .score-sheet .ss-rows li { min-height: 20px; gap: 4px; padding: 0 3px; }
+  .score-sheet .ss-rows li:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .ss-ico { width: 18px; height: 18px; }
+  .ss-label { font-size: 14px; }
+  .ss-dots { display: none; }
+  .score-sheet .ss-rows li:last-child .ss-dots { display: block; }
+  .score-sheet .ss-verdict { margin-left: auto; gap: 3px; font-size: 14px; white-space: nowrap; }
+  .score-sheet .ss-rows li:last-child .ss-verdict { margin-left: 0; }
+  .score-sheet .ss-rows li:not(:last-child) .ss-extra { display: none; }
+  .ss-mark { width: 17px; height: 17px; }
+  .score-sheet .ss-tags { margin-top: 3px; gap: 4px 10px; }
+  .score-sheet .err-tag { font-size: 13px; }
+  .score-sheet .err-tag-ink { padding: 3px 9px 1px; }
+  .score-sheet .ss-errors { margin-top: 1px; font-size: 13px; line-height: 1.25; }
+  .score-sheet .ss-tip { margin-top: 4px; }
+  .score-sheet .ss-tip.is-sticker { top: -24px; padding: 2px 10px 2px 3px; }
+  .score-sheet .ss-tip.is-sticker .ss-tip-v { font-size: 17px; }
+  .score-sheet .ss-tip.is-sticker .ss-coin { width: 24px; height: 24px; }
+}
+/* khung thấp và hẹp (320×568): ô lưới chỉ còn ~130px → chữ hàng 13px, đệm sát hơn để "Báo tổng ✓ Đạt" vừa một ô */
+@media (max-height: 600px) and (max-width: 340px) {
+  .score-sheet .ss-rows { column-gap: 6px; }
+  .score-sheet .ss-rows li { padding: 0 2px; gap: 3px; }
+  .ss-label, .score-sheet .ss-verdict { font-size: 13px; }
+  .ss-ico { width: 17px; height: 17px; }
+  .ss-face { width: 44px; height: 46px; }
+  .ss-face-img { width: 50px; margin-left: -25px; }
 }
 
 /* ============================================== Hộp tình huống, hộp phàn nàn ============================================== */

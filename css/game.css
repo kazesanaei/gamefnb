@@ -1,33 +1,53 @@
 /* Giao diện các màn: mở đầu, chuẩn bị ca, ca bán (HUD, hàng khách, dây phiếu, quầy), tổng kết. */
 
 /* ---------- Thông báo nổi ---------- */
-/* ngay dưới HUD ca bán (HUD cao thêm vùng an toàn trên khi có tai thỏ) */
+/* M5 Đợt 2 (vòng sửa Q-D): viên giấy viền mực cùng bộ với HUD gỗ (không còn hộp chữ nhật sẫm mờ): nền giấy kín (opacity 1,
+   chữ phía sau không lộ qua), tiêu đề Baloo 800; thông báo tốt / xấu có nền giấy ngả xanh / đỏ rất nhạt và huy hiệu tròn
+   ✓ xanh / ! đỏ ở đầu (khi thông báo chưa có hình riêng — luôn có biểu tượng, không chỉ dựa vào màu).
+   Vị trí: ngay dưới HUD (50px + vùng an toàn trên); trong màn Ca bán hạ xuống 57px để không che thẻ "+tiền thu trong ca"
+   treo dưới ví HUD (service.js gắn .is-service lên lớp nổi gốc). Chiều cao: thông báo 1 dòng ≤ 32px, thẻ Mẹo nghề ≤ 66px —
+   chồng thông báo vừa khoảng giữa thẻ tiền thu và thanh 4 khâu (≥ 71px ở khung thấp, service.js toastLimit). */
 .toast-stack {
-  position: absolute; top: calc(50px + var(--safe-top)); left: 12px; right: 12px; display: flex; flex-direction: column; gap: 6px;
+  position: absolute; top: calc(50px + var(--safe-top)); left: 12px; right: 12px; display: flex; flex-direction: column; gap: 5px;
   align-items: center; z-index: 60;
 }
+.overlay-root.is-service > .toast-stack { top: calc(57px + var(--safe-top)); }
 .toast {
-  display: flex; align-items: center; gap: 10px; width: 100%; max-width: 440px;
-  padding: 7px 12px; border-radius: 12px; background: #3b2a1f; color: #fff; font-size: 14px;
-  box-shadow: var(--shadow); opacity: 0; transform: translateY(-8px);
+  display: flex; align-items: center; gap: 8px; width: 100%; max-width: 440px;
+  padding: 3px 12px 4px; border: 2.5px solid var(--g-ink); border-radius: 14px; background: var(--g-paper); color: var(--g-ink);
+  font-size: 14px; font-weight: 600;
+  box-shadow: inset 0 -3px 0 var(--g-paper-shade), 0 3px 0 rgba(58, 38, 24, .3);
+  opacity: 0; transform: translateY(-8px);
   transition: opacity .2s var(--ease), transform .2s var(--ease);
 }
-.toast.show { opacity: .96; transform: none; }
+.toast.show { opacity: 1; transform: none; }
 .toast.hide { opacity: 0; transform: translateY(-8px); }
-.toast-good { background: #2f7a40; }
-.toast-bad { background: #a8321f; }
-.toast-tip { background: #fff8e0; color: var(--ink); border: 2px solid var(--yellow); padding: 5px 10px; gap: 8px; }
+.toast-good { background: linear-gradient(180deg, #f6fcef, #e6f5d6); box-shadow: inset 0 -3px 0 #cfe8b8, 0 3px 0 rgba(58, 38, 24, .3); }
+.toast-bad { background: linear-gradient(180deg, #fff6f1, #fde4da); box-shadow: inset 0 -3px 0 #f6cbbd, 0 3px 0 rgba(58, 38, 24, .3); }
+/* huy hiệu ✓ / ! (hình vẽ tại chỗ, viền mực) cho thông báo tốt / xấu chưa có hình riêng */
+.toast-good:not(:has(> .toast-icon))::before, .toast-bad:not(:has(> .toast-icon))::before {
+  content: ''; flex: none; width: 20px; height: 20px; margin: 1px 0 1px -5px; background: center / contain no-repeat;
+}
+.toast-good:not(:has(> .toast-icon))::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Ccircle cx='11' cy='11' r='9.6' fill='%2343a63d' stroke='%233a2618' stroke-width='2.2'/%3E%3Cpath d='M6.6 11.4L9.6 14.4L15.4 8.2' fill='none' stroke='%23fff' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.toast-bad:not(:has(> .toast-icon))::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Ccircle cx='11' cy='11' r='9.6' fill='%23d8392b' stroke='%233a2618' stroke-width='2.2'/%3E%3Cpath d='M11 6.2V12' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='11' cy='15.6' r='1.7' fill='%23fff'/%3E%3C/svg%3E");
+}
+.toast-tip { background: linear-gradient(180deg, #fffbea, #fff1c4); box-shadow: inset 0 -3px 0 #f3dc94, 0 3px 0 rgba(58, 38, 24, .3); padding: 3px 10px 4px 6px; }
 /* thẻ Mẹo nghề gọn: tiêu đề 1 dòng + nội dung tối đa 2 dòng, chỉ che dải khách, không che thanh 4 khâu */
 .toast-tip .toast-icon { width: 28px; height: 28px; }
-.toast-tip .toast-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
+.toast-tip .toast-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .toast-tip .toast-body { min-width: 0; }
 .toast-tip .toast-text {
   line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
 }
 .toast-icon { width: 32px; height: 32px; flex: none; }
-.toast-title { font-weight: 800; font-size: 14px; }
-.toast-tip .toast-title { color: var(--brick-dark); }
-.toast-text { font-size: 14px; line-height: 1.35; }
+.toast-title { font-family: var(--g-font-display); font-weight: 800; font-size: 15px; line-height: 1.12; color: var(--g-tomato-dark); }
+.toast-good .toast-title { color: var(--g-go-dark); }
+.toast-bad .toast-title { color: var(--g-bad-dark); }
+.toast-tip .toast-title { color: var(--brick-dark); font-size: 14px; line-height: 1.2; }
+.toast-text { font-size: 14px; line-height: 1.3; }
 
 /* ---------- Hộp thoại ---------- */
 /* Lớp phủ nằm ở lớp nổi gốc (.overlay-root trong #app), không nằm trong vùng cuộn của màn: iOS Safari cắt phần tử
@@ -132,8 +152,9 @@
 /* ---------- Ca bán ---------- */
 .service-screen { position: absolute; inset: 0; display: flex; flex-direction: column; overflow: hidden; }
 /* Thanh trên (HUD, components/hud.js — M5 Đợt 2, gói Q-D): thanh gỗ sẫm, 3 viên giấy viền mực (giờ ca có mặt trời đi trên
-   mép dưới viên, ví "Tiền quán", sao trung bình) và nút "?". Cao 47px + vùng an toàn trên (chồng thông báo nổi đặt ở
-   50px + vùng an toàn trên, ngay dưới). Thẻ "+tiền thu trong ca" treo dưới viên ví, đè lên mái bạt của dải phố (z-index). */
+   mép dưới viên, ví "Tiền quán", sao trung bình) và nút "?". Cao 47px + vùng an toàn trên. Thẻ "+tiền thu trong ca" dán
+   vào mép dưới viên ví (đỉnh thẻ trùm viền dưới viên), đè lên mái bạt của dải phố (z-index); đáy thẻ ở 55px + vùng an toàn
+   trên — chồng thông báo nổi của màn Ca bán bắt đầu ở 57px + vùng an toàn trên (ngay dưới, không che thẻ lúc đếm lên). */
 .hud {
   position: relative; z-index: 6; flex: none; display: flex; align-items: center; justify-content: space-between; gap: 5px;
   min-height: calc(47px + var(--safe-top)); padding: calc(4px + var(--safe-top)) 6px 4px; color: var(--g-ink);
@@ -167,10 +188,10 @@
 }
 /* thẻ tiền thu trong ca (chưa vào ví): hiện khi > 0, đếm lên khi xu bay về ví */
 .hud-take {
-  position: absolute; left: 50%; top: calc(100% + 2px); z-index: 7; display: none; transform: translateX(-50%);
-  padding: 0 7px; border: 2px solid var(--g-ink); border-radius: 999px; background: linear-gradient(180deg, var(--g-go-light), var(--g-go));
-  color: #fff; text-shadow: var(--g-text-outline-thin); box-shadow: 0 2px 0 rgba(58, 38, 24, .35);
-  font-family: var(--g-font-display); font-weight: 800; font-size: 13px; line-height: 16px; white-space: nowrap; pointer-events: none;
+  position: absolute; left: 50%; top: calc(100% - 1px); z-index: 7; display: none; transform: translateX(-50%);
+  padding: 0 7px; border: 2px solid var(--g-ink); border-radius: 999px; background: linear-gradient(180deg, #3c9937, #2a7f27);
+  color: #fff; text-shadow: var(--g-text-outline-thin); box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, .3), 0 2px 0 rgba(58, 38, 24, .35);
+  font-family: var(--g-font-display); font-weight: 800; font-size: 13px; line-height: 15px; white-space: nowrap; pointer-events: none;
 }
 .hud-take.is-on { display: block; }
 /* nút "?" trên thanh gỗ: nút tròn giấy viền mực (vùng chạm 44px, lề âm để thanh không cao thêm) */
@@ -244,13 +265,13 @@
 }
 .rail-count-cap { font-size: 13px; }
 .rail-count-n { font-size: 17px; }
-.rail-count.full { background: linear-gradient(180deg, var(--g-tomato-light), var(--g-tomato)); color: #fff; text-shadow: var(--g-text-outline-thin); }
+.rail-count.full { background: linear-gradient(180deg, #cf4234, #b8352a); color: #fff; text-shadow: var(--g-text-outline-thin); }
 .rail-list {
   position: relative; flex: 1; display: flex; gap: 6px; min-width: 0; height: 100%; padding: 0 2px; overflow-x: auto; overflow-y: hidden;
   scrollbar-width: none;
 }
 .rail-list::-webkit-scrollbar { display: none; }
-.rail-empty { font-size: 14px; color: var(--muted); padding: 13px 4px 0; white-space: nowrap; }
+.rail-empty { font-size: 14px; color: #66503f; padding: 13px 4px 0; white-space: nowrap; }
 .rail-ticket {
   position: relative; flex: 0 1 168px; min-width: 78px; height: 50px; margin-top: 0; display: flex; align-items: center; gap: 4px;
   padding: 3px 5px 8px 3px; text-align: left; color: var(--g-ink); background: #fffdf5; border: 2px solid var(--g-ink);
@@ -280,7 +301,7 @@
 .rail-dish.done { opacity: .45; }
 .rail-qty {
   position: absolute; right: -4px; bottom: -3px; padding: 0 3px; border: 1.5px solid var(--g-ink); border-radius: 999px;
-  background: var(--g-tomato); color: #fff; text-shadow: var(--g-text-outline-thin);
+  background: #c63a2d; color: #fff; text-shadow: var(--g-text-outline-thin);
   font-family: var(--g-font-display); font-weight: 800; font-size: 13px; line-height: 13px;
 }
 .rail-body { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; }
@@ -292,7 +313,7 @@
   border: 1.5px solid var(--g-ink); background: var(--g-orange);
 }
 .rail-tag {
-  padding: 1px 5px 0; border-radius: 999px; background: var(--g-tomato); color: #fff; text-shadow: var(--g-text-outline-thin);
+  padding: 1px 5px 0; border-radius: 999px; background: #c63a2d; color: #fff; text-shadow: var(--g-text-outline-thin);
   font-size: 13px; line-height: 14px;
 }
 /* chữ trạng thái chỉ để máy đọc màn hình (đủ chữ ở title) */

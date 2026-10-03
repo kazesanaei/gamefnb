@@ -6,6 +6,8 @@
    phần dưới khuất sau quầy. Hàng chờ nhỏ dần 100 / 85 / 70% (--qs do service.js ghi theo vị trí); khách chờ món nhỏ hơn,
    đứng ở đầu phải quầy với biển "Chờ món". Vòng kiên nhẫn (patience.js) nằm SAU hình, ôm quanh đầu (tâm đầu 48, 44,4;
    bán kính 34 theo khung hình, ngoài tóc). Hơi nước bốc trên đỉnh đầu khi kiên nhẫn thấp (.is-low).
+   Khách đang ở quầy lúc tab Quầy mở (panel đã có bán thân lớn của khách): thu thành thẻ tròn nhỏ .q-here (mặt + vòng kiên
+   nhẫn + mũi tên ↓), hàng chờ dồn sang trái; tab Bếp thì bán thân hiện lại (service.js gắn .is-away).
    Chiều cao: 102px (khung cao), 84px khi khung ≤ 760px — bằng dải phố cũ, panel Quầy / Bếp không hẹp đi.
    Hoạt ảnh chỉ transform / opacity, chạy MỘT lần theo sự kiện (service.js gắn / gỡ lớp); giảm chuyển động: chỉ mờ dần,
    hơi nước đứng yên. index.html gắn tệp này NGAY SAU game.css. Chế độ tập trung khi nấu (ẩn dải phố) vẫn ở game.css. */
@@ -16,6 +18,7 @@
   --st-counter: 22px;     /* mặt quầy */
   --qh: 88px;             /* hình khách ở quầy (100%) */
   --wh: 54px;             /* hình khách chờ món */
+  --hs: 50px;             /* thẻ tròn của khách đang ở quầy (tab Quầy) */
   flex: none; position: relative; height: var(--st-h); overflow: hidden; isolation: isolate;
   background:
     linear-gradient(180deg, rgba(58, 38, 24, .16), rgba(58, 38, 24, 0)) 0 var(--st-awn) / 100% 12px no-repeat,
@@ -45,7 +48,8 @@
   position: absolute; left: 6px; bottom: var(--st-counter); display: flex; align-items: flex-end; gap: 6px;
 }
 .street .queue-empty {
-  max-width: 150px; padding: 0 4px 6px; font-size: 13px; font-weight: 700; line-height: 1.25; color: var(--muted);
+  padding: 0 4px 8px; font-family: var(--g-font-display); font-size: 14px; font-weight: 700; line-height: 1.2; color: #66503f;
+  white-space: nowrap;
 }
 .q-cust, .w-cust { position: relative; flex: none; }
 .q-cust { --qs: 1; --fh: calc(var(--qh) * var(--qs)); }
@@ -75,10 +79,29 @@
   font-family: var(--g-font-display); font-weight: 800; font-size: 13px; line-height: 14px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;
 }
-.q-tag.is-here { background: var(--g-tomato); color: #fff; text-shadow: var(--g-text-outline-thin); }
+.q-tag.is-here { background: #c63a2d; color: #fff; text-shadow: var(--g-text-outline-thin); }
 /* M4: khách lấy đơn đặt trước của sự kiện ngày */
 .q-tag.is-order { background: #2f6fb0; color: #fff; text-shadow: var(--g-text-outline-thin); }
 .q-tag.is-stranger { background: var(--g-gold); }
+
+/* ---------- Khách đang ở quầy khi tab Quầy mở: thẻ tròn nhỏ ---------- */
+/* mặt tròn (people.js head) trong vòng kiên nhẫn, huy hiệu ↓ vàng chỉ xuống panel; ngồi trên mặt quầy như bán thân */
+.q-here { display: none; position: relative; z-index: 1; width: var(--hs); height: var(--hs); margin: 0 3px 4px; transform-origin: 50% 100%; }
+.q-cust.is-away > .st-fig { display: none; }
+.q-cust.is-away > .q-here, .q-here.st-ghost { display: block; }
+.q-cust.is-away.at-counter::before { left: -4px; right: -4px; height: 100%; }
+.q-here .ring { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.q-here-face {
+  position: absolute; inset: 15%; border-radius: 50%; overflow: hidden; background: var(--g-paper);
+  box-shadow: 0 0 0 1.5px rgba(58, 38, 24, .35);
+}
+.q-here-face svg { display: block; width: 100%; height: 100%; }
+.q-here-arrow { position: absolute; right: -5px; bottom: -3px; z-index: 2; width: 20px; height: 20px; }
+.q-here-arrow svg { display: block; width: 100%; height: 100%; }
+.q-here .steam i { top: -6%; }
+.is-low > .q-here .steam { display: block; }
+.q-here.is-enter { animation: st-enter .52s var(--g-ease-out) both; }
+.q-here.is-enter-soft { animation: st-fade .3s linear both; }
 
 /* ---------- Khách chờ món (đầu phải quầy) ---------- */
 .street .waiting { position: absolute; right: 6px; bottom: var(--st-counter); display: none; }
@@ -143,5 +166,5 @@ html.reduce-motion .steam i { animation: none; opacity: .85; }
 
 /* Khung thấp (≤ 760px, vd 360×600, 320×568, iPhone có thanh Safari): dải phố 84px như cũ */
 @media (max-height: 760px) {
-  .street { --st-h: 84px; --st-awn: 14px; --st-counter: 18px; --qh: 72px; --wh: 44px; }
+  .street { --st-h: 84px; --st-awn: 14px; --st-counter: 18px; --qh: 72px; --wh: 44px; --hs: 44px; }
 }

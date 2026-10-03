@@ -1,17 +1,21 @@
 // Quầy, khâu 1 (Order) — M5 Đợt 2, gói Q-A: ráp các thành phần gọi món đã duyệt ở Phòng mẫu vào quầy thật.
 //   - Khách ở quầy (mọi khâu): khách bán thân lớn đứng sau mặt quầy + bong bóng (components/order-bubble.js).
-//     Khâu Order: ngày 1–2 bong bóng có HÌNH MÓN, huy hiệu ×n, ghi chú bằng hình (gợi ý như dải hình món cũ); từ ngày 3
-//     bong bóng chữ nguyên văn lời khách (luật cũ bỏ dải hình món từ ngày 3 — không đổi độ khó). Khâu sau: câu mới nhất
-//     của khách. Lời Dì Sáu cho khách hướng dẫn (ngày 1): mặt Dì Sáu + bong bóng giấy (tutor-hint).
+//     Khâu Order: ngày 1–2 bong bóng có HÌNH MÓN, huy hiệu ×n, ghi chú bằng hình (gợi ý như dải hình món cũ) kèm câu gọi
+//     món (bỏ lời chào của khách quen đứng đầu); từ ngày 3 bong bóng chữ nguyên văn lời khách (luật cũ bỏ dải hình món từ
+//     ngày 3 — không đổi độ khó). Phiếu đã có dòng: khách thu gọn thành DẢI DÍNH đầu panel (.is-strip, position: sticky;
+//     panel thấp .co-fit-low: dải gọn nhưng không dính) để cuộn xuống phiếu vẫn so được với lời khách. Khâu sau: câu mới
+//     nhất của khách. Lời Dì Sáu (ngày 1, tutor-hint) do counter.js dựng và đặt chỗ: dưới bong bóng khi phiếu trống, còn
+//     lại dán trên hàng nút dính đáy.
 //   - Khâu Order: bảng thực đơn gỗ / phấn (menu-board.js), phiếu order giấy (order-pad.js) và hàng nút dính đáy
-//     "Đọc lại đơn" / "Chốt order" (.act-bar), bảng chọn số lượng + ghi chú (order-sheet.js, gắn qua portal ở lớp nổi gốc).
+//     "Đọc lại đơn" / "Chốt order" (.act-bar), bảng chọn số lượng + ghi chú (order-sheet.js, gắn qua portal ở lớp nổi gốc;
+//     đầu bảng có dải "Khách nói" nhắc lại lời khách vì bảng che bong bóng).
 // Các thành phần được giữ BỀN theo khách (WeakMap theo ctx của panel): counter.js vẽ lại panel mỗi khi stateSig đổi, nhưng
 // khách / khâu Order / bảng chọn chỉ update() tại chỗ — không dựng lại nút, không phát lại hoạt ảnh. Hoạt ảnh chỉ kích theo
 // SỰ KIỆN (thao tác): khách tới (enter), dòng mới "viết ra" (ctx.ui.lastAdded), đọc lại (sáng lần lượt từng dòng, khách
 // gật / đổi mặt), chốt order (nhân bản phiếu → con dấu ĐÃ CHỐT → bay lên dây phiếu; keepOnDestroy vì panel vẽ lại ngay).
 // Mọi hàm nhận ctx chung của panel Quầy (counter.js) — luôn đọc ctx.ui mỗi lần dùng (ui làm mới khi đổi khách).
 // Import trong Node được: không chạm DOM ở cấp module.
-import { h, svgBox } from '../dom.js'
+import { h } from '../dom.js'
 import { DI_SAU } from '../art.js'
 import { DI_SAU_FACES, head } from '../art/people.js'
 import { addLine, updateLine, removeLine, readback, confirmOrder } from '../../core/order.js'
@@ -19,7 +23,7 @@ import { orderableRecipes } from '../../core/customer.js'
 import { rareLeft } from '../../core/rare.js'
 import { moodFor } from '../components/patience.js'
 import { isReduced } from '../motion.js'
-import { createOrderBubble } from '../components/order-bubble.js'
+import { createOrderBubble, orderSay } from '../components/order-bubble.js'
 import { createMenuBoard } from '../components/menu-board.js'
 import { createOrderPad, ORDER_ERROR_LABELS as PAD_ERROR_LABELS } from '../components/order-pad.js'
 import { createOrderSheet, QTY_MAX } from '../components/order-sheet.js'
@@ -60,13 +64,24 @@ export function diSauFace(mood = 'vui') {
   return (DI_SAU_FACES && DI_SAU_FACES[mood]) || DI_SAU[mood] || DI_SAU.vui
 }
 
+// Lời chào của khách quen đứng đầu câu gọi món (bỏ đi trong bong bóng hình món để câu có tên món hiện ra).
+function greetingsOf(app, customer) {
+  const reg = customer.regularId && app.data.REGULARS ? app.data.REGULARS[customer.regularId] : null
+  return reg ? [reg.greeting, reg.returnGreeting].filter(Boolean) : []
+}
+
+/** Kiểu bong bóng khi khách gọi món: 'icons' (ngày 1–2, có hình món) | 'text'. */
+export function orderMode(ctx) {
+  const sh = ctx.sh()
+  return (sh ? sh.day : 1) <= HINT_DAYS ? 'icons' : 'text'
+}
+
 // Dữ liệu bong bóng khách theo khâu (thuần trên ctx/state).
 function custData(ctx, customer, c) {
   const { app, R } = ctx
   const persona = app.data.PERSONAS[customer.persona]
   const order = c.stage === 'order'
-  const sh = ctx.sh()
-  const day = sh ? sh.day : 1
+  const mode = order ? orderMode(ctx) : 'talk'
   const talk = ctx.ui.talk || []
   let speech = customer.speech
   let shown = talk
@@ -85,34 +100,56 @@ function custData(ctx, customer, c) {
     name: customer.name,
     regular: !!customer.regularId,
     tag: customer.stranger ? 'Khách lạ' : ((persona && persona.name) || ''),
-    mode: order ? (day <= HINT_DAYS ? 'icons' : 'text') : 'talk',
+    mode,
     request: order ? customer.request : [],
     speech,
+    say: mode === 'icons' ? orderSay(customer.speech, greetingsOf(app, customer)) : undefined,
     recipes: R,
     talk: shown
   }
 }
 
-// Khách ở quầy + lời Dì Sáu (ngày 1). Bền theo id khách.
+// Khách ở quầy. Bền theo id khách. Khâu Order mà phiếu đã có dòng: thu gọn thành dải đầu panel (.is-strip; dính khi panel
+// đủ cao).
 function createCustomerView(ctx, customer, c) {
   const bubble = createOrderBubble(custData(ctx, customer, c), optsOf(ctx))
-  const text = h('span', { class: 'co-tutor-text' })
-  const tutor = h('div', { class: 'co-tutor', testid: 'tutor-hint', role: 'note', hidden: true },
-    svgBox(diSauFace('vui'), 'co-tutor-face'), text)
-  const el = h('div', { class: 'cust-wrap co-cust-area' }, bubble.el, tutor)
-  let hintText = ''
+  const el = h('div', { class: 'cust-wrap co-cust-area' }, bubble.el)
   return {
     id: customer.id,
     el,
     bubble,
     update(cust, c) {
       bubble.update(custData(ctx, cust, c))
-      const hint = cust.tutorial ? (ctx.tutorialHint(c) || '') : ''
-      if (hint !== hintText) { hintText = hint; text.textContent = hint }
-      tutor.hidden = !hint
+      el.classList.toggle('is-strip', isStrip(c))
     },
     destroy() { bubble.destroy(); el.remove() }
   }
+}
+
+// Dải khách gọn: đang ở khâu Order và phiếu đã có dòng.
+const isStrip = c => !!(c && c.stage === 'order' && c.draft && c.draft.length)
+
+/** Khung khách đang gắn (div.cust-wrap) — counter.js đặt lời Dì Sáu ngày 1 vào đây khi phiếu còn trống; null nếu chưa có. */
+export function customerSlot(ctx) {
+  const v = views(ctx)
+  return v.cust ? v.cust.el : null
+}
+
+/**
+ * Số px đầu vùng cuộn đang bị dải khách dính che (0 nếu không có dải). Các hàm cuộn "cho lọt màn" chừa phần này để không
+ * đẩy dòng phiếu / nút được tô sáng xuống dưới dải.
+ */
+export function stripInset(ctx) {
+  const v = views(ctx)
+  const s = v.cust && v.cust.el
+  if (!s || !s.isConnected || !s.classList.contains('is-strip') || typeof s.getBoundingClientRect !== 'function') return 0
+  // panel thấp: dải không dính (css) → không che gì khi cuộn
+  if (typeof getComputedStyle === 'function' && getComputedStyle(s).position !== 'sticky') return 0
+  const sc = ctx.root
+  if (!sc || typeof sc.getBoundingClientRect !== 'function') return 0
+  const box = sc.getBoundingClientRect()
+  const r = s.getBoundingClientRect()
+  return r.height ? Math.max(0, Math.round(r.bottom - box.top)) : 0
 }
 
 /**
@@ -156,6 +193,7 @@ function createOrderView(ctx, customer) {
   })
   const pad = createOrderPad({ draft: [], recipes: ctx.R }, {
     ...o,
+    topInset: () => stripInset(ctx),
     labels: { readFirst: (S.messages && S.messages.readbackFirst) || READ_FIRST },
     onEdit: i => editLine(ctx, i),
     onRemove: i => {
@@ -309,7 +347,7 @@ export function doReadback(ctx, _customer) {
   setTimeout(finish, 120 * c.draft.length + 900)
 }
 
-// Cuộn panel để node nằm trọn trên hàng nút dính đáy (.act-bar), không đẩy đầu node khuất mép trên.
+// Cuộn panel để node nằm trọn trên hàng nút dính đáy (.act-bar), không đẩy đầu node khuất mép trên (dưới dải khách dính).
 function revealInPanel(ctx, node, smooth) {
   const sc = ctx.root
   if (!node || !node.isConnected || !sc || typeof sc.getBoundingClientRect !== 'function') return
@@ -319,7 +357,7 @@ function revealInPanel(ctx, node, smooth) {
   const r = node.getBoundingClientRect()
   let d = r.bottom - (limit - 6)
   if (d <= 0) return
-  d = Math.min(d, Math.max(0, r.top - box.top - 6))
+  d = Math.min(d, Math.max(0, r.top - box.top - stripInset(ctx) - 6))
   const top = sc.scrollTop + d
   if (smooth && !isReduced(ctx.app) && typeof sc.scrollTo === 'function') sc.scrollTo({ top, behavior: 'smooth' })
   else sc.scrollTop = top
@@ -446,10 +484,11 @@ export function paintSheet(ctx, c) {
   const B = S.buttons || {}
   const L = S.labels || {}
   const comp = createOrderSheet({
-    recipe, qty: sheet.qty, notes: (sheet.notes || []).slice(), editIndex: sheet.editIndex, qtyMax: QTY_MAX, rareMax
+    recipe, qty: sheet.qty, notes: (sheet.notes || []).slice(), editIndex: sheet.editIndex, qtyMax: QTY_MAX, rareMax,
+    heard: heardOf(ctx, c)
   }, {
     ...optsOf(ctx),
-    labels: { add: B.addLine || 'Thêm vào phiếu', update: B.updateLine || 'Sửa dòng', remove: B.removeLine || 'Bỏ dòng', qty: L.qty || 'Số lượng', notes: L.notes || 'Ghi chú', close: 'Đóng' },
+    labels: { add: B.addLine || 'Thêm vào phiếu', update: B.updateLine || 'Sửa dòng', remove: B.removeLine || 'Bỏ dòng', qty: L.qty || 'Số lượng', notes: L.notes || 'Ghi chú', close: 'Đóng', heard: (customerName(ctx, c) || 'Khách') + ' nói' },
     onChange: st => { sheet.qty = st.qty; sheet.notes = st.notes },
     onSubmit: (line, { from } = {}) => submitSheet(ctx, line, from),
     onRemove: () => {
@@ -471,6 +510,21 @@ export function paintSheet(ctx, c) {
   v.sheet = { ref: sheet, comp }
   ctx.sheetPortal.set(comp.el)
   return comp.el
+}
+
+// Lời khách nhắc lại ở đầu bảng chọn (bảng che bong bóng): giống hệt bong bóng — ngày 1–2 hình món + câu gọi món, từ ngày 3
+// chỉ nguyên văn lời khách (không lộ yêu cầu đã chuẩn hóa).
+function heardOf(ctx, c) {
+  const customer = ctx.customerOf(c)
+  if (!customer) return null
+  const mode = orderMode(ctx)
+  const text = mode === 'icons' ? orderSay(customer.speech, greetingsOf(ctx.app, customer)) : String(customer.speech || '')
+  return { mode, text, lines: mode === 'icons' ? customer.request : [], recipes: ctx.R }
+}
+
+function customerName(ctx, c) {
+  const customer = ctx.customerOf(c)
+  return customer && customer.name ? String(customer.name) : ''
 }
 
 /** Tương thích API bước 0: bảng chọn → lớp phủ (đã gắn vào portal). */

@@ -140,6 +140,20 @@ export function bubbleLine(speech, max = SAY_MAX) {
   return tidy(comma.length >= max * 0.6 ? comma : out)
 }
 
+/**
+ * Phần gọi món trong lời khách: bỏ lời chào đứng đầu câu (vd lời chào của khách quen "Cô Thu nè con! Hôm nay xe mở hàng,
+ * cô ủng hộ liền.") để câu có tên món hiện ra trong bong bóng; không khớp lời chào nào (hoặc bỏ xong không còn gì) thì giữ
+ * nguyên câu. Thuần.
+ */
+export function orderSay(speech, prefixes = []) {
+  const s = String(speech || '').replace(/\s+/g, ' ').trim()
+  for (const p0 of Array.isArray(prefixes) ? prefixes : [prefixes]) {
+    const p = String(p0 || '').replace(/\s+/g, ' ').trim()
+    if (p && s.length > p.length && s.startsWith(p)) return s.slice(p.length).trim()
+  }
+  return s
+}
+
 /** Kiểu bong bóng hợp lệ: 'icons' | 'text' | 'talk' (lạ → 'icons'). */
 export function bubbleMode(mode) {
   return mode === 'text' || mode === 'talk' ? mode : 'icons'
@@ -168,7 +182,7 @@ const sigOf = d => JSON.stringify([d.persona, d.gender, d.who, d.mood, d.name, d
  *   persona, mood ('vui'|'binh_thuong'|'buc'|'gian'), gender, who (id khách quen / khách lạ: dáng riêng), name,
  *   regular (bool), tag (vd tên kiểu khách), mode ('icons' | 'text' | 'talk', xem đầu tệp),
  *   request: [{ recipeId, qty, notes }], speech (câu khách nói; kiểu 'icons' chỉ hiện bản ngắn bubbleLine(speech)),
- *   say (câu ngắn tự chọn thay cho bản rút gọn), recipes,
+ *   say (câu tự chọn thay cho bản rút gọn, vd orderSay(speech): phần gọi món, css cắt tối đa 2 dòng), recipes,
  *   talk: [{ who: 'ban' | 'khach', text }] (≤ 2 lời gần nhất, lời mới nảy vào), showSpeech (mặc định true)
  * }
  * opts: { vfx, sound, reduced }

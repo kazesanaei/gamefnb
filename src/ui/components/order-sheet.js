@@ -3,6 +3,8 @@
 // nút dính đáy (chừa vùng an toàn) gồm "Thêm vào phiếu" và "Bỏ dòng" (khi sửa dòng).
 // Giữ testid cũ: order-sheet, sheet-close, qty-row, qty-minus, qty-value (CHỈ chứa con số), qty-plus, note-block,
 // note-chip-<id> (aria-pressed), add-line, remove-line.
+// Dải "Khách nói" (data.heard, tùy chọn) ở đầu bảng: bảng che bong bóng của khách nên lời khách được nhắc lại ngay trên
+// bảng — kiểu 'text' ghi nguyên văn (tối đa 3 dòng), kiểu 'icons' hiện hình món, ×n và ghi chú bằng hình kèm câu gọi món.
 // Bảng tự giữ số lượng / ghi chú đang chọn và báo ra ngoài qua onChange; update(data) đồng bộ lại khi bên gọi vẽ lại
 // (cùng dữ liệu thì không đổi gì, không phát lại hiệu ứng). Hiệu ứng chỉ theo thao tác: phần mới nảy vào, chip bật nảy.
 // Thuần ở cấp module (import trong Node được).
@@ -59,14 +61,27 @@ export function sheetModel({ recipe, qty = 1, notes = [], editIndex = null, qtyM
   }
 }
 
-const LABELS = Object.freeze({ add: 'Thêm vào phiếu', update: 'Sửa dòng', remove: 'Bỏ dòng', qty: 'Số lượng', notes: 'Ghi chú', close: 'Đóng' })
+const LABELS = Object.freeze({ add: 'Thêm vào phiếu', update: 'Sửa dòng', remove: 'Bỏ dòng', qty: 'Số lượng', notes: 'Ghi chú', close: 'Đóng', heard: 'Khách nói' })
+
+/** Dữ liệu dải "Khách nói" gọn để vẽ: null nếu không có gì để nhắc. Thuần. */
+export function heardModel(heard) {
+  if (!heard || typeof heard !== 'object') return null
+  const mode = heard.mode === 'icons' ? 'icons' : 'text'
+  const text = String(heard.text || '').replace(/\s+/g, ' ').trim()
+  const lines = mode === 'icons' && Array.isArray(heard.lines)
+    ? heard.lines.filter(l => l && l.recipeId).map(l => ({ recipeId: String(l.recipeId), qty: Math.max(1, Math.floor(Number(l.qty) || 1)), notes: Array.isArray(l.notes) ? l.notes.map(String) : [] }))
+    : []
+  if (!text && !lines.length) return null
+  return { mode, text, lines }
+}
 
 /**
  * createOrderSheet(data, opts) → { el, sheetEl, update(data), destroy(), leave() → Promise, heroEl(), state() }
- * data: { recipe, qty, notes, editIndex, qtyMax, rareMax }
+ * data: { recipe, qty, notes, editIndex, qtyMax, rareMax,
+ *   heard: { mode: 'icons' | 'text', text (lời khách), lines: [{ recipeId, qty, notes }] (kiểu 'icons'), recipes } (tùy chọn) }
  * opts: {
  *   onChange({ qty, notes }), onSubmit({ recipeId, qty, notes }, { from: phần tử hình món để bay }),
- *   onRemove(), onClose(), vfx, sound, reduced, labels: { add, update, remove, qty, notes, close }
+ *   onRemove(), onClose(), vfx, sound, reduced, labels: { add, update, remove, qty, notes, close, heard }
  * }
  * el là lớp phủ (co-sheet-layer, chạm nền tối = đóng); gắn vào lớp nổi gốc của app (app.overlay), không gắn trong
  * vùng cuộn (iOS cắt lớp phủ theo khung vùng cuộn).
@@ -100,8 +115,10 @@ export function createOrderSheet(data = {}, opts = {}) {
   const noteBlock = h('div', { class: 'co-notes', testid: 'note-block' }, h('div', { class: 'co-notes-title' }, L.notes), chips)
   const bodyEl = h('div', { class: 'co-sheet-body' }, stage, noteBlock)
   const actions = h('div', { class: 'co-sheet-actions' })
+  const heardEl = h('div', { class: 'co-heard', role: 'note', hidden: true })
   const sheet = h('div', { class: 'co-sheet', testid: 'order-sheet', role: 'dialog', 'aria-modal': 'true' },
     h('div', { class: 'co-sheet-grip', 'aria-hidden': 'true' }),
+    heardEl,
     h('div', { class: 'co-sheet-head' }, h('div', { class: 'co-sheet-headtext' }, title, unitEl), close),
     bodyEl, actions)
   const el = h('div', { class: 'co-sheet-layer is-enter', onclick: e => { if (e.target === e.currentTarget) doClose() } }, sheet)
@@ -112,6 +129,7 @@ export function createOrderSheet(data = {}, opts = {}) {
   let chipRecipe = null
   let actionsKey = ''
   let copies = 0
+  let heardSig = ''
 
   function emit() { if (typeof opts.onChange === 'function') opts.onChange({ qty: st.qty, notes: st.notes.slice() }) }
 
@@ -196,6 +214,37 @@ export function createOrderSheet(data = {}, opts = {}) {
     noteBlock.hidden = !model.notes.length
   }
 
+  // Dải "Khách nói": vẽ lại chỉ khi lời / món đổi (cùng dữ liệu thì không đụng tới).
+  function paintHeard() {
+    const m = heardModel(cur.heard)
+    const k = JSON.stringify(m)
+    if (k === heardSig) return
+    heardSig = k
+    heardEl.textContent = ''
+    heardEl.hidden = !m
+    if (!m) { heardEl.removeAttribute('aria-label'); return }
+    const R = (cur.heard && cur.heard.recipes) || {}
+    heardEl.dataset.mode = m.mode
+    heardEl.setAttribute('aria-label', L.heard + ': ' + (m.text || m.lines.map(l => `${l.qty} ${R[l.recipeId] ? R[l.recipeId].name : l.recipeId}`).join(', ')))
+    // kiểu chữ: nhãn là viên thuốc đứng đầu đoạn lời khách (chữ chảy quanh, đỡ tốn một dòng); kiểu hình: nhãn + hàng món
+    const label = h('span', { class: 'co-heard-label', 'aria-hidden': 'true' }, L.heard)
+    if (m.mode === 'text') {
+      heardEl.appendChild(h('p', { class: 'co-heard-text', 'aria-hidden': 'true' }, label, ' ', `“${m.text}”`))
+      return
+    }
+    heardEl.appendChild(label)
+    if (m.lines.length) {
+      heardEl.appendChild(h('div', { class: 'co-heard-dishes', 'aria-hidden': 'true' }, m.lines.map(l => {
+        const r = R[l.recipeId]
+        return h('span', { class: 'co-heard-dish' },
+          h('span', { class: 'co-heard-art' }, dishArt(r || { id: l.recipeId })),
+          l.qty > 1 ? h('b', { class: 'co-heard-qty' }, '×' + l.qty) : null,
+          l.notes.length ? h('span', { class: 'co-heard-notes' }, l.notes.map(n => noteIcon(n, { recipe: r, decorative: true }))) : null)
+      })))
+    }
+    if (m.text) heardEl.appendChild(h('p', { class: 'co-heard-text', 'aria-hidden': 'true' }, `“${m.text}”`))
+  }
+
   function paintActions() {
     const key = model.editing ? 'edit' : 'add'
     if (key !== actionsKey) {
@@ -229,6 +278,7 @@ export function createOrderSheet(data = {}, opts = {}) {
     rareNote.hidden = model.rareMax === null
     paintChips(animate, poked)
     paintActions()
+    paintHeard()
   }
 
   function update(d = {}) {

@@ -13,7 +13,7 @@
 // thanh tab Quầy / Bếp có biểu tượng và huy hiệu số.
 import { h, svgBox } from '../dom.js'
 import { DI_SAU } from '../art.js'
-import { bust } from '../art/people.js'
+import { bust, head } from '../art/people.js'
 import { SCENE, SCENE_ICONS, TAB_ICONS } from '../art/scene.js'
 import { isReduced, EASE } from '../motion.js'
 import { incidentDue, openIncident, resolveIncident } from '../../core/incidents.js'
@@ -54,6 +54,9 @@ const ANGRY_CLOUD = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 28"
   '<path d="M9 22C4 22 3 15 8 14C8 8 15 6 18 10C20 5 29 5 30 11C36 10 38 18 33 21C31 23 28 22 27 22Z" fill="#6f6a78"/>' +
   '<path d="M12 13.5C13 11 16 10.5 17.5 12" fill="none" stroke="#a49fae" stroke-width="2"/>' +
   '<path d="M16 25L19 21L21 24L24 20" fill="none" stroke="#e8483a" stroke-width="2.2"/></g></svg>'
+// Huy hiệu mũi tên ↓ trên thẻ tròn của khách đang ở quầy (chỉ xuống panel Quầy, nơi có bán thân lớn của khách).
+const HERE_ARROW = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.6" fill="#f7b928" stroke="#3a2618" stroke-width="2.2"/>' +
+  '<path d="M10 5.4V13.6M6.4 10.2L10 13.8L13.6 10.2" fill="none" stroke="#3a2618" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 
 /** Kiểu rời đi của khách (hoạt ảnh một lần): vui (đã nhận món), giận (hết kiên nhẫn / bị từ chối QR thật), lặng lẽ (khác). */
 export function exitKindOf(c) {
@@ -148,6 +151,10 @@ export default {
     // vừa thì chờ thông báo trước tắt (toast.js). Chế độ tập trung: thanh 4 khâu ẩn nhưng vẫn nằm trong bố cục (cao 0) ngay
     // dưới dây phiếu (css/game.css), nên mốc này là mép trên vùng nấu. Không bao giờ trả số ≤ 0 (toast.js coi là "không
     // giới hạn").
+    // Vòng sửa Q-D: trong màn Ca bán chồng thông báo nằm thấp hơn một chút (css/game.css .overlay-root.is-service), dưới thẻ
+    // "+tiền thu trong ca" treo dưới ví HUD — thẻ đếm lên đúng lúc thông báo hiện (thối đúng, kẹp phiếu), không bị che.
+    // Giới hạn chiều cao bên dưới đo theo vị trí thật của chồng nên tự co theo.
+    if (app.overlay && app.overlay.classList) app.overlay.classList.add('is-service')
     if (typeof app.toastLimit === 'function') {
       app.toastLimit(() => {
         const stack = app.overlay && app.overlay.querySelector('.toast-stack')
@@ -248,6 +255,10 @@ export default {
     // ảnh. Hoạt ảnh MỘT lần theo id (enteredIds / leftIds): vào hàng (trượt từ phải, nảy), lên chỗ (FLIP), sang chỗ chờ món
     // (bản sao bay), rời đi (bản sao trong lớp .st-fx: vui thì nhảy, giận thì rung + mây giận, lặng lẽ thì mờ). Hoạt ảnh chỉ
     // kích khi danh sách khách đổi (sự kiện của ca), không kích khi vẽ lại; giảm chuyển động: chỉ mờ dần, mây đứng yên.
+    // Vòng sửa Q-D: khách ĐANG Ở QUẦY lúc tab Quầy mở thì panel Quầy đã vẽ bán thân lớn của khách đó — ở dải phố khách thu
+    // thành THẺ TRÒN nhỏ (.is-away: mặt tròn + vòng kiên nhẫn + mũi tên ↓ chỉ xuống panel, nhãn "Ở quầy"), hàng chờ dồn sang
+    // trái; sang tab Bếp (panel Quầy ẩn) thì bán thân hiện lại ở dải phố. Đổi qua lại theo SỰ KIỆN đổi tab / đổi khách ở quầy
+    // (thẻ nảy ra, bán thân lớn dần từ chỗ thẻ), vẽ lại không phát lại.
     let queueSig = ''
     const custNodes = new Map()   // 'q:' | 'w:' + id khách → nút đang hiện
     const enteredIds = new Set()
@@ -280,20 +291,42 @@ export default {
       const fig = h('div', { class: 'st-fig' }, h('span', { class: 'st-ring' }, ring.el), img, createSteam(),
         // M4: khách lạ (quà quê là nguyên liệu hiếm) có dấu ★ riêng ở hàng chờ
         kind === 'q' && c.stranger ? h('span', { class: 'q-stranger', testid: 'stranger-badge', title: 'Khách lạ', 'aria-label': 'Khách lạ' }, '★') : null)
+      // thẻ tròn khi khách đang ở quầy và tab Quầy mở (ẩn bằng CSS cho tới khi có lớp .is-away)
+      let here = null, hereRing = null, hereImg = null
+      if (kind === 'q') {
+        hereRing = createRing(48, 5)
+        hereImg = h('span', { class: 'q-here-face' })
+        here = h('span', { class: 'q-here', 'aria-hidden': 'true' }, hereRing.el, hereImg,
+          h('span', { class: 'q-here-arrow', html: HERE_ARROW }), createSteam())
+      }
       const tag = kind === 'q' ? h('div', { class: 'q-tag' }) : null
-      const el = h('div', { class: kind === 'q' ? 'q-cust' : 'w-cust', testid: (kind === 'q' ? 'queue-' : 'waiting-') + c.id }, fig, tag)
-      return { id: c.id, kind, el, fig, img, ring, tag, mood: '', tagKey: '', low: null, pos: -1 }
+      const el = h('div', { class: kind === 'q' ? 'q-cust' : 'w-cust', testid: (kind === 'q' ? 'queue-' : 'waiting-') + c.id }, fig, here, tag)
+      return { id: c.id, kind, el, fig, img, ring, here, hereRing, hereImg, tag, mood: '', headMood: '', tagKey: '', low: null, pos: -1, away: null, swap: false }
     }
 
-    function paintCust(rec, sh, c, idx, counterId) {
+    const looksOf = c => {
+      const o = { gender: c.gender || undefined }
+      const who = whoOf(c)
+      if (who) o.who = who
+      return o
+    }
+    function paintCust(rec, sh, c, idx, counterId, awayOn) {
       const v = valueOf(sh, c, rec.kind)
       const mood = c.tutorial ? 'vui' : moodFor(v)
       if (mood !== rec.mood) {
         rec.mood = mood
-        const o = { gender: c.gender || undefined }
-        const who = whoOf(c)
-        if (who) o.who = who
-        rec.img.innerHTML = bust(c.persona, mood, o)
+        rec.img.innerHTML = bust(c.persona, mood, looksOf(c))
+      }
+      const away = rec.kind === 'q' && !!awayOn && c.id === counterId
+      if (away !== rec.away) {
+        // đổi bán thân ↔ thẻ tròn (không tính lần vẽ đầu của nút): hoạt ảnh một lần ở layoutStreet
+        if (rec.away !== null) rec.swap = true
+        rec.away = away
+        rec.el.classList.toggle('is-away', away)
+      }
+      if (away && mood !== rec.headMood) {
+        rec.headMood = mood
+        rec.hereImg.innerHTML = head(c.persona, mood, looksOf(c))
       }
       const low = !c.tutorial && v < LOW_PATIENCE
       if (low !== rec.low) { rec.low = low; rec.el.classList.toggle('is-low', low) }
@@ -320,9 +353,11 @@ export default {
       if (rec.el.title !== title) rec.el.title = title
     }
 
+    // hình đang hiện của khách: bán thân, hoặc thẻ tròn khi khách đang ở quầy (tab Quầy)
+    const shownOf = rec => (rec.away && rec.here ? rec.here : rec.fig)
     // bản sao của hình khách trong lớp .st-fx (tọa độ của dải phố), bỏ testid để e2e không bắt nhầm
     function ghostOf(rec, r0, sr) {
-      const g = rec.fig.cloneNode(true)
+      const g = shownOf(rec).cloneNode(true)
       g.classList.remove('is-enter', 'is-enter-soft')   // bản sao không chạy lại hoạt ảnh vào hàng
       g.classList.add('st-ghost')
       g.classList.toggle('is-low', rec.el.classList.contains('is-low'))
@@ -397,19 +432,28 @@ export default {
       } catch { /* bỏ qua */ }
     }
     function playEnter(rec) {
-      rec.fig.classList.add('is-enter')
-      const off = () => rec.fig.classList.remove('is-enter')
-      rec.fig.addEventListener('animationend', off, { once: true })
+      const node = shownOf(rec)
+      node.classList.add('is-enter')
+      const off = () => node.classList.remove('is-enter')
+      node.addEventListener('animationend', off, { once: true })
       later(off, 900)
     }
+    // bán thân ↔ thẻ tròn (đổi tab, khách mới lên quầy): thẻ nảy ra; bán thân lớn dần từ chỗ thẻ cũ
+    function playSwap(rec, r0) {
+      try {
+        if (rec.away) {
+          rec.here.animate([{ transform: 'scale(.4)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 300, easing: EASE.outBack })
+        } else if (r0 && r0.width) flip(rec.fig, r0, rec.fig.getBoundingClientRect())
+      } catch { /* bỏ qua */ }
+    }
 
-    function layoutStreet(sh, inQueue, waiting, counterId) {
+    function layoutStreet(sh, inQueue, waiting, counterId, awayOn) {
       const shown = street.isConnected && street.offsetParent !== null && !(typeof document !== 'undefined' && document.visibilityState === 'hidden')
       const animate = shown && !streetFirst
       const reduced = isReduced(app)
       const sr = animate ? street.getBoundingClientRect() : null
       const before = new Map()
-      if (animate) for (const [k, rec] of custNodes) before.set(k, rec.fig.getBoundingClientRect())
+      if (animate) for (const [k, rec] of custNodes) before.set(k, shownOf(rec).getBoundingClientRect())
       const wantQ = new Map(inQueue.map((c, i) => ['q:' + c.id, i]))
       const waitShown = waiting.slice(0, WAIT_SHOW_MAX)
       const wantW = new Map(waitShown.map((c, i) => ['w:' + c.id, i]))
@@ -441,14 +485,14 @@ export default {
         const k = 'q:' + c.id
         let rec = custNodes.get(k)
         if (!rec) { rec = makeCust(c, 'q'); custNodes.set(k, rec); fresh.push(rec) }
-        paintCust(rec, sh, c, i, counterId)
+        paintCust(rec, sh, c, i, counterId, awayOn)
         return rec
       })
       const wRecs = waitShown.map((c, i) => {
         const k = 'w:' + c.id
         let rec = custNodes.get(k)
         if (!rec) { rec = makeCust(c, 'w'); custNodes.set(k, rec); fresh.push(rec) }
-        paintCust(rec, sh, c, i, counterId)
+        paintCust(rec, sh, c, i, counterId, false)
         return rec
       })
       if (queueEmpty.parentNode && inQueue.length) queueEmpty.remove()
@@ -469,17 +513,20 @@ export default {
           const r1 = rec.fig.getBoundingClientRect()
           if (r1.width) playTransfer(tr[0], tr[1], r1, sr, rec.el)
         } else if (reduced) {
-          rec.fig.classList.add('is-enter-soft')
-          later(() => rec.fig.classList.remove('is-enter-soft'), 400)
+          const node = shownOf(rec)
+          node.classList.add('is-enter-soft')
+          later(() => node.classList.remove('is-enter-soft'), 400)
         } else playEnter(rec)
       }
       if (animate && !reduced) {
         for (const rec of [...qRecs, ...wRecs]) {
           if (fresh.includes(rec)) continue
           const r0 = before.get(rec.kind + ':' + rec.id)
-          if (r0 && r0.width) flip(rec.fig, r0, rec.fig.getBoundingClientRect())
+          if (rec.swap) playSwap(rec, r0)
+          else if (!rec.away && r0 && r0.width) flip(rec.fig, r0, rec.fig.getBoundingClientRect())
         }
       }
+      for (const rec of qRecs) rec.swap = false
       streetFirst = false
     }
 
@@ -492,15 +539,20 @@ export default {
         const v = valueOf(sh, c, kind)
         return [c.id, c.tutorial ? 'vui' : moodFor(v), !c.tutorial && v < LOW_PATIENCE]
       }
-      const key = JSON.stringify([inQueue.map(c => [...sigOf(c, 'q'), c.id === counterId, !!c.bigOrder, c.stranger || '']),
+      // tab Quầy đang mở: khách ở quầy thu thành thẻ tròn (panel đã có bán thân lớn của khách)
+      const awayOn = active === 'counter'
+      const key = JSON.stringify([awayOn, inQueue.map(c => [...sigOf(c, 'q'), c.id === counterId, !!c.bigOrder, c.stranger || '']),
         waiting.map(c => sigOf(c, 'w'))])
       if (key !== queueSig) {
         queueSig = key
-        layoutStreet(sh, inQueue, waiting, counterId)
+        layoutStreet(sh, inQueue, waiting, counterId, awayOn)
       }
       for (const rec of custNodes.values()) {
         const c = sh.customers[rec.id]
-        if (c) rec.ring.set(valueOf(sh, c, rec.kind))
+        if (!c) continue
+        const v = valueOf(sh, c, rec.kind)
+        if (rec.away) rec.hereRing.set(v)
+        else rec.ring.set(v)
       }
     }
 
@@ -570,7 +622,7 @@ export default {
       if (reason === 'hang_day') app.toast(`${c.name} thấy hàng dài quá nên đi ngang.`, { kind: 'bad' })
       else if (reason === 'het_kien_nhan') app.toast(`${c.name} chờ lâu quá nên bỏ về.`, { kind: 'bad' })
     }))
-    offs.push(app.bus.on('qr.arrived', () => app.sound('coin')))
+    // Tiền QR về: âm "ting" do panel Quầy (counter-qr.js) phát theo bảng 6.4 — màn không phát thêm âm nào (tránh hai âm chồng).
 
     // ---------- M2: thông báo tiến độ (không chặn thao tác) ----------
     const M = S.meta
@@ -893,7 +945,7 @@ export default {
         focusOn = false
         revealOpen = false
         heldToasts.length = 0
-        if (app.overlay && app.overlay.classList) app.overlay.classList.remove('is-cook-focus')
+        if (app.overlay && app.overlay.classList) app.overlay.classList.remove('is-cook-focus', 'is-service')
         if (app.switchTab === showTab) app.switchTab = null
         counter.unmount()
         if (kitchen && kitchen.unmount) { try { kitchen.unmount() } catch (err) { console.error(err) } }

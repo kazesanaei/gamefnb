@@ -3,6 +3,8 @@
 // Thuần ở cấp module (import trong Node được): DOM chỉ tạo khi gọi các hàm render*.
 // Không có hoạt ảnh nào chạy khi dựng (vẽ lại không phát lại gì); tờ tiền bay giữa két và khay do counter-cash.js kích theo
 // thao tác (nhân bản rồi bay). Mỗi chồng tiền có .cs-bill là tờ trên cùng (điểm xuất phát / đích bay).
+// Huy hiệu số tờ / nhãn mệnh giá không nhận chạm (pointer-events: none ở CSS): huy hiệu ngăn hàng dưới nhô lên mép ngăn
+// hàng trên không làm chạm nhầm ngăn.
 import { h, svgBox } from '../dom.js'
 import { BILLS, drawerTotal } from '../../core/money.js'
 import { billSvg } from '../art.js'
@@ -50,7 +52,8 @@ export function renderDrawer(drawer, { onTake, disabled = false } = {}) {
       return h('button', {
         class: ['cs-slot', n ? '' : 'is-empty'], type: 'button', testid: 'drawer-' + b,
         dataset: { count: n, bill: b }, disabled: disabled || n <= 0,
-        style: { left: s.left, top: s.top, width: s.width, height: s.height },
+        // ô trong hình qua biến CSS (css/cashier.css đặt left/top/width/height theo biến; panel rất thấp xếp 7 ngăn một hàng)
+        style: { '--sx': s.left, '--sy': s.top, '--sw': s.width, '--sh': s.height },
         'aria-label': `Lấy tờ ${formatVND(b)}, còn ${n} tờ`,
         onclick: e => onTake && onTake(b, e.currentTarget)
       },

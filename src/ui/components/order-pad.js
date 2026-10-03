@@ -79,7 +79,8 @@ const LABELS = Object.freeze({
  *   canConfirm (đã đọc lại, phiếu không rỗng), hint (chuỗi nhắc dưới phiếu; '' = ẩn), lastAdded (chỉ số dòng vừa thêm),
  *   sub (dòng phụ cạnh tiêu đề, vd tên khách), face (chuỗi SVG mặt khách nhỏ cạnh tên; '' = ẩn), errorLabels
  * }
- * opts: { onEdit(i), onRemove(i), onReadback(), onConfirm(), vfx, sound, reduced, labels }
+ * opts: { onEdit(i), onRemove(i), onReadback(), onConfirm(), vfx, sound, reduced, labels,
+ *   topInset() → số px phía trên vùng cuộn đang bị một dải dính đầu che (vd dải lời khách ở quầy thật); reveal() chừa ra }
  */
 export function createOrderPad(data = {}, opts = {}) {
   const sound = typeof opts.sound === 'function' ? opts.sound : () => {}
@@ -224,11 +225,14 @@ export function createOrderPad(data = {}, opts = {}) {
     const box = sc.getBoundingClientRect()
     const bar = actions.isConnected ? actions.getBoundingClientRect() : null
     const limit = bar && bar.height && bar.top < box.bottom ? Math.min(bar.top, box.bottom) : box.bottom
+    // mép trên dùng được: chừa dải dính đầu vùng cuộn (nếu bên gọi báo)
+    const inset = typeof opts.topInset === 'function' ? Math.max(0, Number(opts.topInset()) || 0) : 0
+    const edge = box.top + inset
     const r = node.getBoundingClientRect()
     let delta = r.bottom - (limit - 6)
     // không đẩy đầu dòng (hoặc đầu phiếu khi chưa có dòng) lên khuất mép trên vùng cuộn
-    if (delta > 0) delta = Math.min(delta, Math.max(0, r.top - box.top - 6))
-    else if (r.top < box.top + 6) delta = r.top - box.top - 6
+    if (delta > 0) delta = Math.min(delta, Math.max(0, r.top - edge - 6))
+    else if (r.top < edge + 6) delta = r.top - edge - 6
     else return
     if (!delta) return
     const top = sc.scrollTop + delta
