@@ -158,8 +158,8 @@
 
 /* Thanh nút dính đáy: "Từ chối ảnh giả" | "Đã nhận đủ" */
 .qc-act { gap: 10px; align-items: stretch; }
-.qc-btn.g-btn { flex: 1 1 0; min-width: 0; min-height: 54px; padding: 8px 10px 7px; gap: 6px; font-size: 17px; line-height: 1.1; }
-.qc-btn .qc-btn-ico { width: 22px; height: 22px; }
+.qc-btn.g-btn { flex: 1 1 0; min-width: 0; min-height: 54px; padding: 8px 8px 7px; gap: 5px; font-size: 16px; line-height: 1.1; letter-spacing: 0; }
+.qc-btn .qc-btn-ico { width: 20px; height: 20px; }
 .qc-reject.g-btn { --g-btn-text: var(--g-bad-dark); }
 .qc-confirm.is-wait.g-btn {
   --g-btn-top: #f6efe2;
@@ -287,7 +287,7 @@
 .rc-amt { grid-area: amt; font-weight: 800; white-space: nowrap; }
 
 .rc-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.rc-row .rc-k { min-width: 0; }
+.rc-row .rc-k { min-width: 0; white-space: nowrap; }
 .rc-row .rc-v { font-weight: 700; white-space: nowrap; }
 .rc-adjust { margin-top: 6px; color: var(--g-bad-dark); }
 .rc-total {
@@ -300,7 +300,9 @@
 }
 .rc-total .rc-v { font-size: 22px; font-weight: 800; }
 .rc-method { margin-top: 2px; }
+.rc-method .rc-v { min-width: 0; white-space: normal; text-align: right; }
 .rc-small { font-size: 13px; color: var(--g-ink-soft); }
+.rc-small .rc-k { white-space: normal; }
 .rc-small .rc-v { font-weight: 600; }
 .rc-thanks {
   display: flex;
@@ -395,12 +397,31 @@
 .co-fit-low .qc-qr { --qc-phone: 92px; gap: 8px; }
 .co-fit-low .qc-side { gap: 8px; padding-bottom: 28px; }
 .co-fit-low .qc-due { padding: 3px 8px 5px; }
-.co-fit-low .qc-due-v { font-size: 22px; }
+.co-fit-low .qc-due-k { font-size: 13px; }
+.co-fit-low .qc-due-v { font-size: 21px; }
 .co-fit-low .rc-paper .rc-head { flex-flow: row wrap; justify-content: center; column-gap: 8px; margin-bottom: 6px; padding-bottom: 6px; }
 .co-fit-low .rc-no { letter-spacing: 0; }
 .co-fit-low .rc-shop { flex: 0 0 100%; font-size: 17px; }
 .co-fit-low .rc-lines { gap: 4px; }
 .co-fit-low .rc-total { margin-top: 6px; padding-top: 5px; }
 .co-fit-low .rc-thanks { min-height: 34px; margin-top: 4px; }
-.co-fit-tiny .qc-qr { --qc-phone: 80px; }
+.co-fit-low .qc-status-src { display: none; }
+.co-fit-low .rc-win { padding-top: 10px; }
+.co-fit-low .rc-paper { padding-top: 7px; }
+.co-fit-low .rc-line { grid-template-columns: 26px minmax(0, 1fr) auto; }
+.co-fit-low .rc-dish { width: 26px; height: 26px; }
+/* rất thấp (iPhone SE có vùng an toàn: phần nhìn thấy trên thanh nút chỉ ~100px): cảnh một hàng thấp, Tổng một dòng */
+.co-fit-tiny .qc-qr { --qc-phone: 56px; gap: 6px; }
+.co-fit-tiny .qc-scene { column-gap: 8px; padding: 6px 8px 0 10px; }
+.co-fit-tiny .qc-hold { margin-bottom: -8px; }
+.co-fit-tiny .qc-plank { height: 14px; }
+.co-fit-tiny .qc-side { gap: 6px; padding-bottom: 20px; }
+.co-fit-tiny .qc-due { flex-direction: row; justify-content: center; align-items: baseline; gap: 8px; padding: 2px 8px 4px; }
+.co-fit-tiny .qc-due-k { font-size: 13px; }
+.co-fit-tiny .qc-due-v { font-size: 18px; }
+.co-fit-tiny .qc-status { grid-template-columns: 28px minmax(0, 1fr); column-gap: 6px; padding: 4px 6px 4px 4px; }
+.co-fit-tiny .qc-status-ico { width: 28px; height: 28px; }
+.co-fit-tiny .qc-status-text { font-size: 14px; }
+.co-fit-tiny .qc-shot { display: none; }
 .co-fit-tiny .qc-note { display: none; }
+.co-fit-tiny .qc-btn.g-btn { min-height: 48px; }

@@ -1,6 +1,11 @@
-// Vòng kiên nhẫn (SVG) đổi màu xanh → vàng → đỏ.
+// Vòng kiên nhẫn (SVG) đổi màu xanh → vàng → đỏ; tâm trạng mặt khách theo kiên nhẫn còn lại.
+// M5 Đợt 2 (gói Q-D): vòng có viền mực mỏng và vạch nền, dùng ôm quanh đầu khách bán thân ở dải phố (service.js); thêm
+// hơi nước bốc trên đầu khi kiên nhẫn thấp (createSteam). Import trong Node được (chỉ tạo phần tử bên trong hàm).
 
 const NS = 'http://www.w3.org/2000/svg'
+
+/** Dưới mức này (phần kiên nhẫn còn lại) thì khách "bốc hơi": hơi nước trên đầu, vòng đỏ. */
+export const LOW_PATIENCE = 0.3
 
 export function patienceColor(v) {
   if (v > 0.6) return 'var(--good)'
@@ -18,10 +23,11 @@ export function moodFor(v) {
 
 /**
  * createRing(size, stroke) → { el, set(value 0..1, color?) }
- * value là phần còn lại (1 = đầy).
+ * value là phần còn lại (1 = đầy). Vòng: rãnh nền mờ + cung màu (bắt đầu từ đỉnh, chạy theo chiều kim đồng hồ) có viền
+ * mực mỏng ôm đúng cung (.ring-edge, cùng độ dài cung) để nổi trên nền phố sáng; phần đã cạn chỉ còn rãnh mờ.
  */
 export function createRing(size = 64, stroke = 5) {
-  const r = (size - stroke) / 2
+  const r = (size - stroke) / 2 - 0.5
   const len = 2 * Math.PI * r
   const svg = document.createElementNS(NS, 'svg')
   svg.setAttribute('viewBox', `0 0 ${size} ${size}`)
@@ -29,16 +35,22 @@ export function createRing(size = 64, stroke = 5) {
   svg.setAttribute('height', size)
   svg.setAttribute('class', 'ring')
   svg.setAttribute('aria-hidden', 'true')
-  const bg = document.createElementNS(NS, 'circle')
-  bg.setAttribute('cx', size / 2); bg.setAttribute('cy', size / 2); bg.setAttribute('r', r)
-  bg.setAttribute('class', 'ring-bg'); bg.setAttribute('stroke-width', stroke); bg.setAttribute('fill', 'none')
-  const fg = document.createElementNS(NS, 'circle')
-  fg.setAttribute('cx', size / 2); fg.setAttribute('cy', size / 2); fg.setAttribute('r', r)
-  fg.setAttribute('class', 'ring-fg'); fg.setAttribute('stroke-width', stroke); fg.setAttribute('fill', 'none')
-  fg.setAttribute('stroke-dasharray', String(len))
-  fg.setAttribute('stroke-linecap', 'round')
-  fg.setAttribute('transform', `rotate(-90 ${size / 2} ${size / 2})`)
+  const circle = (cls, w) => {
+    const c = document.createElementNS(NS, 'circle')
+    c.setAttribute('cx', size / 2); c.setAttribute('cy', size / 2); c.setAttribute('r', r)
+    c.setAttribute('class', cls); c.setAttribute('stroke-width', w); c.setAttribute('fill', 'none')
+    return c
+  }
+  const edge = circle('ring-edge', stroke + 2)
+  const bg = circle('ring-bg', stroke)
+  const fg = circle('ring-fg', stroke)
+  for (const c of [edge, fg]) {
+    c.setAttribute('stroke-dasharray', String(len))
+    c.setAttribute('stroke-linecap', 'round')
+    c.setAttribute('transform', `rotate(-90 ${size / 2} ${size / 2})`)
+  }
   svg.appendChild(bg)
+  svg.appendChild(edge)
   svg.appendChild(fg)
   let last = -1
   let lastColor = ''
@@ -50,8 +62,24 @@ export function createRing(size = 64, stroke = 5) {
       if (Math.abs(v - last) < 0.002 && c === lastColor) return
       last = v
       lastColor = c
-      fg.setAttribute('stroke-dashoffset', String(len * (1 - v)))
+      const off = String(len * (1 - v))
+      fg.setAttribute('stroke-dashoffset', off)
+      edge.setAttribute('stroke-dashoffset', off)
+      // cạn hẳn: bỏ cả chấm đầu cung (nét tròn đầu vẫn vẽ một chấm khi cung dài 0)
+      const op = v > 0.001 ? '' : '0'
+      edge.style.opacity = op
+      fg.style.opacity = op
       fg.style.stroke = c
     }
   }
+}
+
+/** Hơi nước bốc trên đầu (3 cụm khói nhỏ, CSS .steam): hiện khi phần tử cha có lớp .is-low. */
+export function createSteam(doc = typeof document !== 'undefined' ? document : null) {
+  if (!doc) return null
+  const el = doc.createElement('span')
+  el.className = 'steam'
+  el.setAttribute('aria-hidden', 'true')
+  for (let i = 0; i < 3; i++) el.appendChild(doc.createElement('i'))
+  return el
 }

@@ -7,8 +7,15 @@
 // đồng hồ bước Chọn đứng yên, phiếu chấm chưa tắt.
 // M5 Đợt 2 (bước 0): phần dựng phiếu chấm chuyển sang components/score-sheet.js, phần dựng hộp tình huống và hộp phàn nàn
 // sang components/incident-view.js (tệp này giữ luồng: hàng đợi phiếu, sheetSettled, khi nào mở hộp, gọi lõi, âm, lưu).
+// M5 Đợt 2 (gói Q-D): dải phố thành cảnh xe đẩy — mái bạt sọc (CSS), khách bán thân (art/people.js) đứng sau mặt quầy
+// (mặt trước xe đẩy, art/scene.js), xếp hàng nhỏ dần 100 / 85 / 70%, vòng kiên nhẫn ôm quanh đầu, hơi nước khi kiên nhẫn
+// thấp; khách vào / ra / lên chỗ / sang chỗ chờ món chỉ hoạt ảnh MỘT lần theo id (nút giữ theo id, vẽ lại không phát lại);
+// thanh tab Quầy / Bếp có biểu tượng và huy hiệu số.
 import { h, svgBox } from '../dom.js'
-import { face, DI_SAU } from '../art.js'
+import { DI_SAU } from '../art.js'
+import { bust } from '../art/people.js'
+import { SCENE, SCENE_ICONS, TAB_ICONS } from '../art/scene.js'
+import { isReduced, EASE } from '../motion.js'
 import { incidentDue, openIncident, resolveIncident } from '../../core/incidents.js'
 import { isShiftOver, endShift, setPaused } from '../../core/shift.js'
 import { beginCounter } from '../../core/order.js'
@@ -17,7 +24,7 @@ import { resolveComplaint, complaintRemakeOk } from '../../core/kitchen.js'
 import { createHud } from '../components/hud.js'
 import { createProgress4 } from '../components/progress4.js'
 import { createTicketRail } from '../components/ticket-rail.js'
-import { createRing, moodFor } from '../components/patience.js'
+import { createRing, moodFor, LOW_PATIENCE, createSteam } from '../components/patience.js'
 import { mountCounter } from './counter.js'
 import { renderScoreSheet } from '../components/score-sheet.js'
 import { createIncidentBox, renderComplaint } from '../components/incident-view.js'
@@ -34,6 +41,28 @@ const END_DELAY_MS = 1200
 // M5: chế độ tập trung khi nấu chỉ bật ở khung thấp hơn chừng này (px).
 export const FOCUS_MAX_H = 760
 
+// ---------- Dải phố (gói Q-D) ----------
+/** Cỡ khách trong hàng theo vị trí (khách ở quầy 100%, kế tiếp 85%, cuối 70%); khách chờ món nhỏ hơn nữa. */
+export const QUEUE_SCALES = Object.freeze([1, 0.85, 0.7])
+/** Số khách chờ món hiện ở dải phố (thêm thì gộp "+n"). */
+export const WAIT_SHOW_MAX = 3
+// Mặt trước xe đẩy (scene.js, khung 360 × 96): chỉ lấy dải trên (mặt quầy gỗ, viền đỏ, mép biển tên) làm mặt quầy của dải
+// phố; khách bán thân đứng sau, quầy che từ ngực trở xuống.
+const CART_STRIP = String(SCENE.xe_mat_truoc || '').replace(/viewBox="[^"]*"/, 'viewBox="0 43 360 53" preserveAspectRatio="xMidYMin slice"')
+// Mây giận nhỏ bay trên đầu khách bỏ về (vẽ tay: viền mực, mây xám, tia giận).
+const ANGRY_CLOUD = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 28"><g stroke="#3a2618" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">' +
+  '<path d="M9 22C4 22 3 15 8 14C8 8 15 6 18 10C20 5 29 5 30 11C36 10 38 18 33 21C31 23 28 22 27 22Z" fill="#6f6a78"/>' +
+  '<path d="M12 13.5C13 11 16 10.5 17.5 12" fill="none" stroke="#a49fae" stroke-width="2"/>' +
+  '<path d="M16 25L19 21L21 24L24 20" fill="none" stroke="#e8483a" stroke-width="2.2"/></g></svg>'
+
+/** Kiểu rời đi của khách (hoạt ảnh một lần): vui (đã nhận món), giận (hết kiên nhẫn / bị từ chối QR thật), lặng lẽ (khác). */
+export function exitKindOf(c) {
+  if (!c) return 'quiet'
+  if (c.status === 'roi_di') return (Number(c.stars) || 5) <= 2 ? 'quiet' : 'happy'
+  if (c.status === 'bo_ve' && (c.lostReason === 'het_kien_nhan' || c.lostReason === 'tu_choi_qr')) return 'angry'
+  return 'quiet'
+}
+
 export default {
   mount(root, app) {
     const S = app.data.STRINGS
@@ -47,7 +76,11 @@ export default {
     const rail = createTicketRail(app, { onTap: id => { showTab('kitchen'); app.bus.emit('ui.ticket.select', { ticketId: id }) } })
     const queueBox = h('div', { class: 'queue', testid: 'queue' })
     const waitBox = h('div', { class: 'waiting', testid: 'waiting' })
-    const street = h('section', { class: 'street' }, queueBox, waitBox)
+    // lớp hoạt ảnh của dải phố (khách rời đi, khách sang chỗ chờ món): nằm dưới mặt quầy, trên nền phố; không nhận chạm
+    const streetFx = h('div', { class: 'st-fx', 'aria-hidden': 'true' })
+    const street = h('section', { class: 'street' },
+      h('div', { class: 'st-awning', 'aria-hidden': 'true' }), queueBox, waitBox, streetFx,
+      h('div', { class: 'st-counter', 'aria-hidden': 'true', html: CART_STRIP }))
     const panelCounter = h('section', { class: 'panel panel-counter', testid: 'panel-counter' })
     const panelKitchen = h('section', { class: 'panel panel-kitchen', testid: 'panel-kitchen', hidden: true })
     const tabCounter = h('button', { class: 'tab', type: 'button', testid: 'tab-counter', role: 'tab', onclick: () => showTab('counter') })
@@ -163,6 +196,35 @@ export default {
     }
     app.switchTab = showTab
 
+    // Thanh tab: biểu tượng xe đẩy / chảo + chữ + huy hiệu số (khách đang xếp hàng / phiếu trên dây); chấm đỏ (dot-*) báo
+    // bên kia có việc mới. Phần tử con dựng một lần, mỗi lần đổi chỉ ghi số và bật / tắt chấm (không dựng lại, không hoạt
+    // ảnh lặp); huy hiệu số nảy MỘT lần khi số tăng (theo sự kiện đổi số, không trong lúc vẽ lại).
+    function tabParts(btn, key) {
+      const count = h('span', { class: 'tab-count' })
+      btn.append(svgBox(SCENE_ICONS[TAB_ICONS[key]] || '', 'tab-ico'), h('span', { class: 'tab-label' }, S.tabs[key]), count)
+      return { btn, count, n: -1, dot: null }
+    }
+    const tabUi = { counter: tabParts(tabCounter, 'counter'), kitchen: tabParts(tabKitchen, 'kitchen') }
+    function paintTab(name, n, dot) {
+      const t = tabUi[name]
+      if (t.n !== n) {
+        const up = t.n >= 0 && n > t.n
+        t.n = n
+        t.count.textContent = String(n)
+        t.count.classList.toggle('is-zero', n === 0)
+        if (up && !isReduced(app) && typeof t.count.animate === 'function') {
+          try { t.count.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.35)', offset: 0.4 }, { transform: 'scale(1)' }], { duration: 320, easing: EASE.outBack }) } catch { /* bỏ qua */ }
+        }
+      }
+      if (dot && !t.dot) {
+        t.dot = h('span', { class: 'dot', testid: 'dot-' + name })
+        t.btn.appendChild(t.dot)
+      } else if (!dot && t.dot) {
+        t.dot.remove()
+        t.dot = null
+      }
+      t.btn.setAttribute('aria-label', `${S.tabs[name]}: ${n}${dot ? ', có việc mới' : ''}`)
+    }
     let tabSig = ''
     function paintTabs() {
       const sh = app.state.shift
@@ -171,10 +233,8 @@ export default {
       const key = [active, q, t, dots.counter, dots.kitchen].join('|')
       if (key === tabSig) return
       tabSig = key
-      tabCounter.textContent = ''
-      tabCounter.append(h('span', null, S.tabs.counter), h('span', { class: 'tab-count' }, ' · ' + q), dots.counter ? h('span', { class: 'dot', testid: 'dot-counter' }) : '')
-      tabKitchen.textContent = ''
-      tabKitchen.append(h('span', null, S.tabs.kitchen), h('span', { class: 'tab-count' }, ' · ' + t), dots.kitchen ? h('span', { class: 'dot', testid: 'dot-kitchen' }) : '')
+      paintTab('counter', q, dots.counter)
+      paintTab('kitchen', t, dots.kitchen)
       tabCounter.classList.toggle('active', active === 'counter')
       tabKitchen.classList.toggle('active', active === 'kitchen')
       tabCounter.setAttribute('aria-selected', String(active === 'counter'))
@@ -183,53 +243,264 @@ export default {
       tabKitchen.dataset.dot = dots.kitchen ? 'true' : 'false'
     }
 
-    // ---------- Hàng khách ----------
+    // ---------- Hàng khách (dải phố) ----------
+    // Nút giữ theo id khách: vẽ lại khi tâm trạng / vị trí / nhãn đổi chỉ sửa tại chỗ, không dựng lại nên không phát lại hoạt
+    // ảnh. Hoạt ảnh MỘT lần theo id (enteredIds / leftIds): vào hàng (trượt từ phải, nảy), lên chỗ (FLIP), sang chỗ chờ món
+    // (bản sao bay), rời đi (bản sao trong lớp .st-fx: vui thì nhảy, giận thì rung + mây giận, lặng lẽ thì mờ). Hoạt ảnh chỉ
+    // kích khi danh sách khách đổi (sự kiện của ca), không kích khi vẽ lại; giảm chuyển động: chỉ mờ dần, mây đứng yên.
     let queueSig = ''
-    const rings = new Map()
+    const custNodes = new Map()   // 'q:' | 'w:' + id khách → nút đang hiện
+    const enteredIds = new Set()
+    const leftIds = new Set()
+    let streetFirst = true
+    const queueEmpty = h('div', { class: 'queue-empty' }, 'Chưa có khách xếp hàng')
+    const waitTitle = h('div', { class: 'wait-title' }, 'Chờ món')
+    const waitRow = h('div', { class: 'wait-row' })
+    const waitMore = h('span', { class: 'wait-more' })
+    waitBox.append(waitRow, waitTitle)
+    const fxTimers = new Set()
+    const later = (fn, ms) => { const id = setTimeout(() => { fxTimers.delete(id); if (!destroyed) fn() }, ms); fxTimers.add(id) }
+
+    const whoOf = c => c.regularId || c.stranger || null
+    const waitLeft = (sh, c) => {
+      const used = c.waitBudget ? (sh.t - (c.waitStart || 0)) / c.waitBudget : 0
+      return 1 - Math.min(1, Math.max(0, used))
+    }
+    const valueOf = (sh, c, kind) => (c.tutorial ? 1 : kind === 'q' ? c.patience : waitLeft(sh, c))
+    function tagOf(c, counterId) {
+      if (c.id === counterId) return { kind: 'here', text: 'Ở quầy' }
+      if (c.bigOrder) return { kind: 'order', text: 'Đặt trước' }
+      if (c.stranger) return { kind: 'stranger', text: (S.rare && S.rare.strangerTag) || 'Khách lạ' }
+      return { kind: 'name', text: c.name }
+    }
+
+    function makeCust(c, kind) {
+      const ring = createRing(64, 6)
+      const img = h('span', { class: 'st-bust', 'aria-hidden': 'true' })
+      const fig = h('div', { class: 'st-fig' }, h('span', { class: 'st-ring' }, ring.el), img, createSteam(),
+        // M4: khách lạ (quà quê là nguyên liệu hiếm) có dấu ★ riêng ở hàng chờ
+        kind === 'q' && c.stranger ? h('span', { class: 'q-stranger', testid: 'stranger-badge', title: 'Khách lạ', 'aria-label': 'Khách lạ' }, '★') : null)
+      const tag = kind === 'q' ? h('div', { class: 'q-tag' }) : null
+      const el = h('div', { class: kind === 'q' ? 'q-cust' : 'w-cust', testid: (kind === 'q' ? 'queue-' : 'waiting-') + c.id }, fig, tag)
+      return { id: c.id, kind, el, fig, img, ring, tag, mood: '', tagKey: '', low: null, pos: -1 }
+    }
+
+    function paintCust(rec, sh, c, idx, counterId) {
+      const v = valueOf(sh, c, rec.kind)
+      const mood = c.tutorial ? 'vui' : moodFor(v)
+      if (mood !== rec.mood) {
+        rec.mood = mood
+        const o = { gender: c.gender || undefined }
+        const who = whoOf(c)
+        if (who) o.who = who
+        rec.img.innerHTML = bust(c.persona, mood, o)
+      }
+      const low = !c.tutorial && v < LOW_PATIENCE
+      if (low !== rec.low) { rec.low = low; rec.el.classList.toggle('is-low', low) }
+      if (rec.kind === 'q') {
+        if (idx !== rec.pos) {
+          rec.pos = idx
+          rec.el.dataset.pos = String(idx)
+          rec.el.style.setProperty('--qs', String(QUEUE_SCALES[Math.min(idx, QUEUE_SCALES.length - 1)]))
+        }
+        const t = tagOf(c, counterId)
+        const k = t.kind + '|' + t.text
+        if (k !== rec.tagKey) {
+          rec.tagKey = k
+          rec.tag.className = 'q-tag is-' + t.kind
+          rec.tag.textContent = t.text
+          if (t.kind === 'order') rec.tag.dataset.testid = 'queue-order-tag'
+          else delete rec.tag.dataset.testid
+          rec.el.classList.toggle('at-counter', t.kind === 'here')
+          rec.el.classList.toggle('is-order', !!c.bigOrder)
+          rec.el.classList.toggle('is-stranger', !!c.stranger)
+        }
+      }
+      const title = rec.kind === 'q' ? c.name : c.name + ' · chờ món'
+      if (rec.el.title !== title) rec.el.title = title
+    }
+
+    // bản sao của hình khách trong lớp .st-fx (tọa độ của dải phố), bỏ testid để e2e không bắt nhầm
+    function ghostOf(rec, r0, sr) {
+      const g = rec.fig.cloneNode(true)
+      g.classList.remove('is-enter', 'is-enter-soft')   // bản sao không chạy lại hoạt ảnh vào hàng
+      g.classList.add('st-ghost')
+      g.classList.toggle('is-low', rec.el.classList.contains('is-low'))
+      for (const n of g.querySelectorAll('[data-testid]')) n.removeAttribute('data-testid')
+      g.style.left = (r0.left - sr.left).toFixed(1) + 'px'
+      g.style.top = (r0.top - sr.top).toFixed(1) + 'px'
+      g.style.width = r0.width.toFixed(1) + 'px'
+      g.style.height = r0.height.toFixed(1) + 'px'
+      streetFx.appendChild(g)
+      return g
+    }
+    function playGhost(g, frames, opts, after) {
+      let done = false
+      const end = () => { if (done) return; done = true; g.remove(); if (after) after() }
+      try {
+        const a = g.animate(frames, { fill: 'forwards', ...opts })
+        a.onfinish = end
+        a.oncancel = end
+      } catch { end(); return }
+      later(end, (opts.duration || 600) + 400)
+    }
+    const EXIT = {
+      angry: { duration: 900, easing: 'linear', frames: [
+        { transform: 'translate(0, 0)' }, { transform: 'translate(-3px, 0)', offset: 0.08 }, { transform: 'translate(3px, 0)', offset: 0.16 },
+        { transform: 'translate(-3px, 0)', offset: 0.24 }, { transform: 'translate(2px, 0)', offset: 0.32 },
+        { transform: 'translate(0, 0)', opacity: 1, offset: 0.42, easing: 'ease-in' }, { transform: 'translate(70px, 3px)', opacity: 0 }] },
+      happy: { duration: 850, easing: 'linear', frames: [
+        { transform: 'translate(0, 0)', easing: 'ease-out' }, { transform: 'translate(0, -9px)', offset: 0.18, easing: 'ease-in' },
+        { transform: 'translate(0, 0)', offset: 0.34, easing: 'ease-out' }, { transform: 'translate(0, -5px)', offset: 0.48, easing: 'ease-in' },
+        { transform: 'translate(0, 0)', opacity: 1, offset: 0.6, easing: 'ease-in' }, { transform: 'translate(64px, 0)', opacity: 0 }] },
+      quiet: { duration: 600, easing: 'ease-in', frames: [{ transform: 'translate(0, 0)', opacity: 1 }, { transform: 'translate(36px, 0)', opacity: 0 }] }
+    }
+    function playExit(rec, c, r0, sr, reduced) {
+      const kind = exitKindOf(c)
+      const g = ghostOf(rec, r0, sr)
+      if (kind === 'angry') {
+        const cloud = h('span', { class: 'st-cloud', html: ANGRY_CLOUD })
+        g.appendChild(cloud)
+        if (!reduced) {
+          try { cloud.animate([{ opacity: 0, transform: 'translate(0, 6px) scale(.6)' }, { opacity: 1, transform: 'translate(0, 0) scale(1)', offset: 0.25 }, { opacity: 1, transform: 'translate(0, -4px) scale(1)' }], { duration: 900, fill: 'forwards', easing: EASE.outBack }) } catch { /* bỏ qua */ }
+        }
+      }
+      if (reduced) { playGhost(g, [{ opacity: 1 }, { opacity: 0 }], { duration: 260, easing: 'linear' }); return }
+      const ex = EXIT[kind] || EXIT.quiet
+      playGhost(g, ex.frames, { duration: ex.duration, easing: ex.easing })
+      if (kind === 'happy' && app.vfx && typeof app.vfx.burst === 'function') {
+        const head = { left: r0.left + r0.width * 0.2, top: r0.top + r0.height * 0.1, width: r0.width * 0.6, height: r0.height * 0.4 }
+        later(() => { try { app.vfx.burst(head, 'sparkle', { n: 5 }) } catch { /* bỏ qua */ } }, 120)
+      }
+    }
+    // khách ở quầy kẹp phiếu xong → sang chỗ chờ món: bản sao bay vòng cung, thu nhỏ về chỗ mới; nút mới hiện khi bản sao tới
+    function playTransfer(rec, r0, r1, sr, target) {
+      const g = ghostOf(rec, r0, sr)
+      g.style.transformOrigin = '0 0'
+      const dx = r1.left - r0.left, dy = r1.top - r0.top, s = r1.height / Math.max(1, r0.height)
+      target.classList.add('is-arriving')
+      playGhost(g, [
+        { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+        { transform: `translate(${(dx / 2).toFixed(1)}px, ${(dy / 2 - 16).toFixed(1)}px) scale(${((1 + s) / 2).toFixed(3)})`, opacity: 1, offset: 0.5 },
+        { transform: `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(${s.toFixed(3)})`, opacity: 1, offset: 0.9 },
+        { transform: `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(${s.toFixed(3)})`, opacity: 0 }
+      ], { duration: 520, easing: 'ease-in-out' }, () => target.classList.remove('is-arriving'))
+    }
+    function flip(fig, r0, r1) {
+      const dx = (r0.left + r0.width / 2) - (r1.left + r1.width / 2)
+      const dy = r0.bottom - r1.bottom
+      const s = r0.height / Math.max(1, r1.height)
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(s - 1) < 0.01) return
+      try {
+        fig.animate([{ transform: `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(${s.toFixed(3)})` }, { transform: 'translate(0, 0) scale(1)' }],
+          { duration: 340, easing: EASE.outCubic })
+      } catch { /* bỏ qua */ }
+    }
+    function playEnter(rec) {
+      rec.fig.classList.add('is-enter')
+      const off = () => rec.fig.classList.remove('is-enter')
+      rec.fig.addEventListener('animationend', off, { once: true })
+      later(off, 900)
+    }
+
+    function layoutStreet(sh, inQueue, waiting, counterId) {
+      const shown = street.isConnected && street.offsetParent !== null && !(typeof document !== 'undefined' && document.visibilityState === 'hidden')
+      const animate = shown && !streetFirst
+      const reduced = isReduced(app)
+      const sr = animate ? street.getBoundingClientRect() : null
+      const before = new Map()
+      if (animate) for (const [k, rec] of custNodes) before.set(k, rec.fig.getBoundingClientRect())
+      const wantQ = new Map(inQueue.map((c, i) => ['q:' + c.id, i]))
+      const waitShown = waiting.slice(0, WAIT_SHOW_MAX)
+      const wantW = new Map(waitShown.map((c, i) => ['w:' + c.id, i]))
+      // 1. nút không còn: rời đi (một lần theo id) hoặc sang chỗ chờ món
+      const transfers = []
+      for (const [k, rec] of [...custNodes]) {
+        if (wantQ.has(k) || wantW.has(k)) continue
+        custNodes.delete(k)
+        const c = sh.customers[rec.id]
+        const r0 = before.get(k)
+        rec.el.remove()
+        if (!animate || !r0 || !r0.width) continue
+        if (rec.kind === 'q' && wantW.has('w:' + rec.id)) { transfers.push([rec, r0]); continue }
+        if (rec.kind === 'q' && c && (c.status === 'cho_mon' || c.status === 'nhan_mon')) continue   // sang chờ món nhưng không hiện (quá chỗ)
+        if (leftIds.has(rec.id)) continue
+        leftIds.add(rec.id)
+        playExit(rec, c, r0, sr, reduced)
+      }
+      // 2. nút mới / cập nhật tại chỗ, đúng thứ tự (chỉ dời nút sai chỗ: dời nút giữa chừng làm chạy lại hoạt ảnh CSS)
+      const fresh = []
+      const place = (box, recs, anchor) => {
+        recs.forEach((rec, i) => {
+          const at = box.children[i] || null
+          if (at !== rec.el) box.insertBefore(rec.el, at)
+        })
+        if (anchor) box.appendChild(anchor)
+      }
+      const qRecs = inQueue.map((c, i) => {
+        const k = 'q:' + c.id
+        let rec = custNodes.get(k)
+        if (!rec) { rec = makeCust(c, 'q'); custNodes.set(k, rec); fresh.push(rec) }
+        paintCust(rec, sh, c, i, counterId)
+        return rec
+      })
+      const wRecs = waitShown.map((c, i) => {
+        const k = 'w:' + c.id
+        let rec = custNodes.get(k)
+        if (!rec) { rec = makeCust(c, 'w'); custNodes.set(k, rec); fresh.push(rec) }
+        paintCust(rec, sh, c, i, counterId)
+        return rec
+      })
+      if (queueEmpty.parentNode && inQueue.length) queueEmpty.remove()
+      place(queueBox, qRecs, null)
+      if (!inQueue.length && !queueEmpty.parentNode) queueBox.appendChild(queueEmpty)
+      place(waitRow, wRecs, null)
+      const more = waiting.length - waitShown.length
+      if (more > 0) { waitMore.textContent = '+' + more; waitRow.appendChild(waitMore) } else if (waitMore.parentNode) waitMore.remove()
+      waitBox.classList.toggle('is-on', waiting.length > 0)
+      // 3. hoạt ảnh sau bố cục mới: vào hàng, sang chỗ chờ, lên chỗ
+      for (const rec of fresh) {
+        const first = !enteredIds.has(rec.kind + rec.id)
+        enteredIds.add(rec.kind + rec.id)
+        if (!animate || !first) continue
+        const tr = rec.kind === 'w' ? transfers.find(([q]) => q.id === rec.id) : null
+        if (tr) {
+          if (reduced) continue
+          const r1 = rec.fig.getBoundingClientRect()
+          if (r1.width) playTransfer(tr[0], tr[1], r1, sr, rec.el)
+        } else if (reduced) {
+          rec.fig.classList.add('is-enter-soft')
+          later(() => rec.fig.classList.remove('is-enter-soft'), 400)
+        } else playEnter(rec)
+      }
+      if (animate && !reduced) {
+        for (const rec of [...qRecs, ...wRecs]) {
+          if (fresh.includes(rec)) continue
+          const r0 = before.get(rec.kind + ':' + rec.id)
+          if (r0 && r0.width) flip(rec.fig, r0, rec.fig.getBoundingClientRect())
+        }
+      }
+      streetFirst = false
+    }
+
     function renderStreet() {
       const sh = app.state.shift
       const counterId = sh.counter ? sh.counter.customerId : null
-      const inQueue = sh.queue.slice(0, 3).map(id => sh.customers[id]).filter(Boolean)
+      const inQueue = sh.queue.slice(0, QUEUE_SCALES.length).map(id => sh.customers[id]).filter(Boolean)
       const waiting = Object.values(sh.customers).filter(c => c.status === 'cho_mon' || c.status === 'nhan_mon')
-      const key = JSON.stringify([inQueue.map(c => [c.id, c.tutorial ? 'vui' : moodFor(c.patience), c.id === counterId]), waiting.map(c => c.id)])
+      const sigOf = (c, kind) => {
+        const v = valueOf(sh, c, kind)
+        return [c.id, c.tutorial ? 'vui' : moodFor(v), !c.tutorial && v < LOW_PATIENCE]
+      }
+      const key = JSON.stringify([inQueue.map(c => [...sigOf(c, 'q'), c.id === counterId, !!c.bigOrder, c.stranger || '']),
+        waiting.map(c => sigOf(c, 'w'))])
       if (key !== queueSig) {
         queueSig = key
-        rings.clear()
-        queueBox.textContent = ''
-        if (!inQueue.length) queueBox.appendChild(h('div', { class: 'queue-empty muted' }, 'Chưa có khách xếp hàng'))
-        for (const c of inQueue) {
-          const ring = createRing(62, 5)
-          rings.set(c.id, { ring, kind: 'queue' })
-          // M4: khách lạ (quà quê là nguyên liệu hiếm) có dấu ★ riêng ở hàng chờ
-          queueBox.appendChild(h('div', { class: ['q-cust', c.id === counterId ? 'at-counter' : '', c.bigOrder ? 'is-order' : '', c.stranger ? 'is-stranger' : ''], testid: 'queue-' + c.id },
-            h('div', { class: 'q-face' }, ring.el, svgBox(face(c.persona, c.tutorial ? 'vui' : moodFor(c.patience), c.gender), 'face-img'),
-              c.stranger ? h('span', { class: 'q-stranger', testid: 'stranger-badge', title: 'Khách lạ', 'aria-label': 'Khách lạ' }, '★') : null),
-            h('div', { class: 'q-name' }, c.name),
-            c.id === counterId ? h('div', { class: 'q-tag' }, 'Ở quầy') : c.bigOrder ? h('div', { class: 'q-tag is-order', testid: 'queue-order-tag' }, 'Đơn đặt trước')
-              : c.stranger ? h('div', { class: 'q-tag is-stranger' }, (S.rare && S.rare.strangerTag) || 'Khách lạ') : null))
-        }
-        waitBox.textContent = ''
-        if (waiting.length) {
-          waitBox.appendChild(h('div', { class: 'wait-title' }, 'Chờ món'))
-          const row = h('div', { class: 'wait-row' })
-          for (const c of waiting) {
-            const ring = createRing(42, 4)
-            rings.set(c.id, { ring, kind: 'wait' })
-            row.appendChild(h('div', { class: 'w-cust', testid: 'waiting-' + c.id, title: c.name },
-              h('div', { class: 'w-face' }, ring.el, svgBox(face(c.persona, 'binh_thuong', c.gender), 'face-img')),
-              h('div', { class: 'w-name' }, c.name)))
-          }
-          waitBox.appendChild(row)
-        }
+        layoutStreet(sh, inQueue, waiting, counterId)
       }
-      for (const [id, { ring, kind }] of rings) {
-        const c = sh.customers[id]
-        if (!c) continue
-        if (kind === 'queue') ring.set(c.tutorial ? 1 : c.patience)
-        else {
-          const used = c.waitBudget ? (sh.t - (c.waitStart || 0)) / c.waitBudget : 0
-          ring.set(1 - Math.min(1, Math.max(0, used)))
-        }
+      for (const rec of custNodes.values()) {
+        const c = sh.customers[rec.id]
+        if (c) rec.ring.set(valueOf(sh, c, rec.kind))
       }
     }
 
@@ -611,6 +882,9 @@ export default {
       unmount() {
         destroyed = true
         if (sizeObs) sizeObs.disconnect()
+        for (const id of fxTimers) clearTimeout(id)
+        fxTimers.clear()
+        if (hud.destroy) hud.destroy()
         for (const off of offs) off()
         if (typeof app.toastLimit === 'function') app.toastLimit(null)
         // trả lại hàm thông báo của app; thông báo còn chờ lúc rời màn (hết ca) là tin trong ca đã cũ: bỏ (thẻ Mẹo nghề vẫn

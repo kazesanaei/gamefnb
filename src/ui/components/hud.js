@@ -15,7 +15,7 @@ import { SCENE_ICONS, HUD_ICONS } from '../art/scene.js'
 import { helpButton } from './help.js'
 
 /** Chờ chừng này (ms) mà không có xu nào bay về ví thì thẻ "thu trong ca" tự đếm lên. */
-export const TAKE_FALLBACK_MS = 1600
+export const TAKE_FALLBACK_MS = 2600
 
 /** Tiến độ ca 0..1 từ giờ trong ca "HH:MM" (06:00 → 0, 10:00 → 1: cùng thang với gameTime của lõi). */
 export function shiftProgress(time) {
@@ -66,7 +66,7 @@ export function createHud(app) {
     take.classList.toggle('is-on', v > 0)
     const f = fx()
     if (takeShown === null || !f || ms <= 0) take.textContent = takeText(v)
-    else if (v !== takeShown || f.counting(take)) f.countUp(take, null, v, ms, takeText)
+    else if (v !== takeShown || f.counting(take)) f.countUp(take, null, v, ms, takeText, { step: 500 })
     takeShown = v
   }
   function readTake() {

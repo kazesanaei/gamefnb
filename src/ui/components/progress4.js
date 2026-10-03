@@ -16,7 +16,7 @@ export function createProgress4(data) {
   const who = h('span', { class: 'p4-who' })
   const dots = flow.map((id, i) => h('li', { class: 'p4-step', dataset: { step: id }, title: labels[id] || id },
     i > 0 ? h('span', { class: 'p4-link', 'aria-hidden': 'true' }) : null,
-    h('span', { class: 'p4-dot' }, svgBox(SCENE_ICONS[STAGE_ICONS[id]] || '', 'p4-ico'), h('span', { class: 'p4-tick', 'aria-hidden': 'true' }, '✓')),
+    h('span', { class: 'p4-dot' }, svgBox(SCENE_ICONS[STAGE_ICONS[id]] || '', 'p4-ico'), h('span', { class: 'p4-tick', 'aria-hidden': 'true' })),
     h('span', { class: 'p4-label' }, labels[id] || id)))
   const el = h('div', { class: 'progress4', testid: 'progress-4', dataset: { stage: '' } },
     who, h('ol', { class: 'p4-list' }, dots))

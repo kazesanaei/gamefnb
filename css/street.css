@@ -1,46 +1,147 @@
-/* Dải phố của màn Ca bán (service.js renderStreet): hàng khách xếp hàng (mặt + vòng kiên nhẫn, tên, nhãn "Ở quầy" / "Đơn
-   đặt trước" / "Khách lạ", dấu ★ khách lạ) và khách đang chờ món. Vòng kiên nhẫn: components/patience.js (.ring-bg/.ring-fg).
-   M5 Đợt 2 (bước 0): chuyển nguyên văn từ css/game.css, không đổi giao diện. index.html gắn tệp này NGAY SAU game.css để giữ
-   thứ tự cascade (luật cùng độ ưu tiên ở game.css đứng sau dải phố không chạm phần tử của dải phố). Chế độ tập trung khi
-   nấu (.service-screen.is-focus > .street) vẫn ở game.css. */
+/* Dải phố của màn Ca bán (service.js, gói Q-D M5 Đợt 2): cảnh xe đẩy nhìn từ phố.
+   Lớp chồng (trong ngữ cảnh xếp lớp riêng của .street, isolation):
+     nền tường kem + bóng mái  <  khách (.st-fig, z 1) = lớp hoạt ảnh .st-fx (z 1, sau khách)  <  mặt quầy .st-counter (z 2)
+     <  nhãn trên mặt quầy (.q-tag, .wait-title, z 3)  <  mái bạt .st-awning (z 4).
+   Khách bán thân (art/people.js, khung 96 × 112) đứng sau mặt quầy: ngực (80,4% chiều cao hình) chạm mép trên mặt quầy,
+   phần dưới khuất sau quầy. Hàng chờ nhỏ dần 100 / 85 / 70% (--qs do service.js ghi theo vị trí); khách chờ món nhỏ hơn,
+   đứng ở đầu phải quầy với biển "Chờ món". Vòng kiên nhẫn (patience.js) nằm SAU hình, ôm quanh đầu (tâm đầu 48, 44,4;
+   bán kính 34 theo khung hình, ngoài tóc). Hơi nước bốc trên đỉnh đầu khi kiên nhẫn thấp (.is-low).
+   Chiều cao: 102px (khung cao), 84px khi khung ≤ 760px — bằng dải phố cũ, panel Quầy / Bếp không hẹp đi.
+   Hoạt ảnh chỉ transform / opacity, chạy MỘT lần theo sự kiện (service.js gắn / gỡ lớp); giảm chuyển động: chỉ mờ dần,
+   hơi nước đứng yên. index.html gắn tệp này NGAY SAU game.css. Chế độ tập trung khi nấu (ẩn dải phố) vẫn ở game.css. */
 
 .street {
-  flex: none; display: flex; align-items: flex-end; gap: 8px; padding: 6px 12px 4px; min-height: 102px;
-  background: linear-gradient(180deg, #ffe6b0 0%, #f7dca7 70%, #d9b98a 70%, #d9b98a 100%);
+  --st-h: 102px;          /* cao dải phố */
+  --st-awn: 16px;         /* mái bạt (gồm mép lượn) */
+  --st-counter: 22px;     /* mặt quầy */
+  --qh: 88px;             /* hình khách ở quầy (100%) */
+  --wh: 54px;             /* hình khách chờ món */
+  flex: none; position: relative; height: var(--st-h); overflow: hidden; isolation: isolate;
+  background:
+    linear-gradient(180deg, rgba(58, 38, 24, .16), rgba(58, 38, 24, 0)) 0 var(--st-awn) / 100% 12px no-repeat,
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, .26) 0 2px, rgba(255, 255, 255, 0) 2px 46px),
+    linear-gradient(180deg, #fff1d2 0%, #ffe3ab 100%);
 }
-.queue { flex: 1; display: flex; align-items: flex-end; gap: 8px; min-width: 0; }
-.queue-empty { font-size: 14px; padding-bottom: 20px; }
-.q-cust { display: flex; flex-direction: column; align-items: center; width: 78px; position: relative; }
-.q-face { position: relative; width: 62px; height: 62px; }
-.q-face .ring { position: absolute; inset: 0; width: 100%; height: 100%; }
-.q-face .face-img { position: absolute; left: 7px; top: 7px; width: 48px; height: 48px; }
-.q-name { font-size: 14px; font-weight: 700; max-width: 78px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.q-tag { position: absolute; top: -6px; right: -4px; font-size: 13px; font-weight: 800; background: var(--brick); color: #fff; border-radius: 999px; padding: 0 6px; white-space: nowrap; }
+
+/* ---------- Mái bạt sọc đỏ trắng, mép lượn viền mực ---------- */
+.st-awning {
+  position: absolute; top: 0; left: 0; right: 0; height: calc(var(--st-awn) - 6px); z-index: 4; pointer-events: none;
+  background: repeating-linear-gradient(90deg, var(--g-tomato) 0 20px, var(--g-paper) 20px 40px);
+  box-shadow: inset 0 2px 0 rgba(58, 38, 24, .3);
+}
+.st-awning::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 6px;
+  background:
+    radial-gradient(9px circle at 10px -3px, var(--g-tomato) 0 7.2px, var(--g-ink) 7.6px 9px, rgba(58, 38, 24, 0) 9.4px) 0 0 / 40px 6px repeat-x,
+    radial-gradient(9px circle at 30px -3px, var(--g-paper) 0 7.2px, var(--g-ink) 7.6px 9px, rgba(58, 38, 24, 0) 9.4px) 0 0 / 40px 6px repeat-x;
+}
+
+/* ---------- Mặt quầy: dải trên của mặt trước xe đẩy (scene.js) ---------- */
+.st-counter { position: absolute; left: 0; right: 0; bottom: 0; height: var(--st-counter); z-index: 2; pointer-events: none; }
+.st-counter svg { display: block; width: 100%; height: 100%; max-width: none; }
+
+/* ---------- Hàng khách ---------- */
+.street .queue {
+  position: absolute; left: 6px; bottom: var(--st-counter); display: flex; align-items: flex-end; gap: 6px;
+}
+.street .queue-empty {
+  max-width: 150px; padding: 0 4px 6px; font-size: 13px; font-weight: 700; line-height: 1.25; color: var(--muted);
+}
+.q-cust, .w-cust { position: relative; flex: none; }
+.q-cust { --qs: 1; --fh: calc(var(--qh) * var(--qs)); }
+.w-cust { --fh: var(--wh); }
+/* khách ở quầy: vầng sáng nhẹ sau lưng */
+.q-cust.at-counter::before {
+  content: ''; position: absolute; left: -8px; right: -8px; bottom: 0; height: 78%; z-index: 0; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, .75), rgba(255, 255, 255, 0));
+}
+.st-fig {
+  position: relative; z-index: 1; width: calc(var(--fh) * .857); height: var(--fh);
+  margin-bottom: calc(var(--fh) * -.196); transform-origin: 50% 100%;
+}
+.st-ring { position: absolute; left: 14.6%; top: 9.3%; width: 70.8%; aspect-ratio: 1; }
+.st-ring .ring { display: block; width: 100%; height: 100%; }
+.st-bust { position: absolute; inset: 0; }
+.st-bust svg { display: block; width: 100%; height: 100%; }
+.ring-edge { stroke: var(--g-ink); }
+.ring-bg { stroke: rgba(58, 38, 24, .16); }
+.ring-fg { stroke: var(--good); }
+
+/* nhãn trên mặt quầy dưới mỗi khách: "Ở quầy", "Đặt trước", "Khách lạ" hoặc tên */
+.q-tag {
+  position: absolute; left: 50%; top: calc(100% + var(--st-counter) / 2); z-index: 3; transform: translate(-50%, -50%);
+  max-width: calc(100% + 16px); padding: 1px 4px 0; border: 2px solid var(--g-ink); border-radius: 999px;
+  background: var(--g-paper); color: var(--g-ink); box-shadow: 0 1px 0 rgba(58, 38, 24, .35);
+  font-family: var(--g-font-display); font-weight: 800; font-size: 13px; line-height: 14px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;
+}
+.q-tag.is-here { background: var(--g-tomato); color: #fff; text-shadow: var(--g-text-outline-thin); }
 /* M4: khách lấy đơn đặt trước của sự kiện ngày */
-.q-tag.is-order { background: #1f4e7a; }
-.at-counter .q-face { transform: scale(1.06); }
-.ring-bg { stroke: rgba(59, 42, 31, .12); }
-.ring-fg { transition: stroke-dashoffset .25s linear, stroke .3s; }
-.waiting { flex: none; display: flex; flex-direction: column; align-items: flex-end; max-width: 45%; }
-.wait-title { font-size: 14px; font-weight: 800; color: var(--brick-dark); }
-.wait-row { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
-.w-cust { display: flex; flex-direction: column; align-items: center; width: 62px; }
-.w-face { position: relative; width: 42px; height: 42px; }
-.w-face .ring { position: absolute; inset: 0; width: 100%; height: 100%; }
-.w-face .face-img { position: absolute; left: 6px; top: 6px; width: 30px; height: 30px; }
-.w-name { font-size: 14px; max-width: 62px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.q-tag.is-order { background: #2f6fb0; color: #fff; text-shadow: var(--g-text-outline-thin); }
+.q-tag.is-stranger { background: var(--g-gold); }
 
-/* Màn thấp (vd 360×740): thu dải phố để panel thao tác đủ chỗ (dây phiếu thu theo cùng mốc ở game.css) */
-@media (max-height: 760px) {
-  .street { min-height: 84px; padding-top: 4px; }
-  .q-face { width: 52px; height: 52px; }
-  .q-face .face-img { left: 6px; top: 6px; width: 40px; height: 40px; }
-  .w-face { width: 36px; height: 36px; }
-  .w-face .face-img { left: 5px; top: 5px; width: 26px; height: 26px; }
+/* ---------- Khách chờ món (đầu phải quầy) ---------- */
+.street .waiting { position: absolute; right: 6px; bottom: var(--st-counter); display: none; }
+.street .waiting.is-on { display: block; }
+.wait-row { display: flex; align-items: flex-end; gap: 1px; }
+.wait-title {
+  position: absolute; right: -2px; top: calc(100% + var(--st-counter) / 2); z-index: 3; transform: translateY(-50%);
+  padding: 1px 7px 0; border: 2px solid var(--g-ink); border-radius: 6px; background: var(--g-gold-light); color: var(--g-ink);
+  font-family: var(--g-font-display); font-weight: 800; font-size: 13px; line-height: 14px; white-space: nowrap;
+  box-shadow: 0 1px 0 rgba(58, 38, 24, .35); pointer-events: none;
+}
+.wait-more {
+  align-self: center; margin: 0 0 6px 2px; padding: 0 5px; border-radius: 999px; background: var(--g-ink); color: var(--g-gold-light);
+  font-family: var(--g-font-display); font-weight: 800; font-size: 13px; line-height: 18px;
+}
+.w-cust.is-arriving .st-fig { opacity: 0; }
+
+/* ---------- Khách lạ (M4): dấu ★ ---------- */
+.q-stranger {
+  position: absolute; left: 2%; top: 12%; z-index: 2; width: 22px; height: 22px; border-radius: 50%; background: var(--g-star);
+  border: 2px solid var(--g-ink); color: var(--g-ink); font-size: 13px; font-weight: 900; line-height: 18px; text-align: center;
 }
 
-/* ---------- M4: khách lạ ở hàng chờ ---------- */
-.q-stranger { position: absolute; left: -2px; top: -4px; width: 22px; height: 22px; border-radius: 50%; background: #ffd23f;
-  color: var(--ink); font-size: 14px; font-weight: 900; line-height: 22px; text-align: center; box-shadow: 0 0 0 2px #fff; }
-.q-cust.is-stranger .q-name { color: #9a6a00; font-weight: 800; }
-.q-tag.is-stranger { background: #c98a00; }
+/* ---------- Hơi nước khi kiên nhẫn thấp ---------- */
+.steam { display: none; position: absolute; inset: 0; pointer-events: none; }
+.is-low > .st-fig .steam, .st-ghost.is-low .steam { display: block; }
+.steam i {
+  position: absolute; top: 5%; width: 13%; aspect-ratio: 1; border-radius: 50%; opacity: .85;
+  background: radial-gradient(circle at 38% 34%, #fff 0 35%, #e9edf2 70%); border: 1.5px solid rgba(58, 38, 24, .45);
+  animation: st-steam 1.5s ease-out infinite;
+}
+.steam i:nth-child(1) { left: 28%; }
+.steam i:nth-child(2) { left: 59%; animation-delay: .5s; }
+.steam i:nth-child(3) { left: 44%; top: 1%; width: 11%; animation-delay: 1s; }
+@keyframes st-steam {
+  0% { opacity: 0; transform: translateY(6px) scale(.5); }
+  30% { opacity: .95; }
+  100% { opacity: 0; transform: translateY(-8px) scale(1.2); }
+}
+
+/* ---------- Hoạt ảnh một lần (service.js gắn / gỡ lớp) ---------- */
+.st-fx { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.st-ghost { position: absolute; margin: 0; pointer-events: none; }
+.st-cloud { position: absolute; left: 44%; top: -4%; width: 46%; }
+.st-cloud svg { display: block; width: 100%; height: auto; }
+.st-fig.is-enter { animation: st-enter .52s var(--g-ease-out) both; }
+@keyframes st-enter {
+  0% { opacity: 0; transform: translateX(46px); }
+  45% { opacity: 1; transform: translateX(-3px) translateY(-5px); }
+  70% { transform: translateX(0) translateY(0); }
+  85% { transform: translateY(-2px); }
+  100% { transform: none; }
+}
+.st-fig.is-enter-soft { animation: st-fade .3s linear both; }
+@keyframes st-fade { from { opacity: 0; } }
+
+/* Giảm chuyển động: hơi nước đứng yên (base.css rút mọi hoạt ảnh CSS về tức thì; giữ dáng tĩnh dễ thấy) */
+@media (prefers-reduced-motion: reduce) {
+  .steam i { animation: none; opacity: .85; }
+}
+html.reduce-motion .steam i { animation: none; opacity: .85; }
+
+/* Khung thấp (≤ 760px, vd 360×600, 320×568, iPhone có thanh Safari): dải phố 84px như cũ */
+@media (max-height: 760px) {
+  .street { --st-h: 84px; --st-awn: 14px; --st-counter: 18px; --qh: 72px; --wh: 44px; }
+}
