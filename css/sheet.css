@@ -1,3 +1,54 @@
+/* ===================================================================================================================
+   Hộp tình huống trong ca — kiểu nền (M3/M4), chuyển nguyên văn từ css/meta.css ở M5 Đợt 3 bước 0 (bản 0.5.2). Đặt ở
+   ĐẦU tệp để các luật kiểu game bên dưới (gói Q-E) vẫn đè như khi khối này còn nằm ở meta.css.
+   =================================================================================================================== */
+/* ---------- Tình huống trong ca ---------- */
+.incident { display: flex; flex-direction: column; gap: 10px; }
+.incident-head { display: flex; align-items: center; gap: 12px; }
+.incident-titles { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.incident-kicker { font-size: 14px; font-weight: 800; color: var(--muted); }
+.incident-title { text-align: left; }
+.incident-art { display: inline-block; width: 64px; height: 64px; line-height: 0; flex: none; }
+.incident-art svg { width: 100%; height: 100%; }
+.incident-art.is-bill { width: 84px; height: 45px; }
+.incident-text { font-size: 15px; line-height: 1.4; }
+.incident-note, .incident-pause { font-size: 14px; color: var(--muted); }
+.incident-choice { position: relative; }
+.incident-choice b { font-size: 16px; }
+.incident-choice.is-safe { border-color: #b6dbb0; }
+/* M4: lựa chọn "xanh" nhờ hiện vật (vd có Loa báo tiền) */
+.incident-choice.is-green { border-color: var(--green); background: var(--green-soft); }
+.choice-hint { color: var(--green-ink); font-weight: 700; }
+.incident-choice:disabled { opacity: .55; cursor: not-allowed; }
+.safe-badge {
+  align-self: flex-start; margin-top: 2px; padding: 0 8px; border-radius: 999px;
+  font-size: 14px; font-weight: 800; color: var(--green-ink); background: var(--green-soft);
+}
+.incident-result { display: flex; flex-direction: column; gap: 8px; }
+.incident-effects { display: flex; flex-wrap: wrap; gap: 6px; }
+.incident-fx { font-size: 14px; font-weight: 800; padding: 3px 10px; border-radius: 999px; background: #fff; border: 1px solid var(--line); }
+.incident-fx.good { background: var(--green-soft); border-color: #b6dbb0; color: var(--green-ink); }
+.incident-fx.bad { background: #fdeceb; border-color: #f0b8a8; color: var(--bad); }
+.incident-fx.info { background: #eef3f8; border-color: #9fb6cc; color: #2f4a63; }
+.incident-tip { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 12px; background: #fff8e0; border: 1px solid #f0d68a; }
+.incident-tip b { font-size: 15px; color: var(--brick-dark); }
+.incident-tip p { font-size: 14px; line-height: 1.35; }
+/* màn thấp (≤ 760px: iPhone có thanh Safari, máy nhỏ): hộp tình huống gọn lại để cả các lựa chọn — cách an toàn thường nằm
+   cuối — lọt khung không phải cuộn (iPhone SE 375×553, 360×600). Chữ vẫn ≥ 14px, vùng chạm vẫn ≥ 44px. Màn rất thấp
+   (320×568) hộp vẫn cuộn bên trong, lựa chọn cuối lộ một phần cho biết còn nữa. */
+@media (max-height: 760px) {
+  .incident-modal { padding-top: 14px; }
+  .incident { gap: 6px; }
+  .incident-head { gap: 10px; }
+  .incident-art.is-bill { width: 64px; height: 34px; }
+  .incident-art:not(.is-bill) { width: 52px; height: 52px; }
+  .incident-title { font-size: 17px; line-height: 1.25; }
+  .incident-text { line-height: 1.35; }
+  .incident-choices { gap: 6px; }
+  .incident-choice { padding-top: 6px; padding-bottom: 6px; gap: 1px; }
+  .incident-choice .safe-badge { margin-top: 1px; }
+}
+
 /* M5 Đợt 2 (gói Q-E): phiếu chấm từng khách (src/ui/components/score-sheet.js), hộp tình huống trong ca và hộp khách
    phàn nàn (src/ui/components/incident-view.js) theo phong cách game: thẻ giấy viền mực, nút bánh kẹo, sân khấu minh họa.
    Gắn cuối index.html nên đè kiểu cũ ở game.css (phiếu chấm, .choice, .complaint) và meta.css (.incident…).

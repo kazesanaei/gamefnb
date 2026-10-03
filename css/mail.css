@@ -1,0 +1,25 @@
+/* Hộp thư (src/ui/screens/mailbox.js). M5 Đợt 3 bước 0: chuyển nguyên văn từ css/meta.css (gắn sau quests.css). */
+
+/* ---------- Hộp thư ---------- */
+.mail-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.mail-list { gap: 8px; }
+.mail-item { background: var(--paper); border: 2px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.mail-item.is-new { border-color: #efb6a4; }
+.mail-item.is-claimed { opacity: .75; }
+.mail-head {
+  position: relative; width: 100%; display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 8px 32px 8px 10px;
+  background: transparent; border: 0; text-align: left;
+}
+.mail-head .red-dot { top: 50%; right: 10px; transform: translateY(-50%); }
+.mail-icon { width: 36px; height: 36px; display: inline-block; line-height: 0; flex: none; }
+.mail-icon svg { width: 100%; height: 100%; }
+.mail-titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.mail-titles b { font-size: 15px; }
+.mail-titles small { color: var(--muted); }
+.mail-preview { font-size: 14px; color: var(--ink); opacity: .8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mail-body { padding: 0 12px 8px 56px; font-size: 15px; }
+.mail-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 0 10px 10px; }
+.mail-foot .btn { margin-left: auto; }
+.mail-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 30px 0; color: var(--muted); }
+.mail-empty-icon { width: 64px; height: 64px; display: inline-block; line-height: 0; opacity: .6; }
+.mail-empty-icon svg { width: 100%; height: 100%; }

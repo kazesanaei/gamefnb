@@ -1,0 +1,98 @@
+/* Sổ tay nghề (src/ui/screens/notebook.js), Sổ công thức + chi tiết món + Sổ từ vùng miền (src/ui/screens/recipe-book.js).
+   M5 Đợt 3 bước 0: chuyển nguyên văn từ css/meta.css (gắn sau mail.css).
+   Lưu ý: luật ".book-detail-body small, .incident small, .sum-incident small" bên dưới dùng chung cho hộp tình huống trong
+   ca và thẻ tình huống ở Tổng kết (giữ nguyên chỗ để thứ tự đè không đổi). */
+
+/* ---------- Sổ tay nghề ---------- */
+.nb-overall { display: flex; align-items: center; gap: 10px; }
+.nb-overall-num { font-weight: 900; font-size: 15px; font-variant-numeric: tabular-nums; }
+.nb-featured .bubble p { font-size: 15px; }
+.nb-group { position: relative; display: flex; flex-direction: column; gap: 8px; }
+.nb-group.is-complete { background: #f7fbf4; border-color: #b6dbb0; }
+.nb-group.has-pending { border-color: #f0b8a8; background: #fff7f2; }
+.nb-group-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.nb-group-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.nb-group-title .card-title { margin-bottom: 0; }
+.nb-group-head .red-dot { top: -6px; right: -6px; }
+.nb-reward { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.nb-reward .btn, .nb-reward .nb-claimed { margin-left: auto; }
+.nb-claimed { font-size: 14px; font-weight: 800; color: var(--green-ink); }
+.nb-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.nb-tab {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
+  min-height: 52px; padding: 4px 2px; border-radius: 12px; border: 2px solid var(--line); background: #fff; color: var(--muted);
+  font-weight: 800; line-height: 1.15; touch-action: manipulation;
+}
+.nb-tab-name { font-size: 15px; }
+.nb-tab-num { font-size: 14px; font-variant-numeric: tabular-nums; }
+.nb-tab.is-complete { border-color: #b6dbb0; color: var(--green-ink); }
+.nb-tab.active { background: var(--brick); border-color: var(--brick); color: #fff; }
+.nb-tab .red-dot { top: -6px; right: -4px; }
+.nb-tips { display: flex; flex-direction: column; gap: 6px; }
+.nb-tip { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--line); background: #fff; }
+.nb-tip b { font-size: 15px; }
+.nb-tip p { font-size: 14px; line-height: 1.35; }
+.nb-tip.is-locked {
+  color: var(--muted); border-style: dashed; opacity: .78;
+  background: repeating-linear-gradient(135deg, #f6efe1 0 8px, #efe6d3 8px 16px);
+}
+.nb-tip.is-locked b { letter-spacing: 3px; }
+.nb-hint { font-style: italic; }
+
+/* ---------- Sổ công thức ---------- */
+.book-list { display: flex; flex-direction: column; gap: 8px; }
+.book-card {
+  display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; min-width: 0;
+  background: var(--paper); border: 2px solid var(--line); border-radius: var(--radius);
+}
+.book-card.st-owned { background: #f7fbf4; border-color: #cfe6c6; }
+.book-card.st-event { border-color: #9ac6e2; }
+.book-card.st-teaser { border-style: dashed; opacity: .62; filter: grayscale(.55); }
+.book-card-btn {
+  display: block; width: 100%; min-height: 44px; padding: 0; border: 0; background: transparent; text-align: left;
+  color: inherit; touch-action: manipulation; border-radius: 10px;
+}
+.book-card-btn:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+.book-card-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.book-icon { width: 48px; height: 48px; flex: none; background: #fff; border-radius: 12px; border: 1px solid var(--line); padding: 3px; }
+.book-card-title { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.book-card-title b { font-size: 17px; font-weight: 900; }
+.book-source { font-size: 14px; font-weight: 700; color: var(--muted); }
+.book-source.src-shop { color: var(--brick-dark); }
+.book-source.src-event { color: #2a679e; }
+.book-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.book-flawless {
+  flex: none; font-size: 14px; font-weight: 800; color: #9a6a00; background: #fff4d2; border: 1px solid #f0d68a;
+  border-radius: 999px; padding: 1px 8px; white-space: nowrap;
+}
+.book-money, .book-stats { display: flex; flex-wrap: wrap; gap: 2px 12px; }
+/* M4: món hiếm: dòng giải thích phần giá vốn là hàng hiếm quy đổi (một dòng riêng) */
+.book-rare-cost { flex-basis: 100%; font-size: 14px; line-height: 1.35; }
+.book-mastery { display: flex; flex-direction: column; gap: 4px; }
+.book-level { line-height: 1.35; }
+.book-note { line-height: 1.35; }
+.book-detail-body { display: flex; flex-direction: column; gap: 8px; }
+.book-detail-body small, .incident small, .sum-incident small { font-size: 14px; }
+.book-detail-head { display: flex; align-items: center; gap: 10px; }
+.book-detail-head .modal-title { text-align: left; }
+.book-h3 { font-size: 16px; font-weight: 900; color: var(--brick-dark); margin-top: 2px; }
+.book-ings { display: flex; flex-direction: column; gap: 4px; }
+.book-ings li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: 15px; }
+.book-ings li small { text-align: right; }
+.book-ing-icon { display: inline-block; width: 28px; height: 28px; line-height: 0; }
+.book-ing-icon svg { width: 100%; height: 100%; }
+.book-steps { display: flex; flex-direction: column; gap: 4px; padding-left: 22px; list-style: decimal; }
+.book-steps li { display: list-item; font-size: 15px; }
+.book-steps li small { display: block; }
+.book-dialect-intro { line-height: 1.4; }
+.dialect-head { display: grid; grid-template-columns: 1fr 1fr; padding: 0 12px; font-size: 14px; font-weight: 800; color: var(--muted); }
+.dialect-head span:last-child { text-align: right; }
+.dialect-list { display: flex; flex-direction: column; gap: 6px; }
+.dialect-item { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; background: #fff; border: 1px solid var(--line); border-radius: 12px; }
+.dialect-pair { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; }
+.dialect-nam { color: var(--brick-dark); font-size: 16px; }
+.dialect-bac { color: #2a679e; font-size: 16px; text-align: right; }
+.dialect-eq { color: var(--muted); font-weight: 900; }
+/* M4: món hiếm chưa mở trong Sổ công thức */
+.book-rare { display: flex; flex-direction: column; gap: 4px; }
+.book-rare .btn { align-self: flex-start; min-height: 44px; }

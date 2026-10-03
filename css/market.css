@@ -1,0 +1,23 @@
+/* M4: màn Gánh hàng quê / Lựa hàng (src/ui/screens/market.js, dùng lại kệ Chọn của bếp). M5 Đợt 3 bước 0: chuyển nguyên
+   văn từ css/meta.css (gắn sau summary.css, cuối nhóm màn ngoài ca). */
+
+/* Màn Phiên chợ quê */
+.market-body { gap: 12px; }
+.market-intro, .market-result { display: flex; flex-direction: column; gap: 8px; }
+.market-intro > .btn, .market-result > .btn { min-height: 48px; }
+.market-goods, .market-got { display: flex; flex-direction: column; gap: 6px; }
+.market-good { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 12px; background: #fff; border: 1px solid var(--line); }
+.market-got li { display: flex; align-items: center; gap: 10px; font-weight: 800; }
+.market-good-icon { width: 44px; height: 44px; display: inline-block; line-height: 0; flex: none; }
+.market-good-icon svg { width: 100%; height: 100%; }
+.market-good-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.market-trap { color: var(--bad); font-weight: 700; }
+.market-rules { display: flex; flex-direction: column; gap: 2px; padding-left: 18px; list-style: disc; }
+.market-locked { color: var(--brick-dark); font-weight: 700; }
+.market-stage { display: flex; flex-direction: column; gap: 8px; }
+.market-stage .mg-stage { position: relative; min-height: 420px; }
+/* màn Lựa hàng không có thanh tab: thanh "Trong rổ / Xong" dính đáy màn chừa vùng an toàn (thanh Home iPhone), nền đặc */
+.market-stage .mg-chon .mg-foot { padding-bottom: calc(6px + var(--safe-bottom)); background: var(--bg); }
+.market-hint { font-weight: 700; }
+.market-score { display: flex; align-items: baseline; gap: 10px; }
+.market-score b { font-size: 32px; color: var(--brick); }

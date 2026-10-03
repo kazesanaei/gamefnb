@@ -1,0 +1,24 @@
+/* Màn Tổng kết ca (src/ui/screens/summary.js): tiến độ meta, tình huống trong ca, sổ ghi nợ, tiền sự kiện.
+   M5 Đợt 3 bước 0: chuyển nguyên văn từ css/meta.css (gắn sau book.css). */
+
+/* chữ tối thiểu 14px trên màn Tổng kết (nhãn M1 13px) */
+.summary-screen .stat-label { font-size: 14px; }
+
+/* ---------- Tổng kết: tiến độ meta ---------- */
+.sum-meta { display: flex; flex-direction: column; gap: 10px; }
+.sum-meta-block { display: flex; flex-direction: column; gap: 4px; }
+.sum-quests { display: flex; flex-direction: column; gap: 6px; }
+.sum-quests li { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; font-size: 14px; }
+.sum-quests li .pbar { grid-column: 1 / -1; }
+.sum-quests li.is-done .sq-text { color: var(--green-ink); font-weight: 800; }
+.sq-num { font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* ---------- Tổng kết: tình huống, sổ ghi nợ ---------- */
+.sum-incident { display: flex; flex-direction: column; gap: 6px; }
+.sum-incident-item { display: flex; flex-direction: column; gap: 2px; }
+.sum-incident-fx { display: flex; flex-wrap: wrap; gap: 2px 12px; font-weight: 700; }
+/* M4: ghi chú tiền sự kiện ngày, mỗi khoản một dòng */
+.sum-event-notes { flex-direction: column; font-weight: 600; }
+.sum-event-notes li b { font-weight: 800; }
+.sum-debt.is-paid { color: var(--green-ink); font-weight: 700; }
+.sum-debt.is-unpaid { color: #2f4a63; }
