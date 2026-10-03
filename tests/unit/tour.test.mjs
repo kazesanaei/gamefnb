@@ -1,6 +1,8 @@
 // Hướng dẫn lần đầu (tour, bản 0.4.1): lõi thuần src/core/tour.js (đã xem, đặt lại, bật/tắt, nâng bản lưu cũ) và dữ liệu
 // src/data/tours.js (đủ bước, lời ngắn, màn có thật, trang Cách chơi có hình). 0.5.0 (M5): 5 tour thẻ "Bước k/N" của các thao tác
 // mới (bep_dap, bep_xoay, bep_got, bep_lac, bep_bay — chỗ 'card-<loại>'), lời tour Thớt nhắc thao tác mới.
+// 0.5.1 (M5 Đợt 2): đích của mọi bước tour còn là testid / lớp móc có thật trong src/ui và css (giao diện Quầy, HUD, phố,
+// phiếu chấm làm lại), bộ đích các tour Quầy / Ca bán / Phiếu chấm đúng thiết kế, lời khớp nhãn nút thật.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { DATA } from '../../src/data/index.js'
@@ -281,4 +283,55 @@ test('M5 tour thẻ bước: 5 thao tác mới, chỗ card-<loại>, 2 bước (
   // tour chừa chỗ cho thanh dính khi cuộn đích vào khung: thanh chân sân khấu kiểu mới vẫn là .mg-foot, Thớt .k-toolbar, Quầy .act-bar
   const sticky = STICKY.split(',').map(x => x.trim())
   for (const sel of ['.mg-foot', '.k-toolbar', '.act-bar', '.sticky-foot', '.meta-head']) assert.ok(sticky.includes(sel), 'STICKY thiếu ' + sel)
+})
+
+// 0.5.1 (M5 Đợt 2): giao diện Quầy, HUD, phố, phiếu chấm làm lại — đích của mọi bước tour phải còn là testid / lớp móc có thật
+// trong mã giao diện (src/ui) hoặc CSS, để bước tour không bị âm thầm bỏ qua vì đích biến mất.
+test('đích tour còn có thật trong mã giao diện (testid / lớp móc), kể cả các tour Quầy viết lại ở 0.5.1', async () => {
+  const { readdirSync, readFileSync, statSync } = await import('node:fs')
+  const path = await import('node:path')
+  const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..')
+  const files = []
+  const walk = d => {
+    for (const f of readdirSync(d)) {
+      const p = path.join(d, f)
+      if (statSync(p).isDirectory()) walk(p)
+      else if (/\.(js|css)$/.test(f)) files.push(p)
+    }
+  }
+  walk(path.join(root, 'src', 'ui'))
+  walk(path.join(root, 'css'))
+  const text = files.map(f => readFileSync(f, 'utf8')).join('\n')
+  const has = s => text.includes(s)
+  for (const [id, t] of Object.entries(T)) {
+    for (const s of t.steps) {
+      for (const tg of [s.target, s.span].flatMap(x => (Array.isArray(x) ? x : [x])).filter(Boolean)) {
+        if (/^[A-Za-z0-9_-]+$/.test(tg)) {
+          // testid viết thẳng (testid: 'x'), hoặc ghép tiền tố + số / id ('quest-' + i, 'dot-' + name…)
+          const pre = tg.includes('-') ? tg.slice(0, tg.lastIndexOf('-') + 1) : null
+          const ok = has(`'${tg}'`) || has(`"${tg}"`) || has('`' + tg + '`') || (!!pre && (has(`'${pre}'`) || has('`' + pre)))
+          assert.ok(ok, `${id}: đích ${tg} không còn trong mã giao diện`)
+          continue
+        }
+        for (const m of tg.matchAll(/data-testid\^?="([^"]+)"/g)) assert.ok(has(m[1]), `${id}: testid ${m[1]} (trong ${tg}) không còn`)
+        const plain = tg.replace(/\[[^\]]*\]/g, ' ').replace(/:not\([^)]*\)/g, ' ')
+        for (const m of plain.matchAll(/\.([a-z][\w-]*)/g)) assert.ok(has(m[1]), `${id}: lớp .${m[1]} (trong ${tg}) không còn trong mã / CSS`)
+      }
+    }
+  }
+  // các tour Quầy, Ca bán, Phiếu chấm (viết lại ở 0.5.1) đúng bộ đích thiết kế (bản đồ mã M5 mục 6)
+  const targets = id => T[id].steps.map(x => (Array.isArray(x.target) ? x.target.join('|') : x.target))
+  assert.deepEqual(targets('ca_ban'), ['hud', 'queue', 'progress-4', 'ticket-rail', 'tab-counter'])
+  assert.equal(T.ca_ban.steps[4].span, 'tab-kitchen')
+  assert.deepEqual(targets('quay_order'), ['queue', 'speech-bubble', 'progress-4', '[data-testid^="menu-item-"]', 'readback', 'confirm-order'])
+  assert.deepEqual(targets('quay_bang_mon'), ['qty-row', 'note-block', 'add-line'])
+  assert.deepEqual(targets('quay_thanh_toan'), ['price-board', 'numpad-display', 'report-total'])
+  assert.deepEqual(targets('quay_tinh_tien'), ['given-cash', 'drawer', 'tray', 'give-change'])
+  assert.deepEqual(targets('quay_qr'), ['qr-status', 'qr-confirm', 'qr-reject'])
+  assert.deepEqual(targets('quay_phieu_thu'), ['receipt', 'clip-ticket'])
+  assert.deepEqual(targets('phieu_cham'), ['score-sheet', '.ss-tags|.ss-rows', 'score-sheet-tip|score-sheet'])
+  // lời tour Quầy khớp nhãn nút thật trên màn: "Không cần thối" (give-change khi khách đưa vừa đủ), "Từ chối ảnh giả"
+  assert.match(T.quay_tinh_tien.steps.find(x => x.target === 'give-change').text, /Không cần thối/)
+  assert.match(T.quay_qr.steps.find(x => x.target === 'qr-reject').text, /Từ chối ảnh giả/)
+  assert.ok(has("'Không cần thối'") && has("'Từ chối ảnh giả'"), 'nhãn nút Quầy đổi mà lời tour chưa đổi')
 })

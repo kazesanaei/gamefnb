@@ -301,6 +301,39 @@ test('art: SVG hợp lệ, không ảnh ngoài, không base64', () => {
   assert.ok(Object.keys(ANH_KHOA).length >= 1)
 })
 
+// M5 Đợt 2 (0.5.1, ráp nối): DI_SAU / ANH_KHOA / CO_HANH là mặt tròn 64 mới của src/ui/art/people.js (cùng bộ khóa);
+// bust / head / scene… xuất lại đúng hàm của people.js, scene.js. FACES / face() tạm giữ bộ mặt cũ (LEGACY_FACES) vì
+// bustSvg của order-bubble.js lồng face(); headFace() là mặt mới cùng API face().
+test('art 0.5.1: mặt tiền nối hình người và cảnh quầy mới; FACES / face() giữ API', async () => {
+  const A = await import('../../src/ui/art.js')
+  const P = await import('../../src/ui/art/people.js')
+  const S = await import('../../src/ui/art/scene.js')
+  assert.equal(A.DI_SAU, P.DI_SAU_FACES)
+  assert.equal(A.ANH_KHOA, P.ANH_KHOA_FACES)
+  assert.equal(A.CO_HANH, P.CO_HANH_FACES)
+  assert.deepEqual(Object.keys(ANH_KHOA).sort(), ['huong_dan', 'vui'])
+  assert.deepEqual(Object.keys(A.CO_HANH), ['vui'])
+  for (const k of ['bust', 'head', 'BUSTS', 'HEADS', 'PEOPLE_META', 'WHO_LOOKS', 'DI_SAU_POSES', 'DI_SAU_POSE_MOOD', 'ANH_KHOA_BUSTS', 'CO_HANH_BUSTS']) {
+    assert.equal(A[k], P[k], `art.js xuất lại ${k} của people.js`)
+  }
+  for (const k of ['scene', 'SCENE', 'SCENE_ICONS', 'SCENE_META', 'STAGE_ICONS', 'TAB_ICONS', 'HUD_ICONS', 'phoneQr']) {
+    assert.equal(A[k], S[k], `art.js xuất lại ${k} của scene.js`)
+  }
+  assert.equal(A.phoneQrSvg(3), S.phoneQr(fakeQrSvg(3)))
+  assert.ok(A.phoneQrSvg(3).includes('QR GAME'))
+  // FACES / face(): cùng bộ khóa 6 kiểu × MOODS, dự phòng như cũ (kiểu lạ → học sinh, tâm trạng lạ → bình thường)
+  assert.equal(FACES, A.LEGACY_FACES)
+  assert.equal(A.face, A.legacyFace)
+  assert.deepEqual(Object.keys(FACES).sort(), Object.keys(A.HEADS).sort())
+  assert.equal(A.face('co_chu', 'gian', 'nam'), FACES.co_chu_nam.gian)
+  assert.equal(A.face('khong_co', 'vui'), FACES.hoc_sinh.vui)
+  assert.equal(A.face('constructor', 'toString'), FACES.hoc_sinh.binh_thuong)
+  // headFace(): mặt mới, cùng API face()
+  for (const p of Object.keys(A.HEADS)) for (const m of MOODS) assert.equal(A.headFace(p === 'co_chu_nam' ? 'co_chu' : p, m, p === 'co_chu_nam' ? 'nam' : null), A.HEADS[p][m])
+  assert.equal(A.headFace('khong_co', 'lo'), A.HEADS.hoc_sinh.binh_thuong, 'tâm trạng ngoài MOODS → bình thường')
+  assert.equal(A.headFace('co_chu', 'vui', 'nu', { who: 'co_thu' }), P.head('co_chu', 'vui', { gender: 'nu', who: 'co_thu' }))
+})
+
 test('art: icon() có hình dự phòng; tiền và QR đúng quy định', () => {
   assert.equal(icon('trung_ga'), ICONS.trung_ga)
   assert.equal(icon('tra_tac'), ICONS.mon_tra_tac)

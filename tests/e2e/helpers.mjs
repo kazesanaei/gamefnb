@@ -7,7 +7,8 @@ import assert from 'node:assert/strict'
 import { startServer } from '../helpers/static-server.mjs'
 import { DATA } from '../../src/data/index.js'
 import { requiredIngredients } from '../../src/core/scoring.js'
-import { priceOfLines } from '../../src/core/order.js'
+import { priceOfLines, addLine, readback, confirmOrder, reportTotal, changeOptions } from '../../src/core/order.js'
+import { normalizeLines, expectedServiceSec, speechFor } from '../../src/core/customer.js'
 import { minBillsChange, BILLS } from '../../src/core/money.js'
 import { decodeSave, encodeSave, SAVE_KEY, DEV_SAVE_KEY } from '../../src/core/save.js'
 import { newRecipeProgress } from '../../src/core/state.js'
@@ -191,6 +192,93 @@ export function cookShiftSave(line, stopAt = null, { tickets = 1, cooks = null, 
   return { state, ticket }
 }
 
+// ---------- Quầy M5 Đợt 2: ca thật dựng sẵn, khách đầu sắp tới quầy (m5-quay, tour Quầy) ----------
+
+// Ba cách trả tiền dựng được: tiền mặt (có tiền thối, két thối được), chuyển khoản thật, ảnh chuyển khoản giả.
+export const COUNTER_PAYS = Object.freeze(['cash', 'qr', 'qr_fake'])
+
+// Chạy thử quầy của khách `customerId` trên BẢN SAO state bằng lõi (ghi đúng phiếu, đọc lại, chốt, báo đúng tổng) → khâu
+// Tính tiền của bản sao ({ counter, result }) | null. Từ lúc mở ca tới lúc báo tổng, luồng ngẫu nhiên của ca (sh.rng) chỉ bị
+// rút ở reportTotal (khách đã dựng sẵn hết lúc mở ca, khách tới theo lịch không rút số; đọc lại phiếu đúng không rút số), nên
+// giao diện làm đúng y vậy thì ra đúng cách trả tiền của bản sao.
+function trialCounter(state, customerId) {
+  const st = JSON.parse(JSON.stringify(state))
+  const ctx = makeMetaCtx({ at: COOK_SHIFT_AT })
+  ctx.setState(st)
+  const sh = st.shift
+  for (let k = 0; k < 4000 && !(sh.counter && sh.counter.customerId === customerId); k++) {
+    if (sh.counter) return null
+    advance(st, 0.25, ctx)
+  }
+  const c = sh.counter
+  if (!c || c.customerId !== customerId) return null
+  const cust = sh.customers[customerId]
+  for (const l of cust.request) addLine(st, l)
+  readback(st, ctx)
+  if (!confirmOrder(st, ctx).ok) return null
+  const result = reportTotal(st, priceOfLines(cust.request, DATA.RECIPES), ctx)
+  return { counter: sh.counter, result, drawer: sh.drawer, state: st, ctx }
+}
+
+/**
+ * Ca thật ngày 5 vừa mở (người chơi hoàn hảo 4 ca, seed 3, tần suất sự kiện "Ít", KHÔNG có tình huống trong ca), mở trang
+ * bằng đồng hồ giả ở COOK_OPEN_MS: khách đầu (sh.plan[0]) gọi `request`, rất kiên nhẫn (patienceSec, để đo đạc lâu không bị
+ * bỏ về) và sẽ trả theo `pay`:
+ *   'cash'    tiền mặt, có tiền thối và két thối được (không hộp "két không đủ tiền lẻ");
+ *   'qr'      chuyển khoản thật (tiền về sau 1–4 giây), quán KHÔNG có Loa báo tiền (người chơi tự bấm "Đã nhận đủ");
+ *   'qr_fake' ảnh chuyển khoản giả (customer.forcePay của chuỗi "Làm quen QR").
+ * 'cash' / 'qr' chọn hạt của luồng ngẫu nhiên ca (sh.rng) bằng cách chạy thử trên bản sao (trialCounter).
+ * speaker: true → có Loa báo tiền. delayOthers (giây): các khách sau tới muộn thêm chừng đó (quầy trống một lúc sau khách đầu,
+ * vd để xem tour Ca bán lúc quầy trống). → { state, customerId, total, request, pay, change (tiền thối, tiền mặt) }.
+ */
+export function counterShiftSave({ pay = 'cash', request = [{ recipeId: 'banh_mi_op_la', qty: 1, notes: [] }], seed = 3, name = 'Xe Quầy Mới', speaker = false, patienceSec = 3600, delayOthers = 0 } = {}) {
+  if (!COUNTER_PAYS.includes(pay)) throw new Error('cách trả không có: ' + pay)
+  const { state } = playedSave(seed, 4, { name, freq: 'it' })
+  for (const l of request) {
+    if (!state.recipes[l.recipeId]) state.recipes[l.recipeId] = newRecipeProgress(0)
+    for (const ing of Object.keys(DATA.RECIPES[l.recipeId].rare || {})) state.rare.stock[ing] = Math.max(Number(state.rare.stock[ing]) || 0, 4)
+  }
+  state.upgrades = { ...(state.upgrades || {}) }
+  if (speaker) state.upgrades.loa_bao_tien = true
+  else delete state.upgrades.loa_bao_tien
+  const ctx = makeMetaCtx({ at: COOK_SHIFT_AT, attach: true })
+  ctx.setState(state)
+  refreshMeta(state, makeNowInfo(state, ctx.clock.t), ctx)
+  const sh = startShift(state, ctx)
+  // không có tình huống chen giữa hai khách (hộp tình huống làm lệch nhịp đo của quầy)
+  sh.incident = null
+  sh.incidentQueue = []
+  const customerId = sh.plan[0].customerId
+  if (delayOthers > 0) for (const p of sh.plan.slice(1)) p.arriveAt += delayOthers
+  const cust = sh.customers[customerId]
+  cust.request = normalizeLines(request)
+  cust.expectedSec = expectedServiceSec(cust.request, ctx)
+  cust.speech = speechFor(cust, sh, ctx)
+  cust.tutorial = false
+  cust.patienceSec = patienceSec
+  delete cust.forcePay
+  if (pay === 'qr_fake') cust.forcePay = 'qr_fake'
+  const total = priceOfLines(cust.request, DATA.RECIPES)
+  let change = 0
+  if (pay !== 'qr_fake') {
+    const base = Number(sh.rng) >>> 0
+    let found = false
+    for (let k = 0; k < 4000 && !found; k++) {
+      sh.rng = (base + k * 2654435761) >>> 0
+      const t = trialCounter(state, customerId)
+      if (!t || t.result.result !== 'dung') continue
+      const c = t.counter
+      if (pay === 'qr') found = c.payMethod === 'qr' && !c.fakeQr
+      else if (c.payMethod === 'cash' && c.changeDue > 0 && !changeOptions(t.state, t.ctx).length && minBillsChange(c.changeDue, t.drawer)) {
+        found = true
+        change = c.changeDue
+      }
+    }
+    if (!found) throw new Error('không tìm được hạt ngẫu nhiên cho cách trả ' + pay)
+  }
+  return { state, customerId, total, request: cust.request, pay, change }
+}
+
 // ---------- Bắt đầu game ----------
 
 // Bảng điểm danh tự bật ở lần mở đầu tiên trong ngày thật (kể cả save mới): nhận ô kế tiếp rồi chờ bảng đóng.
@@ -296,13 +384,14 @@ export async function serveAtCounter(g) {
   await page.waitForSelector(`${T('progress-4')}[data-stage="order"]`)
   await g.shot('quay-order')
 
-  // Order: chọn món, ghi chú, số lượng
-  for (const line of request) {
+  // Order: chọn món, ghi chú, số lượng (M5 Đợt 2: bảng chọn món ở lớp nổi gốc; qty-value chỉ chứa con số)
+  for (const [i, line] of request.entries()) {
     await page.click(T('menu-item-' + line.recipeId))
     await page.waitForSelector(T('order-sheet'))
     for (const n of line.notes || []) await page.click(T('note-chip-' + n))
     for (let q = 1; q < line.qty; q++) await page.click(T('qty-plus'))
     assert.equal(await page.textContent(T('qty-value')), String(line.qty))
+    if (i === 0) await g.shot('bang-chon-mon')
     await page.click(T('add-line'))
     await page.waitForSelector(T('order-sheet'), { state: 'detached' })
   }
@@ -313,6 +402,8 @@ export async function serveAtCounter(g) {
   assert.equal(!!(await page.$(T('caught-list'))), false, 'phiếu đúng mà khách bắt lỗi')
   await g.shot('quay-doc-lai')
   await page.click(T('confirm-order'))
+  // M5 Đợt 2: con dấu "ĐÃ CHỐT" đập lên bản sao phiếu rồi phiếu bay lên dây (≈ 0,6 giây, chỉ để chụp ảnh)
+  await g.shot('quay-chot-order')
 
   // Thanh toán: gõ tổng theo nghìn
   await page.waitForSelector(T('report-total'))

@@ -78,11 +78,13 @@ const SHOTS = {
   // M5 (0.5.0): thao tác mới khuấy / gọt / bày, thẻ vào bước "Bước k/N", con dấu kết quả bước; lắc-xé kiểu Chà còn lại
   // (xé khô mực, bóp muối) giữ nhãn cũ
   'mg-xoay': '40-mg-xoay', 'mg-got': '41-mg-got', 'mg-bay': '42-mg-bay', 'mg-the-buoc': '43-mg-the-buoc',
-  'mg-con-dau': '44-mg-con-dau', 'mg-cha-lac': '45-mg-cha-xe'
+  'mg-con-dau': '44-mg-con-dau', 'mg-cha-lac': '45-mg-cha-xe',
+  // M5 Đợt 2 (0.5.1): quầy mới — bảng chọn món ở lớp nổi (số phần, ghi chú có hình), con dấu "ĐÃ CHỐT" lúc chốt order
+  'bang-chon-mon': '46-quay-bang-chon-mon', 'quay-chot-order': '47-quay-chot-order'
 }
 const taken = new Set()
 // Các khâu trong ca bán cũng soát bố cục (chữ < 13px, vùng chạm < 44px, tràn ngang) lần đầu gặp (vòng soát lỗi M3).
-const SHIFT_AUDIT = new Set(['quay-order', 'quay-doc-lai', 'thanh-toan', 'tinh-tien', 'phieu-thu', 'bep-day-phieu', 'bep-ke-chon', 'bep-thot', 'phieu-cham'])
+const SHIFT_AUDIT = new Set(['quay-order', 'bang-chon-mon', 'quay-doc-lai', 'thanh-toan', 'tinh-tien', 'phieu-thu', 'qr', 'bep-day-phieu', 'bep-ke-chon', 'bep-thot', 'phieu-cham'])
 const audited = new Set()
 
 function makeG(page, server) {

@@ -124,12 +124,13 @@ function bustSafe(persona, mood, opts) {
 }
 
 // Chân dung khách: khung ảnh viền mực, nền quán; mặt bình thường rồi đổi sang tâm trạng theo sao (hai lớp chồng nhau, CSS
-// đổi độ mờ lúc react), biểu cảm nảy cạnh khung (nằm ngoài khung cắt hình).
-function portrait(app, sheet) {
+// đổi độ mờ lúc react), biểu cảm nảy cạnh khung (nằm ngoài khung cắt hình). still: phiếu hiện thẳng trạng thái cuối (giảm
+// chuyển động, phiếu dựng lại) → chỉ vẽ mặt cuối, không để lớp mặt bình thường nằm dưới (nét thừa lộ ra quanh mặt cuối).
+function portrait(app, sheet, still) {
   const { persona, opts } = whoOf(app, sheet)
   const mood = sheetMood(sheet.stars)
   const final = bustSafe(persona, mood, opts)
-  const swap = mood !== 'binh_thuong'
+  const swap = !still && mood !== 'binh_thuong'
   const start = swap ? bustSafe(persona, 'binh_thuong', opts) : ''
   const emote = emoteKey(sheet.stars)
   return h('div', { class: ['ss-face', swap ? 'has-swap' : ''], dataset: { mood } },
@@ -207,7 +208,7 @@ export function renderScoreSheet(app, sheet) {
     style: { '--ss-react': plan.react + 'ms', '--ss-stamp': plan.stamp + 'ms', '--ss-tip': plan.tip + 'ms' }
   },
   h('div', { class: 'ss-head' },
-    portrait(app, sheet),
+    portrait(app, sheet, again || reduced),
     h('div', { class: 'ss-who' },
       h('b', { class: 'ss-name' }, sheet.name),
       starRow(sheet.stars),

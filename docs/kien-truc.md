@@ -27,14 +27,19 @@ sw.js                      service worker (M3): PRECACHE toàn bộ tệp, cache
 icons/                     icon.svg (gốc) + icon-192.png, icon-512.png, apple-touch-icon.png (dựng bằng tools/make-icons.mjs)
 tools/make-icons.mjs       dựng PNG từ icon.svg bằng Chromium (Playwright); chạy tay `npm run icons`, PNG được commit
 css/base.css               biến màu, font hệ thống, reset, bố cục khung điện thoại; M5: nút .btn kiểu "bánh kẹo" toàn game
-css/game.css               giao diện các màn; M5: chế độ tập trung khi nấu (.service-screen.is-focus)
+css/game.css               giao diện các màn; M5: chế độ tập trung khi nấu (.service-screen.is-focus); 0.5.1: HUD, 4 khâu,
+                           dây phiếu, tab, .act-bar (CSS Quầy cũ còn nằm đây, chưa chuyển — mục 32)
 css/kitchen.css            màn Bếp (dây phiếu, thẻ công thức, Thớt huy hiệu bước, lớp sân khấu, ra món)
 css/mg-prep.css            (M5) khung sân khấu bếp kiểu mới (tường gạch men, thanh chân mặt quầy gỗ) + Chọn, Chà, Thái, Gọt
 css/mg-heat.css            (M5) Nêm, Canh lửa, Rót, Đập trứng
 css/mg-mix.css             (M5) Khuấy, Lắc, Thả đá
 css/theme.css              (M5) @font-face Baloo 2, biến --g-*, nút .g-btn, khung giấy/gỗ/phấn (.g-paper/.g-wood/.g-chalk)
 css/fx.css                 (M5) thẻ "Bước k/N", tay mẫu, con dấu, màn ra món, Dì Sáu phản ứng, lớp .vfx-layer
-css/counter.css            (M5) màn gọi món kiểu mới (bản mẫu Đợt 0, ráp vào Quầy ở Đợt 2)
+css/counter.css            (M5) Quầy: khách bán thân, bong bóng, thực đơn, phiếu order, bảng chọn món, quầy trống (lớp co-)
+css/cashier.css            (M5 Đợt 2) bảng giá phấn, máy tính tiền, tiền mặt, két 7 ngăn, khay (lớp cs-)
+css/receipt.css            (M5 Đợt 2) chuyển khoản QR (lớp qc-), máy in và phiếu thu (lớp rc-)
+css/street.css             (M5 Đợt 2) dải phố: mái bạt, mặt trước xe đẩy, khách bán thân, chỗ chờ món
+css/sheet.css              (M5 Đợt 2) phiếu chấm, hộp tình huống, phàn nàn
 css/meta.css, tour.css     các màn ngoài ca; lớp phủ hướng dẫn lần đầu (mục 29)
 css/settings.css           (M3) màn Cài đặt, nút Cài đặt/nhắc sao lưu/"Có bản mới" ở màn Chuẩn bị, hộp thoại sao lưu
 fonts/                     (M5) baloo2-800-latin.woff2, baloo2-800-vi.woff2 (font tiêu đề tự lưu, có trong PRECACHE) + OFL.txt
@@ -51,11 +56,15 @@ src/data/                  nội dung + cân bằng (export const … = Object.f
 src/ui/
   dom.js  app.js  router.js  loop.js  input.js  format.js  art.js  audio.js  motion.js (M5)  vfx.js (M5)
   art/        (M5) kit.js (hàm vẽ, bảng màu cel-shading) ing-tuoi.js ing-kho.js mon.js tools.js props.js (đạo cụ lớn,
-              PROP_META) state-map.js (bước → hình trạng thái) v2.js (lớp tương thích); art.js là mặt tiền gộp lại
+              PROP_META) state-map.js (bước → hình trạng thái) v2.js (lớp tương thích); Đợt 2: people.js (khách bán
+              thân, mặt, Dì Sáu tư thế) scene.js (xe đẩy, điện thoại QR, máy POS, két, máy in phiếu, biểu tượng HUD/khâu/tab);
+              art.js là mặt tiền gộp lại
   components/ hud.js toast.js modal.js progress4.js patience.js ticket-rail.js cash-drawer.js numpad.js
               M5: step-card.js stamp.js dish-reveal.js disau-react.js (bếp) order-bubble.js menu-board.js order-pad.js
-              order-sheet.js note-icons.js (gọi món kiểu mới, ráp ở Đợt 2)
-  screens/    title.js prep.js service.js counter.js kitchen.js summary.js
+              order-sheet.js note-icons.js (gọi món kiểu mới, ráp vào Quầy ở Đợt 2); Đợt 2: score-sheet.js (phiếu chấm)
+              incident-view.js (hộp tình huống, phàn nàn)
+  screens/    title.js prep.js service.js counter.js kitchen.js summary.js; Đợt 2: counter-order.js counter-pay.js
+              counter-cash.js counter-qr.js counter-receipt.js (Quầy tách theo khâu, ctx chung — mục 13.4)
   minigames/  index.js _util.js _frame.js (M5: buildFrame2) _gesture.js (M5: đo cử chỉ) chon.js cha.js thai.js cham.js
               lua.js rot.js; M5: dap.js xoay.js got.js lac.js bay.js
 tests/unit/*.test.mjs      node:test (integration-shift.test.mjs: DATA thật, 3 ca liên tiếp, người chơi hoàn hảo/ẩu;
@@ -94,7 +103,7 @@ Sửa 2 lỗi tồn đọng sau M4 (mục 24): test `tests/unit/fix-chon-draft.t
 Triển khai dưới đường dẫn con / GitHub Pages (mục 27): `.nojekyll`, e2e `tests/e2e/subpath.e2e.mjs`, hướng dẫn cho người dùng `docs/huong-dan-trien-khai.md`.
 Sửa lớp phủ bị thanh tab che trên iPhone (bản 0.4.1, mục 28): `createPortal` trong `ui/dom.js`, lớp nổi của bếp (`.k-pop`), biến vùng an toàn `--safe-top/--safe-bottom` (`css/base.css`); e2e `tests/e2e/iphone-overlays.e2e.mjs`.
 Hướng dẫn lần đầu và nút "?" (bản 0.4.1, mục 29): `core/tour.js`, `data/tours.js` (`TOURS`, `TOUR_SCREENS`, `HOW_TO_PLAY`), `ui/components/tour.js` (lớp phủ tour, `app.tour`), `ui/components/help.js` (nút "?", bảng Hướng dẫn, Cách chơi), `css/tour.css` (gắn trong `index.html`); test `tests/unit/tour.test.mjs`, e2e `tests/e2e/tour.e2e.mjs`.
-M5 — giao diện kiểu game nấu ăn (Đợt 0 bản 0.4.2, Đợt 1 bản 0.5.0, mục 31): font `fonts/`, `css/theme.css fx.css counter.css mg-prep.css mg-heat.css mg-mix.css`, `ui/motion.js vfx.js`, thư mục `ui/art/`, thành phần bếp và gọi món ở `ui/components/`, `ui/minigames/_frame.js _gesture.js dap.js xoay.js got.js lac.js bay.js`, 5 hàm chấm mới trong `core/minigame-scoring.js`, `save.migrateCookBoard`; Phòng mẫu `mau.html` + `mau/`, `tools/dong-goi-artifact.mjs`; test `tests/unit/art-v2 vfx m5-components m5-order-ui m5-scoring m5-gesture m5-save m5-balance m5-kitchen-ui .test.mjs`, e2e `tests/e2e/mau.e2e.mjs` (Đợt 0), `m5-bep.e2e.mjs`, `m5-save.e2e.mjs` (Đợt 1, gói kiểm thử).
+M5 — giao diện kiểu game nấu ăn (Đợt 0 bản 0.4.2, Đợt 1 bản 0.5.0, mục 31): font `fonts/`, `css/theme.css fx.css counter.css mg-prep.css mg-heat.css mg-mix.css`, `ui/motion.js vfx.js`, thư mục `ui/art/`, thành phần bếp và gọi món ở `ui/components/`, `ui/minigames/_frame.js _gesture.js dap.js xoay.js got.js lac.js bay.js`, 5 hàm chấm mới trong `core/minigame-scoring.js`, `save.migrateCookBoard`; Phòng mẫu `mau.html` + `mau/`, `tools/dong-goi-artifact.mjs`; test `tests/unit/art-v2 vfx m5-components m5-order-ui m5-scoring m5-gesture m5-save m5-balance m5-kitchen-ui .test.mjs`, e2e `tests/e2e/mau.e2e.mjs` (Đợt 0), `m5-bep.e2e.mjs`, `m5-save.e2e.mjs` (Đợt 1, gói kiểm thử). Đợt 2 (bản 0.5.1, mục 13.4 và 32): `ui/screens/counter-{order,pay,cash,qr,receipt}.js`, `ui/components/score-sheet.js incident-view.js`, `ui/art/people.js scene.js`, `css/street.css cashier.css receipt.css sheet.css`; e2e `tests/e2e/m5-quay.e2e.mjs` (nhóm G2).
 
 ## 3. package.json
 
@@ -871,7 +880,7 @@ giác của game tham khảo; mọi hình, câu thoại, âm thanh tự làm.
   trong `render()`; kỹ thuật "nhân bản rồi bay" (chụp `getBoundingClientRect` + `cloneNode` trước khi panel vẽ lại). `app.js`
   tạo `app.vfx = createVfx({ host: app.overlay, reduced: () => isReduced(app) })` **một lần**; tự dọn khi `app.go()` và khi bật
   Giảm chuyển động. iOS không có `navigator.vibrate`: kết quả xấu thay bằng `shake(stage, 1)` (giảm chuyển động: chớp viền đỏ).
-- `ui/audio.js`: `SOUND_NAMES` 22 âm = 12 âm cũ + Đợt 0 `stamp, sparkle, fanfare, tick, whoosh` + Đợt 1 `crack, stir, peel,
+- `ui/audio.js`: `SOUND_NAMES` 22 âm (0.5.0; 25 âm từ 0.5.1, mục 13.4) = 12 âm cũ + Đợt 0 `stamp, sparkle, fanfare, tick, whoosh` + Đợt 1 `crack, stir, peel,
   shake, plop`; `ACTION_SOUNDS = { dap: 'crack', xoay: 'stir', got: 'peel', lac: 'shake', bay: 'plop' }`. Mỗi lần phát lệch
   cao độ ngẫu nhiên khoảng ±4%. Lời gọi luôn là chuỗi viết thẳng (`sound('crack')`, `cue(ctx, 'crack', …)`) để test quét được.
 
@@ -1008,6 +1017,126 @@ giữ đúng testid của Quầy (`menu-item-<id>`, `order-sheet`, `qty-*`, `not
 Giảm chuyển động, Âm thanh, Khung thấp; app "hộp cát" (bus, audio, vfx riêng), không đăng ký service worker, không ghi bản lưu của
 game, không nằm trong PRECACHE. Test từ cấm quét cả `mau.html` và `mau/`. E2E `tests/e2e/mau.e2e.mjs`.
 
+### 13.4 Giao diện M5 Đợt 2: Quầy, HUD, phố, phiếu chấm, tình huống (bản 0.5.1)
+
+Thiết kế: `docs/tham-khao/m5-thiet-ke.md` mục 4 (gói Q-A…Q-H), 6.2 (hình người và cảnh), 6.3 (âm `keng`, `ting`, `coin2`), 6.4
+(bảng hiệu ứng); nghiên cứu mục C (gọi món, chốt order, thanh toán). Tóm tắt kết quả ở mục 32. **Chỉ đổi giao diện**: lõi, luật,
+tiền, điểm, `STATE_VERSION` giữ nguyên; mọi testid và `data-*` mà e2e/tour dùng giữ nguyên (mục 14).
+
+**Quầy tách theo khâu** (`src/ui/screens/`; mọi module import trong Node được, không chạm DOM ở cấp module):
+- `counter.js` chỉ còn điều phối: `mountCounter(root, app, { switchTab })` → `{ el, tourSpot(), update(), onShow(), onHide(),
+  unmount() }`; `update()` vẽ lại khi `stateSig` = JSON `[shift.counter, shift.drawer, số phiếu, số khách chờ, assistCash]` đổi;
+  `FIT_LOW` 420 / `FIT_TINY` 250 và `fitOf(height)` → lớp `.co-fit-low` / `.co-fit-tiny` theo chiều cao panel thật
+  (ResizeObserver); quầy trống `div.counter-idle.co-idle[data-pose = vo_tay | ngon_cai | lau_mo_hoi]` có Dì Sáu bán thân và nút
+  `[go-kitchen]`; hướng dẫn ngày 1 (`.co-glow` + `span.co-glow-ring` cho nút gọi món, `.glow` cũ cho khâu sau); `tourSpot()` →
+  `idle | order | order-sheet | thanh_toan | tinh_tien | qr | receipt`.
+- **ctx chung** truyền làm tham số đầu cho mọi hàm của 5 module khâu: `{ app, el (div.counter[counter-panel]), root (panel cuộn),
+  opts, R, S, D, sheetPortal (createPortal(app.overlay)), get ui() (trạng thái tạm của khách đang ở quầy: customerId, sheet,
+  talk ≤ 2 câu, digits, readback, noChangeKey, assistFilled, lastAdded, stageKey, reading, padMood), sh(), counter(),
+  customerOf(c), say(who, text), lineOf(kind, customer, vars) (câu thoại phía giao diện, Math.random), noteLabels(recipe, ids),
+  rerender(), revealAboveBar(node), tutorialHint(c), destroyed() }`. Luật: luôn đọc `ctx.ui` mỗi lần dùng (đổi khách thì `ui`
+  làm mới); `render*` / `paint*` chỉ dựng DOM; hiệu ứng đặt trong hàm thao tác (`do*`, onclick), chụp vị trí + nhân bản phần tử
+  nguồn TRƯỚC khi đổi state và gọi `ctx.rerender()`.
+- `counter-order.js` (Order): khách và khâu Order là **nút bền theo khách** (WeakMap theo ctx): vẽ lại chỉ `update()` tại chỗ,
+  không dựng lại, không phát lại hoạt ảnh. `paintCustomer` (bán thân lớn sau mặt quầy + bong bóng `order-bubble.js`: ngày 1–2
+  kiểu `icons` có hình món, ×n, ghi chú bằng hình; từ ngày 3 kiểu `text` chỉ lời khách — `HINT_DAYS` 2, giữ độ khó cũ; khâu sau
+  kiểu `talk` là câu mới nhất của khách), `paintOrder` (bảng Thực đơn `menu-board.js`, phiếu order giấy `order-pad.js`, hàng nút
+  `.co-pad-actions.act-bar` là con cuối của khâu), `paintSheet` (bảng chọn số lượng + ghi chú `order-sheet.js` ở lớp nổi
+  `.co-sheet-layer.sheet-layer`), `dropOrder`, `dropAll`, `orderPad`, `sheetOpen`, `doReadback` (phiếu sáng lần lượt 120 ms mỗi
+  dòng rồi ✓ / ✗, mặt khách trên phiếu gật / lắc), `doConfirm` (nhân bản phiếu → con dấu "ĐÃ CHỐT" 1,8 → 1, −8° → phiếu bay cong
+  450 ms tới ô trống kế tiếp của dây phiếu, `railTarget(doc)`; giảm chuyển động: dấu hiện, không bay). Bí danh bước 0:
+  `renderCustomer`, `renderOrder`, `renderSheet`.
+- `counter-pay.js` (Thanh toán): `renderPayment` = bảng giá phấn `[price-board]` (hình món, giá gọn "20k", dòng phụ ghi chú tính
+  thêm), phiếu order tóm tắt bằng hình, `[assist-total]`, máy tính tiền `components/numpad.js` (màn LED `[numpad-display,
+  data-amount]` gõ theo nghìn, phím bánh kẹo ≥ 48px, phím chuông `[report-total]` cao 4 hàng ở cột phải); `doReport`: khách nhận
+  tổng (đúng hoặc thiếu — khách không biết mình được tính thiếu) → `keng` + dấu ✓ nảy trên bản sao màn LED; báo dư / không hợp lệ
+  → `error`, màn LED rung + viền đỏ.
+- `counter-cash.js` (Tính tiền, tiền mặt): `renderCash` = mặt quầy gỗ có tờ tiền khách đưa `[given-cash]`, phiếu số liệu
+  (`[amount-due]`, "Đã thối", `[change-hint, data-amount]` ngày 1–3 hoặc Hỗ trợ tính tiền, `[change-over]`), khay inox `[tray]`
+  (`components/cash-drawer.js renderTray`: chồng `[tray-<b>]`, `[tray-total]`, `[tray-empty]` "Không cần thối tiền"), két 7 ngăn
+  `[drawer]` / `[drawer-<b>, data-count]` đặt đúng ô của hình `ket_tien`, thẻ `[no-change]` + `[no-change-open]` (hộp
+  `[no-change-modal]` tự mở, mỗi panel một hộp), `.act-bar.cs-act > [give-change, data-exact]` ("Không cần thối" / "Đưa tiền
+  thối" / "Đưa tiền thối bù"). Chạm ngăn / chồng: tờ tiền nhân bản bay vào khay / về két (`CASH_FX`). Thối đúng: `cash`, tiền khay
+  bay sang khách, tiền khách đưa bay vào két, két nảy rồi đóng (bản sao ở lớp hiệu ứng), xu bay về ví HUD.
+- `counter-qr.js` (chuyển khoản): `renderQr` → `div.qc-qr[data-qr = waiting | arrived | paid | lost]`: điện thoại khách giơ ảnh
+  chuyển khoản (`phoneQr(fakeQrSvg(0))`, mã giả "QR GAME", số tiền ở dải dưới), thẻ Tổng, ô báo tiền `.qc-status[qr-status,
+  data-arrived]` (chuông điện thoại quán hoặc Loa báo tiền; cúp điện thì `[qr-speaker-off]`), `.action-row.act-bar.qc-act >
+  [qr-reject] [qr-confirm, data-ready]`; đã thu thì thu gọn thành một dòng. Panel tự đăng ký bus `qr.arrived` một lần (tự gỡ khi
+  panel hủy): `ting` + cờ, lần vẽ kế tiếp tiêu cờ → vệt quét sáng chạy dọc màn điện thoại, ô báo tiền nảy. Khách giơ máy chỉ một
+  lần theo khách (không tính lần dựng đầu sau khi mở lại game). `doConfirmQr`: tiền về → `keng`, xu bay từ điện thoại về ví;
+  ảnh giả mà nhận → bản sao điện thoại bị đóng dấu "ẢNH GIẢ"; `doRejectQr`: đúng ảnh giả → dấu "ẢNH GIẢ", sai → "TỪ CHỐI" xám +
+  rung. Thuần: `QR_FX`, `QR_STAMPS`, `speakerSvg(on)`, `bellSvg()`, `markSvg(ok)`.
+- `counter-receipt.js` (phiếu thu): `renderReceipt` → `div.rc-wrap`: máy in phiếu (`may_in_phieu`) sau mép quầy, phiếu giấy
+  `.rc-paper[receipt, data-total]` (tên xe, **`.receipt-head span` = "Phiếu thu #001"** — `helpers.mjs` đọc số phiếu bằng
+  `.split(' ').pop()`, giờ in, từng món có hình, `[receipt-adjust]`, Tổng, phương thức, khách đưa / tiền thối,
+  `[receipt-rounding]`, con dấu "ĐÃ THU" / "ẢNH GIẢ"), `.act-bar.rc-act > [rail-full]? [clip-ticket]`. Vừa thu xong
+  (`justPaid(prevStageKey, customerId)`) thì phiếu trượt lên khỏi khe theo nấc rồi dấu đập xuống (một lần, WAAPI); `doClip`:
+  nhân bản phiếu (kèm kẹp gỗ) bay vào chỗ trống kế tiếp của dây phiếu (`railSlot(doc)`), phiếu mới trên dây lóe sáng.
+  `RECEIPT_FX`, `RECEIPT_STAMPS`.
+- Mọi hàng nút dính đáy của Quầy mang lớp `.act-bar` (`position: sticky; bottom: 0`): `counter.revealAboveBar`, `revealStage`
+  và tour (`STICKY` của `ui/components/tour.js`) dựa vào lớp này.
+
+**Màn Ca bán chung** (`screens/service.js`, `components/`):
+- `hud.js`: thanh gỗ 3 viên giấy + nút "?": giờ ca (đồng hồ, "Ngày N" `[hud-day]`, `[hud-time]`, vạch mặt trời
+  `shiftProgress('HH:MM')` 06:00 → 10:00), ví "Tiền quán" `[hud-wallet]` (`data-amount` luôn = `state.wallet`; ví đổi giữa ca thì
+  đếm dần), thẻ xanh `[hud-take]` "+X" = tiền đã thu trong ca `shiftTake(sh)` = tiền mặt + chuyển khoản + tip − hoàn tiền (vào ví
+  lúc đóng ca, lõi `settleShift`), sao `[hud-stars]` "5,0". Thẻ thu trong ca đếm lên theo **sự kiện DOM `vfx-coin`** trên
+  `[hud-wallet]` (detail = thông tin `onArrive` của `vfx.coins` + `source: 'tien_mat' | 'qr' | 'tip'`; giảm chuyển động: một sự
+  kiện `skipped`, `last`); tiền vào mà không có xu thì tự đếm sau `TAKE_FALLBACK_MS` 2.600. `destroy()` gỡ nghe.
+- Dải phố `section.street`: mái bạt sọc CSS, mặt trước xe đẩy (`xe_mat_truoc`), khách **bán thân** (`bust`) keyed theo id, hàng
+  chờ thu nhỏ `QUEUE_SCALES` [1, .85, .7], vòng kiên nhẫn quanh đầu (`patience.js createRing`, viền mực ôm cung), hơi nước khi
+  kiên nhẫn dưới `LOW_PATIENCE` 0,3 (`createSteam`), chỗ chờ món `.waiting[waiting]` hiện tối đa `WAIT_SHOW_MAX` 3. Vào / lên
+  chỗ / sang chỗ chờ món / rời đi (`exitKindOf(c)` → happy | angry | quiet) là hoạt ảnh **một lần theo id** (Set), bản sao trong lớp
+  riêng `.st-fx` của dải phố (mặt quầy và mái bạt che đúng lớp); giảm chuyển động: chỉ mờ dần.
+- `progress4.js`: 4 biểu tượng tròn (`STAGE_ICONS`) nối bằng thanh; khâu xong ✓ xanh, khâu đang làm nền vàng + tên khâu; giữ
+  `progress-4[data-stage, data-customer]`, `li.p4-step[data-step]` (`.done` / `.current`).
+- `ticket-rail.js`: phiếu giấy có kẹp, hình món, dải màu chờ ở đáy `waitBand(ratio)` (green | yellow từ 0,5 | orange từ 0,65 |
+  red trên 0,8; `waitLevel` giữ 3 mức cũ), `data-band`, lắc một lần khi phiếu mới (`.is-new`, trễ 0,3 s); giữ
+  `rail-ticket-<id>[data-status, data-wait]` và tên món trong chữ; nhãn đếm `.rail-count` "Phiếu n/3".
+- Tab Quầy / Bếp: biểu tượng (`TAB_ICONS`), số đếm `.tab-count` (Quầy: khách đang xếp hàng; Bếp: phiếu trên dây), chấm đỏ
+  `[dot-*]`; giữ `.tabbar`, `tab-counter`, `tab-kitchen`.
+- Phiếu chấm `components/score-sheet.js`: `renderScoreSheet(app, sheet)` → `div.score-sheet[score-sheet, data-customer-id,
+  data-stars, data-mood]`: chân dung khách đổi tâm trạng theo sao (`sheetMood`) kèm biểu cảm (`EMOTES`, `emoteKey`), 5 sao bật
+  lần lượt (`SHEET_FX`: 220 + k × 180 ms, `sheetTimeline(stars)`), 5 hàng `.ss-rows > li.ss-row(.ok | .bad)[data-row]` có biểu
+  tượng khâu và dấu ✓ / ✗, tem `.ss-tags` (`score-sheet-tag-quay` / `-bep`), `.ss-errors`, `[score-sheet-incident]`, dòng tip
+  `tipLine(app, sheet)` → `[score-sheet-tip, data-tip]` (chữ giữ nguyên văn "Tip: +5.000đ" / "Tip 0 (…)"), `[score-sheet-stranger]`.
+  Mọi hoạt ảnh đặt trên phần tử con, hữu hạn (giữ `sheetSettled` của `service.js`); mỗi phiếu diễn một lần (dựng lại → `.is-static`);
+  giảm chuyển động: hiện thẳng. Xu tip: `coin2` + chữ "+5.000đ" + 4–6 xu bay về ví (`vfx-coin` source `tip`).
+- Tình huống và phàn nàn `components/incident-view.js`: `createIncidentBox(app, view, { onChoose })` → `{ el: div.incident[data-
+  incident, data-kind], ask(), showResult(choice, result, tip, onOk) }` (lựa chọn `.incident-choice[data-safe, data-choice]`
+  có biểu tượng `CHOICE_ICONS` an toàn / rủi ro / khóa, kết quả `[incident-result, data-mood]`, `effectChips(eff)` →
+  `.incident-effects > .incident-fx[data-fx]`), `incidentArt(app, view, mood)`, `outcomeMood(effects)`, `renderComplaint(app,
+  customer, { says, aps, items, refund, remakeOk, close })`.
+
+**Hình người và cảnh** (`src/ui/art/people.js`, `scene.js`; thuần, đóng băng sâu, không import `art.js`):
+- `people.js`: `bust(persona, mood, { gender, who, … })` bán thân 96 × 112 (`PEOPLE_META.bust`: quầy che từ `chest` 90 vẫn thấy cổ
+  áo), `head(...)` mặt tròn 64; `BUSTS`, `HEADS` (6 kiểu khách × 4 tâm trạng), `WHO_LOOKS` (dáng riêng khách quen, khách lạ, người
+  bán gánh hàng), `lookOf`, `personaKey`; Dì Sáu `DI_SAU_FACES` + 4 tư thế `DI_SAU_POSES` (`ngon_cai`, `vo_tay`, `lau_mo_hoi`,
+  `che_mat`; `DI_SAU_POSE_MOOD`), Anh Khoa, Cô Hạnh.
+- `scene.js`: `SCENE` (`xe_mat_truoc`, `mai_bat`, `dien_thoai`, `may_pos`, `man_led`, `ket_tien`, `may_in_phieu`, `kep_phieu`,
+  `hu_tip`), `SCENE_ICONS` viewBox 64 (`dong_xu`, `hud_vi`, `hud_sao`, `hud_gio`, `khau_*`, `tab_quay`, `tab_bep`), `STAGE_ICONS`,
+  `TAB_ICONS`, `HUD_ICONS`, `SCENE_META` (ô của từng phần trong hình: ngăn két, khe máy in, màn LED…), `phoneQr(qrSvg)`,
+  `scene(id)`. Mặt tiền `art.js` (ráp nối) xuất lại các tên này; `DI_SAU`, `ANH_KHOA`, `CO_HANH` là mặt mới cùng bộ khóa.
+
+**Âm và hiệu ứng thêm** (`ui/audio.js`, `ui/vfx.js`):
+- `SOUND_NAMES` 25 âm: thêm `keng` (máy tính tiền: khách nhận tổng, xác nhận chuyển khoản), `ting` (tiền chuyển khoản về),
+  `coin2` (xu tip). Lời gọi luôn là chuỗi viết thẳng.
+- `vfx.coins(from, to, n | opts, { amount, unit, hold, stagger, ms, bump, onArrive, scale })` → Promise<số xu tới>: số xu theo
+  `coinCount(amount)` (6–12, trần cứng 12), mỗi xu chạm đích gọi `onArrive({ index, count, share, sum, amount, last, skipped,
+  cut })` (xu cuối có `sum` = `amount`); giảm chuyển động / đích ẩn: 0 xu, `onArrive` giao gộp một lần. `vfx.countUp(el, from, to,
+  ms, fmt, opts)` (đếm số; giảm chuyển động: số ngay + nhịp sáng chỉ đổi độ mờ), `vfx.counting(el)`, `vfx.glow(target)`;
+  `floatText` chống chồng chữ (dời lên, so le, gộp "×2"). Thuần: `COIN_LIMITS`, `COIN_TIMING`, `coinCount`, `coinShares`,
+  `coinFlight`, `countValue`, `countUp`, `isCounting`, `FLOAT_MS`, `floatRise`, `floatSlot`.
+- Không phát sự kiện VFX lên bus miền: xu báo cho HUD bằng **sự kiện DOM** `vfx-coin` trên chính phần tử ví.
+
+**CSS** (gắn trong `index.html`, có trong PRECACHE): `css/counter.css` (lớp `co-`: khách, bong bóng, thực đơn, phiếu order, bảng
+chọn món, quầy trống), `css/cashier.css` (lớp `cs-`: bảng giá, máy tính tiền, tiền mặt, két, khay), `css/receipt.css` (lớp `qc-`
+chuyển khoản, `rc-` phiếu thu), `css/street.css` (dải phố: biến `--st-h`, `--st-awn`, `--st-counter`, `--qh`, `--wh`; thu cỡ ở
+màn ≤ 760px), `css/sheet.css` (phiếu chấm, hộp tình huống, phàn nàn), `css/game.css` (HUD, 4 khâu, dây phiếu, tab; `.act-bar`).
+Dây phiếu dùng container query (trình duyệt cũ chỉ cắt chữ "…"). CSS Quầy cũ (`.price-board`, `.numpad*`, `.cash*`,
+`.drawer*`, `.tray*`…, không còn phần tử nào dùng) vẫn nằm trong `css/game.css`: bản vá chuyển CSS Quầy sang cuối `counter.css`
+của bước 0 chưa áp (chờ chốt, mục 32).
+
 ## 14. data-testid bắt buộc (cho e2e)
 
 - Màn title: `shop-name-input`, `start-button`. Màn prep: `open-shift`.
@@ -1057,6 +1186,28 @@ game, không nằm trong PRECACHE. Test từ cấm quét cả `mau.html` và `ma
   - Thả đá: `bay-target` (vòng đích, `pointer-events: none` — đừng kiểm `elementFromPoint` trên nó), `bay-item-<i>` (`data-placed` 0|1, `role=button`, cạnh 46–52px), `bay-count` (chỉ chứa "k/n", `data-v`, `data-n`; nhãn "Đá" nằm ngoài), `bay-done` (bật khi đã thả ≥ 1; `.is-ready` khi đủ).
   - Cách giải tự động (helpers e2e): dap — chờ `data-v` của kim gần (a + b)/2, nhấn tâm `dap-egg`, kéo xuống 80px rồi thả, chờ quả kế (`data-i` tăng); xoay — nhấn ở (tâm + 0,32·cạnh), vẽ 24 điểm mỗi vòng, cách 12 ms (≈ 1 vòng/giây), tổng round((n + 0,3)·24) điểm; got — với mỗi dải nhấn (giữa, đỉnh + 2) kéo thẳng tới (giữa, đáy − 2) qua ≥ 4 bước; lac — nhấn giữa `lac-shaker`, kéo ±70px, chờ 24 ms mỗi lần, tới khi `data-v` ≥ `data-n`; `lac-count` có `data-ok` (bước có `maxRatio`) thì nhấc tay ngay (trò xong sau khoảng 220 ms; kéo quá `data-ok` là lắc quá tay), không có thì trò tự xong; bay — kéo `bay-item-i` (≥ 8 bước) tới tâm `bay-target` lệch ±8px, rồi bấm `bay-done`.
   - Đích của 5 tour thẻ bước (mục 29): `step-card-demo`, `step-card-go`.
+- M5 Đợt 2 (bản 0.5.1, mục 13.4 và 32). **Giữ nguyên** mọi testid, `data-*` và chữ mà e2e / tour bám (bảng ⚠ ở
+  `docs/tham-khao/m5-ban-do-ma.md` mục 6): `[receipt] .receipt-head span` = "Phiếu thu #001", "Không cần thối" (`give-change`),
+  "Không cần thối tiền" (`tray-empty`), `qty-value` chỉ chứa con số, `hud-day` = "Ngày N", `.hud`, `.tabbar`,
+  `progress-4[data-stage, data-customer]`, `speech-bubble[data-request]` (chỉ ở khâu Order, kiểu bong bóng `icons` / `text`),
+  `data-amount`, `data-count`, `.ss-rows`, `.ss-tags`, `[data-stars]`, `[data-tip]`, `.incident`, `.incident-choice`,
+  `[data-safe]`, `.incident-fx[data-fx]`, `.toast-stack`, `.overlay-root .sheet-layer` (bảng chọn món là
+  `.co-sheet-layer.sheet-layer`), `.modal-layer.hide [incident-modal]`. Thêm:
+  - HUD và ca bán: `hud-take` (thẻ "+X" tiền thu trong ca, lớp `.is-on` khi > 0; chữ "+" + `formatMoneyShort(shiftTake(sh))`),
+    `hud-stars` (chữ "5,0"); sự kiện DOM `vfx-coin` trên `hud-wallet` (detail `{ index, count, share, sum, amount, last,
+    skipped, cut, source }`); `rail-ticket-<id>` thêm `data-band` (green | yellow | orange | red); `dot-counter`, `dot-kitchen`.
+  - Quầy: `counter-idle` (`data-pose`), `go-kitchen`, `tutor-hint`, `request-icons` (dải hình món trong bong bóng, ngày 1–2),
+    `customer-line` / `seller-line` (lời thoại ở các khâu sau Order), `draft`, `order-line-<i>`, `order-line-remove-<i>`,
+    `caught-list`, `assist-total`, `tray-total`, `no-change`, `no-change-open`, `amount-due` (cả khâu tiền mặt và chuyển khoản),
+    `qr-speaker-off`, `receipt-adjust`, `receipt-rounding`, `rail-full`. Lớp móc cho kiểm thử hiệu ứng: bản sao phiếu
+    `.co-pad-ghost` có `.co-stamp` ("ĐÃ CHỐT") trong `.vfx-layer`, nút bay `.vfx-fly`, dấu điện thoại `.qc-fx-stamp`
+    ("ẢNH GIẢ" / "TỪ CHỐI"), `.qc-qr[data-qr = waiting | arrived | paid | lost]`, dấu phiếu thu `.rc-stamp`.
+  - Phiếu chấm: `score-sheet` thêm `data-mood`; `li.ss-row[data-row = order | total | change | kitchen | wait]`; sao
+    `.ss-star.is-on .ss-star-fg` (hoạt ảnh CSS `ss-star`, trễ 220 + k × 180 ms; phiếu dựng lại hoặc giảm chuyển động có lớp
+    `.is-static`, không hoạt ảnh). Tình huống: `incident` thêm `data-kind`, `incident-result` thêm `data-mood`.
+  - Cách giải tự động (helpers e2e): bộ giải quầy (`serveAtCounter`, `confirmQrUi`, `giveChangeUi`, `playShiftUi`) chạy nguyên
+    với DOM mới chỉ qua testid; `counterShiftSave({ pay: 'cash' | 'qr' | 'qr_fake', request, delayOthers, speaker })` dựng ca
+    ngày 5 có khách đầu sẽ trả đúng cách định trước (chọn hạt `sh.rng` bằng chạy thử trên bản sao — mục 32).
 
 ## 15. Hệ thống meta M2 (lõi + dữ liệu)
 
@@ -1273,7 +1424,7 @@ Màn mở đầu lần đầu (chưa đặt tên xe) có nút `title-import` "Đ
 Viết `src/ui/screens/<tên>.js` theo mục 13, import rồi thêm vào bảng `SCREENS` ở `src/main.js` (khóa = tên dùng trong `app.go`). Màn không nằm trong `ROOT_SCREENS` tự là màn con (Back điện thoại → Chuẩn bị, có thể tự xử lý bằng `onBack()`); `router.register(name, screen)` dùng được lúc chạy. Thêm tệp vào `PRECACHE` của `sw.js` (test `pwa.test.mjs` báo thiếu).
 
 ### 16.5 Âm thanh — `ui/audio.js`
-`createAudio(getSettings, env = globalThis)` → `{ play(name) → boolean, unlock(), ready(), names }`; `SOUND_NAMES`: `click, coin` (tiền vào túi/nhận thưởng), `cash` (tiền vào két: "cạch" + "keng"), `ding` (Hoàn hảo), `bell` (chuông ra món, khách tới), `chop` (dao thái "tách"), `sizzle` (dầu "xèo"), `pour` (rót nước), `error` (lỗi), `nudge` (nhắc nhẹ), `chest` (mở rương), `paper`; M5 Đợt 0: `stamp` (con dấu), `sparkle`, `fanfare` (ra món, lên cấp), `tick` (% đếm lên), `whoosh`; M5 Đợt 1: `crack` (trứng nứt), `stir` (muỗng chạm thành tô), `peel` (gọt), `shake` (đá trong bình), `plop` (thả đá) — `ACTION_SOUNDS` gắn 5 âm này với 5 thao tác mới. Mỗi lần phát lệch cao độ ngẫu nhiên khoảng ±4%. Tổng hợp bằng dao động + ồn trắng qua bộ lọc (không tệp âm thanh). AudioContext chỉ tạo sau thao tác đầu tiên (`pointerdown`/`keydown`) khi đang bật tiếng; âm lượng tổng = 0,9 × `settings.volume`; tắt tiếng/âm lượng 0 → không phát; trình duyệt không hỗ trợ/chặn → im lặng, không lỗi. Gắn âm: mini-game qua `feedback(ctx, kind)` (`cut`/`chop` thái, `hit` chạm trúng, `sizzle` lúc bắt đầu Canh lửa, `pour` mỗi lần giữ Rót), quầy (`cash` khi thối đúng/nhận QR), ca bán (`nudge` khi khách sắp hết kiên nhẫn/bỏ về), Việc hôm nay (`chest` mở Rương ngày), điểm danh (`chest` ô 7). Mọi âm luôn có tín hiệu hình đi kèm.
+`createAudio(getSettings, env = globalThis)` → `{ play(name) → boolean, unlock(), ready(), names }`; `SOUND_NAMES`: `click, coin` (tiền vào túi/nhận thưởng), `cash` (tiền vào két: "cạch" + "keng"), `ding` (Hoàn hảo), `bell` (chuông ra món, khách tới), `chop` (dao thái "tách"), `sizzle` (dầu "xèo"), `pour` (rót nước), `error` (lỗi), `nudge` (nhắc nhẹ), `chest` (mở rương), `paper`; M5 Đợt 0: `stamp` (con dấu), `sparkle`, `fanfare` (ra món, lên cấp), `tick` (% đếm lên), `whoosh`; M5 Đợt 1: `crack` (trứng nứt), `stir` (muỗng chạm thành tô), `peel` (gọt), `shake` (đá trong bình), `plop` (thả đá) — `ACTION_SOUNDS` gắn 5 âm này với 5 thao tác mới. M5 Đợt 2: `keng` (máy tính tiền: khách nhận tổng, xác nhận chuyển khoản), `ting` (tiền chuyển khoản về), `coin2` (xu tip) — tổng 25 âm. Mỗi lần phát lệch cao độ ngẫu nhiên khoảng ±4%. Tổng hợp bằng dao động + ồn trắng qua bộ lọc (không tệp âm thanh). AudioContext chỉ tạo sau thao tác đầu tiên (`pointerdown`/`keydown`) khi đang bật tiếng; âm lượng tổng = 0,9 × `settings.volume`; tắt tiếng/âm lượng 0 → không phát; trình duyệt không hỗ trợ/chặn → im lặng, không lỗi. Gắn âm: mini-game qua `feedback(ctx, kind)` (`cut`/`chop` thái, `hit` chạm trúng, `sizzle` lúc bắt đầu Canh lửa, `pour` mỗi lần giữ Rót), quầy (`cash` khi thối đúng/nhận QR), ca bán (`nudge` khi khách sắp hết kiên nhẫn/bỏ về), Việc hôm nay (`chest` mở Rương ngày), điểm danh (`chest` ô 7). Mọi âm luôn có tín hiệu hình đi kèm.
 
 ### 16.6 Kiểm chứng M3 nền tảng
 - Unit: `pwa.test.mjs` (PRECACHE ↔ cây thư mục, VERSION ↔ package.json ↔ APP_VERSION, import tương đối có trong PRECACHE, manifest + kích thước PNG, index.html gắn mọi CSS; chạy `sw.js` trong `vm` với cache/fetch giả: cài đủ tệp, không tự kích hoạt, dọn cache cũ, mất mạng vẫn trả trang và module kể cả có query, bỏ qua khác nguồn/POST; router màn con), `backup-code.test.mjs` (định dạng, nhập lại y hệt, nén < 40% save thô, nén/giải nén từng byte, dữ liệu hỏng ném lỗi, sai 1 ký tự → `sai_ma`, dán kèm chữ thừa, save v1, cất bản cũ không ghi đè, nhắc 7 ngày, cài đặt M3), `audio.test.mjs` (AudioContext giả: chỉ tạo sau thao tác, đủ âm, âm lượng, tắt tiếng, trình duyệt chặn; mọi tên âm giao diện gọi đều có).
@@ -1865,6 +2016,16 @@ ca tạm dừng, thẻ đứng chờ quá 1,1 giây, Bỏ qua → ca và thẻ c
 5 tour thẻ bước, Dây phiếu + Dòng món, Chọn, Giao món ở 390×844, 360×600, 320×568 và 375×553 có vùng an toàn 47/34 (có chế độ
 tập trung): bong bóng trọn khung, nút "Tiếp" không bị che, vùng sáng khớp đích ±1,5px; lời bước tay mẫu giữ ≤ 3 dòng để bong
 bóng không che tay mẫu ở 375×553.
+0.5.1 (M5 Đợt 2): lời các tour `ca_ban`, `quay_order`, `quay_bang_mon`, `quay_thanh_toan`, `quay_tinh_tien`, `quay_qr`,
+`quay_phieu_thu`, `phieu_cham` viết lại theo giao diện mới (HUD gỗ và thẻ "thu trong ca", vòng kiên nhẫn quanh đầu khách bán
+thân, 4 khâu là 4 biểu tượng, dải màu chờ của phiếu, tab có số đếm, bảng giá phấn, máy tính tiền gõ theo nghìn, mặt quầy và
+ngăn két, ô báo tiền chuyển khoản, máy in phiếu và dấu Đã thu, tem lỗi và dấu ✓ / ✗ của phiếu chấm); đích giữ nguyên (testid / lớp
+móc), luật lời giữ (≤ 170 ký tự, ≤ 2 câu, tiêu đề ≤ 28; "lời tour khớp luật" không số mới). `STICKY` giữ nguyên danh sách: mọi
+hàng nút dính đáy của Quầy mới đều có lớp `.act-bar` (mục 13.4). E2E `tour` thêm 2 ca (375×553 có vùng an toàn 47/34 và
+390×844): ca ngày 5 dựng sẵn (`counterShiftSave`), đi đủ bước tour Order → Bảng chọn món → Thanh toán → Tính tiền → Phiếu thu →
+(quầy trống, nút "?") Ca bán, và tour Chuyển khoản (ca dừng nên tiền chưa về lúc đọc); tiêu đề từng bước đúng dữ liệu (không bước
+nào bị bỏ vì đích khuất), vùng sáng khớp đích. Ca 7 ("nút ? luôn bấm được") đo HUD trên ca đang dở thay vì ca đã hết khách (màn
+tự sang Tổng kết sau 1,2 giây — trước đây đua giờ khi chạy cả tệp).
 
 ## 30. Vòng kiểm chứng độc lập tour và iPhone: 9 phát hiện đã sửa (01/10/2026)
 
@@ -1981,3 +2142,77 @@ mục 7.1. Giữ id bước nên `uiRand` (băm theo id bước) và seed của 
 - Màn rất thấp 375×553 có vùng an toàn: dù đã tập trung, panel nấu chỉ khoảng 300px; Thớt phải cuộn khi có từ 2 trạm nguyên
   liệu; bong bóng tour bước "Kệ và bẫy" đè nửa trên kệ (kệ cao hơn chỗ trống, tour vẫn trọn trong khung).
 - `art.js` vẫn giữ kiểu cũ cho các icon chỉ có ở bộ cũ (sự kiện, thư, rương, món tương lai) — Đợt 3 (gói hình meta) vẽ lại.
+
+## 32. M5 Đợt 2: Quầy, HUD, phố, dây phiếu, tab, phiếu chấm, tình huống — bản 0.5.1 (03/10/2026)
+
+Mục tiêu: hết "ô vuông có chữ" ở Quầy và thanh trên, nhìn như game bán hàng chuyên nghiệp trên điện thoại, cùng phong cách đã
+duyệt (Phòng mẫu thẻ "Gọi món" và màn Bếp 0.5.0). **Chỉ đổi giao diện**: lõi `src/core`, luật, tiền, sao, tip, `BALANCE`,
+`STATE_VERSION` giữ nguyên; mọi testid / `data-*` / chữ mà e2e và tour bám giữ nguyên (mục 14). Chi tiết module ở mục 13.4.
+
+**Chia gói** (thiết kế M5 mục 4; mỗi gói sở hữu tệp riêng):
+- Bước 0 (S2): tách `counter.js` thành điều phối + 5 module khâu `counter-{order,pay,cash,qr,receipt}.js` dùng chung một `ctx`;
+  tách phiếu chấm sang `components/score-sheet.js`, hộp tình huống và phàn nàn sang `components/incident-view.js`
+  (`sheetSettled` giữ trong `service.js`); CSS dải phố sang `css/street.css`. Bản vá chuyển CSS Quầy cũ từ `game.css` sang cuối
+  `counter.css` đã soạn nhưng **chưa áp** (vướng `m5-order-ui.test` bắt `counter.css` chỉ có lớp `co-`/`g-`; cần chốt).
+- Q-A Gọi món (`counter-order.js`, `order-bubble.js`, `order-pad.js`, `counter.css`): ráp bản mẫu đã duyệt; khách và khâu
+  Order bền theo khách; bong bóng hình món ngày 1–2, chữ từ ngày 3 (`HINT_DAYS`); lớp `co-fit-low` / `co-fit-tiny` theo chiều
+  cao panel; chốt order nhân bản phiếu → dấu ĐÃ CHỐT → bay lên dây.
+- Q-B Thu tiền (`counter-pay.js`, `counter-cash.js`, `numpad.js`, `cash-drawer.js`, `css/cashier.css`).
+- Q-C Chuyển khoản và phiếu thu (`counter-qr.js`, `counter-receipt.js`, `css/receipt.css`).
+- Q-D Phố, HUD, 4 khâu, dây phiếu, tab (`service.js` phần phố/tab, `hud.js`, `patience.js`, `progress4.js`, `ticket-rail.js`,
+  `css/street.css`, `css/game.css`).
+- Q-E Phiếu chấm và tình huống (`score-sheet.js`, `incident-view.js`, `css/sheet.css`).
+- Q-F Hình người và cảnh (`src/ui/art/people.js`, `scene.js`; test `art-v2`).
+- Q-G Âm và VFX (`audio.js`: `keng`, `ting`, `coin2`; `vfx.js`: luồng xu theo số tiền, `countUp`, chống chồng chữ nổi).
+- Q-H Tour, e2e, tài liệu (`data/tours.js`, `components/tour.js`, `tests/unit/tour.test.mjs`, `tests/e2e/helpers.mjs`,
+  `tour.e2e`, mới `m5-quay.e2e`, `hanh-trinh.mjs`; tài liệu này, `de-xuat-thiet-ke.md` mục 5.10, `README.md`).
+- Ráp nối: `art.js` (xuất lại people / scene, mặt Dì Sáu / Anh Khoa / Cô Hạnh mới), `sw.js` (VERSION 0.5.1, PRECACHE thêm
+  `art/people.js`, `art/scene.js`, `css/cashier.css`, `receipt.css`, `sheet.css`), `package.json`, `APP_VERSION`, `index.html`.
+
+**Tour (gói Q-H).** Lời 8 tour `ca_ban`, `quay_order`, `quay_bang_mon`, `quay_thanh_toan`, `quay_tinh_tien`, `quay_qr`,
+`quay_phieu_thu`, `phieu_cham` viết lại theo giao diện mới (mục 29); đích, chỗ, `veteranDay` giữ nguyên. `STICKY` không đổi danh
+sách (mọi hàng nút dính đáy của Quầy mới có `.act-bar`), chú thích ghi rõ các hàng nút.
+
+**Bộ giải quầy e2e (`tests/e2e/helpers.mjs`).** `serveAtCounter`, `confirmQrUi`, `giveChangeUi`, `playShiftUi` chạy nguyên với DOM
+mới (chỉ dựa vào testid, `data-*` và chữ "Phiếu thu #NNN"); thêm ảnh `bang-chon-mon` (bảng chọn món của dòng đầu) và
+`quay-chot-order` (con dấu lúc chốt) cho `hanh-trinh.mjs` (ảnh 46, 47; `bang-chon-mon` và `qr` vào danh sách soát bố cục).
+Thêm `COUNTER_PAYS` và `counterShiftSave({ pay, request, seed, name, speaker, patienceSec, delayOthers })`: ca ngày 5 (người chơi
+hoàn hảo 4 ca, seed 3, mức sự kiện Ít, bỏ tình huống trong ca), khách đầu gọi `request`, rất kiên nhẫn, trả đúng cách định trước.
+Cách ép cách trả mà không đổi lõi: mọi khách được dựng sẵn lúc mở ca, khách tới theo lịch không rút số ngẫu nhiên, đọc lại phiếu
+đúng không rút số — nên từ lúc mở ca tới lúc báo tổng, luồng `sh.rng` chỉ bị rút ở `reportTotal`. Hàm chạy thử cả quầy trên bản sao
+(`trialCounter`) với từng hạt `sh.rng` tới khi ra đúng cách trả (tiền mặt: có tiền thối, két thối được, không hộp két hết tiền
+lẻ; chuyển khoản: thật); ảnh giả dùng `customer.forcePay = 'qr_fake'` (của chuỗi "Làm quen QR").
+
+**E2E mới `tests/e2e/m5-quay.e2e.mjs` (nhóm G2, 6 ca, khoảng 3,5 phút).**
+- (a–d) Mỗi khung 390×844, 360×600, 320×568, 375×553 có vùng an toàn 47/34 (mô phỏng iOS cắt vùng cuộn): luồng tiền mặt, chuyển
+  khoản, ảnh giả (từ chối), cộng "nhận nhầm ảnh giả" ở 360×600. Mỗi khâu: mọi nút của panel Quầy (hoặc bảng chọn món), thanh tab,
+  HUD, dây phiếu ≥ 44px; cuộn nút vào phần nhìn thấy phía trên hàng nút dính đáy rồi `elementFromPoint` ở tâm và 4 điểm sát mép
+  trúng chính nút (nút cao hơn phần nhìn thấy, như phím "Báo tổng" ở khung rất thấp, đo phần lộ ra, phải ≥ 44px); chữ đang hiện
+  của màn ca bán ≥ 13px, không chữ lỗi; không tràn ngang; hàng nút dính đáy trên thanh tab. Chốt order: con dấu "ĐÃ CHỐT" trên
+  bản sao phiếu trong `.vfx-layer` và phiếu bay; lớp hiệu ứng về 0 nút trong 2 giây (cả sau kẹp phiếu, sau ảnh giả), không nhận
+  chạm, ≤ 30 nút. Vẽ lại theo `stateSig` không phát lại hoạt ảnh: lấy / trả / lấy / trả một tờ (4 lần vẽ lại khâu Tính tiền) và đổi
+  tab Bếp ↔ Quầy 3 lần ở khâu chuyển khoản → 0 `animationstart` (bỏ qua hoạt ảnh lặp vô hạn — chúng tự chạy lại khi panel ẩn rồi
+  hiện, không phải do vẽ lại), 0 hoạt ảnh mới trong panel. Ví HUD: xu cuối có tổng đúng hóa đơn, 6–12 xu, thẻ `hud-take` đếm lên
+  qua số trung gian, không giảm, dừng đúng `shiftTake` của bản lưu; `hud-wallet` đúng `state.wallet`.
+- (e) Phiếu chấm 5 sao có tip (seed 1 như `m4-tip-events`): trễ của 5 sao đúng 220 + k × 180 ms, `animationstart` theo thứ tự, phiếu
+  đứng yên trong 2 giây (`.show`, không hoạt ảnh trên chính phiếu, rõ hẳn), hết hoạt ảnh con, không hoạt ảnh vô hạn; 4–6 xu tip,
+  tổng = tip, thẻ thu trong ca đúng số; chữ phiếu ≥ 13px.
+- (f) Giảm chuyển động (`reducedMotion: 'reduce'`), 375×553 vùng an toàn: không hoạt ảnh vô hạn ở mọi khâu, không hạt, không có gì
+  bay, con dấu vẫn hiện, xu giao gộp một lần (`skipped`), thẻ thu trong ca đúng số; phiếu chấm `.is-static`, không sao nào bật.
+- Biến `M5_QUAY_LOG=1` in số nút / chữ đã đo ở từng khâu.
+
+**Kết quả gói Q-H (03/10/2026, chạy từng tệp, Chromium headless):** `npm test` 639/639; e2e `m5-quay` 6/6 (206 giây), `tour`
+15/15 (208 giây; ca 7 và 8 trước đó đỏ khi chạy cả tệp, nay xanh), `one-shift` 1/1, `iphone-overlays` 8/8, `m4-tip-events` 2/2
+(581 giây — sát mốc 10 phút, đã vậy từ trước Đợt 2), `incident-notebook` 3/3, `review-m2` 3/3, `stability` 1/1, `m5-bep` 60/60
+(chia 3 lần chạy theo tên ca); `review-m3-ux` 1/2 — ca "ngày 1 ở 360×740" đòi chữ nhãn lỗi trên phiếu chấm màu trắng, nhưng phiếu
+chấm mới (gói Q-E) vẽ nhãn thành tem mực màu trên giấy (`.err-tag--quay` xanh, `--bep` đỏ): cần sửa kiểm tra của tệp e2e đó cho
+khớp thiết kế tem (vd chữ khác màu nền, hai tem cao bằng nhau), không phải lỗi giao diện.
+
+**Ghi nhận (03/10/2026):**
+- `service.js` vẫn phát `sound('coin')` khi bus `qr.arrived`, cùng lúc `counter-qr.js` phát `ting` (hai âm chồng nhau) — nên bỏ
+  dòng nghe ở `service.js`.
+- CSS Quầy cũ (`.price-board`, `.numpad*`, `.cash*`, `.drawer*`, `.tray*`…) không còn phần tử dùng, vẫn nằm trong `game.css`.
+- `hanh-trinh.mjs` (chạy tay, 10–15 phút) chưa chạy lại ở bản này.
+- Khung thấp, khâu phiếu thu: người chơi vừa cuộn xuống két để thối tiền thì sau khi thối, panel vẫn cuộn ở đáy (`revealStage`
+  của `counter.js` chỉ đẩy xuống, không kéo lên đầu khâu). Ở 375×553 vùng an toàn chỉ thấy máy in và nút "Kẹp phiếu bếp", không
+  thấy phiếu; ở 320×568 hàng Tổng bị cắt. Dấu "ĐÃ THU" đè lên số "Tiền thối" của phiếu (cả 4 khung). Nút vẫn chạm được (e2e xanh).

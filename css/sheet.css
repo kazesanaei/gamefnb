@@ -167,22 +167,27 @@
 
 /* màn thấp / hẹp: phiếu gọn lại để không che hết vùng thao tác */
 @media (max-height: 700px) {
-  .sheet-host .score-sheet { padding: 8px 10px 10px; }
-  .ss-face { width: 62px; height: 66px; }
-  .ss-face-img { width: 68px; margin-left: -34px; top: -4px; }
-  .ss-name { font-size: 18px; }
-  .ss-star { width: 25px; height: 25px; }
-  .score-sheet .ss-review { padding-top: 3px; padding-bottom: 4px; line-height: 1.25; }
-  .score-sheet .ss-rows { margin-top: 6px; padding-top: 5px; gap: 1px; }
-  .score-sheet .ss-rows li { min-height: 24px; }
-  .ss-ico { width: 22px; height: 22px; }
-  .score-sheet .ss-tags { margin-top: 6px; }
-  .score-sheet .ss-tip { margin-top: 6px; }
+  .sheet-host .score-sheet { margin-top: 10px; padding: 8px 10px 9px; }
+  .score-sheet .ss-head { gap: 8px; }
+  .ss-face { width: 58px; height: 62px; }
+  .ss-face-img { width: 64px; margin-left: -32px; top: -3px; }
+  .ss-emote { left: -10px; top: -10px; width: 28px; height: 28px; padding: 3px; }
+  .ss-name { font-size: 17px; }
+  .ss-star { width: 24px; height: 24px; }
+  .score-sheet .ss-review { margin-top: 3px; padding: 2px 8px 3px; line-height: 1.22; }
+  .score-sheet .ss-rows { margin-top: 5px; padding-top: 4px; gap: 0; }
+  .score-sheet .ss-rows li { min-height: 23px; }
+  .ss-ico { width: 20px; height: 20px; }
+  .ss-mark { width: 18px; height: 18px; }
+  .score-sheet .ss-tags { margin-top: 5px; }
+  .score-sheet .ss-tip { margin-top: 5px; font-size: 15px; }
+  .ss-coin { width: 24px; height: 24px; }
+  .ss-tip-v { font-size: 16px; }
 }
 @media (max-width: 340px) {
-  .ss-face { width: 62px; height: 68px; }
-  .ss-face-img { width: 68px; margin-left: -34px; top: -4px; }
-  .ss-star { width: 25px; height: 25px; }
+  .ss-face { width: 58px; height: 62px; }
+  .ss-face-img { width: 64px; margin-left: -32px; top: -3px; }
+  .ss-star { width: 24px; height: 24px; }
   .ss-label, .score-sheet .ss-verdict { font-size: 14px; }
 }
 
@@ -227,11 +232,11 @@
 .incident-stage .incident-art { position: absolute; z-index: 1; line-height: 0; }
 .incident-stage .incident-art svg { display: block; width: 100%; height: 100%; }
 .incident-stage .incident-art.is-person,
-.incident-stage .incident-art.is-disau { left: 50%; bottom: 4px; width: 100px; height: 117px; margin-left: -50px; }
+.incident-stage .incident-art.is-disau { left: 50%; bottom: 2px; width: 90px; height: 105px; margin-left: -45px; }
 .incident-stage .incident-art.is-bill { left: 50%; top: 28px; width: 156px; height: 78px; margin-left: -78px; transform: rotate(-5deg); }
 .incident-stage.has-bill::after { height: 16px; }
 .incident-emote {
-  position: absolute; z-index: 3; left: calc(50% + 46px); top: 28px; width: 36px; height: 36px; padding: 5px;
+  position: absolute; z-index: 3; left: calc(50% + 40px); top: 30px; width: 36px; height: 36px; padding: 5px;
   border: 2.5px solid var(--g-ink); border-radius: 50%; background: #fffdf6; box-shadow: 0 2px 0 rgba(58, 38, 24, .3); line-height: 0;
   animation: ss-emote 420ms var(--g-ease-back) 260ms both;
 }
@@ -245,7 +250,7 @@
 .incident-modal .incident-head { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
 .incident-modal .incident-titles { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
 .incident-modal .incident-kicker {
-  display: inline-block; padding: 2px 10px 1px; border: 2px solid var(--g-ink); border-radius: 999px;
+  display: inline-block; padding: 2px 10px 1px; border: 2px solid var(--g-ink); border-radius: 12px;
   background: #fff3d0; color: var(--g-ink);
   font-family: var(--g-font-display); font-weight: 800; font-size: 14px; line-height: 1.25;
   box-shadow: 0 2px 0 rgba(58, 38, 24, .25);
@@ -349,7 +354,6 @@
 /* ---- Hộp phàn nàn ---- */
 .complaint { gap: 10px; }
 .complaint-scene { display: flex; flex-direction: column; gap: 8px; }
-.complaint .complaint-stage { height: 124px; }
 .complaint .complaint-stage .incident-emote { animation-delay: 200ms; }
 .complaint-bubble {
   position: relative; padding: 7px 12px 8px; border: 2.5px solid var(--g-ink); border-radius: 14px; background: #fff;
@@ -406,7 +410,7 @@
   }
   .incident-modal .incident-stage::after { height: 14px; }
   .incident-modal .incident-stage .incident-art.is-person,
-  .incident-modal .incident-stage .incident-art.is-disau { width: 70px; height: 82px; margin-left: -35px; bottom: 0; }
+  .incident-modal .incident-stage .incident-art.is-disau { width: 64px; height: 75px; margin-left: -32px; bottom: 0; }
   .incident-modal .incident-stage .incident-art.is-bill { top: 22px; width: 92px; height: 46px; margin-left: -46px; }
   .incident-modal .incident-emote { left: auto; right: 2px; top: 14px; width: 26px; height: 26px; padding: 3px; border-width: 2px; }
   .incident-modal .incident-title { font-size: 18px; line-height: 1.15; }
@@ -419,7 +423,7 @@
   .incident-modal .safe-badge { margin-top: 1px; }
   .complaint .complaint-scene { flex-direction: row; align-items: center; gap: 12px; }
   .complaint .complaint-stage { width: 92px; height: 92px; }
-  .complaint .complaint-stage .incident-art.is-person { width: 70px; height: 82px; margin-left: -35px; bottom: 0; }
+  .complaint .complaint-stage .incident-art.is-person { width: 64px; height: 75px; margin-left: -32px; bottom: 0; }
   .complaint .complaint-stage::after { height: 14px; }
   .complaint .complaint-stage .incident-emote { left: auto; right: 2px; top: 14px; width: 26px; height: 26px; padding: 3px; border-width: 2px; }
   .complaint .complaint-bubble { flex: 1; min-width: 0; }
@@ -430,12 +434,15 @@
 
 /* ---- Giảm chuyển động, phiếu dựng lại: tắt hẳn hoạt ảnh con (hiện cùng lúc, không độ trễ) ---- */
 .score-sheet.is-static *, .score-sheet.is-static *::before, .score-sheet.is-static *::after { animation: none !important; }
+/* hết hoạt ảnh thì lớp mặt bình thường (chỉ để đổi mặt lúc diễn) không được nằm dưới mặt cuối */
+.score-sheet.is-static .ss-face-a, html.reduce-motion .score-sheet .ss-face-a { display: none; }
 html.reduce-motion :is(.score-sheet, .incident, .complaint) *,
 html.reduce-motion :is(.score-sheet, .incident, .complaint) *::before,
 html.reduce-motion :is(.score-sheet, .incident, .complaint) *::after { animation: none !important; }
 html.reduce-motion :is(.incident, .complaint) .complaint-step { animation: none !important; }
 html.reduce-motion .sheet-host .score-sheet { transition-duration: .001ms; }
 @media (prefers-reduced-motion: reduce) {
+  .score-sheet .ss-face-a { display: none; }
   :is(.score-sheet, .incident, .complaint) *,
   :is(.score-sheet, .incident, .complaint) *::before,
   :is(.score-sheet, .incident, .complaint) *::after { animation: none !important; }

@@ -2,13 +2,13 @@
 
 Bếp Khởi Nghiệp là game bán hàng chơi trên trình duyệt, thiết kế cho điện thoại cầm dọc. Bạn khởi nghiệp với một chiếc xe đẩy đầu hẻm: tự tay nhận order, báo tổng tiền, thối tiền, rồi vào bếp chọn nguyên liệu, rửa, thái, gọt, đập trứng, chiên, khuấy, lắc, nêm cho từng món. Mỗi khách chấm sao riêng phần quầy và phần bếp, nên bạn biết mình sai ở đâu để sửa. Game lồng nhẹ các "Mẹo nghề" về vận hành quán ăn, dùng được để giải trí lẫn để ôn nghề cho nhân viên mới.
 
-Bản hiện tại (**0.5.0**) là **Chặng 1 "Xe đẩy đầu hẻm"** của bản MVP, đã xong bốn mốc: M1 (lõi chơi được), M2 (kinh tế, nhiệm vụ, sự kiện), M3 (hoàn thiện: chơi offline, sao lưu, Cài đặt, nội dung thêm) và M4 (tip mới, sự kiện thưởng/phạt tiền, nguyên liệu và món hiếm). Mốc M5 đang làm lại giao diện theo kiểu game nấu ăn: bản 0.5.0 đã xong phần **Bếp** và **5 thao tác mới** (mục "Có gì mới ở 0.5.0" bên dưới); Quầy và các màn ngoài ca làm ở bản 0.5.1, 0.5.2.
+Bản hiện tại (**0.5.1**) là **Chặng 1 "Xe đẩy đầu hẻm"** của bản MVP, đã xong bốn mốc: M1 (lõi chơi được), M2 (kinh tế, nhiệm vụ, sự kiện), M3 (hoàn thiện: chơi offline, sao lưu, Cài đặt, nội dung thêm) và M4 (tip mới, sự kiện thưởng/phạt tiền, nguyên liệu và món hiếm). Mốc M5 đang làm lại giao diện theo kiểu game nấu ăn: bản 0.5.0 xong phần **Bếp** và **5 thao tác mới**, bản 0.5.1 xong **Quầy**, thanh trên, dải phố, dây phiếu và phiếu chấm (mục "Có gì mới" bên dưới); các màn ngoài ca làm ở bản 0.5.2.
 
 ---
 
 ## Tính năng chính
 
-**Luồng 4 khâu cho mỗi khách**, có thanh tiến trình 4 chấm trên đầu khách:
+**Luồng 4 khâu cho mỗi khách**, có thanh 4 khâu (từ 0.5.1 là 4 biểu tượng) cho khách đang ở quầy:
 
 | Khâu | Bạn làm gì |
 |---|---|
@@ -56,6 +56,17 @@ Bản hiện tại (**0.5.0**) là **Chặng 1 "Xe đẩy đầu hẻm"** của 
 - Nút bấm kiểu "bánh kẹo" cho toàn game, font tiêu đề tròn đậm Baloo 2 (tự lưu, chơi offline được), âm thanh riêng cho từng thao tác mới. Hiệu ứng tôn trọng công tắc "Giảm chuyển động".
 - Hướng dẫn lần đầu có thêm 5 tour ngắn trên thẻ bước của 5 thao tác mới (người chơi cũ cũng được xem).
 - **Không đổi cân bằng**: giá bán, giá vốn, thời gian dành cho mỗi bước, trọng số bước giữ nguyên. Bản lưu cũ (kể cả đang dở một món trên Thớt) mở bình thường; bước chưa làm hiện thao tác mới, bước đã làm giữ điểm. Người chơi cũ nhận thư "Có gì mới: bếp mới và 5 thao tác mới" (không kèm quà).
+
+**Có gì mới ở 0.5.1 (M5 Đợt 2: quầy mới, thanh trên, dải phố, phiếu chấm)** — chỉ đổi giao diện, luật chơi và tiền giữ nguyên:
+- **Thanh trên** bằng gỗ: giờ ca có mặt trời chạy tới cuối ca, ví "Tiền quán" kèm thẻ xanh "+…đ" là tiền đã thu trong ca (cộng vào Tiền quán lúc đóng ca); mỗi lần thu tiền, đồng xu bay về ví và thẻ đếm lên đúng số.
+- **Dải phố**: mái bạt sọc, mặt trước xe đẩy mang tên xe, khách vẽ bán thân (khách quen, khách lạ có dáng riêng), vòng kiên nhẫn ôm quanh đầu, khách sắp hết kiên nhẫn thì bốc hơi; khách vào, rời có hoạt ảnh một lần. Thanh 4 khâu là 4 biểu tượng; dây phiếu có kẹp gỗ, hình món và dải màu chờ; tab Quầy / Bếp có biểu tượng và số đếm.
+- **Order**: khách đứng sau quầy gọi món; ngày 1–2 bong bóng có hình món, ×n và ghi chú bằng hình, từ ngày 3 chỉ còn lời khách (như trước). Bảng Thực đơn gỗ, bảng chọn số lượng và ghi chú có hình, phiếu order giấy; "Đọc lại đơn" sáng lần lượt từng dòng rồi đánh ✓ / ✗, "Chốt order" đập con dấu ĐÃ CHỐT rồi phiếu bay lên dây.
+- **Thanh toán**: bảng giá phấn có hình món, máy tính tiền có màn LED và phím bánh kẹo, phím chuông "Báo tổng" (khách nhận tổng thì kêu "keng").
+- **Tính tiền**: tờ tiền khách đưa trên mặt quầy gỗ, khay inox, ngăn kéo két 7 ngăn vẽ thật; chạm ngăn thì tờ tiền bay vào khay, thối đúng thì két nảy rồi đóng.
+- **Chuyển khoản**: khách giơ điện thoại có ảnh chuyển khoản (mã QR giả "QR GAME"); tiền về kêu "ting" và có vệt sáng quét; ảnh giả bị đóng dấu "ẢNH GIẢ".
+- **Phiếu thu** in ra từ máy in phiếu, có con dấu "ĐÃ THU"; kẹp phiếu thì phiếu bay lên dây.
+- **Phiếu chấm**: mặt khách đổi theo số sao, sao bật lần lượt, 5 hàng có dấu ✓ / ✗, tem "Lỗi tại quầy / tại bếp", xu tip bay lên ví (âm riêng). **Hộp tình huống** có hình người và biểu tượng cho từng lựa chọn.
+- Chạy gọn ở màn thấp (360×600, 320×568, iPhone SE có thanh Safari); mọi hiệu ứng tôn trọng "Giảm chuyển động". Hướng dẫn lần đầu của Quầy, Ca bán và Phiếu chấm viết lại theo giao diện mới.
 
 Tiến trình tự lưu trong trình duyệt của bạn. Game không có máy chủ, không cần đăng nhập, không có quảng cáo hay mua bán bằng tiền thật.
 
@@ -106,7 +117,7 @@ Mở qua địa chỉ IP vẫn chơi đầy đủ, nhưng các tham số kiểm 
 
 ## Phòng mẫu giao diện (mau.html)
 
-Từ bản 0.4.2 có trang **Phòng mẫu** để duyệt giao diện mới kiểu game nấu ăn (M5 Đợt 0) trước khi ráp vào game (phong cách đã được duyệt; từ 0.5.0 phần Bếp đã ráp vào game, màn gọi món mẫu sẽ ráp ở 0.5.1): hình mới viền mực, khối 3 tông; màn gọi món có con dấu "ĐÃ CHỐT"; bước Thái kiểu mới có thẻ bước, tay làm mẫu, con dấu và Dì Sáu phản ứng; màn ra món 5 hạng. Nút bánh răng có 3 công tắc: Giảm chuyển động, Âm thanh, Khung thấp (mô phỏng phần chơi ~300 điểm ảnh như màn 360×600).
+Từ bản 0.4.2 có trang **Phòng mẫu** để duyệt giao diện mới kiểu game nấu ăn (M5 Đợt 0) trước khi ráp vào game (phong cách đã được duyệt; từ 0.5.0 phần Bếp đã ráp vào game, từ 0.5.1 màn gọi món mẫu đã ráp vào Quầy): hình mới viền mực, khối 3 tông; màn gọi món có con dấu "ĐÃ CHỐT"; bước Thái kiểu mới có thẻ bước, tay làm mẫu, con dấu và Dì Sáu phản ứng; màn ra món 5 hạng. Nút bánh răng có 3 công tắc: Giảm chuyển động, Âm thanh, Khung thấp (mô phỏng phần chơi ~300 điểm ảnh như màn 360×600).
 
 - Trên máy tính: `npm run serve` rồi mở **http://localhost:8080/mau.html**. GitHub Pages: **https://kazesanaei.github.io/gamefnb/mau.html**.
 - Phòng mẫu không lưu gì vào bản lưu của game, không đăng ký service worker và không nằm trong danh sách tệp chơi offline.
@@ -194,7 +205,7 @@ npm run e2e
 ```
 
 - Cần thư viện **Playwright** và trình duyệt **Chromium**. Nếu máy chưa có, cài một lần: `npm install --no-save playwright` rồi `npx playwright install chromium`.
-- Toàn bộ e2e (khoảng 60 kịch bản) mất khoảng 18 phút.
+- Toàn bộ e2e (hơn 100 kịch bản) mất vài chục phút. Chạy riêng một tệp: `node --test tests/e2e/<tệp>.e2e.mjs` (vd `m5-quay` kiểm Quầy mới ở 4 khung màn hình).
 - Đặt biến `SHOT_DIR=<thư mục>` để lưu ảnh chụp màn hình trong lúc chạy; `E2E_VIEWPORT=1280x800` để chạy ở khung máy tính.
 
 ---
@@ -224,7 +235,7 @@ package.json        các lệnh npm (serve, test, e2e)
 .nojekyll           tệp rỗng, bắt buộc cho GitHub Pages (đừng xóa)
 ```
 
-M3 thêm `manifest.webmanifest` (khai báo ứng dụng), `sw.js` (service worker để chơi offline), `icons/` (bộ biểu tượng) và `tools/make-icons.mjs` (dựng biểu tượng PNG). M4 thêm `src/core/rare.js`, `src/data/rare.js`, màn "Lựa hàng" `src/ui/screens/market.js` và `tools/tim-seed.mjs` (tìm seed cho e2e: `node tools/tim-seed.mjs`). M5 thêm `fonts/`, `mau.html` + `mau/`, `src/ui/art/`, `src/ui/vfx.js`, `src/ui/motion.js`, các thành phần thẻ bước, con dấu, ra món (`src/ui/components/`), 5 mini-game mới (`src/ui/minigames/dap.js xoay.js got.js lac.js bay.js`) và CSS `theme.css`, `fx.css`, `counter.css`, `mg-prep.css`, `mg-heat.css`, `mg-mix.css`.
+M3 thêm `manifest.webmanifest` (khai báo ứng dụng), `sw.js` (service worker để chơi offline), `icons/` (bộ biểu tượng) và `tools/make-icons.mjs` (dựng biểu tượng PNG). M4 thêm `src/core/rare.js`, `src/data/rare.js`, màn "Lựa hàng" `src/ui/screens/market.js` và `tools/tim-seed.mjs` (tìm seed cho e2e: `node tools/tim-seed.mjs`). M5 thêm `fonts/`, `mau.html` + `mau/`, `src/ui/art/`, `src/ui/vfx.js`, `src/ui/motion.js`, các thành phần thẻ bước, con dấu, ra món (`src/ui/components/`), 5 mini-game mới (`src/ui/minigames/dap.js xoay.js got.js lac.js bay.js`) và CSS `theme.css`, `fx.css`, `counter.css`, `mg-prep.css`, `mg-heat.css`, `mg-mix.css`. Bản 0.5.1 tách Quầy theo khâu (`src/ui/screens/counter-order.js counter-pay.js counter-cash.js counter-qr.js counter-receipt.js`), thêm phiếu chấm và hộp tình huống (`src/ui/components/score-sheet.js incident-view.js`), hình người và cảnh quầy (`src/ui/art/people.js scene.js`), CSS `street.css`, `cashier.css`, `receipt.css`, `sheet.css`.
 
 Muốn đổi giá món, giá nâng cấp, phần thưởng hay lịch sự kiện: sửa trong `src/data/` (xem `docs/can-bang.md` trước), rồi chạy lại `npm test`.
 

@@ -88,9 +88,12 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 
 // Thanh dính (nút đáy panel, đầu màn con…) che mất một phần vùng cuộn: chiều cao phía trên/dưới cần chừa.
 // 0.5.0 (M5): thanh chân mặt quầy gỗ của sân khấu kiểu mới vẫn là .mg-foot (.mg-foot.g-foot2, cả bước Chọn); Thớt giữ
-// .k-toolbar; hàng nút của phiếu order kiểu mới (.co-pad-actions, css/counter.css) để sẵn cho Quầy Đợt 2. Thẻ "Bước k/N"
-// (step-hint) phủ kín khung sân khấu, không cuộn nên không cần chừa; chế độ tập trung chỉ ẩn dải khách và thanh 4 khâu
-// (phần tử ẩn thì bước tour chỉ vào nó tự bỏ qua, vd progress-4 lúc đang nấu ở màn thấp).
+// .k-toolbar. Thẻ "Bước k/N" (step-hint) phủ kín khung sân khấu, không cuộn nên không cần chừa; chế độ tập trung chỉ ẩn dải
+// khách và thanh 4 khâu (phần tử ẩn thì bước tour chỉ vào nó tự bỏ qua, vd progress-4 lúc đang nấu ở màn thấp).
+// 0.5.1 (M5 Đợt 2): mọi hàng nút dính đáy của Quầy mới đều mang lớp .act-bar (position: sticky; bottom: 0): "Đọc lại đơn /
+// Chốt order" (.co-pad-actions.act-bar, con cuối của khâu Order), "Đưa tiền thối" (.cs-act), "Từ chối ảnh giả / Đã nhận đủ"
+// (.qc-act), "Kẹp phiếu bếp" (.rc-act). Bảng chọn món ở lớp nổi: hàng nút .co-sheet-actions nằm ngoài thân bảng cuộn
+// (.co-sheet-body) nên không che đích nào trong thân bảng. Chỉ thanh đang hiện, đang sticky và không chứa đích mới được chừa.
 export const STICKY = '.act-bar, .sticky-foot, .k-toolbar, .meta-head, .mg-foot, .prep-toprow, .sum-head-row, .co-pad-actions'
 function stickyCover(box, el) {
   let top = 0

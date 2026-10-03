@@ -120,31 +120,43 @@ test('thư phiên bản mới cho save cũ; so sánh phiên bản', () => {
   refreshMail(s, at(s, '2026-10-01T09:00'), ctx)
   // M4 (sửa có chủ ý): bản 0.4.0 có thêm thư phiên bản 0.4.0 → save từ 0.1.0 nhận cả hai thư.
   // M5 (sửa có chủ ý): bản 0.5.0 có thêm thư phiên bản 0.5.0 (không quà) → nhận cả ba thư, seenVersion lên 0.5.0
+  // M5 Đợt 2 (sửa có chủ ý): bản 0.5.1 có thêm thư phiên bản 0.5.1 (không quà) → nhận cả bốn thư, seenVersion lên 0.5.1
   const v = s.mail.list.find(m => m.id === 'phien_ban_0_2_0')
   assert.ok(v)
   assert.deepEqual(v.reward, { gold: 10 })
   assert.ok(s.mail.list.some(m => m.id === 'phien_ban_0_4_0'))
   assert.ok(s.mail.list.some(m => m.id === 'phien_ban_0_5_0'))
-  assert.equal(s.mail.seenVersion, '0.5.0')
+  assert.ok(s.mail.list.some(m => m.id === 'phien_ban_0_5_1'))
+  assert.equal(s.mail.seenVersion, '0.5.1')
   refreshMail(s, at(s, '2026-10-02T09:00'), ctx)
-  assert.equal(s.mail.list.filter(m => m.kind === 'phien_ban').length, 3)
-  // save của bản 0.2/0.3 (seenVersion '0.2.0') nhận thư 0.4.0 và 0.5.0
+  assert.equal(s.mail.list.filter(m => m.kind === 'phien_ban').length, 4)
+  // save của bản 0.2/0.3 (seenVersion '0.2.0') nhận thư 0.4.0, 0.5.0 và 0.5.1
   const s2 = newState(8)
   s2.mail.seenVersion = '0.2.0'
   refreshMail(s2, at(s2, '2026-10-01T09:00'), ctx)
-  assert.deepEqual(s2.mail.list.filter(m => m.kind === 'phien_ban').map(m => m.id), ['phien_ban_0_4_0', 'phien_ban_0_5_0'])
-  // save của bản 0.4.x (seenVersion '0.4.0') chỉ nhận thư 0.5.0
+  assert.deepEqual(s2.mail.list.filter(m => m.kind === 'phien_ban').map(m => m.id), ['phien_ban_0_4_0', 'phien_ban_0_5_0', 'phien_ban_0_5_1'])
+  // save của bản 0.4.x (seenVersion '0.4.0') nhận thư 0.5.0 và 0.5.1
   const s3 = newState(9)
   s3.mail.seenVersion = '0.4.0'
   refreshMail(s3, at(s3, '2026-10-01T09:00'), ctx)
-  assert.deepEqual(s3.mail.list.filter(m => m.kind === 'phien_ban').map(m => m.id), ['phien_ban_0_5_0'])
-  assert.equal(s3.mail.seenVersion, '0.5.0')
+  assert.deepEqual(s3.mail.list.filter(m => m.kind === 'phien_ban').map(m => m.id), ['phien_ban_0_5_0', 'phien_ban_0_5_1'])
+  assert.equal(s3.mail.seenVersion, '0.5.1')
+  // save của bản 0.5.0 (seenVersion '0.5.0') chỉ nhận thư 0.5.1; save đã thấy 0.5.1 không nhận gì thêm
+  const s4 = newState(11)
+  s4.mail.seenVersion = '0.5.0'
+  refreshMail(s4, at(s4, '2026-10-01T09:00'), ctx)
+  assert.deepEqual(s4.mail.list.filter(m => m.kind === 'phien_ban').map(m => m.id), ['phien_ban_0_5_1'])
+  assert.equal(s4.mail.seenVersion, '0.5.1')
+  const s5 = newState(12)
+  s5.mail.seenVersion = '0.5.1'
+  refreshMail(s5, at(s5, '2026-10-01T09:00'), ctx)
+  assert.equal(s5.mail.list.filter(m => m.kind === 'phien_ban').length, 0)
 })
 
 test('thư phiên bản 0.5.0: giới thiệu bếp mới, 5 thao tác, thẻ bước có tay mẫu, chế độ tập trung; không quà', () => {
   const ctx = makeMetaCtx()
-  const { MAIL_CONFIG, MAIL_VERSIONS } = ctx.data
-  assert.equal(MAIL_CONFIG.currentVersion, '0.5.0')
+  const { MAIL_VERSIONS } = ctx.data
+  // (0.5.1, sửa có chủ ý: currentVersion nay là 0.5.1, kiểm ở ca thư 0.5.1 bên dưới)
   const def = MAIL_VERSIONS.find(m => m.version === '0.5.0')
   assert.ok(def, 'có thư 0.5.0')
   assert.equal(def.id, 'phien_ban_0_5_0')
@@ -188,6 +200,57 @@ test('thư phiên bản 0.5.0: giới thiệu bếp mới, 5 thao tác, thẻ b�
   assert.deepEqual(c.reward, {})
   assert.equal(s.wallet, wallet)
   assert.equal(s.goldSpoons, gold)
+})
+
+// M5 Đợt 2 (0.5.1): thư "Có gì mới" giới thiệu quầy mới, không quà, cùng giọng thư 0.5.0. Lời thư nói tới thứ có thật trên
+// giao diện: két có một ngăn cho mỗi mệnh giá.
+test('thư phiên bản 0.5.1: quầy mới, khách nửa người, tiền bay vào két, QR, phiếu thu, phiếu chấm mới; không quà', async () => {
+  const ctx = makeMetaCtx()
+  const { MAIL_CONFIG, MAIL_VERSIONS } = ctx.data
+  assert.equal(MAIL_CONFIG.currentVersion, '0.5.1')
+  assert.equal(MAIL_VERSIONS.at(-1).version, '0.5.1', 'thư mới nhất nằm cuối danh sách')
+  const def = MAIL_VERSIONS.find(m => m.version === '0.5.1')
+  assert.ok(def, 'có thư 0.5.1')
+  assert.equal(def.id, 'phien_ban_0_5_1')
+  assert.equal(def.kind, 'phien_ban')
+  assert.match(def.title, /^Có gì mới: /)
+  assert.match(def.title, /quầy mới/)
+  assert.match(def.title, /phiếu chấm mới/)
+  for (const w of [/Quầy/, /mặt quầy xe đẩy/, /nửa người/, /kiên nhẫn/, /phiếu giấy/, /chốt order/, /dây phiếu/, /máy tính tiền/,
+    /"keng"/, /Két mở đủ 7 ngăn/, /khay thối/, /tiền khách đưa bay vào két/, /xu vàng bay về ví/, /mã QR/, /"ting"/, /máy in/,
+    /Phiếu chấm mới/, /sao bật lên từng ngôi/, /được tip thì xu/, /giữ như cũ/]) assert.match(def.body, w)
+  // khớp giao diện thật: két (hình ket_tien) có một ngăn cho mỗi mệnh giá
+  const { BILLS } = await import('../../src/core/money.js')
+  const { SCENE_META } = await import('../../src/ui/art/scene.js')
+  assert.equal(SCENE_META.ket_tien.slots.length, BILLS.length)
+  assert.ok(def.body.includes(`${BILLS.length} ngăn`), `thư phải ghi két ${BILLS.length} ngăn`)
+  // chỉ đổi giao diện: thư không hứa luật mới, không có số tiền
+  assert.doesNotMatch(def.body, /\d+\.000đ/)
+  // giọng thư cũ (Dì Sáu gọi "con"), câu cuối có dấu chấm than
+  assert.match(def.body, /\b[Cc]on\b/)
+  assert.match(def.body, /!$/)
+  // không quà: không có nút Nhận, đánh dấu đã xem (kể cả trong ca) không cộng gì
+  assert.deepEqual(def.reward, {})
+  const s = newState(13)
+  s.mail.seenVersion = '0.5.0'
+  const ni = at(s, '2026-10-03T09:00')
+  const wallet = s.wallet, gold = s.goldSpoons
+  assert.deepEqual(refreshMail(s, ni, ctx).filter(id => id.startsWith('phien_ban')), ['phien_ban_0_5_1'])
+  const item = mailList(s, ni).find(m => m.id === 'phien_ban_0_5_1')
+  assert.equal(item.hasReward, false)
+  assert.deepEqual(item.reward, {})
+  s.shift = { day: 1 }
+  const c = claimMail(s, 'phien_ban_0_5_1', ni, ctx)
+  s.shift = null
+  assert.equal(c.ok, true)
+  assert.deepEqual(c.reward, {})
+  assert.equal(s.wallet, wallet)
+  assert.equal(s.goldSpoons, gold)
+  // save mới không nhận thư phiên bản, ghi luôn đã thấy 0.5.1
+  const fresh = newState(14)
+  refreshMail(fresh, at(fresh, '2026-10-03T09:00'), ctx)
+  assert.ok(!fresh.mail.list.some(m => m.kind === 'phien_ban'))
+  assert.equal(fresh.mail.seenVersion, '0.5.1')
 })
 
 test('review muộn: thối thiếu không bị phát hiện → hôm sau có thư review 2 sao', () => {

@@ -71,72 +71,81 @@ export const TOURS = Object.freeze({
   }),
 
   // ---------- Ca bán: tổng quan (chỉ chạy bằng nút "?" khi quầy trống) ----------
+  // 0.5.1 (M5 Đợt 2): lời theo giao diện mới — HUD gỗ (mặt trời giờ ca, thẻ xanh tiền thu trong ca dưới Tiền quán), khách
+  // bán thân dưới mái bạt (vòng kiên nhẫn quanh đầu, bốc hơi khi sắp hết), 4 khâu là 4 biểu tượng, dây phiếu có dải màu chờ,
+  // tab có số đếm.
   ca_ban: Object.freeze({
     screen: 'service', spot: 'idle', name: 'Ca bán', auto: false,
     steps: Object.freeze([
-      step('hud', 'Thanh trên', 'Ngày, giờ trong ca, Tiền quán và sao trung bình của xe. Phục vụ hết khách là xong ca.'),
-      step('queue', 'Hàng khách', 'Khách xếp hàng ở đây, vòng quanh mặt là kiên nhẫn. Từ ngày 2 vòng xuống thấp thì khách trừ sao, từ ngày 4 vòng cạn là khách bỏ về.'),
-      step('progress-4', 'Bốn khâu', 'Mỗi khách đi qua 4 khâu: Order, Thanh toán, Tính tiền rồi Làm đồ. Chấm vàng là khâu đang làm.'),
-      step('ticket-rail', 'Dây phiếu', 'Phiếu kẹp ở Quầy nằm trên dây này, tối đa 3 phiếu. Chạm phiếu là mở nó trong Bếp.'),
-      step('tab-counter', 'Quầy và Bếp', 'Hai thẻ này đổi qua lại giữa Quầy và Bếp. Chấm đỏ báo bên kia có việc mới.', { span: 'tab-kitchen' })
+      step('hud', 'Thanh trên', 'Ngày, giờ ca có mặt trời chạy dần tới cuối ca, Tiền quán và sao trung bình của xe. Thẻ xanh dưới Tiền quán là tiền thu trong ca, đóng ca mới cộng vào quán.'),
+      step('queue', 'Hàng khách', 'Vòng quanh đầu khách là kiên nhẫn, khách bốc hơi là sắp hết. Từ ngày 2 vòng xuống thấp thì khách trừ sao, từ ngày 4 vòng cạn là khách bỏ về.'),
+      step('progress-4', 'Bốn khâu', 'Mỗi khách đi qua 4 khâu: Order, Thanh toán, Tính tiền rồi Làm đồ. Khâu đang làm có nền vàng kèm tên khâu, khâu xong có dấu ✓ xanh.'),
+      step('ticket-rail', 'Dây phiếu', 'Phiếu kẹp ở Quầy treo trên dây này, tối đa 3 phiếu, dải màu dưới phiếu ngả dần sang đỏ khi khách chờ lâu. Chạm phiếu là mở nó trong Bếp.'),
+      step('tab-counter', 'Quầy và Bếp', 'Hai thẻ này đổi qua lại giữa Quầy và Bếp, số trên thẻ là khách đang xếp hàng và phiếu đang chờ. Chấm đỏ báo bên kia có việc mới.', { span: 'tab-kitchen' })
     ])
   }),
 
   // ---------- Quầy: khâu Order ----------
+  // Khách bán thân sau quầy, bong bóng gọi món (ngày 1–2 có hình món, ×n và hình ghi chú; từ ngày 3 chỉ còn lời khách), bảng
+  // Thực đơn gỗ, phiếu order giấy, hàng nút dính đáy "Đọc lại đơn" / "Chốt order" (con dấu ĐÃ CHỐT).
   quay_order: Object.freeze({
     screen: 'service', spot: 'order', name: 'Quầy · Order', veteranDay: 2,
     steps: Object.freeze([
-      step('queue', 'Hàng khách', 'Khách xếp hàng ở đây, vòng quanh mặt là kiên nhẫn. Từ ngày 2 vòng xuống thấp thì khách trừ sao, từ ngày 4 vòng cạn là khách bỏ về.'),
-      step('speech-bubble', 'Khách gọi món', 'Món, số lượng và lời dặn của khách nằm trong bóng thoại này. Đọc hết câu, có khi khách dặn thêm ở cuối.'),
-      step('progress-4', 'Bốn khâu', 'Mỗi khách đi qua 4 khâu: Order, Thanh toán, Tính tiền rồi Làm đồ. Chấm vàng là khâu đang làm.'),
-      step('[data-testid^="menu-item-"]', 'Thẻ món', 'Chạm thẻ món để mở bảng chọn số lượng và ghi chú. Ghi xong, món hiện trong Phiếu order bên dưới.'),
-      step('readback', 'Đọc lại đơn', 'Khách nghe đọc lại, thấy sai sẽ chỉ ra để con sửa. Muốn sửa dòng nào thì chạm dòng đó trên phiếu.'),
-      step('confirm-order', 'Chốt order', 'Khách nghe đúng rồi mới chốt được. Chốt xong là sang khâu Thanh toán.')
+      step('queue', 'Hàng khách', 'Vòng quanh đầu khách là kiên nhẫn, khách bốc hơi là sắp hết. Từ ngày 2 vòng xuống thấp thì khách trừ sao, từ ngày 4 vòng cạn là khách bỏ về.'),
+      step('speech-bubble', 'Khách gọi món', 'Khách gọi món trong bong bóng này, mấy ngày đầu có hình món kèm số phần, về sau chỉ còn lời khách. Đọc hết câu, có khi khách dặn thêm ở cuối.'),
+      step('progress-4', 'Bốn khâu', 'Mỗi khách đi qua 4 khâu: Order, Thanh toán, Tính tiền rồi Làm đồ. Khâu đang làm có nền vàng kèm tên khâu, khâu xong có dấu ✓ xanh.'),
+      step('[data-testid^="menu-item-"]', 'Thẻ món', 'Chạm thẻ món trên bảng Thực đơn để mở bảng chọn số lượng và ghi chú. Ghi xong, món hiện trên Phiếu order bên dưới.'),
+      step('readback', 'Đọc lại đơn', 'Bấm để đọc lại từng dòng cho khách nghe, dòng khách bắt lỗi bị đánh dấu ✗. Muốn sửa dòng nào thì chạm dòng đó trên phiếu.'),
+      step('confirm-order', 'Chốt order', 'Khách nghe đúng rồi mới chốt được, phiếu được đóng dấu Đã chốt. Chốt xong là sang khâu Thanh toán.')
     ])
   }),
   quay_bang_mon: Object.freeze({
     screen: 'service', spot: 'order-sheet', name: 'Quầy · Bảng chọn món', veteranDay: 2,
     steps: Object.freeze([
-      step('qty-row', 'Số lượng', 'Bấm + hoặc − cho đúng số phần khách gọi, mỗi dòng tối đa 3 phần.'),
-      step('note-block', 'Ghi chú', 'Khách dặn gì thì chạm ghi chú đó, chữ đỏ sẽ in lên phiếu bếp. Ghi chú có tính thêm tiền thì giá ghi ngay bên cạnh.'),
-      step('add-line', 'Thêm vào phiếu', 'Chọn xong bấm nút này để ghi dòng vào phiếu. Bấm dấu ✕ trên đầu bảng là đóng mà không ghi.')
+      step('qty-row', 'Số lượng', 'Bấm + hoặc − cho đúng số phần khách gọi, mỗi dòng tối đa 3 phần. Trên mặt gỗ bày đúng số phần đang chọn.'),
+      step('note-block', 'Ghi chú', 'Khách dặn gì thì chạm ghi chú đó cho hiện dấu ✓, ghi chú in lên phiếu bếp. Ghi chú có tính thêm tiền thì giá ghi ngay trên nút.'),
+      step('add-line', 'Thêm vào phiếu', 'Chọn xong bấm nút này để ghi dòng vào phiếu, số dưới chữ là tiền của dòng. Bấm dấu ✕ trên đầu bảng là đóng mà không ghi.')
     ])
   }),
 
   // ---------- Quầy: khâu Thanh toán ----------
+  // Bảng giá phấn, phiếu order tóm tắt bằng hình món, máy tính tiền có màn LED (gõ theo nghìn), phím chuông "Báo tổng".
   quay_thanh_toan: Object.freeze({
     screen: 'service', spot: 'thanh_toan', name: 'Quầy · Thanh toán', veteranDay: 2,
     steps: Object.freeze([
-      step('price-board', 'Bảng giá', 'Giá từng món và phần cộng thêm của ghi chú nằm ở đây. Cộng theo đúng Phiếu order bên cạnh.'),
-      step('numpad-display', 'Bàn phím số', 'Ô này hiện số con đang gõ. Nút ⌫ xóa một số, nút Xóa xóa hết để gõ lại.'),
-      step('report-total', 'Báo tổng', 'Bấm để đọc tổng tiền cho khách. Báo dư khách sẽ kêu, báo thiếu thì quán chịu phần thiếu.')
+      step('price-board', 'Bảng giá', 'Bảng phấn ghi giá từng món và phần cộng thêm của ghi chú. Cộng theo đúng Phiếu order có hình món bên cạnh.'),
+      step('numpad-display', 'Máy tính tiền', 'Màn số hiện số con gõ, gõ theo nghìn: 30 là 30.000đ. Nút ⌫ xóa một số, nút Xóa xóa hết để gõ lại.'),
+      step('report-total', 'Báo tổng', 'Bấm để đọc tổng trên màn cho khách nghe. Báo dư khách sẽ kêu, báo thiếu thì quán chịu phần thiếu.')
     ])
   }),
 
   // ---------- Quầy: khâu Tính tiền (tiền mặt) ----------
+  // Tiền khách đưa trên mặt quầy gỗ, khay inox đựng tiền thối, ngăn kéo két 7 ngăn có số tờ, nút "Đưa tiền thối" dính đáy.
   quay_tinh_tien: Object.freeze({
     screen: 'service', spot: 'tinh_tien', name: 'Quầy · Tính tiền', veteranDay: 2,
     steps: Object.freeze([
-      step('given-cash', 'Tiền khách đưa', 'Tờ tiền khách đưa nằm trên nắp két. Lấy tiền khách đưa trừ tổng hóa đơn là ra tiền thối.'),
-      step('drawer', 'Két tiền', 'Mỗi ngăn là một mệnh giá, số nhỏ trên ngăn là số tờ còn lại. Két hết tiền lẻ thì có cách xử lý riêng.'),
-      step('tray', 'Khay tiền thối', 'Tờ con lấy ra nằm trong khay, chạm tờ trong khay là trả lại két. Thối đủ mà ít tờ là khéo nhất.'),
-      step('give-change', 'Đưa tiền thối', 'Bấm khi khay đã đủ tiền thối. Thối thiếu khách đòi bù, thối dư thì quán dễ mất phần dư.')
+      step('given-cash', 'Tiền khách đưa', 'Tờ tiền khách đưa nằm trên mặt quầy gỗ. Lấy tiền khách đưa trừ tổng hóa đơn là ra tiền thối.'),
+      step('drawer', 'Két tiền', 'Chạm một ngăn két là lấy ra một tờ mệnh giá đó, số tròn trên ngăn là số tờ còn lại. Két hết tiền lẻ thì có cách xử lý riêng.'),
+      step('tray', 'Khay tiền thối', 'Tờ con lấy ra nằm trong khay, chạm chồng tiền trong khay là trả một tờ về két. Thối đủ mà ít tờ là khéo nhất.'),
+      step('give-change', 'Đưa tiền thối', 'Bấm khi khay đã đủ tiền thối, khách đưa vừa đủ thì nút ghi Không cần thối. Thối thiếu khách đòi bù, thối dư thì quán dễ mất phần dư.')
     ])
   }),
   // ---------- Quầy: khách chuyển khoản QR (từ ngày 4) ----------
+  // Khách giơ điện thoại có ảnh chuyển khoản, ô báo tiền của quán (chuông điện thoại quán hoặc Loa báo tiền), hai nút dính đáy.
   quay_qr: Object.freeze({
     screen: 'service', spot: 'qr', name: 'Quầy · Chuyển khoản', veteranDay: 5,
     steps: Object.freeze([
-      step('qr-status', 'Chuyển khoản', 'Khách quét mã QR của xe rồi chuyển khoản. Dòng này báo tiền đã về hay còn đang chờ.'),
-      step('qr-confirm', 'Đã nhận đủ', 'Bấm khi dòng trên đã báo tiền về đúng số. Khách giơ điện thoại mà dòng trên vẫn chờ thì đừng vội tin.'),
-      step('qr-reject', 'Ảnh giả', 'Khách đưa ảnh cũ, tiền không về thì bấm từ chối. Từ chối nhầm khách thật là khách giận bỏ đi đó.')
+      step('qr-status', 'Chuyển khoản', 'Khách quét mã QR của xe rồi giơ điện thoại báo đã chuyển. Ô báo tiền này mới cho biết tiền thật đã về hay còn đang chờ.'),
+      step('qr-confirm', 'Đã nhận đủ', 'Bấm khi ô báo tiền đã báo về đúng số. Khách giơ điện thoại mà ô báo tiền vẫn chờ thì đừng vội tin.'),
+      step('qr-reject', 'Ảnh giả', 'Khách đưa ảnh cũ, tiền không về thì bấm Từ chối ảnh giả. Từ chối nhầm khách thật là khách giận bỏ đi đó.')
     ])
   }),
   // ---------- Quầy: phiếu thu, kẹp phiếu bếp ----------
+  // Máy in phiếu sau mép quầy, phiếu thu có hình món và con dấu ĐÃ THU, nút "Kẹp phiếu bếp" dính đáy (phiếu bay lên dây).
   quay_phieu_thu: Object.freeze({
     screen: 'service', spot: 'receipt', name: 'Quầy · Phiếu thu', veteranDay: 2,
     steps: Object.freeze([
-      step('receipt', 'Phiếu thu', 'Thu tiền xong, phiếu thu ghi món, tổng tiền và tiền thối. Liếc lại cho chắc trước khi kẹp.'),
+      step('receipt', 'Phiếu thu', 'Thu tiền xong, máy in ra phiếu thu ghi món, tổng tiền, tiền thối và đóng dấu Đã thu. Liếc lại cho chắc trước khi kẹp.'),
       step('clip-ticket', 'Kẹp phiếu bếp', 'Kẹp phiếu lên dây là khách qua chỗ chờ món, quầy đón khách kế tiếp. Dây đủ 3 phiếu thì làm bớt món rồi mới kẹp tiếp được.')
     ])
   }),
@@ -226,12 +235,13 @@ export const TOURS = Object.freeze({
   }),
 
   // ---------- Phiếu chấm sau khi khách nhận món ----------
+  // 0.5.1: chân dung khách đổi mặt theo sao, sao bật lần lượt, 5 hàng có dấu ✓ / ✗, tem lỗi đóng lên phiếu, xu tip bay lên ví.
   phieu_cham: Object.freeze({
     screen: 'service', spot: 'score', name: 'Phiếu chấm', veteranDay: 2,
     steps: Object.freeze([
-      step('score-sheet', 'Phiếu chấm', 'Khách nhận món xong chấm sao theo 5 hàng: Order, Báo tổng, Thối tiền, Bếp và Thời gian chờ. Hàng ghi Sai là chỗ cần sửa.'),
-      step(['.ss-tags', '.ss-rows'], 'Lỗi tại quầy, lỗi tại bếp', 'Lỗi tại quầy là sai lúc ghi order, báo tổng hay thối tiền. Lỗi tại bếp là sai nguyên liệu, sơ chế hoặc món hỏng.'),
-      step(['score-sheet-tip', 'score-sheet'], 'Tip', 'Khách chấm 5 sao và hóa đơn từ 20.000đ thì tip thêm 5.000đ. Hóa đơn nhỏ hơn thì 5 sao cũng không có tip.')
+      step('score-sheet', 'Phiếu chấm', 'Khách nhận món xong chấm sao theo 5 hàng: Order, Báo tổng, Thối tiền, Bếp và Thời gian chờ. Hàng có dấu ✗ đỏ ghi Sai là chỗ cần sửa.'),
+      step(['.ss-tags', '.ss-rows'], 'Lỗi tại quầy, lỗi tại bếp', 'Tem Lỗi tại quầy là sai lúc ghi order, báo tổng hay thối tiền. Tem Lỗi tại bếp là sai nguyên liệu, sơ chế hoặc món hỏng.'),
+      step(['score-sheet-tip', 'score-sheet'], 'Tip', 'Khách chấm 5 sao và hóa đơn từ 20.000đ thì tip thêm 5.000đ, xu vàng bay lên ví. Hóa đơn nhỏ hơn thì 5 sao cũng không có tip.')
     ])
   }),
 

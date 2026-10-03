@@ -8,13 +8,26 @@
 // - art(id, state): hình trạng thái 'id.state' (dưa leo thái lát, trứng ốp la…) nếu có, không thì icon(id).
 // - prop(id) / PROP_META / PROPS: đạo cụ sân khấu lớn (viewBox riêng, KHÔNG nằm trong ICONS); thiếu thì ''.
 // - LEGACY_ICONS: bộ hình cũ nguyên vẹn (Phòng mẫu so cũ/mới, test so "hình mới khác hình cũ").
-// - Tệp này import THẲNG src/ui/art/{ing-tuoi,ing-kho,mon,tools,props}.js; src/ui/art/v2.js chỉ là lớp tương thích
-//   (artV2 = art, propV2 = prop) import từ tệp này, nên không có vòng import.
+// - Tệp này import THẲNG src/ui/art/{ing-tuoi,ing-kho,mon,tools,props,people,scene}.js; src/ui/art/v2.js chỉ là lớp tương
+//   thích (artV2 = art, propV2 = prop) import từ tệp này, nên không có vòng import (people.js, scene.js chỉ import kit.js).
+//
+// M5 Đợt 2 (0.5.1) — ráp nối hình người và cảnh quầy (thiết kế M5 mục 4, bảng gói "Ráp nối"):
+// - DI_SAU, ANH_KHOA, CO_HANH trả mặt tròn 64 MỚI của src/ui/art/people.js, cùng bộ khóa (xem mục "Người" bên dưới).
+// - Xuất lại từ people.js: bust(persona, mood, { gender, who }) bán thân 96 × 112, head() mặt tròn 64, BUSTS, HEADS,
+//   PEOPLE_META, WHO_LOOKS, DI_SAU_POSES, DI_SAU_POSE_MOOD, ANH_KHOA_BUSTS, CO_HANH_BUSTS; thêm headFace() (mặt mới, API face()).
+// - FACES / face() tạm giữ bộ mặt cũ (LEGACY_FACES / legacyFace), lý do ghi ở mục "Người".
+// - Xuất lại từ scene.js: scene(id), SCENE, SCENE_ICONS, SCENE_META, STAGE_ICONS, TAB_ICONS, HUD_ICONS, phoneQr; thêm
+//   phoneQrSvg(variant) = điện thoại của khách có QR giả "QR GAME".
 import { ING_TUOI, ING_TUOI_STATES } from './art/ing-tuoi.js'
 import { ING_KHO, ING_KHO_STATES } from './art/ing-kho.js'
 import { MON as MON_V2 } from './art/mon.js'
 import { TOOLS as TOOLS_V2 } from './art/tools.js'
 import { PROPS as PROPS_RAW, PROP_META } from './art/props.js'
+import {
+  bust, head, BUSTS, HEADS, PEOPLE_META, WHO_LOOKS, DI_SAU_FACES, DI_SAU_POSES, DI_SAU_POSE_MOOD,
+  ANH_KHOA_FACES, ANH_KHOA_BUSTS, CO_HANH_FACES, CO_HANH_BUSTS
+} from './art/people.js'
+import { scene, SCENE, SCENE_ICONS, SCENE_META, STAGE_ICONS, TAB_ICONS, HUD_ICONS, phoneQr } from './art/scene.js'
 
 const INK = '#3a2618'
 const FONT = 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif'
@@ -668,19 +681,29 @@ export function legacyIcon(id) {
   return FALLBACK_ICON
 }
 
-// ---------- Khuôn mặt ----------
+// ---------- Người: mặt và bán thân ----------
+//
+// M5 Đợt 2 (0.5.1, ráp nối): hình người mới vẽ ở src/ui/art/people.js (cel-shading viền mực như bộ hình 0.5.0).
+// - DI_SAU, ANH_KHOA, CO_HANH: mặt tròn 64 MỚI (DI_SAU_FACES, ANH_KHOA_FACES, CO_HANH_FACES của people.js), cùng bộ khóa
+//   như trước (Dì Sáu: tu_hao, vui, lo, tiec; Anh Khoa: vui, huong_dan; Cô Hạnh: vui) nên chỗ dùng không phải sửa.
+//   Dì Sáu có thêm 4 tư thế bán thân DI_SAU_POSES (ngon_cai, vo_tay, lau_mo_hoi, che_mat; tâm trạng ở DI_SAU_POSE_MOOD).
+// - Khách: bust(persona, mood, { gender, who }) là bán thân 96 × 112 (quầy, dải phố, phiếu chấm, tình huống); who = id khách
+//   quen / khách lạ / người bán (WHO_LOOKS) cho dáng riêng. head(…) là mặt tròn 64 cùng dáng; headFace(persona, mood,
+//   gender) là mặt mới với đúng API của face().
+// - FACES / face(persona, mood, gender): TẠM giữ bộ mặt cũ (LEGACY_FACES / legacyFace). Lý do: bustSvg của
+//   src/ui/components/order-bubble.js (hình dự phòng khi không dựng được bán thân mới) lồng face() vào khung 64 × 88 và test
+//   m5-order-ui giới hạn hình đó 6.000 byte, mà mặt mới nặng tới 5,4 KB. Khi order-bubble.js lồng legacyFace() thì đổi hai
+//   dòng "FACES = …" và "face = …" bên dưới sang HEADS và headFace (cùng bộ khóa 6 kiểu × 4 tâm trạng, cùng API).
 
 export const MOODS = Object.freeze(['vui', 'binh_thuong', 'buc', 'gian'])
 
+// Mặt cũ (trước 0.5.1): vai áo, tai, đầu tròn bán kính 20, tóc, mắt, miệng, phụ kiện; 6 kiểu khách × 4 tâm trạng.
 function eyes(mood) {
   const dot = (x) => `<circle cx="${x}" cy="35" r="2.4" fill="${INK}" stroke="none"/>`
   switch (mood) {
     case 'vui': return `<path d="M22 36 Q25 32 28 36 M36 36 Q39 32 42 36" fill="none"/>`
     case 'buc': return dot(25) + dot(39) + `<path d="M21 29 L28 31 M43 29 L36 31" fill="none"/>`
     case 'gian': return dot(25) + dot(39) + `<path d="M20 27 L29 32 M44 27 L35 32" stroke-width="3" fill="none"/>`
-    case 'lo': return dot(25) + dot(39) + `<path d="M21 30 L28 28 M43 30 L36 28" fill="none"/>`
-    case 'tiec': return `<path d="M22 35 Q25 38 28 35 M36 35 Q39 38 42 35" fill="none"/><path d="M21 29 L28 28 M43 29 L36 28" fill="none"/>`
-    case 'tu_hao': return `<path d="M22 36 Q25 32 28 36 M36 36 Q39 32 42 36" fill="none"/><path d="M21 28 Q25 25 28 28 M36 28 Q39 25 43 28" fill="none"/>`
     default: return dot(25) + dot(39)
   }
 }
@@ -688,11 +711,8 @@ function eyes(mood) {
 function mouth(mood) {
   switch (mood) {
     case 'vui': return `<path d="M25 43 Q32 51 39 43Z" fill="#b8423a"/>`
-    case 'tu_hao': return `<path d="M24 42 Q32 52 40 42Z" fill="#b8423a"/><path d="M27 43 H37" stroke="#ffffff" stroke-width="1.5"/>`
     case 'buc': return `<path d="M27 46 L37 45" fill="none"/>`
     case 'gian': return `<path d="M26 48 Q32 42 38 48" fill="none"/>`
-    case 'lo': return `<ellipse cx="32" cy="46" rx="3" ry="3.5" fill="#b8423a"/>`
-    case 'tiec': return `<path d="M27 48 Q32 44 37 48" fill="none"/>`
     default: return `<path d="M27 45 Q32 48 37 45" fill="none"/>`
   }
 }
@@ -703,10 +723,6 @@ function moodExtras(mood) {
     case 'gian': return `<ellipse cx="20" cy="41" rx="4" ry="2.4" fill="#ef7b6e" stroke="none"/><ellipse cx="44" cy="41" rx="4" ry="2.4" fill="#ef7b6e" stroke="none"/>` +
       `<path d="M50 12 l3 3 M56 12 l-3 3 M50 18 l3 -3 M56 18 l-3 -3" stroke="#d6362b" stroke-width="2"/>`
     case 'buc': return `<path d="M48 16 q3 -3 6 0" stroke="#7b8794" stroke-width="2" fill="none"/>`
-    case 'lo': return `<path d="M52 22 C54 26 55 28 53 30 C51 31 49 29 50 27Z" fill="#8ccff0" stroke-width="1.5"/>`
-    case 'tiec': return `<path d="M42 38 C43 41 44 43 42 44 C40 44 40 42 42 38Z" fill="#8ccff0" stroke-width="1.2"/>`
-    case 'tu_hao': return `<path d="M54 10 L55.5 14 L59.5 15 L55.5 16 L54 20 L52.5 16 L48.5 15 L52.5 14Z" fill="#f5c542" stroke-width="1.2"/>` +
-      `<ellipse cx="20" cy="41" rx="3.5" ry="2" fill="#f4a3a0" stroke="none"/><ellipse cx="44" cy="41" rx="3.5" ry="2" fill="#f4a3a0" stroke="none"/>`
     default: return ''
   }
 }
@@ -767,57 +783,37 @@ function buildFaces() {
   return out
 }
 
-export const FACES = deepFreeze(buildFaces())
+/** Bộ mặt cũ: LEGACY_FACES[kiểu][tâm trạng] (viewBox 64), giữ cho hình dự phòng và so cũ/mới. */
+export const LEGACY_FACES = deepFreeze(buildFaces())
 
-/** Mặt khách theo kiểu khách và tâm trạng (gender 'nam' cho kiểu cô chú → mặt chú); thiếu thì dùng mặt học sinh bình thường. */
-export function face(persona, mood, gender = null) {
+/** Mặt cũ theo kiểu khách và tâm trạng (gender 'nam' cho kiểu cô chú → mặt chú); thiếu thì mặt học sinh bình thường. */
+export function legacyFace(persona, mood, gender = null) {
   const key = persona === 'co_chu' && gender === 'nam' ? 'co_chu_nam' : persona
-  const set = FACES[key] || FACES.hoc_sinh
-  return set[mood] || set.binh_thuong
+  const set = typeof key === 'string' && has(LEGACY_FACES, key) ? LEGACY_FACES[key] : LEGACY_FACES.hoc_sinh
+  return typeof mood === 'string' && has(set, mood) ? set[mood] : set.binh_thuong
 }
 
-// Dì Sáu: khăn rằn trắng đen, tóc bạc, áo nâu. 4 biểu cảm.
-const DI_SAU_LOOK = {
-  skin: '#e9b98f', shirt: '#8a4b2a',
-  hairBack: `<path d="M14 40 C10 30 12 20 20 16 L22 34Z M50 40 C54 30 52 20 44 16 L42 34Z" fill="#c9c4bd"/>`,
-  hair: `<path d="M9 34 C9 15 20 7 32 7 C44 7 55 15 55 34 C51 25 43 20 32 20 C21 20 13 25 9 34Z" fill="#f4f1ea"/>` +
-    `<path d="M14 22 L22 30 M22 13 L36 27 M34 9 L47 22 M44 11 L52 19 M50 18 L42 26 M40 10 L26 24 M28 8 L16 20" stroke="#2b2b2b" stroke-width="2"/>` +
-    `<path d="M30 7 L25 1 L32 4 L39 1 L34 7Z" fill="#f4f1ea"/>`,
-  neckwear: `<path d="M22 52 H42 V64 H22Z" fill="#f3d9a4" stroke-width="2"/>`
+/**
+ * Mặt MỚI (mặt tròn 64 cắt từ hình bán thân của people.js) với đúng API của face(): kiểu lạ → học sinh, tâm trạng ngoài
+ * MOODS → bình thường, cô chú + 'nam' → chú. opts (tùy chọn) như head(): { who, skin, hair, hat, color, acc… }.
+ */
+export function headFace(persona, mood, gender = null, opts = null) {
+  const o = { ...(opts && typeof opts === 'object' ? opts : {}) }
+  if (gender) o.gender = gender
+  return head(persona, MOODS.includes(mood) ? mood : 'binh_thuong', o)
 }
-export const DI_SAU = deepFreeze({
-  tu_hao: faceSvg({ ...DI_SAU_LOOK, mood: 'tu_hao' }),
-  vui: faceSvg({ ...DI_SAU_LOOK, mood: 'vui' }),
-  lo: faceSvg({ ...DI_SAU_LOOK, mood: 'lo' }),
-  tiec: faceSvg({ ...DI_SAU_LOOK, mood: 'tiec' })
-})
 
-// Anh Khoa: nón lưỡi trai xanh, áo xanh lá; vui và đang hướng dẫn.
-const ANH_KHOA_LOOK = {
-  skin: '#f2c49a', shirt: '#3f9a6a',
-  hair: `<path d="M12 29 C12 15 21 9 32 9 C43 9 52 15 52 29 H12Z" fill="#2f6fb5"/>` +
-    `<path d="M40 27 H60 C60 31 56 32 52 32 H40Z" fill="#2f6fb5"/>` +
-    `<path d="M13 30 C14 32 16 34 18 34 L18 29Z" fill="#2b2220"/>`
-}
-export const ANH_KHOA = deepFreeze({
-  vui: faceSvg({ ...ANH_KHOA_LOOK, mood: 'vui' }),
-  huong_dan: faceSvg({
-    ...ANH_KHOA_LOOK, mood: 'binh_thuong',
-    accessory: `<path d="M27 44 Q32 49 37 44Z" fill="#b8423a"/>` +
-      `<path d="M52 64 V52 C52 50 54 49 55 50 L56 40 C56 38 59 38 59 40 V52 C61 52 62 54 62 56 V64Z" fill="#f2c49a"/>` +
-      `<path d="M21 28 Q25 25 28 28" fill="none"/>`
-  })
-})
+/** FACES[kiểu][tâm trạng] và face(persona, mood, gender): mặt khách (tạm là bộ cũ, xem ghi chú đầu mục). */
+export const FACES = LEGACY_FACES
+export const face = legacyFace
 
-// Cô Hạnh (cô giáo cũ, sự kiện Tri ân 20/11): tóc búi đen, áo dài xanh nhạt, kính tròn.
-export const CO_HANH = deepFreeze({
-  vui: faceSvg({
-    skin: '#f3c9a3', shirt: '#9fc9e8', mood: 'vui',
-    hairBack: `<circle cx="32" cy="10" r="7" fill="#2b2220"/>`,
-    hair: `<path d="M12 33 C10 18 21 11 32 11 C44 11 54 18 52 33 C49 25 42 20 32 20 C22 20 15 25 12 33Z" fill="#2b2220"/>`,
-    accessory: `<circle cx="25" cy="35" r="5" fill="none" stroke-width="1.8"/><circle cx="39" cy="35" r="5" fill="none" stroke-width="1.8"/><path d="M30 35 H34" stroke-width="1.8"/>`
-  })
-})
+// Dì Sáu (khăn rằn trắng đen, áo bà ba nâu đỏ, tạp dề), Anh Khoa (nón lưỡi trai xanh, áo thun xanh lá), Cô Hạnh (tóc búi,
+// áo dài xanh nhạt, kính tròn): mặt tròn 64 mới.
+export const DI_SAU = DI_SAU_FACES
+export const ANH_KHOA = ANH_KHOA_FACES
+export const CO_HANH = CO_HANH_FACES
+
+export { bust, head, BUSTS, HEADS, PEOPLE_META, WHO_LOOKS, DI_SAU_POSES, DI_SAU_POSE_MOOD, ANH_KHOA_BUSTS, CO_HANH_BUSTS }
 
 // ---------- Tiền và QR (cách điệu, không giống thật) ----------
 
@@ -887,6 +883,17 @@ export function fakeQrSvg(variant = 0) {
     `<text x="${c}" y="${r1(y0 + 10.5 * cell + 3.5)}" font-family="${FONT}" font-size="9" font-weight="900" text-anchor="middle" fill="#2a2a2a">₫</text>` +
     `<text x="50" y="106" font-family="${FONT}" font-size="12" font-weight="900" text-anchor="middle" fill="#d6362b">QR GAME</text>` +
     `</svg>`
+}
+
+// ---------- Cảnh quầy (M5 Đợt 2: src/ui/art/scene.js) ----------
+// Hình cảnh lớn có viewBox riêng (SCENE_META: mặt trước xe đẩy, mái bạt, điện thoại, máy tính tiền, màn LED, két, máy in
+// phiếu, kẹp phiếu, hũ tip) và biểu tượng 64 (SCENE_ICONS: xu tip, HUD, 4 khâu, 2 tab); scene(id) trả '' nếu không có.
+
+export { scene, SCENE, SCENE_ICONS, SCENE_META, STAGE_ICONS, TAB_ICONS, HUD_ICONS, phoneQr }
+
+/** Điện thoại của khách giơ mã QR giả (fakeQrSvg(variant), có chữ "QR GAME") trong màn hình; viewBox SCENE_META.dien_thoai. */
+export function phoneQrSvg(variant = 0) {
+  return phoneQr(fakeQrSvg(variant))
 }
 
 // ---------- Xe đẩy đầu hẻm ----------

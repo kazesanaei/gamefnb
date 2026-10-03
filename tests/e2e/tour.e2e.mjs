@@ -25,7 +25,9 @@
 // Không có lỗi console ở mọi kịch bản.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { T, openGame, seedSave, readSave, waitSave, resolveIncidentIfShown, cookShiftSave, COOK_OPEN_MS, playStage } from './helpers.mjs'
+import {
+  T, openGame, seedSave, readSave, waitSave, resolveIncidentIfShown, cookShiftSave, COOK_OPEN_MS, playStage, counterShiftSave, giveChangeUi
+} from './helpers.mjs'
 import { DATA } from '../../src/data/index.js'
 import { newRecipeProgress } from '../../src/core/state.js'
 import { makeNowInfo } from '../../src/core/clock.js'
@@ -580,17 +582,31 @@ test('nút "?" luôn bấm được: Chuẩn bị và Tổng kết cuộn tới 
   // mô phỏng chạy toàn màn hình có tai thỏ (biến --safe-top của base.css), ẩn dải Giờ giả như máy người chơi
   const css = `:root { --safe-top: ${SAFE_TOP}px !important; --safe-bottom: 34px !important; }
 .app-frame.is-dev-now { --bar-dev: 0px !important; } .dev-banner { display: none !important; }`
-  const g = await openGame({ viewport: vp, name: 'tour-help-sticky', initCss: css, contextOptions: { userAgent: UA, deviceScaleFactor: 3, isMobile: true, hasTouch: true } })
+  const iphone = { userAgent: UA, deviceScaleFactor: 3, isMobile: true, hasTouch: true }
+  // HUD của màn ca bán: đo trên ca đang dở (khách đầu ở quầy). Ca đã phục vụ hết khách thì màn ca bán tự sang Tổng kết sau
+  // END_DELAY_MS — đo HUD ở đó là đua giờ với lúc màn tự đổi (0.5.1: lỗi "không có nút" khi chạy cả tệp).
+  const h = await openGame({ clock: { time: COOK_OPEN_MS }, viewport: vp, name: 'tour-help-hud', initCss: css, contextOptions: iphone })
+  try {
+    await seedSave(h.page, counterShiftSave({ pay: 'cash', name: 'Xe Nút Hỏi' }).state)
+    await h.page.goto(h.url('/'))
+    await h.page.waitForSelector(`.hud ${T('help-button')}`)
+    await h.page.waitForSelector(T('speech-bubble'), { timeout: 20000 })
+    const m0 = await helpHit(h.page, '.hud')
+    assert.ok(m0.ok, `HUD: nút "?" lấn vùng an toàn trên hoặc bị che ${JSON.stringify(m0)}`)
+    assert.deepEqual(h.errors, [], 'HUD: có lỗi console/trang')
+  } finally {
+    await h.close()
+  }
+  const g = await openGame({ viewport: vp, name: 'tour-help-sticky', initCss: css, contextOptions: iphone })
   const { page, errors } = g
   try {
     await seedSave(page, shiftDoneSave())
     await page.goto(g.url('/?devNow=2026-09-30T09:02'))
-    // màn ca bán (HUD) trước khi tự sang Tổng kết
-    await page.waitForSelector(T('screen-service'))
+    // ca đã hết khách: màn ca bán tự sang Tổng kết (tình huống còn chờ thì chọn cách an toàn trước)
+    await page.waitForSelector(`${T('screen-service')}, ${T('summary')}`)
     await resolveIncidentIfShown(g, { waitMs: 300 })
-    let m = await helpHit(page, '.hud')
-    assert.ok(m.ok, `HUD: nút "?" lấn vùng an toàn trên hoặc bị che ${JSON.stringify(m)}`)
     await page.waitForSelector(T('summary'), { timeout: 15000 })
+    let m
     await page.waitForTimeout(300)
     assert.ok(await scrollScreenToEnd(page) > 50, 'màn Tổng kết phải cuộn được ở 375×553')
     await page.waitForTimeout(150)
@@ -808,6 +824,110 @@ for (const c of CARD_TOURS) {
       await playStage(g, state.shift.cook.board.find(s => s.id === c.stepId))
       await page.waitForSelector(`${T('board-step-' + c.stepId)}.is-done`, { timeout: 8000 })
       assert.ok(!(await page.$(T('tour'))), `${label}: tour hiện lại sau khi đã bỏ qua`)
+      assert.deepEqual(errors, [], `${label}: có lỗi console/trang`)
+    } finally {
+      await g.close()
+    }
+  })
+}
+
+// ---------- 10. M5 Đợt 2 (0.5.1): tour Quầy theo giao diện mới ----------
+
+// Mô phỏng iPhone có tai thỏ + thanh Home (vùng an toàn 47/34), iOS cắt phần tử nằm ngoài vùng cuộn.
+const COUNTER_SAFE_CSS = `:root { --safe-top: 47px !important; --safe-bottom: 34px !important; }
+.screen, .panel, .k-main { clip-path: inset(0); }`
+const COUNTER_TOURS = ['quay_order', 'quay_bang_mon', 'quay_thanh_toan', 'quay_tinh_tien', 'quay_qr', 'quay_phieu_thu', 'ca_ban']
+const COUNTER_REQUEST = [{ recipeId: 'banh_mi_op_la', qty: 2, notes: ['them_trung'] }, { recipeId: 'tra_tac', qty: 1, notes: [] }]
+
+// Ca thật ngày 5 dựng sẵn (counterShiftSave): mọi tour đã xem trừ các tour `ids`.
+function counterTourSave(pay, ids) {
+  const sv = counterShiftSave({ pay, request: COUNTER_REQUEST, name: 'Xe Tour Quầy', delayOthers: 240 })
+  markSeen(sv.state, Object.keys(DATA.TOURS).filter(id => !ids.includes(id)))
+  return sv
+}
+
+// Đi hết tour đang tự hiện ở chỗ hiện tại; tiêu đề các bước đúng dữ liệu (không bỏ bước nào vì đích khuất / không có).
+async function walkAll(g, id, label) {
+  const steps = await walkTour(g, id, label)
+  assert.deepEqual(steps.map(m => m.title), DATA.TOURS[id].steps.map(x => x.title), `${label} ${id}: tour thiếu bước (đích không hiện)`)
+  await g.page.waitForSelector(T('tour'), { state: 'detached' })
+  await waitSave(g.page, s => s.tour.seen[id] === true)
+  return steps
+}
+
+const COUNTER_FRAMES = [{ vp: { width: 375, height: 553 }, safe: true }, { vp: { width: 390, height: 844 }, safe: false }]
+
+for (const f of COUNTER_FRAMES) {
+  const label = vpName(f.vp) + (f.safe ? ' vùng an toàn' : '')
+  test(`tour Quầy mới (${label}): Order, Bảng chọn món, Thanh toán, Tính tiền, Phiếu thu, Ca bán (quầy trống), Chuyển khoản — đủ bước, đích đúng chỗ`, { timeout: 300000 }, async () => {
+    const opts = { clock: { time: COOK_OPEN_MS }, viewport: f.vp, initCss: f.safe ? COUNTER_SAFE_CSS : '', contextOptions: { userAgent: UA, deviceScaleFactor: 3, isMobile: true, hasTouch: true } }
+    // (a) tiền mặt: Order → bảng chọn món → Thanh toán → Tính tiền → Phiếu thu → quầy trống (nút "?" → tour Ca bán)
+    let g = await openGame({ ...opts, name: 'tour-quay-tien-mat' })
+    try {
+      const { page, errors } = g
+      const sv = counterTourSave('cash', COUNTER_TOURS)
+      await seedSave(page, sv.state)
+      await page.goto(g.url('/?tour=1'))
+      await walkAll(g, 'quay_order', label)
+      for (const [i, line] of sv.request.entries()) {
+        await page.tap(T('menu-item-' + line.recipeId))
+        await page.waitForSelector(T('order-sheet'))
+        if (i === 0) await walkAll(g, 'quay_bang_mon', label)
+        for (const n of line.notes) await page.tap(T('note-chip-' + n))
+        for (let q = 1; q < line.qty; q++) await page.tap(T('qty-plus'))
+        await page.tap(T('add-line'))
+        await page.waitForSelector(T('order-sheet'), { state: 'detached' })
+      }
+      await page.tap(T('readback'))
+      await page.waitForSelector(`${T('confirm-order')}:not([disabled])`)
+      await page.tap(T('confirm-order'))
+      await walkAll(g, 'quay_thanh_toan', label)
+      for (const d of String(sv.total / 1000)) await page.tap(T('numpad-' + d))
+      await page.tap(T('report-total'))
+      await walkAll(g, 'quay_tinh_tien', label)
+      await giveChangeUi(g, sv.total)
+      await walkAll(g, 'quay_phieu_thu', label)
+      await page.tap(T('clip-ticket'))
+      await page.waitForSelector(T('counter-idle'))
+      // quầy trống: nút "?" → Xem lại hướng dẫn màn này → tour tổng quan Ca bán (không tự hiện)
+      assert.ok(!(await page.$(T('tour'))), `${label}: tour Ca bán tự hiện`)
+      await page.tap(`.hud ${T('help-button')}`)
+      await page.waitForSelector(T('help-replay'))
+      assert.match(await page.textContent(T('help-replay')), /Ca bán/)
+      await page.tap(T('help-replay'))
+      await walkAll(g, 'ca_ban', label)
+      assert.deepEqual(errors, [], `${label}: có lỗi console/trang`)
+    } finally {
+      await g.close()
+    }
+    // (b) chuyển khoản: tour Chuyển khoản tự hiện ở khâu QR, ca dừng nên tiền chưa về trong lúc đọc
+    g = await openGame({ ...opts, name: 'tour-quay-qr' })
+    try {
+      const { page, errors } = g
+      const sv = counterTourSave('qr', ['quay_qr'])
+      await seedSave(page, sv.state)
+      await page.goto(g.url('/?tour=1'))
+      await page.waitForSelector(T('speech-bubble'), { timeout: 20000 })
+      for (const line of sv.request) {
+        await page.tap(T('menu-item-' + line.recipeId))
+        await page.waitForSelector(T('order-sheet'))
+        for (const n of line.notes) await page.tap(T('note-chip-' + n))
+        for (let q = 1; q < line.qty; q++) await page.tap(T('qty-plus'))
+        await page.tap(T('add-line'))
+        await page.waitForSelector(T('order-sheet'), { state: 'detached' })
+      }
+      await page.tap(T('readback'))
+      await page.waitForSelector(`${T('confirm-order')}:not([disabled])`)
+      await page.tap(T('confirm-order'))
+      await page.waitForSelector(T('report-total'))
+      for (const d of String(sv.total / 1000)) await page.tap(T('numpad-' + d))
+      await page.tap(T('report-total'))
+      const steps = await walkAll(g, 'quay_qr', label)
+      assert.equal(steps[0].target, 'qr-status')
+      // xong tour: tiền về, xác nhận được
+      await page.waitForSelector(`${T('qr-status')}[data-arrived="true"]`, { timeout: 10000 })
+      await page.tap(T('qr-confirm'))
+      await page.waitForSelector(T('receipt'))
       assert.deepEqual(errors, [], `${label}: có lỗi console/trang`)
     } finally {
       await g.close()

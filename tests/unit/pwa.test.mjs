@@ -231,6 +231,28 @@ test('index.html gắn manifest, biểu tượng và mọi tệp CSS', () => {
   assert.ok(!html.includes('apple-mobile-web-app-capable'))
 })
 
+// 0.5.1 (M5 Đợt 2): CSS tách khỏi tệp cũ phải nạp đúng chỗ để giữ thứ tự cascade; CSS kiểu game nạp sau CSS cũ để đè lên.
+test('index.html (0.5.1): thứ tự CSS giữ cascade — tệp tách nằm ngay sau tệp gốc, CSS kiểu game sau CSS cũ, sheet.css cuối', () => {
+  const html = read('index.html')
+  const order = [...html.matchAll(/<link rel="stylesheet" href="(css\/[^"]+\.css)">/g)].map(m => m[1])
+  assert.equal(new Set(order).size, order.length, 'mỗi tệp CSS chỉ gắn một lần')
+  assert.deepEqual([...order].sort(), walk('css', n => n.endsWith('.css')), 'gắn đủ và chỉ gắn tệp có thật trong css/')
+  const at = f => order.indexOf(f)
+  assert.equal(order[0], 'css/base.css', 'base.css (biến, nền) nạp đầu tiên')
+  // tệp tách từ game.css / kitchen.css nằm NGAY SAU tệp gốc
+  assert.equal(at('css/street.css'), at('css/game.css') + 1, 'street.css ngay sau game.css')
+  assert.deepEqual(order.slice(at('css/kitchen.css') + 1, at('css/kitchen.css') + 4), ['css/mg-prep.css', 'css/mg-heat.css', 'css/mg-mix.css'],
+    'CSS sân khấu mini-game ngay sau kitchen.css')
+  // CSS kiểu game (theme, fx) nạp sau mọi CSS cũ; Quầy mới (counter → cashier, receipt) sau theme và game.css
+  for (const old of ['css/game.css', 'css/street.css', 'css/kitchen.css', 'css/meta.css', 'css/settings.css', 'css/tour.css']) {
+    assert.ok(at(old) < at('css/theme.css'), `${old} phải nạp trước theme.css`)
+  }
+  assert.ok(at('css/theme.css') < at('css/fx.css') && at('css/fx.css') < at('css/counter.css'), 'theme.css → fx.css → counter.css')
+  for (const f of ['css/cashier.css', 'css/receipt.css']) assert.ok(at(f) > at('css/counter.css'), `${f} sau counter.css`)
+  // phiếu chấm / tình huống đè kiểu cũ ở game.css, meta.css: nạp cuối
+  assert.equal(order.at(-1), 'css/sheet.css', 'sheet.css nạp cuối')
+})
+
 test('index.html (0.5.0): tải sớm font tiêu đề Latin đúng tệp CSS dùng, có crossorigin, nằm trong PRECACHE, trước CSS', () => {
   const html = read('index.html')
   const tag = '<link rel="preload" as="font" type="font/woff2" href="fonts/baloo2-800-latin.woff2" crossorigin>'

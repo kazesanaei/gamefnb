@@ -9,8 +9,8 @@ function deepFreeze(o) {
 
 export const MAIL_CONFIG = deepFreeze({
   // phiên bản nội dung mới nhất (thư phiên bản ≤ số này được gửi cho save cũ); 0.3.0 không có thư riêng
-  // (0.4.1, 0.4.2 cũng không; 0.5.0 có thư giới thiệu bếp mới, không kèm quà)
-  currentVersion: '0.5.0',
+  // (0.4.1, 0.4.2 cũng không; 0.5.0 có thư giới thiệu bếp mới, 0.5.1 có thư giới thiệu quầy mới, đều không kèm quà)
+  currentVersion: '0.5.1',
   maxMails: 100,           // đầy thì bỏ thư cũ nhất đã nhận
   expireDays: 30,          // hạn nhận mặc định
   holidayExpireDays: 14,   // quà lễ
@@ -72,6 +72,21 @@ export const MAIL_VERSIONS = deepFreeze([
       'nấu quen món rồi thì thẻ tự thu gọn. ' +
       'Máy có màn hình thấp thì lúc nấu, bếp tự ẩn dải khách và thanh 4 khâu cho rộng chỗ, dây phiếu vẫn hiện để con canh khách chờ. ' +
       'Giá bán, giá vốn và thời gian dành cho mỗi bước vẫn giữ như cũ. Con vào bếp thử tay nghề nha!',
+    reward: {} },
+  // M5 Đợt 2 (0.5.1): quầy làm lại kiểu game bán hàng — khách bán thân sau mặt quầy xe đẩy, phiếu order giấy, máy tính tiền,
+  // két 7 ngăn (tiền khách đưa bay vào két, xu bay về ví), điện thoại QR, máy in phiếu thu, phiếu chấm mới; chỉ đổi giao
+  // diện (luật, tiền, sao, tip giữ nguyên). Thư giới thiệu, KHÔNG kèm quà như thư 0.5.0.
+  { version: '0.5.1', id: 'phien_ban_0_5_1', kind: 'phien_ban',
+    title: 'Có gì mới: quầy mới và phiếu chấm mới',
+    body: 'Quầy của xe vừa được sửa sang cho đẹp như bếp! Khách đứng sau mặt quầy xe đẩy, hiện rõ nửa người, nét mặt đổi theo ' +
+      'độ kiên nhẫn, sắp hết kiên nhẫn thì trên đầu bốc hơi nóng. ' +
+      'Order ghi trên phiếu giấy, chốt order là phiếu được đóng dấu rồi bay lên dây phiếu. ' +
+      'Báo tổng bằng máy tính tiền, khách nhận tổng thì máy kêu "keng". ' +
+      'Két mở đủ 7 ngăn: chạm ngăn để lấy tờ tiền bỏ vào khay thối; đưa tiền thối xong là tiền khách đưa bay vào két, ' +
+      'thối đúng còn có xu vàng bay về ví. ' +
+      'Chuyển khoản thì khách giơ điện thoại có mã QR, tiền về nghe "ting". Phiếu thu in ra từ máy in nhỏ. ' +
+      'Phiếu chấm mới có mặt khách vui hay buồn theo số sao, sao bật lên từng ngôi, được tip thì xu bay về ví. ' +
+      'Giá bán, giá vốn, cách chấm sao và luật tip vẫn giữ như cũ. Con ra quầy bán thử nha!',
     reward: {} }
 ])
 
