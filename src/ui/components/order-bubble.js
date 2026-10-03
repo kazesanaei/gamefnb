@@ -1,5 +1,5 @@
 // Khách gọi món (M5, màn gọi món): khách bán thân lớn đứng sau mặt quầy (hình bán thân bust() của src/ui/art/people.js
-// theo kiểu khách, giới tính và dáng riêng của khách quen / khách lạ; dự phòng: mặt art.js + thân áo bustSvg bên dưới),
+// theo kiểu khách, giới tính và dáng riêng của khách quen / khách lạ; dự phòng: mặt cũ legacyFace của art.js + thân áo bustSvg bên dưới),
 // nhún nhẹ khi chờ, kèm bong bóng thoại. Ba kiểu bong bóng (data.mode):
 //   'icons' (mặc định, quầy thật dùng cho ngày 1–2): HÌNH MÓN to, huy hiệu ×n, ghi chú bằng hình (note-icons.js) và một
 //           câu nói ngắn phía dưới (bubbleLine: câu trọn ý, không cắt giữa từ). Chữ chỉ là phụ;
@@ -11,7 +11,7 @@
 // trong talk. update() với cùng dữ liệu không dựng lại gì.
 // Thuần ở cấp module (import trong Node được).
 import { h } from '../dom.js'
-import { face } from '../art.js'
+import { legacyFace } from '../art.js'
 import { bust } from '../art/people.js'
 import { INK, r1 } from '../art/kit.js'
 import { isReduced, EASE } from '../motion.js'
@@ -71,7 +71,7 @@ const DETAILS = {
 }
 
 /**
- * SVG khách bán thân (viewBox 0 0 64 88): thân áo cel-shading → mặt (face() của art.js, đặt lồng ở 0..64) →
+ * SVG khách bán thân (viewBox 0 0 64 88): thân áo cel-shading → mặt cũ (legacyFace() của art.js, đặt lồng ở 0..64) →
  * miếng vá che vạch đáy vai của mặt → chi tiết trên áo. Thuần, không DOM.
  */
 export function bustSvg(persona, mood, gender = null) {
@@ -80,7 +80,7 @@ export function bustSvg(persona, mood, gender = null) {
   const D = DETAILS[key] || { lower: '', upper: '' }
   const torso = 'M8 64 C6.2 70 4.6 78 3.6 88 L60.4 88 C59.4 78 57.8 70 56 64 C55 57 46 52.5 32 52.5 C18 52.5 9 57 8 64Z'
   const shade = 'M47 56 C52 58.5 55.4 61 56 64 C57.8 70 59.4 78 60.4 88 L49 88 C50.5 78 50.5 66 47 56Z'
-  const head = String(face(persona, mood, gender) || '').replace('<svg ', '<svg x="0" y="0" width="64" height="64" ')
+  const head = String(legacyFace(persona, mood, gender) || '').replace('<svg ', '<svg x="0" y="0" width="64" height="64" ')
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 88">` +
     `<g stroke="${INK}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">` +
     `<path d="${torso}" fill="${L.shirt}" stroke="none"/>` +

@@ -94,14 +94,24 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 // Chốt order" (.co-pad-actions.act-bar, con cuối của khâu Order), "Đưa tiền thối" (.cs-act), "Từ chối ảnh giả / Đã nhận đủ"
 // (.qc-act), "Kẹp phiếu bếp" (.rc-act). Bảng chọn món ở lớp nổi: hàng nút .co-sheet-actions nằm ngoài thân bảng cuộn
 // (.co-sheet-body) nên không che đích nào trong thân bảng. Chỉ thanh đang hiện, đang sticky và không chứa đích mới được chừa.
+// Ngày 1, lời Dì Sáu ở khâu Tính tiền / chuyển khoản / phiếu thu nằm trong một hàng dính riêng .act-bar.co-tutor-dock đứng
+// ngay trước hàng nút của khâu, phần đệm dưới ôm đúng chỗ hàng nút (counter.js syncDock) — chiều cao của nó = lời nhắc + hàng
+// nút, nên đích phía trên được chừa đủ. Đích nằm TRONG một thanh dính (vd "Đưa tiền thối") thì thanh dính khác phủ trọn chỗ
+// thanh đó (hàng của lời nhắc) không tính là che: hàng nút vẽ đè lên nó, đích luôn thấy, không cuộn panel vô cớ.
 export const STICKY = '.act-bar, .sticky-foot, .k-toolbar, .meta-head, .mg-foot, .prep-toprow, .sum-head-row, .co-pad-actions'
 function stickyCover(box, el) {
   let top = 0
   let bottom = 0
+  const own = el.closest(STICKY)
+  const ownBox = own && box.contains(own) && getComputedStyle(own).position === 'sticky' ? own.getBoundingClientRect() : null
   for (const s of box.querySelectorAll(STICKY)) {
     if (s.contains(el) || el.contains(s) || !shown(s)) continue
     const cs = getComputedStyle(s)
     if (cs.position !== 'sticky') continue
+    if (ownBox) {
+      const r = s.getBoundingClientRect()
+      if (r.top <= ownBox.top + 1 && r.bottom >= ownBox.bottom - 1) continue
+    }
     const hgt = s.getBoundingClientRect().height
     if (cs.bottom !== 'auto') bottom = Math.max(bottom, hgt)
     else if (cs.top !== 'auto') top = Math.max(top, hgt)

@@ -302,8 +302,8 @@ test('art: SVG hợp lệ, không ảnh ngoài, không base64', () => {
 })
 
 // M5 Đợt 2 (0.5.1, ráp nối): DI_SAU / ANH_KHOA / CO_HANH là mặt tròn 64 mới của src/ui/art/people.js (cùng bộ khóa);
-// bust / head / scene… xuất lại đúng hàm của people.js, scene.js. FACES / face() tạm giữ bộ mặt cũ (LEGACY_FACES) vì
-// bustSvg của order-bubble.js lồng face(); headFace() là mặt mới cùng API face().
+// bust / head / scene… xuất lại đúng hàm của people.js, scene.js. FACES / face() là mặt mới (HEADS / headFace, cùng API);
+// bộ mặt cũ còn ở LEGACY_FACES / legacyFace (bustSvg dự phòng của order-bubble.js lồng mặt cũ).
 test('art 0.5.1: mặt tiền nối hình người và cảnh quầy mới; FACES / face() giữ API', async () => {
   const A = await import('../../src/ui/art.js')
   const P = await import('../../src/ui/art/people.js')
@@ -322,9 +322,11 @@ test('art 0.5.1: mặt tiền nối hình người và cảnh quầy mới; FACE
   assert.equal(A.phoneQrSvg(3), S.phoneQr(fakeQrSvg(3)))
   assert.ok(A.phoneQrSvg(3).includes('QR GAME'))
   // FACES / face(): cùng bộ khóa 6 kiểu × MOODS, dự phòng như cũ (kiểu lạ → học sinh, tâm trạng lạ → bình thường)
-  assert.equal(FACES, A.LEGACY_FACES)
-  assert.equal(A.face, A.legacyFace)
-  assert.deepEqual(Object.keys(FACES).sort(), Object.keys(A.HEADS).sort())
+  assert.equal(FACES, A.HEADS)
+  assert.equal(A.face, A.headFace)
+  assert.deepEqual(Object.keys(A.LEGACY_FACES).sort(), Object.keys(A.HEADS).sort())
+  assert.equal(A.legacyFace('co_chu', 'gian', 'nam'), A.LEGACY_FACES.co_chu_nam.gian)
+  assert.equal(A.legacyFace('constructor', 'toString'), A.LEGACY_FACES.hoc_sinh.binh_thuong)
   assert.equal(A.face('co_chu', 'gian', 'nam'), FACES.co_chu_nam.gian)
   assert.equal(A.face('khong_co', 'vui'), FACES.hoc_sinh.vui)
   assert.equal(A.face('constructor', 'toString'), FACES.hoc_sinh.binh_thuong)

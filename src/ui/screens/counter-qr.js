@@ -209,6 +209,16 @@ export function renderQr(ctx, customer, c) {
       }, arrived ? svgBox(markSvg(true), 'g-ico qc-btn-ico') : null, h('span', null, S.buttons.qrConfirm))))
   }
 
+  // tên xe trên ảnh chụp cắt cho vừa màn hình điện thoại (đo sau khi panel gắn nút, trước khung hình kế tiếp; không phải
+  // hoạt ảnh)
+  if (!paid && shop) {
+    later(() => {
+      if (ctx.destroyed() || !phone.isConnected) return
+      const shot = phone.querySelector('.qc-shot')
+      if (shot) watchShot(shot, shop)
+    }, true)
+  }
+
   // hiệu ứng theo sự kiện: chạy sau khi panel gắn nút mới (vi tác vụ, trước khung hình kế tiếp)
   if (!reduced && (raise || scan)) {
     later(() => {
@@ -243,7 +253,68 @@ function renderPhone(amount, shop, small) {
       svgBox(markSvg(true), 'qc-shot-ok'),
       small ? null : h('b', { class: 'qc-shot-t' }, 'Đã chuyển'),
       small || !shop ? null : h('span', { class: 'qc-shot-to' }, '→ ' + shop)),
-    small ? null : h('span', { class: 'qc-shot-amt', style: boxStyle(NOTE_BOX), 'aria-hidden': 'true' }, h('b', null, amount)))
+    small ? null : h('span', { class: ['qc-shot-amt', amount.length > 7 ? 'is-long' : ''], style: boxStyle(NOTE_BOX), 'aria-hidden': 'true' },
+      h('b', null, amount)))
+}
+
+// Tên xe trên ảnh chụp: tối đa 2 dòng (CSS cao đúng 2 dòng) và vừa chỗ còn lại dưới ✓ + "Đã chuyển". Chỉ kẹp dòng bằng CSS
+// thì dòng 3 vẫn được vẽ, bị cắt ở mép, dấu thanh của nó ló lên dưới dòng 2 → đo thật (sau khi panel gắn nút, trước khi vẽ
+// khung hình) rồi cắt CHỮ theo từ + "…" (tên một từ quá dài: theo ký tự, giữ ≥ nửa từ). Chỉ còn một từ của tên nhiều từ
+// ("→ Xe…"), dưới nửa tên một từ, hoặc không còn chỗ thì ẩn dòng: không nói được gì. Nhớ kết quả theo (tên, cỡ màn hình,
+// cao dòng tiêu đề).
+const shotFit = new Map()
+function fitShot(shot, shop) {
+  const to = shot && shot.isConnected ? shot.querySelector('.qc-shot-to') : null
+  if (!to) return
+  const full = String(shop).trim()
+  const put = t => { to.textContent = '→ ' + t }
+  to.classList.remove('is-off')
+  put(full)
+  const title = shot.querySelector('.qc-shot-t')
+  const W = shot.clientWidth
+  const H = shot.clientHeight
+  if (!W || !H || !to.getClientRects().length) return   // màn hình đang ẩn chữ (panel rất thấp) / chưa có bố cục
+  const key = `${full}|${W}|${H}|${title ? title.offsetHeight : 0}`
+  let res = shotFit.get(key)
+  if (res === undefined) {
+    const fits = () => to.scrollHeight <= to.clientHeight + 1 && shot.scrollHeight <= shot.clientHeight + 1
+    res = fits() ? full : null
+    const tries = []
+    const words = full.split(/\s+/)
+    if (res !== null) { /* vừa nguyên tên */ } else if (words.length > 1) {
+      for (let n = words.length - 1; n >= 2; n--) tries.push(words.slice(0, n).join(' ') + '…')
+    } else {
+      const chars = Array.from(full)
+      for (let k = chars.length - 1; k >= Math.max(3, Math.ceil(chars.length / 2)); k--) tries.push(chars.slice(0, k).join('') + '…')
+    }
+    for (let i = 0; res === null && i < tries.length; i++) { put(tries[i]); if (fits()) res = tries[i] }
+    if (shotFit.size > 40) shotFit.clear()
+    shotFit.set(key, res)
+  }
+  if (res === null) to.classList.add('is-off')
+  else put(res)
+}
+
+// Đo lại khi màn hình điện thoại đổi cỡ mà panel không vẽ lại (lớp co-fit đổi khi xoay máy / dải phố co lại) và khi phông
+// tiêu đề tải xong. Panel gỡ nút → ResizeObserver báo cỡ 0 → tự ngắt.
+function watchShot(shot, shop) {
+  fitShot(shot, shop)
+  const doc = shot.ownerDocument
+  const fonts = doc && doc.fonts
+  if (fonts && fonts.status !== 'loaded' && fonts.ready && typeof fonts.ready.then === 'function') {
+    fonts.ready.then(() => { if (shot.isConnected) fitShot(shot, shop) }, () => {})
+  }
+  if (typeof ResizeObserver !== 'function') return
+  let w = shot.clientWidth
+  let hh = shot.clientHeight
+  const ro = new ResizeObserver(() => {
+    if (!shot.isConnected) { ro.disconnect(); return }
+    if (shot.clientWidth === w && shot.clientHeight === hh) return
+    w = shot.clientWidth
+    hh = shot.clientHeight
+    fitShot(shot, shop)
+  })
+  ro.observe(shot)
 }
 
 // Tiền về: vệt quét sáng chạy ngang ô báo tiền (điện thoại / loa của quán), ô nảy lên (chỉ transform / opacity).

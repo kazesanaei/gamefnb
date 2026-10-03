@@ -1028,8 +1028,18 @@ tiền, điểm, `STATE_VERSION` giữ nguyên; mọi testid và `data-*` mà e2
   unmount() }`; `update()` vẽ lại khi `stateSig` = JSON `[shift.counter, shift.drawer, số phiếu, số khách chờ, assistCash]` đổi;
   `FIT_LOW` 420 / `FIT_TINY` 250 và `fitOf(height)` → lớp `.co-fit-low` / `.co-fit-tiny` theo chiều cao panel thật
   (ResizeObserver); quầy trống `div.counter-idle.co-idle[data-pose = vo_tay | ngon_cai | lau_mo_hoi]` có Dì Sáu bán thân và nút
-  `[go-kitchen]`; hướng dẫn ngày 1 (`.co-glow` + `span.co-glow-ring` cho nút gọi món, `.glow` cũ cho khâu sau); `tourSpot()` →
+  `[go-kitchen]`; hướng dẫn ngày 1 (`.co-glow` + `span.co-glow-ring` cho nút gọi món, `.glow` cũ cho khâu sau; nút được tô sáng
+  vừa đổi mà khuất dưới hàng nút dính đáy thì `revealGlow` cuộn cho thấy); `tourSpot()` →
   `idle | order | order-sheet | thanh_toan | tinh_tien | qr | receipt`.
+- **Lời Dì Sáu ngày 1** (`[tutor-hint]`, vòng sửa): một **nút bền** `div.co-tutor` (mặt Dì Sáu + tờ giấy nhắc
+  `.co-tutor-text`) cho cả panel, `counter.js placeTutor(c, customer)` đặt chỗ theo khâu sau mỗi lần vẽ (vẽ lại không dựng lại,
+  không phát lại hoạt ảnh): phiếu order còn trống → dưới bong bóng khách (`under`; panel gắn `.co-tut-under`, khung thấp thu
+  gọn khách + bong bóng một hàng); khâu có hàng nút dính đáy → `.co-tutor.is-dock` dính ngay trên hàng nút (`dock`): khâu Order
+  nhận lời nhắc làm dòng đầu của chính hàng `.co-pad-actions.act-bar` (`.co-has-tutor`), khâu Tính tiền / chuyển khoản / phiếu
+  thu có một hàng dính riêng `.act-bar.co-tutor-dock` đứng ngay trước hàng nút của khâu, phần đệm dưới = chiều cao hàng nút và lề
+  dưới âm cùng cỡ (`syncDock`) nên mọi hàm cuộn "lọt trên `.act-bar` đầu tiên" (kể cả tour) chừa luôn lời nhắc; panel rất thấp
+  (`.co-fit-tiny`) hàng riêng bỏ lớp `act-bar` (`.is-flat`, nằm theo dòng, không đè két / phím); khâu Thanh toán không có hàng
+  nút → `.co-tutor.is-inline` ngay trên máy tính tiền, chỉ câu đầu (`firstSentence`). Không có lời → gỡ ra.
 - **ctx chung** truyền làm tham số đầu cho mọi hàm của 5 module khâu: `{ app, el (div.counter[counter-panel]), root (panel cuộn),
   opts, R, S, D, sheetPortal (createPortal(app.overlay)), get ui() (trạng thái tạm của khách đang ở quầy: customerId, sheet,
   talk ≤ 2 câu, digits, readback, noChangeKey, assistFilled, lastAdded, stageKey, reading, padMood), sh(), counter(),
@@ -1038,14 +1048,17 @@ tiền, điểm, `STATE_VERSION` giữ nguyên; mọi testid và `data-*` mà e2
   làm mới); `render*` / `paint*` chỉ dựng DOM; hiệu ứng đặt trong hàm thao tác (`do*`, onclick), chụp vị trí + nhân bản phần tử
   nguồn TRƯỚC khi đổi state và gọi `ctx.rerender()`.
 - `counter-order.js` (Order): khách và khâu Order là **nút bền theo khách** (WeakMap theo ctx): vẽ lại chỉ `update()` tại chỗ,
-  không dựng lại, không phát lại hoạt ảnh. `paintCustomer` (bán thân lớn sau mặt quầy + bong bóng `order-bubble.js`: ngày 1–2
-  kiểu `icons` có hình món, ×n, ghi chú bằng hình; từ ngày 3 kiểu `text` chỉ lời khách — `HINT_DAYS` 2, giữ độ khó cũ; khâu sau
-  kiểu `talk` là câu mới nhất của khách), `paintOrder` (bảng Thực đơn `menu-board.js`, phiếu order giấy `order-pad.js`, hàng nút
-  `.co-pad-actions.act-bar` là con cuối của khâu), `paintSheet` (bảng chọn số lượng + ghi chú `order-sheet.js` ở lớp nổi
-  `.co-sheet-layer.sheet-layer`), `dropOrder`, `dropAll`, `orderPad`, `sheetOpen`, `doReadback` (phiếu sáng lần lượt 120 ms mỗi
-  dòng rồi ✓ / ✗, mặt khách trên phiếu gật / lắc), `doConfirm` (nhân bản phiếu → con dấu "ĐÃ CHỐT" 1,8 → 1, −8° → phiếu bay cong
-  450 ms tới ô trống kế tiếp của dây phiếu, `railTarget(doc)`; giảm chuyển động: dấu hiện, không bay). Bí danh bước 0:
-  `renderCustomer`, `renderOrder`, `renderSheet`.
+  không dựng lại, không phát lại hoạt ảnh. `paintCustomer` (bán thân lớn sau mặt quầy + bong bóng `order-bubble.js`: ngày 1–2 kiểu
+  `icons` có hình món, ×n, ghi chú bằng hình; từ ngày 3 kiểu `text` chỉ lời khách — `HINT_DAYS` 2, giữ độ khó cũ; khâu sau kiểu
+  `talk` là câu mới nhất của khách; phiếu order đã có dòng thì khách thu thành **dải `.co-cust-area.is-strip`** đầu panel, dính
+  khi panel đủ cao, panel thấp gọn mà không dính — cuộn xuống phiếu vẫn so được với lời khách), `paintOrder` (bảng Thực đơn
+  `menu-board.js`, phiếu order giấy `order-pad.js`, hàng nút `.co-pad-actions.act-bar` là con cuối của khâu), `paintSheet` (bảng
+  chọn số lượng + ghi chú `order-sheet.js` ở lớp nổi `.co-sheet-layer.sheet-layer`; bảng che bong bóng nên đầu bảng có **dải
+  `.co-heard` "<tên khách> nói"** (`heardOf`, vòng sửa): giống hệt bong bóng — ngày 1–2 hình món + ×n + ghi chú bằng hình kèm câu
+  gọi món, từ ngày 3 chỉ nguyên văn lời khách, không lộ yêu cầu đã chuẩn hóa), `dropOrder`, `dropAll`, `orderPad`, `sheetOpen`,
+  `doReadback` (phiếu sáng lần lượt 120 ms mỗi dòng rồi ✓ / ✗, mặt khách trên phiếu gật / lắc), `doConfirm` (nhân bản phiếu → con
+  dấu "ĐÃ CHỐT" 1,8 → 1, −8° → phiếu bay cong 450 ms tới ô trống kế tiếp của dây phiếu, `railTarget(doc)`; giảm chuyển động: dấu
+  hiện, không bay). Bí danh bước 0: `renderCustomer`, `renderOrder`, `renderSheet`.
 - `counter-pay.js` (Thanh toán): `renderPayment` = bảng giá phấn `[price-board]` (hình món, giá gọn "20k", dòng phụ ghi chú tính
   thêm), phiếu order tóm tắt bằng hình, `[assist-total]`, máy tính tiền `components/numpad.js` (màn LED `[numpad-display,
   data-amount]` gõ theo nghìn, phím bánh kẹo ≥ 48px, phím chuông `[report-total]` cao 4 hàng ở cột phải); `doReport`: khách nhận
@@ -1057,24 +1070,44 @@ tiền, điểm, `STATE_VERSION` giữ nguyên; mọi testid và `data-*` mà e2
   `[drawer]` / `[drawer-<b>, data-count]` đặt đúng ô của hình `ket_tien`, thẻ `[no-change]` + `[no-change-open]` (hộp
   `[no-change-modal]` tự mở, mỗi panel một hộp), `.act-bar.cs-act > [give-change, data-exact]` ("Không cần thối" / "Đưa tiền
   thối" / "Đưa tiền thối bù"). Chạm ngăn / chồng: tờ tiền nhân bản bay vào khay / về két (`CASH_FX`). Thối đúng: `cash`, tiền khay
-  bay sang khách, tiền khách đưa bay vào két, két nảy rồi đóng (bản sao ở lớp hiệu ứng), xu bay về ví HUD.
-- `counter-qr.js` (chuyển khoản): `renderQr` → `div.qc-qr[data-qr = waiting | arrived | paid | lost]`: điện thoại khách giơ ảnh
-  chuyển khoản (`phoneQr(fakeQrSvg(0))`, mã giả "QR GAME", số tiền ở dải dưới), thẻ Tổng, ô báo tiền `.qc-status[qr-status,
-  data-arrived]` (chuông điện thoại quán hoặc Loa báo tiền; cúp điện thì `[qr-speaker-off]`), `.action-row.act-bar.qc-act >
-  [qr-reject] [qr-confirm, data-ready]`; đã thu thì thu gọn thành một dòng. Panel tự đăng ký bus `qr.arrived` một lần (tự gỡ khi
-  panel hủy): `ting` + cờ, lần vẽ kế tiếp tiêu cờ → vệt quét sáng chạy dọc màn điện thoại, ô báo tiền nảy. Khách giơ máy chỉ một
-  lần theo khách (không tính lần dựng đầu sau khi mở lại game). `doConfirmQr`: tiền về → `keng`, xu bay từ điện thoại về ví;
-  ảnh giả mà nhận → bản sao điện thoại bị đóng dấu "ẢNH GIẢ"; `doRejectQr`: đúng ảnh giả → dấu "ẢNH GIẢ", sai → "TỪ CHỐI" xám +
-  rung. Thuần: `QR_FX`, `QR_STAMPS`, `speakerSvg(on)`, `bellSvg()`, `markSvg(ok)`.
+  bay sang khách, tiền khách đưa bay vào két, két nảy rồi đóng (bản sao ở lớp hiệu ứng), xu bay về ví HUD. Panel thấp
+  (`.co-fit-low`, vòng sửa): hàng nút dính đáy thành `[dải số liệu .cs-sum | Đưa tiền thối]` — `sumRows(c, { due, trayAmt,
+  hint })` (thuần): Khách đưa / Tổng / Khay, ngày đầu Tổng / Cần thối / Khay, đã thối một lần thêm Đã thối; khay dư so với số cần
+  thối thì đỏ kèm ⚠, vừa đủ thì xanh kèm ✓ — cuộn xuống két vẫn thấy số liệu (panel cao hơn thì `.cs-sum` ẩn).
+- `counter-qr.js` (chuyển khoản; bố cục sau vòng sửa Q-C): `renderQr` → `div.qc-qr[data-qr = waiting | arrived | paid | lost]`
+  là một cảnh mặt quầy `.qc-scene` đọc trái → phải đúng thứ tự việc xảy ra: **kệ "Mã QR của xe"** `.qc-stand` đứng trên mặt quầy
+  (`renderStand`: tấm thẻ QR giả `fakeQrSvg(0)` có chữ "QR GAME" + nhãn "Mã QR của xe", cắm trên đế gỗ; dựng lười một lần) — khách
+  đã quét mã này; **điện thoại khách** `.qc-phone` (`renderPhone`: hình `dien_thoai` màn hình trống + lớp ảnh chụp "chuyển khoản
+  thành công" đặt theo `SCENE_META.dien_thoai`: dấu ✓, "Đã chuyển", "→ <tên xe>" tối đa 2 dòng (tên dài cắt theo từ + "…" cho
+  vừa màn hình điện thoại, đo sau khi gắn — `fitShot`), số tiền ở dải dưới; ảnh thật và ảnh giả trông y hệt nhau — đúng luật, ảnh
+  chụp không phải là tiền); cột phải `.qc-side` = thẻ Tổng `[amount-due]` + ô báo tiền
+  `.qc-status[qr-status, data-arrived]` (Loa báo tiền nếu đã mua, không thì chuông điện thoại của quán — nơi DUY NHẤT cho biết tiền
+  về thật; cúp điện thì `[qr-speaker-off]`); dòng nhắc `.qc-note`; `.action-row.act-bar.qc-act > [qr-reject] [qr-confirm,
+  data-ready]`. Đã thu thì thu gọn thành một dòng `.qc-paidline` (điện thoại nhỏ chỉ còn ✓ + ô trạng thái). Panel tự đăng ký bus
+  `qr.arrived` một lần (tự gỡ khi panel hủy): `ting` + cờ cho khách đang ở quầy, lần vẽ kế tiếp tiêu cờ → `playScan(status)`:
+  vệt quét sáng `.qc-sweep` chạy **ngang ô báo tiền** + ô báo tiền nảy (WAAPI, chỉ transform / opacity); Loa báo tiền đang chạy
+  (lõi tự xác nhận) thì xu bay từ điện thoại về ví. Khách giơ máy (điện thoại đưa lên) chỉ một lần theo khách (không tính lần dựng
+  đầu sau khi mở lại game). `doConfirmQr`: tiền về → `keng`, xu bay từ điện thoại về ví (`vfx-coin` source `qr`); tiền chưa về →
+  ô báo tiền rung; ảnh giả mà nhận → bản sao điện thoại bị đóng dấu "ẢNH GIẢ"; `doRejectQr`: đúng ảnh giả → dấu "ẢNH GIẢ", khách
+  rút máy; từ chối nhầm khách thật → "TỪ CHỐI" xám + rung. Quầy không còn dùng `phoneQr(fakeQrSvg(0))` (điện thoại có QR, vẫn
+  xuất ở `scene.js` / `art.js phoneQrSvg` cho chỗ khác). Thuần: `QR_FX`, `QR_STAMPS`, `speakerSvg(on)`, `bellSvg()`,
+  `markSvg(ok)`.
 - `counter-receipt.js` (phiếu thu): `renderReceipt` → `div.rc-wrap`: máy in phiếu (`may_in_phieu`) sau mép quầy, phiếu giấy
   `.rc-paper[receipt, data-total]` (tên xe, **`.receipt-head span` = "Phiếu thu #001"** — `helpers.mjs` đọc số phiếu bằng
-  `.split(' ').pop()`, giờ in, từng món có hình, `[receipt-adjust]`, Tổng, phương thức, khách đưa / tiền thối,
-  `[receipt-rounding]`, con dấu "ĐÃ THU" / "ẢNH GIẢ"), `.act-bar.rc-act > [rail-full]? [clip-ticket]`. Vừa thu xong
-  (`justPaid(prevStageKey, customerId)`) thì phiếu trượt lên khỏi khe theo nấc rồi dấu đập xuống (một lần, WAAPI); `doClip`:
-  nhân bản phiếu (kèm kẹp gỗ) bay vào chỗ trống kế tiếp của dây phiếu (`railSlot(doc)`), phiếu mới trên dây lóe sáng.
-  `RECEIPT_FX`, `RECEIPT_STAMPS`.
+  `.split(' ').pop()`, giờ in, từng món có hình, `[receipt-adjust]`, Tổng, hàng phương thức với khóa ngắn **"Trả bằng"**
+  (`.rc-method`: "Tiền mặt" / "Chuyển khoản QR", luôn một dòng), khách đưa / tiền thối, `[receipt-rounding]`; hàng cuối
+  `.rc-thanks` = "Cảm ơn quý khách!" bên trái + **con dấu `.rc-stamp` "ĐÃ THU" / "ẢNH GIẢ" nằm TRONG hàng** bên phải (lề trên chừa
+  phần dấu xoay lòi lên, `STAMP_TILT` −9°) nên dấu không đè số tiền nào ở mọi khung), `.act-bar.rc-act > [rail-full]?
+  [clip-ticket]`. Vừa thu xong (`justPaid(prevStageKey, customerId)`) thì phiếu trượt lên khỏi khe theo nấc rồi dấu đập xuống
+  (một lần, WAAPI); `counter.js revealReceipt` cuộn panel cho cả khâu, hoặc trọn tờ phiếu, hoặc ít nhất đầu phiếu (tên xe, số
+  phiếu) + hàng Tổng lọt trên hàng nút (cả khi người chơi vừa cuộn xuống két); panel rất thấp phiếu gọn (đầu phiếu một hàng, món
+  một hàng không hình). `doClip`: nhân bản phiếu (kèm kẹp gỗ) bay vào chỗ trống kế tiếp của dây phiếu (`railSlot(doc)`), phiếu mới
+  trên dây lóe sáng. `RECEIPT_FX`, `RECEIPT_STAMPS`.
 - Mọi hàng nút dính đáy của Quầy mang lớp `.act-bar` (`position: sticky; bottom: 0`): `counter.revealAboveBar`, `revealStage`
-  và tour (`STICKY` của `ui/components/tour.js`) dựa vào lớp này.
+  và tour (`STICKY` của `ui/components/tour.js`) dựa vào lớp này. Hàng dính riêng của lời Dì Sáu (`.act-bar.co-tutor-dock`, cao
+  = lời nhắc + hàng nút) được tour chừa như một thanh dính; riêng khi đích nằm TRONG một thanh dính (vd `give-change`,
+  `clip-ticket`), `stickyCover` bỏ qua thanh dính khác phủ trọn chỗ thanh đó (hàng nút vẽ đè lên nó) nên tour không cuộn panel
+  vô cớ (vòng sửa H2).
 
 **Màn Ca bán chung** (`screens/service.js`, `components/`):
 - `hud.js`: thanh gỗ 3 viên giấy + nút "?": giờ ca (đồng hồ, "Ngày N" `[hud-day]`, `[hud-time]`, vạch mặt trời
@@ -1083,11 +1116,18 @@ tiền, điểm, `STATE_VERSION` giữ nguyên; mọi testid và `data-*` mà e2
   lúc đóng ca, lõi `settleShift`), sao `[hud-stars]` "5,0". Thẻ thu trong ca đếm lên theo **sự kiện DOM `vfx-coin`** trên
   `[hud-wallet]` (detail = thông tin `onArrive` của `vfx.coins` + `source: 'tien_mat' | 'qr' | 'tip'`; giảm chuyển động: một sự
   kiện `skipped`, `last`); tiền vào mà không có xu thì tự đếm sau `TAKE_FALLBACK_MS` 2.600. `destroy()` gỡ nghe.
+- Thông báo nổi trong màn Ca bán (vòng sửa Q-D): `service.js` gắn `.overlay-root.is-service` lúc vào màn (gỡ khi rời màn, cùng
+  `.is-cook-focus`) → `css/game.css` hạ chồng `.toast-stack` từ `top: 50px + --safe-top` xuống **`57px + --safe-top`** để không
+  che thẻ `[hud-take]` treo dưới ví (thẻ đếm lên đúng lúc thông báo "thối đúng", "kẹp phiếu" hiện); `toastLimit` đo theo vị trí
+  thật của chồng nên tự co. Thông báo là viên giấy viền mực (nền kín, tốt / xấu có huy hiệu ✓ / ! ở đầu, không chỉ dựa vào màu).
 - Dải phố `section.street`: mái bạt sọc CSS, mặt trước xe đẩy (`xe_mat_truoc`), khách **bán thân** (`bust`) keyed theo id, hàng
   chờ thu nhỏ `QUEUE_SCALES` [1, .85, .7], vòng kiên nhẫn quanh đầu (`patience.js createRing`, viền mực ôm cung), hơi nước khi
   kiên nhẫn dưới `LOW_PATIENCE` 0,3 (`createSteam`), chỗ chờ món `.waiting[waiting]` hiện tối đa `WAIT_SHOW_MAX` 3. Vào / lên
   chỗ / sang chỗ chờ món / rời đi (`exitKindOf(c)` → happy | angry | quiet) là hoạt ảnh **một lần theo id** (Set), bản sao trong lớp
   riêng `.st-fx` của dải phố (mặt quầy và mái bạt che đúng lớp); giảm chuyển động: chỉ mờ dần.
+- Khách đang ở quầy lúc tab Quầy mở (vòng sửa Q-D): panel Quầy đã vẽ bán thân lớn của khách đó nên ở dải phố khách thu thành thẻ
+  tròn nhỏ `.is-away` (mặt + vòng kiên nhẫn + mũi tên ↓, nhãn "Ở quầy"); sang tab Bếp thì bán thân hiện lại. Đổi theo sự kiện đổi
+  tab / đổi khách, vẽ lại không phát lại.
 - `progress4.js`: 4 biểu tượng tròn (`STAGE_ICONS`) nối bằng thanh; khâu xong ✓ xanh, khâu đang làm nền vàng + tên khâu; giữ
   `progress-4[data-stage, data-customer]`, `li.p4-step[data-step]` (`.done` / `.current`).
 - `ticket-rail.js`: phiếu giấy có kẹp, hình món, dải màu chờ ở đáy `waitBand(ratio)` (green | yellow từ 0,5 | orange từ 0,65 |
@@ -1133,9 +1173,10 @@ tiền, điểm, `STATE_VERSION` giữ nguyên; mọi testid và `data-*` mà e2
 chọn món, quầy trống), `css/cashier.css` (lớp `cs-`: bảng giá, máy tính tiền, tiền mặt, két, khay), `css/receipt.css` (lớp `qc-`
 chuyển khoản, `rc-` phiếu thu), `css/street.css` (dải phố: biến `--st-h`, `--st-awn`, `--st-counter`, `--qh`, `--wh`; thu cỡ ở
 màn ≤ 760px), `css/sheet.css` (phiếu chấm, hộp tình huống, phàn nàn), `css/game.css` (HUD, 4 khâu, dây phiếu, tab; `.act-bar`).
-Dây phiếu dùng container query (trình duyệt cũ chỉ cắt chữ "…"). CSS Quầy cũ (`.price-board`, `.numpad*`, `.cash*`,
-`.drawer*`, `.tray*`…, không còn phần tử nào dùng) vẫn nằm trong `css/game.css`: bản vá chuyển CSS Quầy sang cuối `counter.css`
-của bước 0 chưa áp (chờ chốt, mục 32).
+Dây phiếu dùng container query (trình duyệt cũ chỉ cắt chữ "…"). CSS Quầy cũ đã dọn khỏi `css/game.css` (vòng sửa Q-C): ở đó
+chỉ còn luật của các lớp mà phần tử quầy vẫn mang (`.counter`, `.counter-idle`, `.stage`, `.act-bar`, `.sheet-layer`…, e2e /
+tour / `counter.js` bám theo) và `.receipt-head` (bộ chọn e2e, `receipt.css` ghi đè bằng `.rc-paper .rc-head`); tên cũ khác
+(`speech-bubble`, `qty-value`, `price-board`, `given-cash`, `tray`, `drawer`, `qr-status`, `receipt`…) nay chỉ là `data-testid`.
 
 ## 14. data-testid bắt buộc (cho e2e)
 
@@ -1646,7 +1687,7 @@ Thiết kế: `docs/tham-khao/m4-thiet-ke.md` mục F.1 bước 7–8, F.4, F.6.
 
 **E2E mới** (dựng save bằng lõi thật ở `tests/helpers/m4-saves.mjs`, dùng chung với `tools/tim-seed.mjs` — không còn bản sao hàm dựng):
 - `tests/e2e/m4-rare.e2e.mjs` (seed 3, `node tools/tim-seed.mjs mon-hiem`): save ngày 4 có đủ 3 mảnh Trà tắc mật ong rừng + 1 phần mật ong (quà thư 0.4.0), `?devNow=2026-09-30T12:00` → thẻ phiên hàng `stall-card` `data-state="open"` "Xe ba gác trưa · Chú Tư" (3 khung giờ, phiên đang mở tô xanh) → Lựa hàng (kệ 9 ô có hàng dễ nhầm, lựa đúng 2 món hàng hiếm → 100 điểm, +1 phần mỗi món) → kho tăng đúng số phần nhận, không trừ Tiền quán → **tải lại trang**: thẻ "Hôm nay đã ghé", không còn nút vào phiên, kho và `rare.today.stalls` không đổi → nấu thử mở món (không trừ kho, mảnh đã dùng) → thực đơn "★ còn n phần" → Sổ công thức (món hiếm đã mở ghi "Công thức hiếm", món chưa mở "Mảnh n/3") → mở ca: `sh.rareMenu`, khách đầu gọi 2 ly món ★, quầy `menu-item` `data-left` và "★ còn n", kẹp phiếu chưa trừ kho, kệ bếp `shelf-left-mat_ong_rung` "còn n", Ra món trừ đúng 2 phần.
-- `tests/e2e/m4-tip-events.e2e.mjs`:
+- `tests/e2e/m4-tip-events.e2e.mjs` (từ bản 0.5.1 chỉ còn ca 1; ca 2 tách sang `tests/e2e/m4-tip-events-attp.e2e.mjs`, mục 32.1):
   1. (seed 1, `tim-seed tip`) ca ngày 5 dựng sẵn bằng lõi (`tipShiftSave`: phục vụ quầy và nấu xong 2 phiếu, chưa giao) mở thẳng màn ca bán → giao: 5 sao hóa đơn 20.000đ "Tip: +5.000đ", 5 sao hóa đơn 10.000đ "Tip 0 (hóa đơn dưới 20.000đ)" (`score-sheet-tip`, `data-tip`); bán hết ca qua giao diện: mọi phiếu chấm tip ∈ {0, 5.000đ}, có tip ⇔ 5 sao và hóa đơn ≥ 20.000đ; Tổng kết: dòng "Tiền tip" = tổng tip các phiếu = lịch sử, dòng Hội thi (sự kiện ngày loại tốt) có giải thì `data-money` = `eventIn`, sổ lãi lỗ cộng lại đúng bằng lãi và khớp `history`.
   2. (seed 92, `tim-seed attp`) save chơi tới ngày 18 = lần thứ hai của "Đoàn kiểm tra vệ sinh" (lần một ngày 6 đã bị nhắc nhở, `state.incidents.warn`): thẻ Chuẩn bị "Có lựa chọn" + dòng `day-event-warn`; không chuẩn bị, cố ý lấy nhầm 1 nguyên liệu (`cookAndServe({ wrongPick })`) → cuối ca bị phạt, `warn` được xóa, Tổng kết có dòng `summary-event-money` `data-event="kiem_tra_attp"` (`data-money` = −`eventOut`) và dòng "Phạt, chi sự kiện"; tình huống M4 mới (Khách bỏ quên ví, rồi Bình gas hết) hiện giữa hai khách, đúng 1 cách an toàn, chọn cách an toàn (không có nhãn "mất tiền"), `history.incidents` đúng thứ tự lên lịch; sổ lãi lỗ khớp lịch sử.
 - `tests/e2e/helpers.mjs`: `cookAndServe` trả thêm `{tip, tipText}` của phiếu chấm (`readSheetTip`), tùy chọn `onChon(line, recipe, i)` (soát kệ Chọn trước khi lấy) và `wrongPick` (dòng đầu lấy thêm 1 hàng bẫy).
@@ -2208,11 +2249,58 @@ lẻ; chuyển khoản: thật); ảnh giả dùng `customer.forcePay = 'qr_fake
 chấm mới (gói Q-E) vẽ nhãn thành tem mực màu trên giấy (`.err-tag--quay` xanh, `--bep` đỏ): cần sửa kiểm tra của tệp e2e đó cho
 khớp thiết kế tem (vd chữ khác màu nền, hai tem cao bằng nhau), không phải lỗi giao diện.
 
-**Ghi nhận (03/10/2026):**
-- `service.js` vẫn phát `sound('coin')` khi bus `qr.arrived`, cùng lúc `counter-qr.js` phát `ting` (hai âm chồng nhau) — nên bỏ
-  dòng nghe ở `service.js`.
+**Ghi nhận (03/10/2026, lúc kết thúc gói Q-H)** — tình trạng sau vòng sửa ghi trong ngoặc:
+- `service.js` vẫn phát `sound('coin')` khi bus `qr.arrived`, cùng lúc `counter-qr.js` phát `ting` (hai âm chồng nhau). (Đã
+  sửa, vòng sửa Q-D: chỉ còn `ting`.)
 - CSS Quầy cũ (`.price-board`, `.numpad*`, `.cash*`, `.drawer*`, `.tray*`…) không còn phần tử dùng, vẫn nằm trong `game.css`.
+  (Đã dọn, vòng sửa Q-C; xem cuối mục 13.4.)
 - `hanh-trinh.mjs` (chạy tay, 10–15 phút) chưa chạy lại ở bản này.
-- Khung thấp, khâu phiếu thu: người chơi vừa cuộn xuống két để thối tiền thì sau khi thối, panel vẫn cuộn ở đáy (`revealStage`
-  của `counter.js` chỉ đẩy xuống, không kéo lên đầu khâu). Ở 375×553 vùng an toàn chỉ thấy máy in và nút "Kẹp phiếu bếp", không
-  thấy phiếu; ở 320×568 hàng Tổng bị cắt. Dấu "ĐÃ THU" đè lên số "Tiền thối" của phiếu (cả 4 khung). Nút vẫn chạm được (e2e xanh).
+- Khung thấp, khâu phiếu thu: người chơi vừa cuộn xuống két để thối tiền thì sau khi thối, panel vẫn cuộn ở đáy. Ở 375×553 vùng
+  an toàn chỉ thấy máy in và nút "Kẹp phiếu bếp", không thấy phiếu; ở 320×568 hàng Tổng bị cắt. Dấu "ĐÃ THU" đè lên số "Tiền
+  thối" của phiếu (cả 4 khung). (Đã sửa: `revealReceipt` kéo đầu phiếu + hàng Tổng lên; dấu nằm trong hàng "Cảm ơn quý khách!".)
+
+### 32.1 Vòng sửa sau kiểm chứng (03/10/2026)
+
+Các gói sửa tại chỗ theo phát hiện của người kiểm chứng; vẫn **chỉ đổi giao diện** (lõi, luật, tiền, sao, `STATE_VERSION` giữ
+nguyên), testid / `data-*` / chữ mà e2e và tour bám giữ nguyên. Chi tiết module đã ghi lại ở mục 13.4.
+- **Q-A Gọi món.** Lời Dì Sáu ngày 1 thành một nút bền `[tutor-hint]` do `counter.js placeTutor` đặt theo khâu: dưới bong bóng
+  khi phiếu trống (`.co-tut-under`: khung thấp thu gọn khách, bong bóng một hàng), `.co-tutor.is-dock` dán ngay trên hàng nút
+  dính đáy (khâu Order: dòng đầu của chính `.co-pad-actions`; khâu Tính tiền / chuyển khoản / phiếu thu: hàng dính riêng
+  `.act-bar.co-tutor-dock` ôm cả chỗ hàng nút, `syncDock`; `.co-fit-tiny` thì `.is-flat`, không dính), `.co-tutor.is-inline` trên
+  máy tính tiền ở khâu Thanh toán. Bảng chọn món có dải `.co-heard` "<tên khách> nói" (bảng che bong bóng). Phiếu đã có dòng thì
+  khách thu thành dải `.is-strip` đầu panel. Bỏ mái bạt trang trí trong panel (dải phố đã có). Ngày 1, bước chạm thẻ món không
+  cuộn khuất lời gọi món (`revealGlow(t, keep)`). "Đọc lại đơn" bấm lần nữa sau khi sửa phiếu giữa lượt sáng không bị nuốt
+  (`order-pad.js` hủy lượt cũ khi phiếu đổi; bấm lặp cùng phiếu bị bỏ, nút `.is-busy` + `aria-busy`).
+- **Q-B Thu tiền.** Panel thấp: khâu Thanh toán lộ trọn màn LED + phím + "Báo tổng" (máy tính gọn lưới 6 cột, "Gõ theo nghìn"
+  in trong màn LED khi chưa gõ); khâu Tính tiền lộ két, hàng nút dính đáy thành `[dải số liệu .cs-sum | Đưa tiền thối]`
+  (`sumRows`); panel rất thấp két 7 ngăn một hàng. Huy hiệu số tờ của hàng ngăn dưới không đè ngăn trên.
+- **Q-C Chuyển khoản và phiếu thu.** Cảnh chuyển khoản mới: kệ "Mã QR của xe" trên mặt quầy, điện thoại khách hiện ảnh "Đã chuyển ✓
+  → tên xe + số tiền" (không còn QR trên điện thoại), vệt quét chạy ngang ô báo tiền. Phiếu thu: khóa "Trả bằng", con dấu nằm
+  trong hàng "Cảm ơn quý khách!" (không đè số tiền), `revealReceipt` cuộn đầu phiếu + Tổng lọt màn sau khi thu, panel rất thấp
+  phiếu gọn. Dọn CSS Quầy cũ khỏi `game.css`.
+- **Q-D Phố, HUD.** Bỏ âm `coin` trùng khi tiền chuyển khoản về. `.overlay-root.is-service`: chồng thông báo trong màn Ca bán ở
+  `57px + --safe-top`, không che thẻ `[hud-take]`. Thông báo là viên giấy viền mực (nền kín); chữ mờ trên nền gỗ / giấy được tăng
+  tương phản. Khách đang ở quầy không vẽ hai lần (dải phố thu thành thẻ tròn `.is-away` "Ở quầy").
+- **Q-E Phiếu chấm.** Tem "Lỗi tại quầy / tại bếp" chữ trắng, hai tem cao bằng nhau (`review-m3-ux` xanh lại); tip là tem vàng
+  dán chờm góc trên phải; lớp nền mờ dưới phiếu (`.sheet-host::before`, không nhận chạm); khung ≤ 600px phiếu gọn (tên + sao
+  một dòng, lời khách ≤ 3 dòng, 5 hàng lưới 2 cột) để không che thanh 4 khâu.
+- **H2 (tour, e2e, tài liệu).** Tài liệu này, `de-xuat-thiet-ke.md` mục 5.10 và `README.md` cập nhật theo các mục trên (khâu
+  chuyển khoản trước đây còn tả theo thiết kế cũ: điện thoại có QR, vệt quét dọc màn điện thoại). Tour: `stickyCover` của
+  `tour.js` không tính hàng dính riêng của lời Dì Sáu là "che" khi đích nằm trong chính hàng nút nó ôm (trước đó bước "Đưa tiền
+  thối" của tour Tính tiền ngày 1 cuộn panel xuống 18–52px vô cớ ở 390×844 / 360×600).
+- **E2E `m4-tip-events` sát mốc 10 phút.** Đo từng pha (2 ca, 584 giây, máy rảnh): nấu chiếm ~72% — trong đó vào mỗi bước trên
+  Thớt mất ~0,74 giây vì chờ cứng 300 + 400 ms cho bảng chọn cách / thẻ "Bước k/N" không hiện (90 bước, ~67 giây; nay ~0,25 giây
+  mỗi bước) và chờ bảng ra món tự đóng ~3,4 giây mỗi món (18 món, ~61 giây; nay ~0,1 giây); chờ khách bằng đồng hồ giả ~96 giây
+  (mô phỏng ca thật, `MAX_DT` 0,05 giây mỗi khung — không rút được mà không đổi luật). Sửa trong `helpers.mjs`: `enterStep` chờ
+  thứ hiện ra trước (bảng chọn cách, thẻ đầy đủ, hay sân khấu khi thẻ gọn) rồi xử lý ngay, mỗi thứ một lần; `cookAndServe` chạm để
+  bỏ qua bảng ra món như người chơi (`dish-reveal.js` nuốt cú click của chính lần chạm; chạm hụt thì vẫn chờ bảng tự đóng). Tách
+  ca thứ hai (kiểm tra vệ sinh tái phạm + tình huống mới) sang tệp mới `tests/e2e/m4-tip-events-attp.e2e.mjs`; sổ lãi lỗ dùng
+  chung `moneyOf`, `readLedger`, `ledgerRow`, `checkLedger` của `helpers.mjs`. Sau sửa: `m4-tip-events` 199 giây,
+  `m4-tip-events-attp` 305 giây (cùng kết quả ca: 7 phiếu chấm đúng luật tip; tình huống `khach_quen_vi`, `gas_het`, lãi 95.000đ).
+  Mọi tệp e2e gọi `cookAndServe` / `playShiftUi` / `playBoard` cũng nhanh theo.
+
+**Kết quả vòng sửa H2 (03/10/2026, chạy từng tệp, Chromium headless, máy rảnh):** `npm test` 639/639; e2e `m4-tip-events` 1/1
+(199 giây), `m4-tip-events-attp` 1/1 (305 giây), `m5-quay` 6/6 (207), `tour` 15/15 (208), `one-shift` 1/1 (127),
+`iphone-overlays` 8/8 (106), `incident-notebook` 3/3 (317), `review-m2` 3/3, `review-m3-ux` 2/2, `stability` 1/1, `m5-bep` 60/60
+(3 lần theo tên ca: 227 + 53 + 41 giây); các tệp khác dùng bộ giải bếp của `helpers.mjs`: `m4-rare` 3/3, `shop` 1/1,
+`checkin-quests` 1/1, `event-2011` 2/2 (462 giây — tệp dài nhất còn lại), `m2-ui` 3/3, `reload` 1/1, `subpath` 1/1.

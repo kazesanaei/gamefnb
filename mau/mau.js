@@ -436,7 +436,7 @@ export function boot(doc = document) {
     }
     function customer() {
       return {
-        persona: S.persona, gender: S.gender, mood: o.mood, name: S.name, regular: true,
+        persona: S.persona, gender: S.gender, who: S.regularId, mood: o.mood, name: S.name, regular: true,
         request: o.confirmed ? [] : S.request, speech: o.confirmed ? 'Bao nhiêu tiền vậy con?' : SPEECH, recipes: R, talk: o.talk
       }
     }

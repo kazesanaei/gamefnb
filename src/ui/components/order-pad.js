@@ -120,6 +120,22 @@ export function createOrderPad(data = {}, opts = {}) {
   const rows = []        // [{ sig, li, main, art }]
   let checks = null      // { sig, bad: Set } — dấu ✓/✗ sau khi đọc lại, giữ tới khi phiếu đổi
   let caughtSig = ''
+  // Lượt đọc lại đang sáng: readRun tăng mỗi lượt, readSig = phiếu (draftSig) của lượt đó (null: không đọc). Lượt bị lượt
+  // mới thay hoặc phiếu đổi giữa lượt (bỏ / sửa dòng) thì im: không sáng tiếp, không đánh ✓/✗ cũ lên phiếu mới.
+  let readRun = 0
+  let readSig = null
+
+  // Nút "Đọc lại đơn" trong lúc đang sáng lượt đọc của chính phiếu này: mờ đi + aria-busy (bấm lặp không có tác dụng).
+  function setBusy(on) {
+    readBtn.classList.toggle('is-busy', !!on)
+    if (on) readBtn.setAttribute('aria-busy', 'true')
+    else readBtn.removeAttribute('aria-busy')
+  }
+  function stopReading() {
+    readSig = null
+    setBusy(false)
+    for (const r of rows) r.li.classList.remove('is-reading')
+  }
 
   function row(line) {
     const art = h('span', { class: 'co-line-art' }, dishArt((cur.recipes || {})[line.recipeId] || { id: line.recipeId }))
@@ -191,6 +207,8 @@ export function createOrderPad(data = {}, opts = {}) {
       }
     }
     if (checks && checks.sig !== model.draftSig) checks = null
+    // phiếu đổi giữa lượt đọc lại: hủy lượt đó (nút đọc lại dùng được ngay cho phiếu mới)
+    if (readSig !== null && readSig !== model.draftSig) stopReading()
     paintChecks()
     // nút
     readBtn.disabled = model.empty
@@ -243,6 +261,8 @@ export function createOrderPad(data = {}, opts = {}) {
   /**
    * Đọc lại: sáng lần lượt từng dòng (PAD_TIMING.readStep ms) rồi đánh ✓ (đúng) / ✗ (dòng khách bắt lỗi).
    * result: { caught: [{ index }] } | [chỉ số dòng sai]. Giảm chuyển động: sáng cùng lúc, chỉ đổi độ mờ.
+   * Trong lượt: nút "Đọc lại đơn" có lớp is-busy + aria-busy. Gọi lại giữa lượt (hoặc phiếu đổi giữa lượt) thì lượt cũ dừng
+   * và Promise của nó vẫn xong nhưng không đánh dấu gì.
    */
   function readback(result = {}) {
     if (destroyed || !model || model.empty) return Promise.resolve()
@@ -251,11 +271,17 @@ export function createOrderPad(data = {}, opts = {}) {
     const n = rows.length
     const red = reduced()
     const step = red ? 0 : PAD_TIMING.readStep
+    const run = ++readRun
+    const sig = model.draftSig
+    const live = () => !destroyed && run === readRun && readSig === sig
+    readSig = sig
+    setBusy(true)
     checks = null
     paintChecks()
     reveal(null, { smooth: true })
     rows.forEach((r, i) => {
       later(() => {
+        if (!live()) return
         r.li.classList.remove('is-reading')
         void r.li.offsetWidth
         r.li.classList.add('is-reading')
@@ -264,9 +290,9 @@ export function createOrderPad(data = {}, opts = {}) {
     })
     const total = (n - 1) * step + PAD_TIMING.readGlow
     return wait(total).then(() => {
-      if (destroyed) return
-      rows.forEach(r => r.li.classList.remove('is-reading'))
-      checks = { sig: model.draftSig, bad }
+      if (!live()) return
+      stopReading()
+      checks = { sig, bad }
       paintChecks()
       if (!red && vfx) rows.forEach(r => { const c = r.li.querySelector('.co-line-check'); if (c) vfx.pop(c) })
     })

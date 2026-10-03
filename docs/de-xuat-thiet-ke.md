@@ -390,10 +390,13 @@ nâu, khối 3 tông, nút bánh kẹo, khung giấy / gỗ / phấn. **Chỉ đ
   quán" có hình ví; ngay dưới là thẻ xanh "+45.000đ" ghi tiền đã thu trong ca (tiền mặt + chuyển khoản + tip − hoàn tiền) — số
   này chỉ cộng vào Tiền quán lúc đóng ca, như luật cũ. Mỗi lần thu tiền, 6–12 đồng xu bay từ két (hoặc điện thoại khách; tip:
   4–6 xu từ dòng tip) về ví, thẻ xanh đếm lên theo từng xu và dừng đúng số. Viên sao trung bình có hình ngôi sao. Nút "?" ở cuối.
+  Thông báo nổi là viên giấy viền mực (thông báo tốt / xấu có huy hiệu ✓ / ! ở đầu); trong ca bán chồng thông báo nằm ngay dưới
+  thẻ xanh nên không che số đang đếm lên.
 - **Dải phố**: mái bạt sọc đỏ trắng, mặt trước xe đẩy mang tên xe; khách **bán thân** (6 kiểu khách, 4 tâm trạng; khách quen và
   khách lạ có dáng riêng) đứng sau quầy, hàng chờ nhỏ dần 100% / 85% / 70%, nhãn "Ở quầy" / "Đơn đặt trước" / "Khách lạ". Vòng
   kiên nhẫn ôm quanh đầu, đổi màu xanh → vàng → đỏ; kiên nhẫn dưới 30% thì đầu khách bốc hơi. Khách vào trượt tới, khách rời
-  vui thì nảy, giận thì có mây giận — mỗi khách chỉ diễn một lần.
+  vui thì nảy, giận thì có mây giận — mỗi khách chỉ diễn một lần. Khách đang ở quầy (đã vẽ lớn ở Quầy) thu thành thẻ tròn nhỏ
+  có mũi tên ↓ "Ở quầy" trên dải phố; sang tab Bếp thì hiện lại bán thân.
 - **Thanh 4 khâu**: 4 biểu tượng tròn (sổ order, máy tính tiền, két, chảo) nối bằng thanh; khâu xong có dấu ✓ xanh, khâu đang
   làm nền vàng kèm tên khâu, khâu sau mờ.
 - **Dây phiếu**: phiếu giấy có kẹp gỗ, hình món, số phiếu; dải màu chờ ở đáy phiếu đổi xanh → vàng → cam → đỏ (theo ngân sách
@@ -405,7 +408,11 @@ nâu, khối 3 tông, nút bánh kẹo, khung giấy / gỗ / phấn. **Chỉ đ
   1–3) và ghi chú có hình (nút có giá phụ thu), nút "Thêm vào phiếu" ghi tiền của dòng; món bay xuống phiếu order giấy (kẹp gỗ, kẻ
   dòng, mép răng cưa, dòng mới "viết ra"). "Đọc lại đơn" làm phiếu sáng lần lượt từng dòng rồi đánh ✓ / ✗, mặt khách nhỏ trên
   phiếu gật đầu hoặc lắc đầu. "Chốt order" đập con dấu **ĐÃ CHỐT** (phóng 1,8 → 1, nghiêng −8°, rung khung 2px, tiếng "cộp") rồi
-  phiếu thu nhỏ bay cong lên dây phiếu. Ngày 1, Dì Sáu chỉ việc kế tiếp bằng bong bóng giấy và vòng sáng quanh nút.
+  phiếu thu nhỏ bay cong lên dây phiếu. Phiếu order đã có dòng thì khách thu thành dải gọn ở đầu panel (dính khi màn đủ cao) để
+  cuộn xuống phiếu vẫn so được với lời khách; bảng chọn món che bong bóng nên đầu bảng nhắc lại "<tên khách> nói" (hình món hoặc
+  nguyên văn lời khách, đúng như bong bóng). Ngày 1, Dì Sáu chỉ việc kế tiếp bằng tờ giấy nhắc luôn thấy — dưới bong bóng khi
+  phiếu còn trống, dán ngay trên hàng nút dính đáy ở các khâu sau (khâu Thanh toán: ngay trên máy tính tiền) — và vòng sáng
+  quanh nút.
 - **Thanh toán** (mục 4.1): bảng giá **phấn** (hình món, giá gọn "20k", dòng phụ "+5k" của ghi chú), phiếu order tóm tắt bằng hình
   món có huy hiệu ×n, **máy tính tiền** xanh ngọc có màn LED (gõ theo nghìn, đuôi ".000đ" in mờ để nhắc), phím bánh kẹo ≥ 48px,
   phím chuông "Báo tổng" cao 4 hàng. Khách nhận tổng thì máy kêu "keng" và dấu ✓ nảy trên màn LED; báo dư thì màn LED rung, viền
@@ -414,19 +421,27 @@ nâu, khối 3 tông, nút bánh kẹo, khung giấy / gỗ / phấn. **Chỉ đ
   Đã thối, Cần thối ngày 1–3, cảnh báo "Đang thối dư"); **khay inox** đựng tiền thối; **ngăn kéo két 7 ngăn** vẽ thật, mỗi ngăn
   có chồng tờ "TIỀN GAME" và huy hiệu số tờ. Chạm ngăn thì tờ tiền bay vào khay, chạm chồng trong khay thì tờ bay về két. Thối
   đúng: tiền trong khay bay sang khách, tiền khách đưa bay vào két, két nảy rồi đóng, xu bay về ví. Thẻ "Két không đủ tiền lẻ"
-  có nút chọn cách xử lý (hộp tự mở như cũ). Nút "Đưa tiền thối" (hoặc "Không cần thối") dính đáy.
-- **Chuyển khoản** (mục 5.3): khách giơ điện thoại có ảnh chuyển khoản (mã QR giả "QR GAME" của xe, số tiền ở dải dưới); ô báo
-  tiền của quán (chuông điện thoại quán, hoặc Loa báo tiền nếu đã mua) ghi "Đang chờ tiền về…" / "Đã nhận …". Tiền về: tiếng
-  "ting", vệt sáng quét dọc màn điện thoại, ô báo tiền nảy. "Đã nhận đủ" khi tiền đã về: "keng", xu bay từ điện thoại về ví.
-  "Từ chối ảnh giả" đúng lúc: bản sao điện thoại bị đóng dấu đỏ **ẢNH GIẢ** rồi khách rút máy đi; từ chối nhầm khách thật: dấu
-  **TỪ CHỐI** xám và rung. Nhận nhầm ảnh giả: phiếu thu đóng dấu ẢNH GIẢ.
+  có nút chọn cách xử lý (hộp tự mở như cũ). Nút "Đưa tiền thối" (hoặc "Không cần thối") dính đáy; ở màn thấp, cạnh nút có dải
+  số liệu gọn (Khách đưa / Tổng / Khay, ngày đầu Cần thối; khay dư thì đỏ, vừa đủ thì xanh) để cuộn xuống két vẫn thấy số.
+- **Chuyển khoản** (mục 5.3): cảnh mặt quầy đọc từ trái sang phải đúng thứ tự việc xảy ra. Trên mặt quầy có **kệ "Mã QR của
+  xe"** (tấm thẻ QR giả có chữ "QR GAME" cắm trên đế gỗ) — khách đã quét mã này. Khách giơ **điện thoại** có ảnh chụp "chuyển
+  khoản thành công": dấu ✓, "Đã chuyển", "→ tên xe" và số tiền ở dải dưới; ảnh thật và ảnh giả trông y hệt nhau (ảnh chụp không
+  phải là tiền). Bên phải là thẻ Tổng và **ô báo tiền của quán** (chuông điện thoại quán, hoặc Loa báo tiền nếu đã mua) ghi
+  "Đang chờ tiền về…" / "Đã nhận …" — chỉ ô này mới cho biết tiền đã về thật. Tiền về: tiếng "ting", vệt sáng quét **ngang ô báo
+  tiền**, ô báo tiền nảy. "Đã nhận đủ" khi tiền đã về: "keng", xu bay từ điện thoại về ví; bấm khi tiền chưa về thì ô báo tiền
+  rung. "Từ chối ảnh giả" đúng lúc: bản sao điện thoại bị đóng dấu đỏ **ẢNH GIẢ** rồi khách rút máy đi; từ chối nhầm khách thật:
+  dấu **TỪ CHỐI** xám và rung. Nhận nhầm ảnh giả: phiếu thu đóng dấu ẢNH GIẢ. Thu xong, cảnh thu gọn thành một dòng (điện thoại
+  nhỏ chỉ còn ✓ + trạng thái) để phiếu thu đủ chỗ.
 - **Phiếu thu** (mục 5.4): máy in phiếu đặt sau mép quầy, phiếu giấy nhiệt trượt lên khỏi khe theo từng nấc rồi con dấu **ĐÃ
-  THU** đập xuống; phiếu có tên xe, "Phiếu thu #001", giờ in, từng món có hình, Tổng, phương thức, khách đưa / tiền thối, làm
-  tròn, "Cảm ơn quý khách!". "Kẹp phiếu bếp" thì phiếu (kèm kẹp gỗ) bay lên chỗ trống kế tiếp của dây phiếu.
+  THU** đập xuống; phiếu có tên xe, "Phiếu thu #001", giờ in, từng món có hình, Tổng, hàng **"Trả bằng"** (Tiền mặt / Chuyển
+  khoản QR), khách đưa / tiền thối, làm tròn; hàng cuối "Cảm ơn quý khách!" có **con dấu nằm ngay trong hàng** bên phải nên dấu
+  không bao giờ đè lên số tiền nào. Thu xong, panel tự cuộn cho đầu phiếu (tên xe, số phiếu) và hàng Tổng lọt màn, kể cả ở màn
+  thấp khi người chơi vừa cuộn xuống két. "Kẹp phiếu bếp" thì phiếu (kèm kẹp gỗ) bay lên chỗ trống kế tiếp của dây phiếu.
 - **Phiếu chấm** (mục 5.9): chân dung khách đổi mặt theo số sao kèm biểu cảm (tim, lấp lánh, ba chấm, mồ hôi, giận), 5 ngôi sao
   bật lần lượt 180 ms mỗi sao, 5 hàng Order · Báo tổng · Thối tiền · Bếp · Thời gian chờ có biểu tượng khâu và dấu ✓ / ✗ (màu
   luôn kèm hình), tem "Lỗi tại quầy" / "Lỗi tại bếp" đóng lên phiếu, dòng tip có đồng xu vàng (âm "coin2", chữ "+5.000đ" nổi, xu
-  bay về ví). Phiếu vẫn hiện 2 giây, không chặn thao tác; giảm chuyển động thì hiện thẳng.
+  bay về ví; tip là tem vàng dán chờm góc trên phải của phiếu). Phiếu vẫn hiện 2 giây, không chặn thao tác, dưới phiếu có lớp
+  nền mờ cho chữ phía sau lùi xuống; màn thấp phiếu gọn (tên + sao một dòng, 5 hàng xếp 2 cột); giảm chuyển động thì hiện thẳng.
 - **Tình huống trong ca và phàn nàn**: hình người / tờ tiền / Dì Sáu ở đầu hộp, các lựa chọn có biểu tượng an toàn / rủi ro /
   khóa, kết quả có mặt người đổi theo kết quả và chip ảnh hưởng có biểu tượng.
 - **Bố cục màn thấp**: chạy được ở 390×844, 360×600, 320×568 và iPhone SE có thanh Safari (375×553, vùng an toàn 47/34). Panel quầy

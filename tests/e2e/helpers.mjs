@@ -567,6 +567,10 @@ export async function cookAndServe(g, ticketId, { shots = true, onChon = null, w
     await page.click(T('finish-dish'))
     await page.waitForSelector(T('dish-reveal'))
     if (shots) { await page.waitForTimeout(250); await g.shot('bep-cong-bo-mon') }
+    // bảng ra món tự đóng sau ~2,2 giây; người chơi chạm để bỏ qua (dish-reveal.js: pointerdown đóng ngay và nuốt cú click
+    // của chính lần chạm) — chạm thật bằng cảm ứng, không chờ hoạt ảnh đứng yên. Chạm hụt (bảng vừa tự đóng, có gì che) thì
+    // vẫn chờ bảng tự đóng như cũ.
+    await page.tap(T('dish-reveal'), { force: true, timeout: 1500 }).catch(() => {})
     await page.waitForSelector(T('dish-reveal'), { state: 'detached', timeout: 5000 })
   }
   await page.waitForSelector(`${T('serve-ticket')}[data-ticket-id="${ticketId}"]`)
@@ -585,6 +589,52 @@ export async function readSheetTip(sheet) {
   return { tip: Number(await el.getAttribute('data-tip')) || 0, tipText: ((await el.textContent()) || '').trim() }
 }
 
+// ---------- Tổng kết: sổ lãi lỗ (M4; dùng chung cho m4-tip-events và m4-tip-events-attp) ----------
+
+// "−20.000đ" / "+5.000đ" / "20.000đ" → số (dấu trừ Unicode hoặc ASCII).
+export function moneyOf(text) {
+  const t = String(text || '').trim()
+  const v = Number(t.replace(/[^\d]/g, '')) || 0
+  return /^[−-]/.test(t) ? -v : v
+}
+
+// Sổ lãi lỗ ở Tổng kết: {rows: [{label, value}], profit}; mọi dòng (đã mang dấu) cộng lại phải bằng lãi.
+export async function readLedger(page) {
+  const r = await page.evaluate(() => {
+    const table = document.querySelector('[data-testid="summary"] table.ledger')
+    const rows = []
+    let profit = null
+    for (const tr of table.querySelectorAll('tr')) {
+      const [a, b] = tr.querySelectorAll('td')
+      if (tr.classList.contains('total')) profit = b.textContent
+      else rows.push({ label: a.textContent.trim(), value: b.textContent.trim() })
+    }
+    return { rows, profit }
+  })
+  return { rows: r.rows.map(x => ({ label: x.label, value: moneyOf(x.value) })), profit: moneyOf(r.profit) }
+}
+
+// Số tiền (không dấu) của dòng `label` trong sổ lãi lỗ; thiếu dòng là lỗi.
+export function ledgerRow(ledger, label) {
+  const r = ledger.rows.find(x => x.label === label)
+  assert.ok(r, 'sổ lãi lỗ thiếu dòng ' + label)
+  return Math.abs(r.value)
+}
+
+// Sổ lãi lỗ khớp lịch sử ca `h` (state.history): các dòng cộng lại bằng lãi, lãi = data-amount = h.profit, dòng tip và hai
+// dòng tiền sự kiện đúng số. → sổ đã đọc.
+export async function checkLedger(page, h) {
+  const L = await readLedger(page)
+  const sum = L.rows.reduce((s, r) => s + r.value, 0)
+  assert.equal(sum, L.profit, 'các dòng sổ lãi lỗ cộng lại đúng bằng lãi')
+  assert.equal(L.profit, Number(await page.getAttribute(T('summary-profit'), 'data-amount')))
+  assert.equal(L.profit, h.profit, 'lãi hiển thị khớp lịch sử')
+  assert.equal(ledgerRow(L, DATA.STRINGS.summary.tips), h.tips)
+  assert.equal(ledgerRow(L, DATA.STRINGS.summary.eventIn), h.eventIn)
+  assert.equal(ledgerRow(L, DATA.STRINGS.summary.eventOut), h.eventOut)
+  return L
+}
+
 // Làm mọi bước trên Thớt sơ chế theo thứ tự có thể làm (dùng cả cho Nấu thử ở Chợ Công Thức).
 export async function playBoard(g, recipe, { shots = false } = {}) {
   const { page } = g
@@ -594,18 +644,7 @@ export async function playBoard(g, recipe, { shots = false } = {}) {
     const stepId = await next.getAttribute('data-step-id')
     const def = recipe.steps.find(s => s.id === stepId)
     await next.click()
-    const sheet = await page.waitForSelector(T('step-sheet'), { timeout: 300 }).catch(() => null)
-    if (sheet) {
-      if (def.method) await page.click(T('method-' + def.method.correct))
-      else await page.click(T('step-start'))
-    }
-    // M5: thẻ vào bước "Bước k/N" (vẫn là step-hint; món nấu dưới 3 lần) — chạm để vào ngay, không thì tự vào sau 1,1 giây
-    const hint = await page.waitForSelector(T('step-hint'), { timeout: 400 }).catch(() => null)
-    if (hint) {
-      if (shots) await g.shot('mg-the-buoc')
-      await hint.tap().catch(() => {})     // chạm để bỏ qua thẻ (thẻ đã tự vào thì thôi)
-    }
-    await page.waitForSelector(`${T('minigame-stage')}[data-type="${def.type}"] .mg-foot`)
+    await enterStep(g, def, { shots })
     await playStage(g, def, { shots })
     // con dấu kết quả bước nằm trên sân khấu ~0,7 giây trước khi lớp đóng
     if (shots && await page.waitForSelector(`.k-layer ${T('step-result')}`, { timeout: 1500 }).catch(() => null)) await g.shot('mg-con-dau')
@@ -614,6 +653,37 @@ export async function playBoard(g, recipe, { shots = false } = {}) {
   }
   const left = await page.$$('[data-testid^="board-step-"]:not(.is-done)')
   assert.equal(left.length, 0, 'còn bước chưa làm')
+}
+
+// Vừa chạm một bước trên Thớt: chờ thứ hiện ra TRƯỚC rồi xử lý ngay, không chờ hết giờ cố định — bảng chọn cách sơ chế
+// (step-sheet: bấm cách đúng / "Tự tay làm"), thẻ vào bước đầy đủ "Bước k/N" (step-hint, món nấu dưới 3 lần: chạm để vào
+// ngay, không thì tự vào sau 1,1 giây) hay sân khấu đã dựng (thẻ gọn "ruy băng" không chờ). Mỗi thứ xử lý một lần; thẻ đầy
+// đủ đang rời đi (.is-leaving, ~220 ms) không tính. Trước đây chờ cứng 300 ms + 400 ms cho bảng và thẻ không hiện — khoảng
+// 0,7 giây phí cho mỗi bước của món đã quen tay (m4-tip-events gần chạm mốc 10 phút).
+async function enterStep(g, def, { shots = false } = {}) {
+  const { page } = g
+  const stageSel = `${T('minigame-stage')}[data-type="${def.type}"] .mg-foot`
+  const done = { sheet: false, hint: false }
+  for (let guard = 0; guard < 4; guard++) {
+    const what = await (await page.waitForFunction(([st, sh, hi, dn]) => {
+      const seen = e => !!e && e.getClientRects().length > 0
+      if (!dn.sheet && seen(document.querySelector(sh))) return 'sheet'
+      const hint = document.querySelector(hi + ':not(.is-leaving)')
+      if (!dn.hint && seen(hint)) return 'hint'
+      if (!hint && document.querySelector(st)) return 'stage'
+      return ''
+    }, [stageSel, T('step-sheet'), T('step-hint'), done], { timeout: 15000 })).jsonValue()
+    if (what === 'stage') return
+    if (what === 'sheet') {
+      done.sheet = true
+      await page.click(def.method ? T('method-' + def.method.correct) : T('step-start'))
+    } else {
+      done.hint = true
+      if (shots) await g.shot('mg-the-buoc')
+      await page.tap(T('step-hint'), { timeout: 2000 }).catch(() => {})   // thẻ đã tự vào thì thôi
+    }
+  }
+  await page.waitForSelector(stageSel)
 }
 
 // Khuấy (xoay): khoảng cách tối thiểu giữa hai điểm vẽ vòng (24 điểm/vòng → ≤ 1,4 vòng/giây).

@@ -14,7 +14,7 @@
 //                thật sự bật được ngay sau khi kẹp phiếu khách thứ nhất.
 //   tip          tests/e2e/m4-tip-events.e2e.mjs (1): ca ngày 5 dựng sẵn 2 phiếu đã nấu xong (tests/helpers/m4-saves.mjs
 //                tipShiftSave), giao sau 12 giây game vẫn 5 sao: 1 phiếu hóa đơn < 20.000đ (tip 0), 1 phiếu ≥ 20.000đ (tip 5.000đ).
-//   attp         tests/e2e/m4-tip-events.e2e.mjs (2): ngày có "Đoàn kiểm tra vệ sinh" lần 2 trong 7–14 ngày (builtAttpSave),
+//   attp         tests/e2e/m4-tip-events-attp.e2e.mjs: ngày có "Đoàn kiểm tra vệ sinh" lần 2 trong 7–14 ngày (builtAttpSave),
 //                tình huống thứ nhất của ca là tình huống M4 mới, xuất hiện sau khách thứ nhất trở đi và bật được.
 //   mon-hiem     tests/e2e/m4-rare.e2e.mjs: ghé "Xe ba gác trưa" 12:00 (lựa đúng hàng, 100 điểm), nấu thử mở Trà tắc mật ong
 //                rừng, mở ca → khách đầu tiên gọi món hiếm.
@@ -150,7 +150,7 @@ const SCENARIOS = {
   },
   attp: {
     current: 92,
-    where: 'tests/e2e/m4-tip-events.e2e.mjs (2) builtAttpSave(seed)',
+    where: 'tests/e2e/m4-tip-events-attp.e2e.mjs builtAttpSave(seed)',
     ok(seed) {
       const b = builtAttpSave(seed)
       if (!b) return null

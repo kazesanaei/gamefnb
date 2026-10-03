@@ -131,7 +131,8 @@ export const TOURS = Object.freeze({
     ])
   }),
   // ---------- Quầy: khách chuyển khoản QR (từ ngày 4) ----------
-  // Khách giơ điện thoại có ảnh chuyển khoản, ô báo tiền của quán (chuông điện thoại quán hoặc Loa báo tiền), hai nút dính đáy.
+  // Kệ "Mã QR của xe" trên mặt quầy, khách giơ điện thoại có ảnh "Đã chuyển ✓ → tên xe + số tiền" (ảnh thật, ảnh giả như nhau),
+  // ô báo tiền của quán (chuông điện thoại quán hoặc Loa báo tiền) — chỉ ô này cho biết tiền về thật; hai nút dính đáy.
   quay_qr: Object.freeze({
     screen: 'service', spot: 'qr', name: 'Quầy · Chuyển khoản', veteranDay: 5,
     steps: Object.freeze([

@@ -110,7 +110,11 @@
 .qc-phone { position: relative; width: 100%; aspect-ratio: 120 / 196; }
 .qc-phone-art { position: absolute; inset: 0; display: block; line-height: 0; }
 .qc-phone-art svg { display: block; width: 100%; height: 100%; overflow: visible; }
-/* ảnh chụp "chuyển khoản thành công": ✓, "Đã chuyển", → tên xe (tối đa 2 dòng) */
+/* ảnh chụp "chuyển khoản thành công": ✓, "Đã chuyển", → tên xe. Lề ngang 2px: chữ không chạm mép màn hình. Màn hình hẹp
+   (điện thoại 100–104px, màn hình ~60px) không đủ chỗ cho "Đã chuyển" một dòng → xuống hai dòng "Đã / chuyển". Tên xe tối
+   đa 2 dòng, line-height 1.25, cao đúng 2 dòng; counter-qr.js (fitShot) cắt CHỮ theo từ ("…") cho vừa chỗ còn lại, không
+   để dòng 3 tồn tại (chỉ -webkit-line-clamp thì dòng 3 vẫn được vẽ và dấu thanh của nó ló lên dưới dòng 2); chỉ còn một từ
+   của tên nhiều từ thì ẩn dòng. Kẹp dòng ở đây chỉ là lưới an toàn khi JS chưa đo. */
 .qc-shot {
   position: absolute;
   display: flex;
@@ -119,7 +123,7 @@
   justify-content: center;
   gap: 2px;
   overflow: hidden;
-  padding: 0 1px;
+  padding: 0 2px;
   color: var(--g-ink);
   text-align: center;
   pointer-events: none;
@@ -128,27 +132,34 @@
 .qc-shot-ok svg { display: block; width: 100%; height: 100%; }
 .qc-shot-t {
   display: block;
+  flex: none;
+  max-width: 100%;
   color: var(--g-go-dark);
   font-family: var(--g-font-display);
   font-weight: 800;
   font-size: 13px;
   line-height: 1.1;
   letter-spacing: -.04em;
-  white-space: nowrap;
+  text-wrap: balance;
 }
+/* lề trên / dưới trong khung cắt: dấu chồng của chữ hoa dòng 1 ("Ẩ", "Ổ") và dấu nặng dòng 2 không bị cắt; cao = lề + 2 dòng */
 .qc-shot-to {
   display: -webkit-box;
+  flex: none;
   max-width: 100%;
+  max-height: 2.8em;
+  padding: .2em 0 .1em;
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   color: var(--g-ink-soft);
   font-size: 13px;
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1.25;
   letter-spacing: -.02em;
   overflow-wrap: anywhere;
 }
+.qc-shot-to.is-off { display: none; }
 .qc-shot-amt {
   position: absolute;
   display: flex;
@@ -165,6 +176,8 @@
   pointer-events: none;
 }
 .qc-shot-amt b { font-weight: 800; }
+/* số 6 chữ số ("125.000đ") khít hơn để không chạm mép màn hình ~60px */
+.qc-shot-amt.is-long { letter-spacing: -.055em; }
 .qc-phone.is-small .qc-shot { gap: 0; }
 .qc-phone.is-small .qc-shot-ok { width: 64%; }
 

@@ -848,6 +848,8 @@
 .co-pad > .co-pad-actions { margin-left: -18px; margin-right: -18px; }
 .co-pad-actions .g-btn { min-height: 58px; padding: 8px 12px 7px; gap: 6px; font-size: 19px; white-space: nowrap; }
 .co-pad-read { flex: 1 1 0; }
+/* đang sáng lượt đọc lại của chính phiếu này (order-pad: is-busy + aria-busy): nút mờ đi, bấm lặp không có tác dụng */
+.co-pad-read.is-busy { opacity: .72; cursor: progress; }
 .co-pad-ok { flex: 1.3 1 0; }
 .co-pad-actions .g-btn svg { width: 28px; height: 28px; }
 
@@ -1416,6 +1418,38 @@ html.reduce-motion .co-line.is-reading::before { animation: none !important; opa
 .co-fit-tiny .co-tutor.is-dock .co-tutor-face { display: none; }
 .co-fit-tiny .co-tutor.is-dock .co-tutor-text::before { display: none; }
 .co-fit-tiny .co-tutor.is-dock .co-tutor-text::after { top: -6px; height: 11px; }
+
+/* ngày 1, phiếu order còn trống, panel thấp: lời Dì Sáu nằm dưới bong bóng (counter.js gắn .co-tut-under). Khách nhỏ lại,
+   bong bóng xếp một hàng (hình món bên trái, câu gọi món bên phải) để bong bóng, lời nhắc và đầu hàng thẻ món (viền sáng)
+   cùng lọt trên hàng nút dính đáy; panel rất thấp chỉ đủ bong bóng + lời nhắc, thẻ món lộ mép trên (cuộn xuống chọn). */
+.co-fit-low.co-tut-under .co-cust { --co-fig: 62px; padding-top: 4px; }
+.co-fit-low.co-tut-under .co-bubble[data-mode="icons"][data-n="1"] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: calc(var(--co-counter) + 6px);
+  padding: 4px 12px 4px 6px;
+}
+.co-fit-low.co-tut-under .co-bubble[data-mode="icons"][data-n="1"] .co-bubble-dishes { flex: none; }
+.co-fit-low.co-tut-under .co-bubble[data-mode="icons"][data-n="1"] .co-bubble-art { width: 46px; height: 46px; }
+.co-fit-low.co-tut-under .co-bubble[data-mode="icons"][data-n="1"] .co-bubble-say {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  -webkit-line-clamp: 2;
+  font-size: 14px;
+  line-height: 1.25;
+  text-align: left;
+}
+.co-fit-low.co-tut-under .co-cust-wrap .co-bubble[data-mode="icons"][data-n="1"]::after { top: calc(50% - 10px); bottom: auto; }
+.co-fit-low.co-tut-under .co-tutor { margin-top: 6px; }
+.co-fit-low.co-tut-under .co-order > .co-menu { margin-top: 14px; }
+.co-fit-tiny.co-tut-under .co-cust { --co-fig: 46px; padding-top: 2px; }
+.co-fit-tiny.co-tut-under .co-bubble[data-mode="icons"][data-n="1"] { margin-bottom: 4px; padding: 3px 10px 3px 5px; }
+.co-fit-tiny.co-tut-under .co-bubble[data-mode="icons"][data-n="1"] .co-bubble-art { width: 38px; height: 38px; }
+.co-fit-tiny.co-tut-under .co-bubble[data-mode="icons"][data-n="1"] .co-bubble-say { font-size: 13px; }
+.co-fit-tiny.co-tut-under .co-cust-wrap .co-bubble[data-mode="icons"][data-n="1"]::after { top: calc(50% - 8px); }
+.co-fit-tiny.co-tut-under .co-tutor { margin-top: 4px; }
 
 /* ---------- Giảm chuyển động (phần quầy thật) ---------- */
 @media (prefers-reduced-motion: reduce) {

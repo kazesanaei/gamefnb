@@ -1,5 +1,5 @@
 // Dựng save cho e2e M4 bằng lõi thật (người chơi hoàn hảo, đồng hồ giả). Dùng chung cho tests/e2e/m4-rare.e2e.mjs,
-// tests/e2e/m4-tip-events.e2e.mjs và tools/tim-seed.mjs (tìm seed): sửa hàm dựng ở đây thì cả e2e lẫn công cụ tìm seed
+// tests/e2e/m4-tip-events.e2e.mjs, tests/e2e/m4-tip-events-attp.e2e.mjs và tools/tim-seed.mjs (tìm seed): sửa hàm dựng ở đây thì cả e2e lẫn công cụ tìm seed
 // cùng đổi theo, không phải chép tay hai nơi.
 import { DATA } from '../../src/data/index.js'
 import { defaultState } from '../../src/core/state.js'
@@ -99,7 +99,7 @@ export function tipShiftSave(seed) {
   return { state, tickets }
 }
 
-// ---------- m4-tip-events (2): kiểm tra vệ sinh tái phạm (phạt) + tình huống mới ----------
+// ---------- m4-tip-events-attp: kiểm tra vệ sinh tái phạm (phạt) + tình huống mới ----------
 
 // Tình huống M4 chạy theo dữ liệu (8 loại mới).
 export const NEW_INCIDENTS = Object.freeze(['tien_nghi_gia', 'shipper_chuyen_khoan', 'gas_het', 'khach_quen_vi', 've_chai',

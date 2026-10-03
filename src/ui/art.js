@@ -15,7 +15,7 @@
 // - DI_SAU, ANH_KHOA, CO_HANH trả mặt tròn 64 MỚI của src/ui/art/people.js, cùng bộ khóa (xem mục "Người" bên dưới).
 // - Xuất lại từ people.js: bust(persona, mood, { gender, who }) bán thân 96 × 112, head() mặt tròn 64, BUSTS, HEADS,
 //   PEOPLE_META, WHO_LOOKS, DI_SAU_POSES, DI_SAU_POSE_MOOD, ANH_KHOA_BUSTS, CO_HANH_BUSTS; thêm headFace() (mặt mới, API face()).
-// - FACES / face() tạm giữ bộ mặt cũ (LEGACY_FACES / legacyFace), lý do ghi ở mục "Người".
+// - FACES / face() trả mặt mới (HEADS / headFace); bộ mặt cũ giữ ở LEGACY_FACES / legacyFace.
 // - Xuất lại từ scene.js: scene(id), SCENE, SCENE_ICONS, SCENE_META, STAGE_ICONS, TAB_ICONS, HUD_ICONS, phoneQr; thêm
 //   phoneQrSvg(variant) = điện thoại của khách có QR giả "QR GAME".
 import { ING_TUOI, ING_TUOI_STATES } from './art/ing-tuoi.js'
@@ -689,11 +689,10 @@ export function legacyIcon(id) {
 //   Dì Sáu có thêm 4 tư thế bán thân DI_SAU_POSES (ngon_cai, vo_tay, lau_mo_hoi, che_mat; tâm trạng ở DI_SAU_POSE_MOOD).
 // - Khách: bust(persona, mood, { gender, who }) là bán thân 96 × 112 (quầy, dải phố, phiếu chấm, tình huống); who = id khách
 //   quen / khách lạ / người bán (WHO_LOOKS) cho dáng riêng. head(…) là mặt tròn 64 cùng dáng; headFace(persona, mood,
-//   gender) là mặt mới với đúng API của face().
-// - FACES / face(persona, mood, gender): TẠM giữ bộ mặt cũ (LEGACY_FACES / legacyFace). Lý do: bustSvg của
-//   src/ui/components/order-bubble.js (hình dự phòng khi không dựng được bán thân mới) lồng face() vào khung 64 × 88 và test
-//   m5-order-ui giới hạn hình đó 6.000 byte, mà mặt mới nặng tới 5,4 KB. Khi order-bubble.js lồng legacyFace() thì đổi hai
-//   dòng "FACES = …" và "face = …" bên dưới sang HEADS và headFace (cùng bộ khóa 6 kiểu × 4 tâm trạng, cùng API).
+//   gender) là mặt mới với đúng API của face() (nay face = headFace).
+// - FACES / face(persona, mood, gender): mặt tròn 64 MỚI (FACES = HEADS, face = headFace), cùng bộ khóa 6 kiểu × 4 tâm
+//   trạng và cùng API như trước. Bộ mặt cũ giữ ở LEGACY_FACES / legacyFace (bustSvg dự phòng của order-bubble.js lồng mặt
+//   cũ vì test m5-order-ui giới hạn hình đó 6.000 byte, mặt mới nặng tới 5,4 KB).
 
 export const MOODS = Object.freeze(['vui', 'binh_thuong', 'buc', 'gian'])
 
@@ -803,9 +802,9 @@ export function headFace(persona, mood, gender = null, opts = null) {
   return head(persona, MOODS.includes(mood) ? mood : 'binh_thuong', o)
 }
 
-/** FACES[kiểu][tâm trạng] và face(persona, mood, gender): mặt khách (tạm là bộ cũ, xem ghi chú đầu mục). */
-export const FACES = LEGACY_FACES
-export const face = legacyFace
+/** FACES[kiểu][tâm trạng] và face(persona, mood, gender): mặt khách mới (mặt tròn 64 của people.js). */
+export const FACES = HEADS
+export const face = headFace
 
 // Dì Sáu (khăn rằn trắng đen, áo bà ba nâu đỏ, tạp dề), Anh Khoa (nón lưỡi trai xanh, áo thun xanh lá), Cô Hạnh (tóc búi,
 // áo dài xanh nhạt, kính tròn): mặt tròn 64 mới.

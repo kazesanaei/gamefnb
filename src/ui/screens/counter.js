@@ -75,7 +75,7 @@ export function mountCounter(root, app, opts = {}) {
   const sheetPortal = createPortal(app.overlay || root)
 
   function freshUi(customerId) {
-    return { customerId, sheet: null, talk: [], digits: '', readback: null, noChangeKey: '', assistFilled: false, lastAdded: null, stageKey: null, reading: false, padMood: null }
+    return { customerId, sheet: null, talk: [], digits: '', readback: null, noChangeKey: '', assistFilled: false, lastAdded: null, stageKey: null, reading: false, readRun: 0, padMood: null }
   }
 
   const sh = () => app.state && app.state.shift
@@ -184,8 +184,9 @@ export function mountCounter(root, app, opts = {}) {
       ui.stageKey = stageKey
       if (c) revealStage(c)
     }
-    // ngày 1: nút được tô sáng vừa đổi mà còn khuất dưới hàng nút dính đáy (màn thấp) → cuộn cho thấy
-    if (glowMoved && glowEl) revealGlow(glowEl)
+    // ngày 1: nút được tô sáng vừa đổi mà còn khuất dưới hàng nút dính đáy (màn thấp) → cuộn cho thấy. Bước chạm thẻ món
+    // (phiếu trống): không cuộn khuất lời gọi món của khách — Dì Sáu bảo "ghi y vậy" thì người mới phải thấy khách nói gì.
+    if (glowMoved && glowEl) revealGlow(glowEl, c && c.stage === 'order' && !c.draft.length ? el.querySelector('[data-testid="speech-bubble"]') : null)
   }
 
   const isPaid = c => !!(c && (c.payMethod === 'cash' ? c.changeDone : c.paid))
@@ -264,6 +265,8 @@ export function mountCounter(root, app, opts = {}) {
     }
     const hint = mode === 'inline' ? firstSentence(full) : full
     if (tutorText.textContent !== hint) tutorText.textContent = hint
+    // lời nhắc dưới bong bóng: panel thấp thu gọn khách (css .co-tut-under) để bong bóng + lời nhắc + đầu hàng thẻ món cùng lọt
+    el.classList.toggle('co-tut-under', mode === 'under')
     const inBar = mode === 'dock' && host !== tutorDock
     if (tutorHost && tutorHost !== host) tutorHost.classList.remove('co-has-tutor')
     tutorHost = inBar ? host : null
@@ -419,7 +422,9 @@ export function mountCounter(root, app, opts = {}) {
   }
 
   // Cuộn panel (tức thì) để nút được tô sáng nằm trọn phía trên hàng nút dính đáy, không đẩy đầu nút khuất mép trên.
-  function revealGlow(t) {
+  // keep (tùy chọn): phần tử đang thấy đỉnh thì không được cuộn khuất đỉnh (lời gọi món của khách ở bước chạm thẻ món). Màn
+  // thấp không đủ chỗ cho cả hai: thẻ món chỉ lộ phần trên (viền sáng vẫn thấy), người chơi cuộn xuống — như bản 0.5.0.
+  function revealGlow(t, keep = null) {
     const sc = root
     if (destroyed || !sc || !sc.getBoundingClientRect || !el.contains(t)) return
     // nút nằm trong một hàng dính đáy thì luôn thấy
@@ -430,7 +435,14 @@ export function mountCounter(root, app, opts = {}) {
     const limit = bar && bar.getBoundingClientRect().height ? Math.min(box.bottom, bar.getBoundingClientRect().top) : box.bottom
     const r = t.getBoundingClientRect()
     const over = r.bottom - (limit - 8)
-    if (over > 0) sc.scrollTop += Math.min(over, Math.max(0, r.top - box.top - stripInset(ctx) - 8))
+    if (over <= 0) return
+    let d = Math.min(over, Math.max(0, r.top - box.top - stripInset(ctx) - 8))
+    if (keep && keep.isConnected) {
+      const k = keep.getBoundingClientRect()
+      const edge = box.top + stripInset(ctx) + 4
+      if (k.height && k.top >= edge - 0.5) d = Math.min(d, Math.max(0, k.top - edge))
+    }
+    if (d > 0) sc.scrollTop += d
   }
 
   // ---------- Vòng đời ----------

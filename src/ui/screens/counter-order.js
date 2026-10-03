@@ -305,15 +305,21 @@ export function railTarget(doc) {
 
 // "Đọc lại đơn": lời người bán; lõi chấm ngay (nút Chốt bật, lỗi khách bắt hiện ngay); phiếu sáng lần lượt từng dòng rồi
 // đánh ✓ / ✗; xong lượt sáng thì khách đáp, gật đầu (đúng) hoặc lắc đầu đổi mặt (khách bắt lỗi).
+// Đang sáng lượt đọc của CHÍNH phiếu này: bấm lặp bị bỏ (nút "Đọc lại đơn" mờ + aria-busy do order-pad đặt). Phiếu đã đổi
+// giữa lượt (khách bắt lỗi → bỏ / sửa dòng ngay): đọc lại phiếu mới liền, lượt cũ im (không đáp lời cũ, không nhả cờ của
+// lượt mới) — bản 0.5.0 không khóa nút này, người chơi sửa nhanh không bị nuốt lần bấm.
 // Tham số thứ hai (khách) giữ cho chữ ký bước 0, không dùng: khách luôn đọc lại từ state.
 export function doReadback(ctx, _customer) {
   const { app, R } = ctx
   const c = ctx.counter()
   const ui = ctx.ui
-  if (!c || c.stage !== 'order' || !c.draft.length || ui.reading) return
+  if (!c || c.stage !== 'order' || !c.draft.length) return
+  const key = JSON.stringify(c.draft)
+  if (ui.reading && ui.readback === key) return
   ctx.say('ban', typeof app.data.readbackText === 'function' ? app.data.readbackText(c.draft, R) : 'Dạ em đọc lại đơn ạ.')
   const res = readback(app.state, app.ctx)
-  const key = JSON.stringify(c.draft)
+  const run = (ui.readRun || 0) + 1
+  ui.readRun = run
   ui.readback = key
   app.save()
   ctx.rerender()
@@ -322,6 +328,8 @@ export function doReadback(ctx, _customer) {
   const finish = () => {
     if (done) return
     done = true
+    // lượt mới đã thay lượt này: cờ và lời đáp thuộc về lượt mới
+    if (ui.readRun !== run) return
     ui.reading = false
     if (ui !== ctx.ui || ctx.destroyed()) return
     const cc = ctx.counter()
