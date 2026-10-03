@@ -1030,3 +1030,134 @@ test('art-v2 người, cảnh: đóng băng sâu; mã nguồn không chứa từ
   const total = readdirSync(dir).filter(n => n.endsWith('.js')).reduce((n, f) => n + readFileSync(path.join(dir, f)).length, 0)
   assert.ok(total <= 320 * 1024, `tổng src/ui/art/* = ${total} B > 320 KB`)
 })
+
+// ---------- Đợt 3, gói M-H: hình meta (src/ui/art/meta.js) ----------
+const MH_SRC_MAX = 52 * 1024      // ngân sách mã nguồn meta.js (tổng src/ui/art/* ≤ 320 KB kiểm ở test trên)
+const MH_OUT_MAX = 128 * 1024     // tổng chuỗi SVG các hình khác nhau
+const MH_NEED = {
+  loi_vao: ['cho_cong_thuc', 'viec_hom_nay', 'diem_danh', 'hop_thu', 'so_cong_thuc', 'so_tay_nghe', 'cai_dat', 'su_kien', 'ganh_hang', 'kho_hiem'],
+  thuong: ['xu', 'muong_vang', 'ruong_dong', 'ruong_bac', 'ruong_vang', 'ruong_mo', 'manh_cong_thuc', 'tem', 'qua', 'thu', 'thu_mo', 'luot_gio_cho'],
+  diem_danh: ['o_lich', 'dau_tick', 'ngay_7'],
+  danh_hieu: ['huy_hieu_nen', 'cup', 'sao_lon'],
+  mon_tuong_lai: ['mon_goi_cuon', 'mon_bun_thit_nuong', 'mon_che_ba_mau']
+}
+const MH_ALIAS = { ruong: 'ruong_dong', lich: 'diem_danh' }
+
+test('art-v2 meta: đủ hình lối vào, phần thưởng, điểm danh, danh hiệu, món tương lai; nhóm khớp bảng; vẽ lại mọi hình meta cũ', async () => {
+  const M = await import('../../src/ui/art/meta.js')
+  const { SHOP, ITEMS } = await import('../../src/data/shop.js')
+  const { EVENTS } = await import('../../src/data/events.js')
+  for (const [g, ids] of Object.entries(MH_NEED)) {
+    for (const id of ids) assert.ok(M.META_ART[id], `thiếu hình ${id} (${g})`)
+    for (const id of ids) assert.ok(M.META_GROUPS[g].includes(id), `nhóm ${g} thiếu ${id}`)
+  }
+  // Mọi id trong nhóm đều có hình; mọi hình thuộc ít nhất một nhóm (trừ bí danh).
+  const grouped = new Set(Object.values(M.META_GROUPS).flat())
+  for (const id of grouped) assert.ok(M.META_ART[id], `nhóm trỏ tới hình không có: ${id}`)
+  for (const id of Object.keys(M.META_ART)) assert.ok(grouped.has(id) || MH_ALIAS[id], `hình ${id} không thuộc nhóm nào`)
+  for (const k of Object.keys(M.META_ART)) assert.match(k, /^[a-z0-9_]+$/, `id ${k}`)
+  // Hình chỉ có ở bộ cũ của art.js (sự kiện, thư, rương, lịch, danh hiệu, món tương lai…) đều được vẽ lại cùng id.
+  const oldOnly = Object.keys(LEGACY_ICONS).filter(k => k !== 'fallback' && !ICONS_V2[k])
+  assert.ok(oldOnly.length >= 19, `còn ${oldOnly.length} hình cũ`)
+  for (const id of oldOnly) assert.ok(M.META_ART[id], `chưa vẽ lại hình cũ ${id}`)
+  assert.deepEqual([...M.META_GROUPS.hinh_cu].sort(), [...oldOnly].sort(), 'nhóm hinh_cu = đúng các hình chỉ có ở bộ cũ')
+  // Món tương lai ở Chợ công thức, vật phẩm cửa hàng, tiền tệ sự kiện có hình.
+  for (const t of SHOP.teasers) assert.ok(M.META_ART[t.icon], `món tương lai ${t.id}`)
+  for (const it of Object.values(ITEMS)) assert.ok(M.META_ART[it.icon], `vật phẩm ${it.id}`)
+  for (const ev of Object.values(EVENTS)) assert.ok(M.META_ART[ev.currencyId], `tiền tệ sự kiện ${ev.currencyId}`)
+  // Bí danh và hình dùng chung.
+  for (const [a, id] of Object.entries(MH_ALIAS)) assert.equal(M.META_ART[a], M.META_ART[id], `${a} = ${id}`)
+  assert.equal(M.META_ART.muong_vang, TOOLS.muong_vang, 'Muỗng Vàng dùng chung hình đã duyệt ở tools.js')
+})
+
+test('art-v2 meta: EVENT_ART phủ mọi sự kiện ngày, sự kiện lễ (và chuỗi), tình huống; ENTRY_ART, REWARD_ART trỏ tới hình có thật', async () => {
+  const M = await import('../../src/ui/art/meta.js')
+  const { DAY_EVENTS } = await import('../../src/data/day-events.js')
+  const { INCIDENTS } = await import('../../src/data/incidents.js')
+  const { EVENTS } = await import('../../src/data/events.js')
+  const { SUB_SCREENS } = await import('../../src/ui/app.js')
+  const ids = [...Object.keys(DAY_EVENTS), ...Object.keys(INCIDENTS), ...Object.keys(EVENTS),
+    ...Object.values(EVENTS).filter(e => e.chain).map(e => e.chain.id)]
+  for (const id of ids) {
+    assert.ok(M.EVENT_ART[id], `EVENT_ART thiếu ${id}`)
+    assert.ok(M.META_ART[M.EVENT_ART[id]], `EVENT_ART.${id} trỏ tới hình không có`)
+  }
+  // 12 sự kiện ngày có 12 hình riêng, mỗi hình vẽ đúng id của sự kiện (khớp icon trong dữ liệu).
+  for (const [id, de] of Object.entries(DAY_EVENTS)) assert.equal(M.EVENT_ART[id], de.icon || id, id)
+  assert.equal(new Set(Object.keys(DAY_EVENTS).map(id => M.META_ART[M.EVENT_ART[id]])).size, Object.keys(DAY_EVENTS).length)
+  // Ít nhất 19 hình sự kiện / tình huống vẽ riêng (mục 6.2 hàng Đợt 3).
+  assert.ok(M.META_GROUPS.su_kien.length >= 19, `có ${M.META_GROUPS.su_kien.length} hình sự kiện`)
+  for (const v of Object.values(M.ENTRY_ART)) assert.ok(M.META_ART[v], `ENTRY_ART → ${v}`)
+  for (const v of Object.values(M.REWARD_ART)) assert.ok(M.META_ART[v], `REWARD_ART → ${v}`)
+  assert.deepEqual(Object.values(M.ENTRY_ART).sort(), [...MH_NEED.loi_vao].sort(), 'mỗi lối vào một hình')
+  for (const k of Object.keys(M.ENTRY_ART)) assert.ok(SUB_SCREENS.includes(k) || ['checkin', 'rare'].includes(k), `ENTRY_ART.${k} không phải tên màn`)
+  assert.equal(M.REWARD_ART.gold, 'muong_vang')
+  assert.equal(M.REWARD_ART.money, 'xu')
+  assert.equal(M.REWARD_ART.fragments, 'manh_cong_thuc')
+})
+
+test('art-v2 meta: đúng quy chuẩn vẽ (viewBox 64, viền mực 3, không gradient / filter / chữ, tọa độ 1 chữ số, ≤ 3,5 KB, bóng đất, điểm sáng)', async () => {
+  const M = await import('../../src/ui/art/meta.js')
+  let total = 0
+  for (const [id, s] of Object.entries(M.META_ART)) {
+    qfCheckSvg(`META_ART.${id}`, s, '0 0 64 64', QF_ICON_MAX)
+    assert.ok(!/<text\b|TIỀN|QR GAME/.test(s), `${id}: không chữ trong hình`)
+    const g = s.match(/<ellipse cx="[\d.]+" cy="([\d.]+)" rx="[\d.]+" ry="[\d.]+" fill="#3a2618" opacity="\.15" stroke="none"\/>/)
+    assert.ok(g && Number(g[1]) >= 55 && Number(g[1]) <= 60, `${id}: bóng đất y≈58`)
+    assert.ok(/fill="#fff" opacity="\.\d"|stroke="#fff"/.test(s), `${id}: điểm sáng trắng`)
+    assert.ok(/fill="#[0-9a-f]{6}" stroke="none"/.test(s) || /opacity="\.\d+" stroke="none"/.test(s), `${id}: có mảng tô không viền (tông tối / điểm sáng)`)
+    if (!MH_ALIAS[id]) total += Buffer.byteLength(s)
+  }
+  assert.ok(total <= MH_OUT_MAX, `tổng SVG meta ${total} B > ${MH_OUT_MAX} B`)
+})
+
+test('art-v2 meta: không hình nào trùng (trừ bí danh); rương ba bậc khác nhau; hàng hiếm có sao #ffd23f', async () => {
+  const M = await import('../../src/ui/art/meta.js')
+  const own = Object.entries(M.META_ART).filter(([id]) => !MH_ALIAS[id])
+  assert.equal(new Set(own.map(([, s]) => s)).size, own.length, 'mỗi id một hình riêng')
+  const { ruong_dong: d, ruong_bac: b, ruong_vang: v, ruong_mo: mo, kho_hiem: kh } = M.META_ART
+  assert.equal(new Set([d, b, v, mo, kh]).size, 5)
+  assert.ok(d.includes('#dc8f4e') && b.includes('#e6ebf1') && v.includes('#f7b928'), 'nẹp đồng / bạc / vàng')
+  for (const id of ['kho_hiem', 'manh_cong_thuc']) assert.ok(M.META_ART[id].includes('fill="#ffd23f" stroke-width="2.2"'), `${id}: sao hàng hiếm`)
+  for (const id of ['thu', 'qua', 'o_lich', 'hop_thu']) assert.ok(!M.META_ART[id].includes('#ffd23f'), `${id}: hàng thường không có sao hiếm`)
+  assert.notEqual(M.META_ART.qua, M.META_ART.ngay_7, 'quà ngày 7 khác quà thường')
+  assert.notEqual(M.META_ART.huy_hieu_nen, M.META_ART.danh_hieu, 'huy hiệu nền để trống, danh hiệu có sao')
+})
+
+test('art-v2 meta: metaArt tra id hình rồi id sự kiện; id lạ / kế thừa / không phải chuỗi trả \'\'; bóng mờ hợp lệ, ổn định', async () => {
+  const M = await import('../../src/ui/art/meta.js')
+  assert.equal(M.metaArt('xu'), M.META_ART.xu)
+  assert.equal(M.metaArt('xu', {}), M.META_ART.xu)
+  assert.equal(M.metaArt('khach_que_gui_qua'), M.META_ART.qua, 'tình huống → hình qua EVENT_ART')
+  assert.equal(M.metaArt('tri_an_20_11_chuoi'), M.META_ART.tri_an_20_11)
+  for (const bad of ['khong_co', 'constructor', 'toString', '__proto__', '', undefined, null, 42, {}]) {
+    assert.equal(M.metaArt(bad), '', `id lạ ${String(bad)}`)
+    assert.equal(M.metaArt(bad, { silhouette: true }), '', `id lạ ${String(bad)} (bóng mờ)`)
+  }
+  for (const id of [...MH_NEED.mon_tuong_lai, 'ruong_vang', 'qua', 'nguoi_ban_dao']) {
+    const s = M.metaArt(id, { silhouette: true })
+    qfCheckSvg(`${id}.bong_mo`, s, '0 0 64 64', QF_ICON_MAX)
+    assert.notEqual(s, M.metaArt(id), `${id}: bóng mờ khác hình gốc`)
+    assert.equal(s, M.metaArt(id, { silhouette: true }), `${id}: ổn định`)
+    assert.ok(!/fill="#fff"|stroke="#fff"/.test(s), `${id}: bóng mờ bỏ điểm sáng`)
+    const fills = new Set([...s.matchAll(/fill="(#[0-9a-f]{6})"/g)].map(m => m[1]))
+    assert.ok([...fills].every(c => c === '#3a2618' || c === '#d3c6b0'), `${id}: bóng mờ một màu (${[...fills]})`)
+    assert.ok(s.includes('opacity=".15"'), `${id}: bóng mờ giữ bóng đất`)
+  }
+})
+
+test('art-v2 meta: đóng băng sâu; mã nguồn không chứa từ cấm; ngân sách mã nguồn', async () => {
+  const M = await import('../../src/ui/art/meta.js')
+  for (const o of [M.META_ART, M.META_GROUPS, M.EVENT_ART, M.ENTRY_ART, M.REWARD_ART]) assert.ok(isDeepFrozen(o))
+  assert.throws(() => { 'use strict'; M.META_ART.xu = '' })
+  assert.throws(() => { 'use strict'; M.META_GROUPS.thuong.push('x') })
+  const raw = readFileSync(path.join(ROOT, 'src', 'ui', 'art', 'meta.js'))
+  assert.ok(raw.length <= MH_SRC_MAX, `meta.js ${raw.length} B > ${MH_SRC_MAX} B`)
+  const src = raw.toString('utf8').toLowerCase()
+  for (const w of ['grab', 'napas', 'ipos', 'momo', 'fabi', 'vnpay', 'zalopay', 'vietqr', 'baemin', 'shopeefood', 'michelin', 'cooking mama']) {
+    assert.ok(!src.includes(w), `meta.js chứa "${w}"`)
+  }
+  for (const [id, s] of Object.entries(M.META_ART)) {
+    for (const w of ['grab', 'napas', 'ipos', 'momo', 'vietqr']) assert.ok(!s.toLowerCase().includes(w), `${id} chứa "${w}"`)
+  }
+})
