@@ -1,7 +1,8 @@
 // Quầy, khâu 3 (Tính tiền) — phiếu thu sau khi đã thu đủ (tiền mặt hoặc chuyển khoản) và nút "Kẹp phiếu bếp" dính đáy (bếp
 // đầy thì khóa, kèm dòng nhắc). M5 Đợt 2 (gói Q-C): máy in phiếu (art/scene.js may_in_phieu) đặt sau mép quầy gỗ, phiếu giấy
 // nhiệt mép răng cưa đứng trên khe máy in: tên xe, số phiếu, giờ in, từng món (hình món + số lượng + ghi chú), phần chênh,
-// Tổng, phương thức, tiền khách đưa / tiền thối / làm tròn, con dấu "ĐÃ THU" (chuyển khoản bằng ảnh giả: "ẢNH GIẢ").
+// Tổng, phương thức, tiền khách đưa / tiền thối / làm tròn, hàng cuối "Cảm ơn quý khách!" kèm con dấu "ĐÃ THU" nằm trong
+// hàng (chuyển khoản bằng ảnh giả: "ẢNH GIẢ") — dấu không đè số tiền nào.
 // Giữ: [receipt] .receipt-head span = "Phiếu thu #001" (e2e đọc số phiếu bằng .split(' ').pop()), data-total, receipt-adjust,
 // receipt-rounding, rail-full, clip-ticket.
 //
@@ -28,6 +29,9 @@ export const RECEIPT_FX = Object.freeze({ print: 660, stampAt: 600, stamp: 220, 
 
 /** Chữ con dấu trên phiếu: đã thu đủ / chuyển khoản bằng ảnh giả (không có tiền về). */
 export const RECEIPT_STAMPS = Object.freeze({ paid: 'ĐÃ THU', lost: 'ẢNH GIẢ' })
+
+// Góc nghiêng con dấu (độ) — khớp transform của .rc-stamp trong css/receipt.css.
+const STAMP_TILT = -9
 
 // ctx.ui (đổi khi đổi khách) → { printed, time }
 const uiFx = new WeakMap()
@@ -65,7 +69,8 @@ export function renderReceipt(ctx, c) {
     h('div', { class: 'receipt-head rc-head' },
       h('b', { class: 'rc-shop' }, app.state.shopName || S.gameTitle),
       h('span', { class: 'rc-no' }, S.labels.receipt + ' ' + noStr),
-      h('small', { class: 'rc-meta' }, `Ngày ${s.day} · ${st.time}`)),
+      // giờ in; panel thấp bỏ phần "Ngày n ·" (HUD đã có) để số phiếu và giờ cùng một hàng
+      h('small', { class: 'rc-meta' }, h('span', { class: 'rc-day' }, `Ngày ${s.day} · `), st.time)),
     h('ul', { class: 'rc-lines' }, c.draft.map(l => {
       const r = R[l.recipeId]
       const unit = unitPriceOf(r, l.notes)
@@ -82,12 +87,13 @@ export function renderReceipt(ctx, c) {
       ? row('rc-adjust', total < listTotal ? 'Thu thiếu' : 'Thu thêm', (total < listTotal ? '−' : '+') + formatVND(Math.abs(listTotal - total)), { testid: 'receipt-adjust' })
       : null,
     h('div', { class: 'rc-row rc-total' }, h('span', { class: 'rc-k' }, S.labels.total), h('b', { class: 'rc-v' }, formatVND(total))),
-    row('rc-method', 'Phương thức', qr ? S.labels.qr : S.labels.cash),
+    row('rc-method', 'Trả bằng', qr ? S.labels.qr : S.labels.cash),
     cash && c.given ? row('', S.labels.given, formatVND(c.given.total)) : null,
-    cash ? row('', 'Tiền thối', formatVND(c.changePaid)) : null,
+    cash ? row('rc-change', 'Tiền thối', formatVND(c.changePaid)) : null,
     cash && c.rounding > 0 ? row('rc-small', 'Trong đó làm tròn cho khách', formatVND(c.rounding), { testid: 'receipt-rounding' }) : null,
-    h('p', { class: 'rc-thanks' }, 'Cảm ơn quý khách!'),
-    stamp)
+    // hàng cuối: lời cảm ơn bên trái, con dấu nằm TRONG hàng bên phải (lề trên / dưới của dấu chừa đủ phần dấu xoay lòi ra)
+    // nên dấu không bao giờ đè lên số tiền của các hàng trên, ở mọi khung
+    h('div', { class: 'rc-thanks' }, h('span', { class: 'rc-thanks-t' }, 'Cảm ơn quý\u00a0khách!'), stamp))
   const machine = h('div', { class: 'rc-machine', 'aria-hidden': 'true' }, svgBox(scene('may_in_phieu'), 'rc-machine-art'))
 
   const wrap = h('div', { class: 'rc-wrap' },
@@ -122,7 +128,7 @@ function playPrint(ctx, paper, machine, stamp) {
     ], { duration: RECEIPT_FX.print, easing: 'ease-out', fill: 'backwards' })
     animate(machine, [0, 1.5, 0, 1.5, 0, 1.5, 0, 1, 0].map(y => ({ transform: `translateY(${y}px)` })),
       { duration: RECEIPT_FX.print, easing: 'linear' })
-    const T = 'rotate(-12deg)'
+    const T = `rotate(${STAMP_TILT}deg)`
     animate(stamp, [
       { opacity: 0, transform: `${T} scale(1.9)` },
       { opacity: 1, transform: `${T} scale(.94)`, offset: 0.8 },

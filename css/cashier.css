@@ -300,7 +300,8 @@
   box-shadow: inset 0 3px 5px rgba(58, 38, 24, .2), inset 0 -2px 0 rgba(255, 255, 255, .6);
 }
 .cs-tray.is-empty .cs-tray-bed { justify-content: center; }
-.cs-tray-empty { padding: 4px 6px; font-size: 14px; font-weight: 700; color: #4d5a68; text-align: center; }
+/* chữ khay trống: #3f4a56 đạt 5,27:1 trên điểm nền tối nhất của khay (#bcc7d3) — trên ngưỡng 4,5:1 */
+.cs-tray-empty { padding: 4px 6px; font-size: 14px; font-weight: 700; color: #3f4a56; text-align: center; }
 .cs-tray-stack {
   position: relative; flex: none; width: 90px; height: 52px; min-width: 44px; min-height: 44px; padding: 0;
   border: 0; border-radius: 8px; background: transparent; color: inherit;

@@ -1,12 +1,17 @@
 // Quầy, khâu 3 (Tính tiền) — chuyển khoản QR (M5 Đợt 2, gói Q-C).
-// Cảnh: mặt quầy, khách giơ điện thoại (art/scene.js phoneQr + QR giả fakeQrSvg có chữ "QR GAME") — màn hình là ảnh
-// chuyển khoản (mã QR của xe + số tiền ở dải dưới); bên cạnh là thẻ Tổng và ô báo tiền của quán ([qr-status, data-arrived]:
-// Loa báo tiền nếu đã mua, không thì điện thoại của quán). Thanh nút dính đáy: "Từ chối ảnh giả" / "Đã nhận đủ".
-// Đã thu xong: thu gọn thành một dòng (điện thoại nhỏ + "Đã nhận …") để phiếu thu bên dưới đủ chỗ.
+// Cảnh mặt quầy, đọc từ trái sang phải đúng thứ tự việc xảy ra:
+//   - kệ mã QR của xe đứng trên mặt quầy (QR giả fakeQrSvg có chữ "QR GAME", nhãn "Mã QR của xe") — khách đã quét mã này;
+//   - khách giơ điện thoại (art/scene.js dien_thoai, màn hình trống) — màn hình là ẢNH CHỤP "chuyển khoản thành công": dấu ✓,
+//     "Đã chuyển", → tên xe, số tiền. Ảnh thật và ảnh giả trông y hệt nhau (đúng luật: ảnh chụp không phải là tiền);
+//   - thẻ Tổng và ô báo tiền của quán ([qr-status, data-arrived]: Loa báo tiền nếu đã mua, không thì điện thoại của quán) —
+//     chỉ ô này mới cho biết tiền đã về thật.
+// Thanh nút dính đáy: "Từ chối ảnh giả" / "Đã nhận đủ". Đã thu xong: thu gọn thành một dòng (điện thoại nhỏ + "Đã nhận …")
+// để phiếu thu bên dưới đủ chỗ.
 //
 // Hiệu ứng chỉ chạy theo SỰ KIỆN, vẽ lại không phát lại (panel Quầy vẽ lại toàn bộ theo stateSig):
 //   - tiền về: sự kiện 'qr.arrived' trên bus (nghe bằng một lần đăng ký cho mỗi panel, tự gỡ khi panel đã hủy) → âm "ting",
-//     ghi một cờ cho khách đang ở quầy; lần vẽ kế tiếp tiêu cờ: vệt quét sáng chạy dọc màn hình điện thoại + ô báo tiền nảy;
+//     ghi một cờ cho khách đang ở quầy; lần vẽ kế tiếp tiêu cờ: vệt quét sáng chạy ngang ô báo tiền (điện thoại / loa của
+//     quán — nơi tiền về thật) + ô báo tiền nảy;
 //   - khách giơ máy: lần đầu khâu QR hiện cho khách này (không tính lần dựng đầu sau khi mở lại game) → điện thoại đưa lên;
 //   - bấm "Đã nhận đủ" khi tiền đã về → âm "keng", xu bay từ điện thoại về ví HUD (sự kiện DOM 'vfx-coin' trên
 //     [data-testid="hud-wallet"] như tiền mặt, source 'qr'); tiền chưa về → ô báo tiền rung; xác nhận nhầm ảnh giả → bản sao
@@ -18,7 +23,7 @@
 // Mọi hàm nhận ctx chung của panel Quầy (counter.js). Import trong Node được: không chạm DOM ở cấp module.
 import { h, svgBox } from '../dom.js'
 import { fakeQrSvg } from '../art.js'
-import { phoneQr, SCENE_META } from '../art/scene.js'
+import { scene, SCENE_META } from '../art/scene.js'
 import { INK } from '../art/kit.js'
 import { confirmQr, rejectQr, qrSpeakerOn } from '../../core/order.js'
 import { isReduced, EASE } from '../motion.js'
@@ -84,14 +89,17 @@ const pct = (v, of) => `${Math.round((v / of) * 10000) / 100}%`
 function boxStyle(r) {
   return { left: pct(r.x, PH.vb[0]), top: pct(r.y, PH.vb[1]), width: pct(r.w, PH.vb[0]), height: pct(r.h, PH.vb[1]) }
 }
-// dải số tiền: cao bằng dải của hình, rộng bằng màn hình (số dài vẫn nằm trong màn)
+// Ảnh chụp "chuyển khoản thành công" trên màn hình: phần dưới dải màu đầu màn hình tới trên dải số tiền (dấu ✓, "Đã chuyển",
+// → tên xe); dải số tiền cao bằng dải của hình, rộng bằng màn hình (số dài vẫn nằm trong màn).
+const HEAD_H = 14
+const SHOT_BOX = { x: PH.screen.x, y: PH.screen.y + HEAD_H, w: PH.screen.w, h: PH.note.y - PH.screen.y - HEAD_H - 1 }
 const NOTE_BOX = { x: PH.screen.x, y: PH.note.y, w: PH.screen.w, h: PH.note.h }
 
-let phoneArtCache = ''
-// Điện thoại của khách có mã QR (giả, chữ "QR GAME") của xe trên màn hình. Dựng lười, một lần.
-function phoneArt() {
-  if (!phoneArtCache) phoneArtCache = phoneQr(fakeQrSvg(0))
-  return phoneArtCache
+// Kệ mã QR của xe (QR giả, chữ "QR GAME"). Dựng lười, một lần.
+let standQrCache = ''
+function standQr() {
+  if (!standQrCache) standQrCache = fakeQrSvg(0)
+  return standQrCache
 }
 
 // ---------- Trạng thái giao diện theo khách (cờ hiệu ứng), đăng ký bus theo panel ----------
@@ -158,6 +166,7 @@ export function renderQr(ctx, customer, c) {
   const paid = !!c.paid
   const lost = paid && !!c.fakeQr
   const amount = formatVND(c.amountDue)
+  const shop = app.state.shopName || S.gameTitle || ''
   const source = owned ? (speakerOn ? 'Loa báo tiền' : 'Loa báo tiền (mất điện)') : 'Điện thoại của quán'
   const statusText = lost ? 'Không có tiền về' : arrived ? fill(S.labels.qrArrived, { amount }) : S.labels.qrWaiting
   const statusIcon = lost ? markSvg(false) : (paid ? markSvg(true) : owned ? speakerSvg(speakerOn) : bellSvg())
@@ -168,17 +177,21 @@ export function renderQr(ctx, customer, c) {
   svgBox(statusIcon, 'qc-status-ico'),
   h('span', { class: 'qc-status-body' },
     h('b', { class: 'qc-status-text' }, statusText),
-    h('small', { class: 'qc-status-src' }, paid ? (lost ? 'Ảnh chuyển khoản giả' : 'Chuyển khoản QR') : source)))
+    h('small', { class: 'qc-status-src' }, paid ? (lost ? 'Ảnh chuyển khoản giả' : 'Chuyển khoản QR') : source)),
+  // vệt quét sáng (ẩn; chỉ chạy một lần khi tiền về)
+  h('span', { class: 'qc-sweep', 'aria-hidden': 'true' }))
 
-  const phone = renderPhone(amount, paid)
+  const phone = renderPhone(amount, shop, paid)
   const wrap = h('div', { class: ['qc-qr', paid ? 'is-paid' : '', arrived ? 'is-arrived' : ''], dataset: { qr: lost ? 'lost' : paid ? 'paid' : arrived ? 'arrived' : 'waiting' } })
   if (paid) {
     wrap.appendChild(h('div', { class: 'qc-paidline' }, phone, status))
   } else {
     wrap.appendChild(h('div', { class: 'qc-scene' },
+      renderStand(),
       h('div', { class: 'qc-hold' }, phone),
       h('div', { class: 'qc-side' },
-        h('div', { class: 'qc-due' }, h('span', { class: 'qc-due-k' }, 'Tổng'), h('b', { class: 'qc-due-v', testid: 'amount-due' }, amount)),
+        h('div', { class: 'qc-due' }, h('span', { class: 'qc-due-k' }, 'Tổng'),
+          h('b', { class: ['qc-due-v', amount.length > 7 ? 'is-long' : ''], testid: 'amount-due' }, amount)),
         status),
       h('span', { class: 'qc-plank', 'aria-hidden': 'true' })))
     // M4: cúp điện theo lịch (sự kiện ngày) → Loa báo tiền tắt, không tự xác nhận, không chặn ảnh giả
@@ -205,38 +218,51 @@ export function renderQr(ctx, customer, c) {
         { transform: 'translateY(-5%) rotate(2deg)', opacity: 1, offset: 0.62 },
         { transform: 'translateY(0) rotate(0deg)', opacity: 1 }
       ], { duration: QR_FX.raise, easing: EASE.outCubic })
-      if (scan) playScan(phone, status)
+      if (scan) playScan(status)
     }, true)
   }
   return wrap
 }
 
-// Điện thoại của khách: hình + số tiền ở dải dưới màn hình + vệt quét (ẩn, chỉ chạy khi tiền về).
-function renderPhone(amount, small) {
-  return h('div', { class: ['qc-phone', small ? 'is-small' : ''], 'aria-label': 'Ảnh chuyển khoản khách giơ: ' + amount, role: 'img' },
-    svgBox(phoneArt(), 'qc-phone-art'),
-    small ? null : h('span', { class: 'qc-shot', style: boxStyle(NOTE_BOX), 'aria-hidden': 'true' }, h('b', null, amount)),
-    h('span', { class: 'qc-screen', style: boxStyle(PH.screen), 'aria-hidden': 'true' }, h('span', { class: 'qc-scan' })))
+// Kệ mã QR của xe đứng trên mặt quầy: tấm thẻ (QR giả + nhãn) cắm trên đế gỗ.
+function renderStand() {
+  return h('div', { class: 'qc-stand', role: 'img', 'aria-label': 'Mã QR của xe (khách quét mã này để chuyển khoản)' },
+    h('span', { class: 'qc-stand-card' },
+      svgBox(standQr(), 'qc-stand-qr'),
+      h('span', { class: 'qc-stand-label', 'aria-hidden': 'true' }, 'Mã QR của xe')),
+    h('span', { class: 'qc-stand-foot', 'aria-hidden': 'true' }))
 }
 
-// Vệt quét sáng chạy dọc màn hình điện thoại, ô báo tiền nảy (chỉ transform / opacity).
-function playScan(phone, status) {
-  const bar = phone.querySelector('.qc-scan')
+// Điện thoại của khách: hình (màn hình trống) + ảnh chụp "chuyển khoản thành công" (✓, "Đã chuyển", → tên xe, số tiền ở dải
+// dưới). Bản nhỏ (đã thu) chỉ còn dấu ✓.
+function renderPhone(amount, shop, small) {
+  const label = `Ảnh chuyển khoản khách giơ: Đã chuyển ${amount}` + (shop ? ` tới ${shop}` : '')
+  return h('div', { class: ['qc-phone', small ? 'is-small' : ''], 'aria-label': label, role: 'img' },
+    svgBox(scene('dien_thoai'), 'qc-phone-art'),
+    h('span', { class: 'qc-shot', style: boxStyle(SHOT_BOX), 'aria-hidden': 'true' },
+      svgBox(markSvg(true), 'qc-shot-ok'),
+      small ? null : h('b', { class: 'qc-shot-t' }, 'Đã chuyển'),
+      small || !shop ? null : h('span', { class: 'qc-shot-to' }, '→ ' + shop)),
+    small ? null : h('span', { class: 'qc-shot-amt', style: boxStyle(NOTE_BOX), 'aria-hidden': 'true' }, h('b', null, amount)))
+}
+
+// Tiền về: vệt quét sáng chạy ngang ô báo tiền (điện thoại / loa của quán), ô nảy lên (chỉ transform / opacity).
+function playScan(status) {
+  if (!status || !status.isConnected) return
+  const bar = status.querySelector('.qc-sweep')
   if (bar) {
     animate(bar, [
-      { transform: 'translateY(-110%)', opacity: 0 },
-      { transform: 'translateY(40%)', opacity: 1, offset: 0.18 },
-      { transform: 'translateY(420%)', opacity: 1, offset: 0.82 },
-      { transform: 'translateY(560%)', opacity: 0 }
+      { transform: 'translateX(-120%) skewX(-18deg)', opacity: 0 },
+      { transform: 'translateX(-20%) skewX(-18deg)', opacity: 1, offset: 0.2 },
+      { transform: 'translateX(190%) skewX(-18deg)', opacity: 1, offset: 0.8 },
+      { transform: 'translateX(260%) skewX(-18deg)', opacity: 0 }
     ], { duration: QR_FX.scan, easing: 'ease-in-out' })
   }
-  if (status && status.isConnected) {
-    animate(status, [
-      { transform: 'scale(.9)' },
-      { transform: 'scale(1.06)', offset: 0.55 },
-      { transform: 'scale(1)' }
-    ], { duration: QR_FX.pop, easing: EASE.outCubic })
-  }
+  animate(status, [
+    { transform: 'scale(.9)' },
+    { transform: 'scale(1.06)', offset: 0.55 },
+    { transform: 'scale(1)' }
+  ], { duration: QR_FX.pop, easing: EASE.outCubic })
 }
 
 // ---------- Thao tác ----------

@@ -1,9 +1,11 @@
 /* Chuyển khoản QR và phiếu thu ở Quầy (M5 Đợt 2, gói Q-C).
    Mã: src/ui/screens/counter-qr.js (lớp qc-), counter-receipt.js (lớp rc-).
-   - Khâu QR: cảnh mặt quầy, khách giơ điện thoại (art/scene.js phoneQr, QR giả có chữ "QR GAME"), dải số tiền trên màn hình,
-     thẻ Tổng, ô báo tiền [qr-status] (Loa báo tiền / điện thoại của quán), thanh nút dính đáy. Đã thu: một dòng thu gọn.
-   - Phiếu thu: giấy nhiệt mép răng cưa đứng trên khe máy in (scene may_in_phieu, cắt phần dưới sau mép quầy gỗ), con dấu
-     "ĐÃ THU" / "ẢNH GIẢ", nút "Kẹp phiếu bếp" dính đáy.
+   - Khâu QR: cảnh mặt quầy đọc trái → phải: kệ "Mã QR của xe" (QR giả có chữ "QR GAME") đứng trên mặt quầy, khách giơ điện
+     thoại (art/scene.js dien_thoai) có ảnh chụp "Đã chuyển ✓ → tên xe, số tiền", thẻ Tổng và ô báo tiền [qr-status] (Loa
+     báo tiền / điện thoại của quán — nơi duy nhất cho biết tiền về thật; vệt quét sáng chạy ngang ô này khi tiền về), thanh
+     nút dính đáy. Đã thu: một dòng thu gọn.
+   - Phiếu thu: giấy nhiệt mép răng cưa đứng trên khe máy in (scene may_in_phieu, cắt phần dưới sau mép quầy gỗ), hàng cuối
+     "Cảm ơn quý khách!" kèm con dấu "ĐÃ THU" / "ẢNH GIẢ" nằm trong hàng (không đè số tiền), nút "Kẹp phiếu bếp" dính đáy.
    Kích thước máy in và phiếu theo một hệ số --rc-k (px trên một đơn vị viewBox của máy in, rộng 160): phiếu rộng 118 đơn vị,
    đáy phiếu ở y = 34 (ngay dưới mép trên thân máy y = 28), máy hiện từ y = 28 tới mép quầy.
    Không có hoạt ảnh CSS (panel Quầy vẽ lại toàn bộ theo stateSig): chuyển động do JS kích theo sự kiện bằng WAAPI, chỉ
@@ -12,17 +14,19 @@
    (bộ chọn của e2e) được ghi đè bằng .rc-paper .rc-head. */
 
 /* ==================== Khâu QR ==================== */
-.qc-qr { --qc-phone: 116px; display: flex; flex-direction: column; gap: 10px; }
+/* --qc-phone: bề rộng điện thoại; --qc-stand: bề rộng kệ mã QR; --qc-lap: phần kệ đứng chồng trước mép trái điện thoại (chỉ
+   phủ viền máy + ngón cái, không phủ màn hình: màn hình bắt đầu ở 20% bề rộng máy) */
+.qc-qr { --qc-phone: 116px; --qc-stand: 64px; --qc-lap: 14px; display: flex; flex-direction: column; gap: 10px; }
 
-/* Cảnh: tường kem, khách giơ máy qua mép quầy gỗ (cổ tay khuất sau tấm ván) */
+/* Cảnh: tường kem, kệ QR đứng trên mặt quầy gỗ, khách giơ máy qua mép quầy (cổ tay khuất sau tấm ván) */
 .qc-scene {
   position: relative;
   isolation: isolate;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: var(--qc-stand) calc(var(--qc-phone) - var(--qc-lap)) minmax(0, 1fr);
   align-items: end;
-  column-gap: 12px;
-  padding: 12px 12px 0 14px;
+  column-gap: 0;
+  padding: 12px 12px 0 12px;
   overflow: hidden;
   border: var(--g-outline) solid var(--g-ink);
   border-radius: 18px;
@@ -46,13 +50,106 @@
   box-shadow: inset 0 3px 0 rgba(255, 238, 205, .55);
   pointer-events: none;
 }
-.qc-hold { position: relative; z-index: 1; width: var(--qc-phone); margin-bottom: -10px; transform-origin: 50% 100%; }
+/* điện thoại lấn sang trái --qc-lap (nằm sau kệ QR), cột của nó hẹp đúng phần lấn */
+.qc-hold { position: relative; z-index: 1; width: var(--qc-phone); margin: 0 0 -10px calc(0px - var(--qc-lap)); transform-origin: 50% 100%; }
 
-/* Điện thoại (hình 120 × 196): lớp chữ / vệt quét đặt theo phần trăm của khung (SCENE_META.dien_thoai, JS tính) */
+/* Kệ mã QR của xe: tấm thẻ giấy viền mực (QR giả + nhãn) cắm trên đế gỗ, đế đặt lên mặt quầy (chồng mép trên tấm ván) */
+.qc-stand {
+  position: relative;
+  z-index: 3;
+  align-self: end;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: var(--qc-stand);
+  margin-bottom: 8px;
+  pointer-events: none;
+}
+.qc-stand-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  width: 100%;
+  padding: 4px 3px 3px;
+  border: 2.5px solid var(--g-ink);
+  border-radius: 9px;
+  background: var(--g-paper);
+  box-shadow: inset 0 -3px 0 var(--g-paper-shade), 0 3px 0 rgba(58, 38, 24, .2);
+  transform: rotate(-3deg);
+  transform-origin: 50% 100%;
+}
+.qc-stand-qr { display: block; width: 100%; aspect-ratio: 100 / 118; line-height: 0; }
+.qc-stand-qr svg { display: block; width: 100%; height: 100%; }
+.qc-stand-label {
+  display: block;
+  max-width: 100%;
+  color: var(--g-tomato-dark);
+  font-family: var(--g-font-display);
+  font-weight: 800;
+  font-size: 13px;
+  line-height: 1.05;
+  letter-spacing: -.02em;
+  text-align: center;
+}
+/* đế gỗ (khối thấp, viền mực, ba tông gỗ) */
+.qc-stand-foot {
+  position: relative;
+  z-index: -1;
+  width: 74%;
+  height: 9px;
+  margin-top: -3px;
+  border: 2.5px solid var(--g-ink);
+  border-radius: 4px 4px 3px 3px;
+  background: linear-gradient(180deg, var(--g-wood-light) 0%, var(--g-wood) 55%, var(--g-wood-dark) 100%);
+  box-shadow: 0 2px 0 rgba(58, 38, 24, .25);
+}
+
+/* Điện thoại (hình 120 × 196): lớp ảnh chụp đặt theo phần trăm của khung (SCENE_META.dien_thoai, JS tính) */
 .qc-phone { position: relative; width: 100%; aspect-ratio: 120 / 196; }
 .qc-phone-art { position: absolute; inset: 0; display: block; line-height: 0; }
 .qc-phone-art svg { display: block; width: 100%; height: 100%; overflow: visible; }
+/* ảnh chụp "chuyển khoản thành công": ✓, "Đã chuyển", → tên xe (tối đa 2 dòng) */
 .qc-shot {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  overflow: hidden;
+  padding: 0 1px;
+  color: var(--g-ink);
+  text-align: center;
+  pointer-events: none;
+}
+.qc-shot-ok { display: block; flex: none; width: 42%; aspect-ratio: 1; line-height: 0; }
+.qc-shot-ok svg { display: block; width: 100%; height: 100%; }
+.qc-shot-t {
+  display: block;
+  color: var(--g-go-dark);
+  font-family: var(--g-font-display);
+  font-weight: 800;
+  font-size: 13px;
+  line-height: 1.1;
+  letter-spacing: -.04em;
+  white-space: nowrap;
+}
+.qc-shot-to {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--g-ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -.02em;
+  overflow-wrap: anywhere;
+}
+.qc-shot-amt {
   position: absolute;
   display: flex;
   align-items: center;
@@ -67,17 +164,9 @@
   white-space: nowrap;
   pointer-events: none;
 }
-.qc-shot b { font-weight: 800; }
-.qc-screen { position: absolute; overflow: hidden; border-radius: 5px; pointer-events: none; }
-.qc-scan {
-  position: absolute;
-  left: -8%;
-  right: -8%;
-  top: 0;
-  height: 22%;
-  opacity: 0;
-  background: linear-gradient(180deg, rgba(142, 219, 106, 0) 0%, rgba(142, 219, 106, .5) 40%, rgba(255, 255, 255, .95) 50%, rgba(142, 219, 106, .5) 60%, rgba(142, 219, 106, 0) 100%);
-}
+.qc-shot-amt b { font-weight: 800; }
+.qc-phone.is-small .qc-shot { gap: 0; }
+.qc-phone.is-small .qc-shot-ok { width: 64%; }
 
 /* Cột phải: thẻ Tổng + ô báo tiền */
 .qc-side {
@@ -89,13 +178,14 @@
   justify-content: center;
   gap: 10px;
   min-width: 0;
+  margin-left: var(--qc-gap, 10px);
   padding: 2px 0 30px;
 }
 .qc-due {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 5px 10px 6px;
+  padding: 5px 6px 6px;
   border: var(--g-outline) solid var(--g-ink);
   border-radius: 14px;
   background: var(--g-paper);
@@ -112,8 +202,11 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+.qc-due-v.is-long { font-size: 23px; }
 
 .qc-status {
+  position: relative;
+  overflow: hidden;
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr);
   align-items: center;
@@ -142,6 +235,18 @@
 .qc-status.is-arrived .qc-status-text { color: var(--g-go-dark); }
 .qc-status.is-lost { background: #ffe6de; box-shadow: inset 0 -4px 0 #f6bfb1, 0 4px 0 rgba(58, 38, 24, .22); }
 .qc-status.is-lost .qc-status-text { color: var(--g-bad-dark); }
+/* vệt quét sáng khi tiền về (JS chạy một lần theo sự kiện 'qr.arrived'; mặc định ẩn) */
+.qc-sweep {
+  position: absolute;
+  top: -10%;
+  bottom: -10%;
+  left: 0;
+  width: 42%;
+  opacity: 0;
+  background: linear-gradient(90deg, rgba(142, 219, 106, 0) 0%, rgba(142, 219, 106, .45) 35%, rgba(255, 255, 255, .95) 50%, rgba(142, 219, 106, .45) 65%, rgba(142, 219, 106, 0) 100%);
+  pointer-events: none;
+}
+.qc-paidline .qc-sweep { display: none; }
 
 .qc-note { margin: 0; padding: 0 2px; font-size: 13px; line-height: 1.35; color: var(--g-ink-soft); }
 .qc-warn.qr-speaker-off {
@@ -300,38 +405,44 @@
 }
 .rc-total .rc-v { font-size: 22px; font-weight: 800; }
 .rc-method { margin-top: 2px; }
-.rc-method .rc-v { min-width: 0; white-space: normal; text-align: right; }
+/* "Chuyển khoản QR" luôn một dòng (khóa ngắn "Trả bằng" chừa đủ chỗ; màn hẹp hạ cỡ chữ của hàng) */
+.rc-method .rc-v { white-space: nowrap; text-align: right; }
 .rc-small { font-size: 13px; color: var(--g-ink-soft); }
 .rc-small .rc-k { white-space: normal; }
 .rc-small .rc-v { font-weight: 600; }
+/* Hàng cuối: lời cảm ơn (trái) + con dấu nằm TRONG hàng (phải). Dấu xoay nên hình lòi ra ngoài hộp bố cục của nó: lề trên của
+   dấu (cộng lề trên của hàng) chừa đủ phần lòi lên (nửa chênh cao khi xoay + vòng viền ngoài 5.5px) để dấu không chạm hàng số
+   tiền phía trên; phần lòi xuống nằm trong lề đáy giấy. Không đặt tuyệt đối theo đáy giấy (không phụ thuộc --rc-k). */
 .rc-thanks {
   display: flex;
   align-items: center;
-  max-width: calc(100% - 128px);
-  min-height: 40px;
-  margin: 10px 0 0;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 4px 0 0;
   font-size: 13px;
   line-height: 1.25;
   color: var(--g-ink-soft);
 }
+.rc-thanks-t { min-width: 0; }
 
-/* Con dấu: xanh "ĐÃ THU" (đã thu đủ), đỏ "ẢNH GIẢ" (chuyển khoản bằng ảnh giả, không có tiền về) */
+/* Con dấu: xanh "ĐÃ THU" (đã thu đủ), đỏ "ẢNH GIẢ" (chuyển khoản bằng ảnh giả, không có tiền về). Góc xoay khớp STAMP_TILT
+   trong counter-receipt.js (hoạt ảnh đóng dấu WAAPI giữ cùng góc). */
 .rc-stamp {
-  position: absolute;
-  right: 12px;
-  bottom: calc(var(--rc-k, 2px) * 6 + 13px);
+  position: relative;
   z-index: 2;
-  padding: 5px 10px 1px;
+  flex: none;
+  margin: 15px 7px 4px 0;
+  padding: 4px 9px 0;
   border: 3.5px solid #2f8a37;
   border-radius: 10px;
   color: #2f8a37;
   font-family: var(--g-font-display);
   font-weight: 800;
-  font-size: 19px;
+  font-size: 18px;
   line-height: 1;
   letter-spacing: .07em;
   white-space: nowrap;
-  transform: rotate(-12deg);
+  transform: rotate(-9deg);
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .5), 0 0 0 2.5px rgba(255, 253, 246, .85), 0 0 0 5.5px #2f8a37;
   opacity: .9;
   pointer-events: none;
@@ -376,9 +487,10 @@
 
 /* ==================== Màn hẹp / thấp ==================== */
 @media (max-width: 370px) {
-  .qc-qr { --qc-phone: 100px; }
-  .qc-scene { column-gap: 10px; padding: 10px 10px 0 12px; }
+  .qc-qr { --qc-phone: 108px; --qc-stand: 54px; --qc-lap: 12px; --qc-gap: 8px; }
+  .qc-scene { padding: 10px 10px 0; }
   .qc-due-v { font-size: 23px; }
+  .qc-due-v.is-long { font-size: 21px; }
   .qc-status { grid-template-columns: 34px minmax(0, 1fr); column-gap: 6px; padding-right: 7px; }
   .qc-status-ico { width: 34px; height: 34px; }
   .qc-status-text { font-size: 14px; }
@@ -387,41 +499,80 @@
   .rc-paper { padding: 9px 11px 10px; }
   .rc-line { grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: 6px; }
   .rc-dish { width: 28px; height: 28px; }
+  .rc-method { font-size: 13px; }
 }
 @media (max-width: 330px) {
-  .qc-qr { --qc-phone: 92px; }
+  .qc-qr { --qc-phone: 104px; --qc-stand: 52px; --qc-lap: 14px; }
+  .qc-scene { padding: 8px 8px 0; }
+  .qc-due { padding-left: 4px; padding-right: 4px; }
+  .qc-due-v { font-size: 21px; }
+  .qc-due-v.is-long { font-size: 19px; }
+  .qc-status { grid-template-columns: 28px minmax(0, 1fr); padding-left: 5px; padding-right: 5px; }
+  .qc-status-ico { width: 28px; height: 28px; }
   .qc-btn.g-btn { font-size: 15px; }
   .qc-btn .qc-btn-ico { display: none; }
 }
 /* panel thấp (counter.js gắn .co-fit-low / .co-fit-tiny theo chiều cao vùng cuộn) */
-.co-fit-low .qc-qr { --qc-phone: 92px; gap: 8px; }
+.co-fit-low .qc-qr { --qc-phone: 100px; --qc-stand: 52px; --qc-lap: 12px; --qc-gap: 8px; gap: 8px; }
 .co-fit-low .qc-side { gap: 8px; padding-bottom: 28px; }
 .co-fit-low .qc-due { padding: 3px 8px 5px; }
 .co-fit-low .qc-due-k { font-size: 13px; }
 .co-fit-low .qc-due-v { font-size: 21px; }
-.co-fit-low .rc-paper .rc-head { flex-flow: row wrap; justify-content: center; column-gap: 8px; margin-bottom: 6px; padding-bottom: 6px; }
+.co-fit-low .qc-due-v.is-long { font-size: 19px; }
+.co-fit-low .rc-paper .rc-head { flex-flow: row wrap; justify-content: center; column-gap: 8px; margin-bottom: 4px; padding-bottom: 4px; }
 .co-fit-low .rc-no { letter-spacing: 0; }
-.co-fit-low .rc-shop { flex: 0 0 100%; font-size: 17px; }
-.co-fit-low .rc-lines { gap: 4px; }
-.co-fit-low .rc-total { margin-top: 6px; padding-top: 5px; }
-.co-fit-low .rc-thanks { min-height: 34px; margin-top: 4px; }
+.co-fit-low .rc-day { display: none; }
+.co-fit-low .rc-shop { flex: 0 0 100%; font-size: 16px; line-height: 1.1; }
+.co-fit-low .rc-lines { gap: 2px; }
+.co-fit-low .rc-total { margin-top: 4px; padding-top: 4px; }
+.co-fit-low .rc-total .rc-v { font-size: 20px; }
+/* hàng nút gọn hơn để phần phiếu nhìn thấy (đầu phiếu → Tiền thối) rộng thêm */
+.co-fit-low .rc-act.act-bar { padding-top: 6px; padding-bottom: 7px; }
+.co-fit-low .rc-clip.g-btn { min-height: 50px; font-size: 20px; }
 .co-fit-low .qc-status-src { display: none; }
-.co-fit-low .rc-win { padding-top: 10px; }
-.co-fit-low .rc-paper { padding-top: 7px; }
+.co-fit-low .rc-win { padding-top: 9px; }
+.co-fit-low .rc-paper { padding-top: 5px; }
+.co-fit-low .rc-name,
+.co-fit-low .rc-notes { line-height: 1.2; }
 .co-fit-low .rc-line { grid-template-columns: 26px minmax(0, 1fr) auto; }
 .co-fit-low .rc-dish { width: 26px; height: 26px; }
 /* rất thấp (iPhone SE có vùng an toàn: phần nhìn thấy trên thanh nút chỉ ~100px): cảnh một hàng thấp, Tổng một dòng */
-.co-fit-tiny .qc-qr { --qc-phone: 56px; gap: 6px; }
-.co-fit-tiny .qc-scene { column-gap: 8px; padding: 6px 8px 0 10px; }
+/* điện thoại nhỏ: màn hình chỉ còn dấu ✓ của ảnh chụp; kệ QR giữ nhãn hai dòng */
+.co-fit-tiny .qc-qr { --qc-phone: 56px; --qc-stand: 50px; --qc-lap: 6px; --qc-gap: 8px; gap: 6px; }
+.co-fit-tiny .qc-scene { padding: 6px 8px 0 8px; }
+.co-fit-tiny .qc-stand { margin-bottom: 6px; }
+.co-fit-tiny .qc-stand-card { padding: 3px 2px 2px; }
 .co-fit-tiny .qc-hold { margin-bottom: -8px; }
 .co-fit-tiny .qc-plank { height: 14px; }
 .co-fit-tiny .qc-side { gap: 6px; padding-bottom: 20px; }
 .co-fit-tiny .qc-due { flex-direction: row; justify-content: center; align-items: baseline; gap: 8px; padding: 2px 8px 4px; }
 .co-fit-tiny .qc-due-k { font-size: 13px; }
-.co-fit-tiny .qc-due-v { font-size: 18px; }
+.co-fit-tiny .qc-due-v,
+.co-fit-tiny .qc-due-v.is-long { font-size: 18px; }
 .co-fit-tiny .qc-status { grid-template-columns: 28px minmax(0, 1fr); column-gap: 6px; padding: 4px 6px 4px 4px; }
 .co-fit-tiny .qc-status-ico { width: 28px; height: 28px; }
 .co-fit-tiny .qc-status-text { font-size: 14px; }
-.co-fit-tiny .qc-shot { display: none; }
+.co-fit-tiny .qc-shot-t,
+.co-fit-tiny .qc-shot-to,
+.co-fit-tiny .qc-shot-amt { display: none; }
+.co-fit-tiny .qc-shot-ok { width: 70%; }
 .co-fit-tiny .qc-note { display: none; }
 .co-fit-tiny .qc-btn.g-btn { min-height: 48px; }
+/* phiếu thu ở panel rất thấp: phần nhìn thấy trên hàng nút chỉ ~110px → phiếu gọn để đầu phiếu, các món và hàng Tổng cùng lộ
+   khi panel cuộn đầu phiếu lên sát mép trên (counter.js revealReceipt): đầu phiếu một hàng (tên xe + số phiếu, bỏ giờ in),
+   món một hàng (bỏ hình món và ghi chú, giữ số lượng × tên + thành tiền) */
+.co-fit-tiny .rc-win { padding-top: 9px; }
+.co-fit-tiny .rc-paper { padding-top: 4px; }
+.co-fit-tiny .rc-paper .rc-head { gap: 0 8px; margin-bottom: 3px; padding-bottom: 3px; }
+.co-fit-tiny .rc-shop { flex: 0 1 auto; font-size: 15px; line-height: 1.2; }
+.co-fit-tiny .rc-meta { display: none; }
+.co-fit-tiny .rc-lines { gap: 0; }
+.co-fit-tiny .rc-line,
+.co-fit-tiny .rc-line.no-notes { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name amt"; line-height: 1.3; }
+.co-fit-tiny .rc-dish,
+.co-fit-tiny .rc-notes { display: none; }
+.co-fit-tiny .rc-name { line-height: 1.3; }
+.co-fit-tiny .rc-total { margin-top: 3px; padding-top: 3px; font-size: 16px; }
+.co-fit-tiny .rc-total .rc-v { font-size: 19px; }
+.co-fit-tiny .rc-act.act-bar { padding-top: 5px; padding-bottom: 6px; }
+.co-fit-tiny .rc-clip.g-btn { min-height: 48px; font-size: 19px; }
