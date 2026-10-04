@@ -96,7 +96,7 @@ export function renderPayment(ctx, customer, c) {
   padOf.set(ctx, pad)
   body.appendChild(pad.el)
   // Lần đầu khâu này hiện cho khách (vào khâu / mở lại game giữa khâu): sau khi counter.js gắn panel và tự cuộn theo khâu,
-  // cuộn tiếp cho trọn máy tính tiền lọt panel. Chỉ một lần theo lượt vào khâu (vẽ lại không cuộn lại).
+  // khay cuộn (khung nhỏ) thì cuộn cho trọn máy tính tiền lọt khay. Chỉ một lần theo lượt vào khâu (vẽ lại không cuộn lại).
   if (!ctx.ui.padShown) afterRender(() => { if (revealPad(ctx)) ctx.ui.padShown = true })
   // Phiếu order hình ở cảnh có chồng lên bong bóng khách không (đo mỗi lượt vẽ, trước khi trình duyệt vẽ — không nháy)
   afterRender(() => watchSlipCrowd(ctx))
@@ -231,8 +231,8 @@ function ledWrong(ctx) {
   if (fx && frame) { try { fx.shake(frame, 2) } catch { /* bỏ qua */ } }
 }
 
-// Vị trí màn LED (tọa độ khung nhìn) + phần tử để nhân bản. Màn LED đang khuất một phần (khung thấp, người chơi cuộn xuống
-// bàn phím) thì đặt bản sao sát mép trên phần nhìn thấy của vùng cuộn (khay / panel), không để nó nằm đè lên cảnh.
+// Vị trí màn LED (tọa độ khung nhìn) + phần tử để nhân bản. Màn LED đang khuất một phần (khung nhỏ, người chơi cuộn khay
+// xuống bàn phím) thì đặt bản sao sát mép trên phần nhìn thấy của khay, không để nó nằm đè lên cảnh.
 function captureLed(ctx, led) {
   if (!led || typeof led.getBoundingClientRect !== 'function') return null
   const frame = led.closest('.cs-led-frame') || led

@@ -211,22 +211,16 @@ function measureOf(node) {
   return { node, rect: { left: r.left, top: r.top, width: r.width, height: r.height } }
 }
 
-// Tâm phần tử nằm trong phần nhìn thấy của vùng cuộn (khay ở khung nhỏ / panel Quầy) và trên hàng nút dính đáy (chỉ hàng
-// đang position: sticky — hàng nút nằm trong lưới của bố cục cảnh không che gì)? Đích khuất thì không bay (khỏi bay xuyên
-// qua thanh tab ra ngoài màn).
+// Tâm phần tử nằm trong phần nhìn thấy của khay (khay cuộn ở khung nhỏ; khay vừa thì cả panel Quầy — panel không cuộn, hàng
+// nút "Đưa tiền thối" nằm trong lưới của khay, không dính đáy nên không che gì)? Đích khuất thì không bay (khỏi bay xuyên qua
+// thanh tab ra ngoài màn).
 function inPanelView(ctx, el) {
   if (!el || typeof el.getBoundingClientRect !== 'function') return false
   const sc = scrollBoxOf(ctx, el) || ctx.el
   if (!sc || typeof sc.getBoundingClientRect !== 'function') return false
   const a = el.getBoundingClientRect(), b = sc.getBoundingClientRect()
-  let bottom = b.bottom
-  for (const bar of ctx.el.querySelectorAll('.act-bar')) {
-    if (bar.contains(el) || getComputedStyle(bar).position !== 'sticky') continue
-    const r = bar.getBoundingClientRect()
-    if (r.height) bottom = Math.min(bottom, r.top)
-  }
   const cy = a.top + a.height / 2
-  return a.width > 0 && cy > b.top && cy < bottom
+  return a.width > 0 && cy > b.top && cy < b.bottom
 }
 
 // Bản sao tờ tiền bay tới đích; đích (tờ trên cùng của chồng mới) ẩn tới khi bản sao chạm tới rồi nảy (vfx.fly tự nảy đích).
