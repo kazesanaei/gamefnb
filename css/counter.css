@@ -1448,6 +1448,17 @@ html.reduce-motion .co-idle-bob { animation: none !important; }
 .co-scene .co-cust-wrap.is-say-tight { --co-say: 13px; }
 .co-scene .co-cust-wrap.is-say-tight .co-bubble { padding-top: 4px; padding-bottom: 4px; }
 .co-scene .co-cust-wrap.is-say-tight .co-bubble[data-mode] .co-bubble-say { line-height: 1.2; }
+/* 3. còn dài: bong bóng sát trọn hàng giữa (bỏ lề trên / dưới; đệm trên 0 + 2px đệm của vùng chữ, đệm dưới 2px), giãn dòng
+   1,15; vùng chữ chừa 2px ở đỉnh cho dấu tiếng Việt chồng (ễ, Ở) không bị mép vùng cuộn xén — vd lời gọi món 185 chữ ở bậc m
+   (iPhone 16 Pro Safari) vừa 6 dòng, còn dư ~3px */
+.co-scene .co-cust-wrap.is-say-full .co-bubble,
+[data-fit] .co-scene .co-cust-wrap.is-say-full .co-bubble { max-height: 100%; margin-top: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 2px; }
+.co-scene .co-cust-wrap.is-say-full .co-bubble[data-mode] .co-bubble-say { padding-top: 2px; line-height: 1.15; }
+/* 4. vẫn dài: bán thân khách thu nhỏ một nấc (bậc l 124 / 116 → 104, m 100 → 84, s 82 → 70; xs giữ 60) để bong bóng rộng
+   thêm ~16px, bớt một dòng. Nhãn tên, chỗ cắt ở mặt quầy theo --co-bust nên tự theo. */
+[data-fit="l"] .co-scene .co-cust-wrap.is-say-wide { --co-bust: min(104px, calc(var(--co-mid) * 1.01)); }
+[data-fit="m"] .co-scene .co-cust-wrap.is-say-wide { --co-bust: min(84px, calc(var(--co-mid) * 1.01)); }
+[data-fit="s"] .co-scene .co-cust-wrap.is-say-wide { --co-bust: min(70px, calc(var(--co-mid) * 1.01)); }
 .co-bubble-more { display: none; }
 .co-scene .co-bubble.is-more .co-bubble-say {
   -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 18px), transparent);
@@ -1871,6 +1882,8 @@ html.reduce-motion .co-idle-bob { animation: none !important; }
 [data-fit="xs"] .co-scene .co-pad-actions .g-btn { min-height: 48px; font-size: 15px; gap: 0; }
 [data-fit="s"] .co-scene .co-pad-actions .g-btn svg,
 [data-fit="xs"] .co-scene .co-pad-actions .g-btn svg { width: 22px; height: 22px; }
+/* nút thấp hơn biểu tượng + nhãn 2 dòng (counter-order fitActs: màn hẹp mà khay chật): chỉ còn nhãn, như bậc xs */
+.co-scene .co-pad-actions.is-squat .g-btn svg { display: none; }
 
 /* màn hẹp < 340px: thực đơn / lời Dì Sáu / phiếu / hàng nút ngang dính đáy khay (cao 48) */
 @media (max-width: 339px) {

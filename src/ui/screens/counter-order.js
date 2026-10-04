@@ -261,6 +261,35 @@ function createOrderView(ctx, customer) {
   let fitKey = ''
   let fitSrc = ''
   let missing = []
+  function fitMenu(grid, force) {
+    const was = el.classList.contains('is-tight')
+    el.classList.remove('is-tight')
+    if (!grid || grid.dataset.rows !== '2' || typeof getComputedStyle !== 'function') return
+    // danh sách dòng là phần co của tờ giấy (lỗi khách bắt giữ đủ cao): dòng phải cuộn trong phiếu = khay chật. Đo hộp bố
+    // cục (listOverflow), không theo scrollHeight đang phình tạm vì hiệu ứng "viết ra" của dòng mới.
+    const list = pad.el.querySelector('.co-pad-lines')
+    if (!list || !listOverflow(list)) {
+      if (list && list.scrollTop) list.scrollTop = 0
+      return
+    }
+    el.classList.add('is-tight')
+    if (list.scrollTop) list.scrollTop = 0
+    const first = missing.length ? menu.itemEl(missing[0]) : null
+    if (first && (!was || force) && typeof first.getBoundingClientRect === 'function') {
+      const g = grid.getBoundingClientRect()
+      const r = first.getBoundingClientRect()
+      if (r.left < g.left + 4 || r.right > g.right - 4) grid.scrollLeft += r.left - g.left - 8
+    }
+  }
+  // cột nút "Đọc lại đơn / Chốt order" thấp hơn biểu tượng + nhãn 2 dòng (màn hẹp mà khay chật, vd 375×667 thực đơn 2 hàng):
+  // bỏ biểu tượng (lớp is-squat, css/counter.css) để nhãn không tràn khỏi đáy nút. Chiều cao nút do khay quyết định (flex),
+  // không theo nội dung — bật / tắt lớp không đổi bố cục.
+  function fitActs() {
+    const acts = pad.actionsEl
+    acts.classList.remove('is-squat')
+    if (typeof getComputedStyle !== 'function') return
+    if ([...acts.querySelectorAll('.g-btn')].some(b => b.scrollHeight > b.clientHeight + 1)) acts.classList.add('is-squat')
+  }
   return {
     id: customer.id,
     el,
@@ -277,24 +306,8 @@ function createOrderView(ctx, customer) {
       const key = JSON.stringify([fitSrc, grid ? grid.dataset.n : '', tutor ? tutor.textContent : ''])
       if (!force && key === fitKey) return
       fitKey = key
-      const was = el.classList.contains('is-tight')
-      el.classList.remove('is-tight')
-      if (!grid || grid.dataset.rows !== '2' || typeof getComputedStyle !== 'function') return
-      // danh sách dòng là phần co của tờ giấy (lỗi khách bắt giữ đủ cao): dòng phải cuộn trong phiếu = khay chật. Đo hộp bố
-      // cục (listOverflow), không theo scrollHeight đang phình tạm vì hiệu ứng "viết ra" của dòng mới.
-      const list = pad.el.querySelector('.co-pad-lines')
-      if (!list || !listOverflow(list)) {
-        if (list && list.scrollTop) list.scrollTop = 0
-        return
-      }
-      el.classList.add('is-tight')
-      if (list.scrollTop) list.scrollTop = 0
-      const first = missing.length ? menu.itemEl(missing[0]) : null
-      if (first && (!was || force) && typeof first.getBoundingClientRect === 'function') {
-        const g = grid.getBoundingClientRect()
-        const r = first.getBoundingClientRect()
-        if (r.left < g.left + 4 || r.right > g.right - 4) grid.scrollLeft += r.left - g.left - 8
-      }
+      fitMenu(grid, force)
+      fitActs()
     },
     update(cust, c) {
       const ids = orderableRecipes(app.state, app.ctx)

@@ -10,7 +10,8 @@
 // Hoạt ảnh chỉ theo SỰ KIỆN: enter() (khách tới), react('ok' | 'bad') (gật đầu / lắc đầu khi đọc lại đơn), lời mới
 // trong talk. update() với cùng dữ liệu không dựng lại gì.
 // Vừa màn: fit(force) (bên gọi gọi sau khi vẽ lại / khi màn đổi cỡ) cho lời khách ưu tiên chỗ trong bong bóng — lời qua
-// lại nhường chỗ, chữ co, còn dài thì cuộn trong bong bóng có dấu ⌄ (không cắt câm). Nhãn tên: lớp is-long (tên dài),
+// lại nhường chỗ, chữ co, bong bóng sát hàng giữa, bán thân thu nhỏ cho bong bóng rộng ra; còn dài (khung nhỏ) thì cuộn
+// trong bong bóng có dấu ⌄ (không cắt câm). Nhãn tên: lớp is-long (tên dài),
 // is-regular (khách quen) cho css chọn cách gọn theo bậc.
 // Thuần ở cấp module (import trong Node được).
 import { h } from '../dom.js'
@@ -300,32 +301,50 @@ export function createOrderBubble(data = {}, opts = {}) {
   // khi màn đổi cỡ; cùng nội dung thì không đo lại trừ khi force): chữ dài hơn bong bóng thì lần lượt
   //   1. lời qua lại ("Bạn: …", "Tín: …") nhường chỗ — chỉ còn cho máy đọc (aria-live vẫn đọc), bong bóng cao hết hàng giữa;
   //   2. chữ bong bóng co 13px, giãn dòng 1,2 (is-say-tight);
-  //   3. vẫn dài: vùng chữ cuộn được + mờ dần ở đáy + dấu ⌄ (is-more; kéo tới cuối thì tắt).
+  //   3. (lời gọi món) bong bóng sát trọn hàng giữa (bỏ lề, đệm dọc mỏng), giãn dòng 1,15 (is-say-full);
+  //   4. (lời gọi món) bán thân khách thu nhỏ một nấc để bong bóng rộng thêm, bớt một dòng (is-say-wide);
+  //   5. vẫn dài (khung nhỏ): vùng chữ cuộn được + mờ dần ở đáy + dấu ⌄ (is-more; kéo tới cuối thì tắt).
+  // Mỗi bước đo lại thật trên máy (cỡ chữ, chỗ xuống dòng của từng trình duyệt), dừng ngay ở bước đã đủ chỗ.
   // Kiểu hình món (ngày 1–2) đo cả bong bóng (câu nói đã kẹp 2 dòng).
   let fitKey = ''
   const overflows = () => (bubbleMode(cur.mode) === 'icons'
     ? bubble.scrollHeight > bubble.clientHeight + 1
     : say.scrollHeight > say.clientHeight + 1)
+  // dấu ⌄ cùng ngưỡng với overflows() (khuất > 1px): còn chữ khuất là có dấu, kéo tới cuối thì tắt
   function syncMore() {
-    const on = bubble.classList.contains('is-fit-more') && say.scrollTop + say.clientHeight < say.scrollHeight - 2
+    const on = bubble.classList.contains('is-fit-more') && say.scrollTop + say.clientHeight < say.scrollHeight - 1
     bubble.classList.toggle('is-more', on)
   }
+  // bán thân đã thu nhỏ cho lời gọi món dài (bước 4) thì giữ cỡ đó tới hết lượt khách này: bán thân không nhảy khi sang
+  // các khâu sau (mỗi khách một bong bóng — counter-order dựng mới theo khách)
+  let keepWide = false
   function fit(force = false) {
     if (destroyed || !el.isConnected) return
-    const key = [say.textContent, say.hidden, talkBox.textContent, talkBox.hidden, bubble.hidden, dishes.childElementCount].join('|')
+    const mode = bubbleMode(cur.mode)
+    const key = [mode, say.textContent, say.hidden, talkBox.textContent, talkBox.hidden, bubble.hidden, dishes.childElementCount].join('|')
     if (!force && key === fitKey) return
     fitKey = key
-    el.classList.remove('is-talk-off', 'is-say-tight')
+    el.classList.remove('is-talk-off', 'is-say-tight', 'is-say-full', 'is-say-wide')
     bubble.classList.remove('is-fit-more', 'is-more')
-    if (bubble.hidden || (say.hidden && bubbleMode(cur.mode) !== 'icons') || typeof getComputedStyle !== 'function') return
+    if (mode === 'talk' && keepWide) el.classList.add('is-say-wide')
+    fitSteps(mode)
+    if (mode !== 'talk') keepWide = el.classList.contains('is-say-wide')
+  }
+  function fitSteps(mode) {
+    if (bubble.hidden || (say.hidden && mode !== 'icons') || typeof getComputedStyle !== 'function') return
     if (!overflows()) return
     if (!talkBox.hidden) {
       el.classList.add('is-talk-off')
       if (!overflows()) return
     }
-    if (bubbleMode(cur.mode) === 'icons') return
-    el.classList.add('is-say-tight')
-    if (!overflows()) return
+    if (mode === 'icons') return
+    // bước 3–4 chỉ cho lời gọi món (khâu Order): ở các khâu sau, đồ trên mặt quầy (phiếu hình, thẻ Khách đưa, thẻ Đã nhận)
+    // xếp theo chiều cao bong bóng sẵn có (css/cashier.css, receipt.css)
+    const steps = mode === 'talk' ? ['is-say-tight'] : ['is-say-tight', 'is-say-full', 'is-say-wide']
+    for (const step of steps) {
+      el.classList.add(step)
+      if (!overflows()) return
+    }
     bubble.classList.add('is-fit-more')
     syncMore()
   }
