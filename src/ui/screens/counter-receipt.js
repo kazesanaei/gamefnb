@@ -17,7 +17,8 @@
 // và dấu hiện ngay, không bay; âm giữ nguyên.
 // Vừa màn (bố cục cảnh + khay, bậc data-fit của màn — css/receipt.css): khâu này là KHAY — phiếu trên khe máy in, thân máy
 // in hiện thêm theo phần dư, nút "Kẹp phiếu bếp" dính đáy; phiếu gọn theo bậc. Dây phiếu ở tab Quầy là KẸP NHỎ góc phải hàng
-// trên của cảnh (railSlot nhắm ô 44×44 phiếu mới sẽ nằm; bản sao thu về cỡ đó — flyScaleFor).
+// trên của cảnh (railSlot nhắm ô 44×44 phiếu mới sẽ nằm; bản sao thu về cỡ đó — flyScaleFor). Phiếu ≥ 3 dòng món gọn sẵn
+// bằng CSS; phiếu vẫn cao hơn khay (tên xe dài, hàng thu thiếu / làm tròn…) thì gọn thêm từng nấc theo số đo (fitPaper).
 // Mọi hàm nhận ctx chung của panel Quầy (counter.js). Import trong Node được: không chạm DOM ở cấp module.
 import { h, svgBox } from '../dom.js'
 import { scene } from '../art/scene.js'
@@ -111,8 +112,46 @@ export function renderReceipt(ctx, c) {
         onclick: () => doClip(ctx)
       }, svgBox(scene('kep_phieu'), 'g-ico rc-clip-ico'), h('span', null, 'Kẹp phiếu bếp'))))
 
+  later(() => watchPaper(paper))
   if (fresh) later(() => playPrint(ctx, paper, machine, stamp))
   return wrap
+}
+
+/** Số nấc gọn tối đa của phiếu thu (css/receipt.css [data-tight]). */
+export const RECEIPT_TIGHT_MAX = 4
+
+// Phiếu cao hơn khay (tên xe dài, hàng "Thu thiếu" / làm tròn, đơn nhiều dòng ở khay thấp, lời Dì Sáu ngày 1 trên hàng nút)
+// thì gọn dần từng nấc tới khi khay hết cuộn: 1 — tên xe một hàng, bỏ "Ngày n ·", ghi chú một dòng "…", chữ dòng món 13;
+// 2 — các khoảng trong phiếu sát hơn; 3 — bỏ ghi chú (đã ở phiếu order và phiếu bếp), mỗi món một hàng; 4 — bỏ hình món.
+// Khay vừa thì phiếu để nguyên. Chỉ đổi thuộc tính của tờ phiếu (không đổi cỡ khay).
+function fitPaper(paper) {
+  const tray = paper.isConnected && typeof paper.closest === 'function' ? paper.closest('.stage') : null
+  if (!tray) return
+  paper.removeAttribute('data-tight')
+  for (let n = 1; n <= RECEIPT_TIGHT_MAX && tray.scrollHeight > tray.clientHeight; n++) paper.setAttribute('data-tight', String(n))
+}
+
+// Đo lại khi khay đổi cỡ mà panel không vẽ lại (đổi bậc data-fit, xoay máy) và khi phông tiêu đề tải xong. Panel gỡ phiếu →
+// tự ngắt.
+function watchPaper(paper) {
+  if (!paper.isConnected) return
+  fitPaper(paper)
+  const fonts = paper.ownerDocument && paper.ownerDocument.fonts
+  if (fonts && fonts.status !== 'loaded' && fonts.ready && typeof fonts.ready.then === 'function') {
+    fonts.ready.then(() => { if (paper.isConnected) fitPaper(paper) }, () => {})
+  }
+  const tray = paper.closest('.stage')
+  if (!tray || typeof ResizeObserver !== 'function') return
+  let w = tray.clientWidth
+  let hh = tray.clientHeight
+  const ro = new ResizeObserver(() => {
+    if (!paper.isConnected) { ro.disconnect(); return }
+    if (tray.clientWidth === w && tray.clientHeight === hh) return
+    fitPaper(paper)
+    w = tray.clientWidth
+    hh = tray.clientHeight
+  })
+  ro.observe(tray)
 }
 
 // Phiếu trượt lên khỏi khe máy in từng nấc (máy rung nhẹ), rồi con dấu đập xuống. Chỉ transform / opacity.

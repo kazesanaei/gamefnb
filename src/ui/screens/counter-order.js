@@ -28,7 +28,7 @@ import { moodFor } from '../components/patience.js'
 import { isReduced } from '../motion.js'
 import { createOrderBubble, orderSay } from '../components/order-bubble.js'
 import { createMenuBoard, menuLayout } from '../components/menu-board.js'
-import { createOrderPad, ORDER_ERROR_LABELS as PAD_ERROR_LABELS } from '../components/order-pad.js'
+import { createOrderPad, listOverflow, ORDER_ERROR_LABELS as PAD_ERROR_LABELS } from '../components/order-pad.js'
 import { createOrderSheet, QTY_MAX } from '../components/order-sheet.js'
 
 export const ORDER_ERROR_LABELS = PAD_ERROR_LABELS
@@ -258,11 +258,44 @@ function createOrderView(ctx, customer) {
   // thành hàng ngang dính đáy khay (.act-bar sticky: counter.revealAboveBar, tour chừa chỗ thanh dính)
   pad.actionsEl.classList.add('act-bar')
   const el = h('div', { class: 'stage stage-order co-order co-tray' }, menu.el, pad.el, pad.actionsEl)
+  let fitKey = ''
+  let fitSrc = ''
+  let missing = []
   return {
     id: customer.id,
     el,
     menu,
     pad,
+    // Vừa màn: khay chật — thực đơn 2 hàng làm danh sách dòng phiếu (và lỗi khách bắt) phải cuộn trong phiếu — thì thực đơn
+    // thành MỘT hàng cuộn ngang (lớp is-tight, css/counter.css): mọi dòng phiếu + lỗi luôn thấy, dòng đầu không bị đẩy
+    // khuất. Đo theo SỰ KIỆN (sau khi vẽ lại mà phiếu / lỗi / thực đơn đổi, hoặc màn đổi cỡ — force), không mỗi khung hình.
+    // Vào trạng thái chật lúc khách bắt lỗi "ghi thiếu món": cuộn ngang thực đơn tới món thiếu đầu tiên.
+    fit(force = false) {
+      if (!el.isConnected || !ctx.el.classList.contains('co-scene')) return
+      const grid = menu.el.querySelector('.co-menu-grid')
+      const tutor = el.querySelector('.co-tutor')
+      const key = JSON.stringify([fitSrc, grid ? grid.dataset.n : '', tutor ? tutor.textContent : ''])
+      if (!force && key === fitKey) return
+      fitKey = key
+      const was = el.classList.contains('is-tight')
+      el.classList.remove('is-tight')
+      if (!grid || grid.dataset.rows !== '2' || typeof getComputedStyle !== 'function') return
+      // danh sách dòng là phần co của tờ giấy (lỗi khách bắt giữ đủ cao): dòng phải cuộn trong phiếu = khay chật. Đo hộp bố
+      // cục (listOverflow), không theo scrollHeight đang phình tạm vì hiệu ứng "viết ra" của dòng mới.
+      const list = pad.el.querySelector('.co-pad-lines')
+      if (!list || !listOverflow(list)) {
+        if (list && list.scrollTop) list.scrollTop = 0
+        return
+      }
+      el.classList.add('is-tight')
+      if (list.scrollTop) list.scrollTop = 0
+      const first = missing.length ? menu.itemEl(missing[0]) : null
+      if (first && (!was || force) && typeof first.getBoundingClientRect === 'function') {
+        const g = grid.getBoundingClientRect()
+        const r = first.getBoundingClientRect()
+        if (r.left < g.left + 4 || r.right > g.right - 4) grid.scrollLeft += r.left - g.left - 8
+      }
+    },
     update(cust, c) {
       const ids = orderableRecipes(app.state, app.ctx)
       menu.update({ recipes: ctx.R, menu: ids, left: id => rareLeft(app.state, id, app.ctx) })
@@ -272,6 +305,8 @@ function createOrderView(ctx, customer) {
       const draftKey = JSON.stringify(c.draft)
       const canConfirm = !!c.readbackDone && c.draft.length > 0
       const ui = ctx.ui
+      missing = (c.caught || []).filter(e => e && e.type === 'thieu_mon' && e.expectedRecipeId).map(e => e.expectedRecipeId)
+      fitSrc = JSON.stringify([c.draft, c.caught || []])
       pad.update({
         draft: c.draft,
         recipes: ctx.R,
@@ -297,6 +332,17 @@ export function paintOrder(ctx, customer, c) {
   }
   v.order.update(customer, c)
   return v.order.el
+}
+
+/**
+ * Vừa màn: co cảnh / khay theo nội dung đang có (bong bóng nhường chỗ cho lời khách — order-bubble fit(); khay Order chật thì
+ * thực đơn một hàng). counter.js gọi sau mỗi lần vẽ lại (chỉ đo khi nội dung đổi) và khi màn đổi cỡ / phông chữ nạp xong
+ * (force). Không gọi mỗi khung hình.
+ */
+export function fitScene(ctx, force = false) {
+  const v = views(ctx)
+  if (v.cust && typeof v.cust.bubble.fit === 'function') v.cust.bubble.fit(force)
+  if (v.order) v.order.fit(force)
 }
 
 /** Tương thích API bước 0. */
@@ -415,9 +461,9 @@ export function doReadback(ctx, _customer) {
     if (v.cust) v.cust.bubble.react(bad ? 'bad' : 'ok')
     reactPad(ctx, ui, bad)
     ctx.rerender()
-    // khách bắt lỗi: kéo khung lỗi vào phần nhìn thấy của khay (khung nhỏ: khay cuộn); đúng hết: dòng cuối
-    const caught = bad && v.order ? v.order.pad.el.querySelector('[data-testid="caught-list"]') : null
-    if (caught) revealInTray(ctx, caught, { smooth: true })
+    // khách bắt lỗi: kéo tờ phiếu (các dòng có nhãn lỗi + lỗi ghi thiếu món) vào phần nhìn thấy của khay — tờ cao hơn chỗ
+    // (khung nhỏ: khay cuộn) thì đầu tờ (dòng 1) nằm trên cùng, không đẩy dòng đầu khuất; đúng hết: dòng cuối
+    if (bad && v.order) revealInTray(ctx, v.order.pad.paperEl, { smooth: true })
     else if (v.order) v.order.pad.reveal(null, { smooth: true })
   }
   const pad = orderPad(ctx)

@@ -668,10 +668,21 @@
 .service-screen[data-scene] .rc-method { margin-top: 1px; }
 .service-screen[data-scene] .rc-thanks { margin-top: 0; }
 .service-screen[data-scene] .rc-stamp { margin: 10px 6px 3px 0; padding: 3px 8px 0; font-size: 16px; }
-/* phiếu ≥ 3 dòng món: dòng món sát hơn để phiếu vẫn trọn trên hàng nút */
+/* phiếu ≥ 3 dòng món: dòng món sát hơn, chữ dòng món 13, ghi chú một dòng cắt "…" (chữ đầy đủ đã ở phiếu order và phiếu
+   bếp) để phiếu vẫn trọn trên hàng nút ở mọi khung chính */
 .service-screen[data-scene] .rc-paper:has(.rc-line:nth-child(3)) .rc-lines { gap: 1px; }
 .service-screen[data-scene] .rc-paper:has(.rc-line:nth-child(3)) .rc-dish { width: 24px; height: 24px; }
 .service-screen[data-scene] .rc-paper:has(.rc-line:nth-child(3)) :is(.rc-name, .rc-notes) { line-height: 1.16; }
+.service-screen[data-scene] .rc-paper:has(.rc-line:nth-child(3)) :is(.rc-name, .rc-amt) { font-size: 13px; }
+.service-screen[data-scene] .rc-paper:has(.rc-line:nth-child(3)) .rc-notes { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.service-screen[data-scene] .rc-paper:has(.rc-line:nth-child(3)) .rc-total { margin-top: 4px; padding-top: 3px; }
+/* bề rộng giấy theo đơn vị máy in (thân máy rộng 140): phiếu ≥ 3 dòng và màn hẹp (< 390px) rộng hơn để tên món dài nhất
+   ("3 × Bánh tráng trộn Tây Ninh") vẫn một hàng */
+.service-screen[data-scene] .rc-win:has(.rc-line:nth-child(3)) { width: calc(var(--rc-k) * 124); }
+@media (max-width: 389px) {
+  .service-screen[data-scene] .rc-win { width: calc(var(--rc-k) * 126); }
+  .service-screen[data-scene] .rc-win:has(.rc-line:nth-child(3)) { width: calc(var(--rc-k) * 130); }
+}
 /* m: chữ 13–17 */
 .service-screen[data-scene][data-fit="m"] .rc-paper { padding-top: 6px; padding-left: 13px; padding-right: 13px; font-size: 13px; line-height: 1.26; }
 .service-screen[data-scene][data-fit="m"] .rc-shop { font-size: 15px; }
@@ -704,3 +715,23 @@
 .service-screen[data-scene][data-fit="xs"] .rc-line.no-notes { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name amt"; }
 .service-screen[data-scene][data-fit="xs"] .rc-dish,
 .service-screen[data-scene][data-fit="xs"] .rc-notes { display: none; }
+
+/* ---------- Phiếu cao hơn khay: gọn từng nấc theo số đo (counter-receipt.js fitPaper, thuộc tính data-tight 1–4) ----------
+   Khay vẫn cuộn sau các luật trên (tên xe dài, hàng "Thu thiếu" / làm tròn, đơn nhiều dòng ở khay thấp, lời Dì Sáu ngày 1
+   trên hàng nút) thì JS gắn nấc kế tiếp tới khi khay hết cuộn. Chữ vẫn ≥ 13px; con dấu giữ lề trên (không đè số tiền). */
+/* 1: tên xe một hàng "…", bỏ "Ngày n ·" (HUD đã có ngày), ghi chú một dòng "…", chữ dòng món 13 */
+.service-screen[data-scene] .rc-paper[data-tight] .rc-shop { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.service-screen[data-scene] .rc-paper[data-tight] .rc-day { display: none; }
+.service-screen[data-scene] .rc-paper[data-tight] :is(.rc-name, .rc-amt) { font-size: 13px; }
+.service-screen[data-scene] .rc-paper[data-tight] .rc-notes { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* 2: các khoảng trong phiếu sát hơn */
+.service-screen[data-scene] .rc-paper:is([data-tight="2"], [data-tight="3"], [data-tight="4"]) { padding-top: 4px; line-height: 1.2; }
+.service-screen[data-scene] .rc-paper:is([data-tight="2"], [data-tight="3"], [data-tight="4"]) .rc-head { margin-bottom: 3px; padding-bottom: 3px; }
+.service-screen[data-scene] .rc-paper:is([data-tight="2"], [data-tight="3"], [data-tight="4"]) .rc-lines { gap: 0; }
+.service-screen[data-scene] .rc-paper:is([data-tight="2"], [data-tight="3"], [data-tight="4"]) .rc-total { margin-top: 3px; padding-top: 2px; }
+/* 3: bỏ ghi chú (đã ở phiếu order và phiếu bếp) — mỗi món một hàng: hình · số lượng × tên · thành tiền (bậc xs đã vậy) */
+.service-screen[data-scene] .rc-paper:is([data-tight="3"], [data-tight="4"]) .rc-notes { display: none; }
+.service-screen[data-scene]:not([data-fit="xs"]) .rc-paper[data-tight="3"] .rc-line { grid-template-areas: "dish name amt"; }
+/* 4: bỏ cả hình món */
+.service-screen[data-scene] .rc-paper[data-tight="4"] .rc-dish { display: none; }
+.service-screen[data-scene] .rc-paper[data-tight="4"] .rc-line { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name amt"; }

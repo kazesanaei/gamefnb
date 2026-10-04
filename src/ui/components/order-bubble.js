@@ -9,6 +9,9 @@
 // món), customer-line (câu khách ở kiểu 'talk'); lời qua lại: seller-line / customer-line.
 // Hoạt ảnh chỉ theo SỰ KIỆN: enter() (khách tới), react('ok' | 'bad') (gật đầu / lắc đầu khi đọc lại đơn), lời mới
 // trong talk. update() với cùng dữ liệu không dựng lại gì.
+// Vừa màn: fit(force) (bên gọi gọi sau khi vẽ lại / khi màn đổi cỡ) cho lời khách ưu tiên chỗ trong bong bóng — lời qua
+// lại nhường chỗ, chữ co, còn dài thì cuộn trong bong bóng có dấu ⌄ (không cắt câm). Nhãn tên: lớp is-long (tên dài),
+// is-regular (khách quen) cho css chọn cách gọn theo bậc.
 // Thuần ở cấp module (import trong Node được).
 import { h } from '../dom.js'
 import { legacyFace } from '../art.js'
@@ -114,6 +117,8 @@ export function requestText(request, recipes) {
 
 // Độ dài tối đa (ký tự) của câu nói dưới bong bóng: một dòng ở 375px, hai dòng ở 320px.
 export const SAY_MAX = 34
+// Tên khách dài hơn chừng này ký tự (khách lạ "Anh ngư dân Phan Thiết") thì nhãn tên xuống 2 dòng, chữ 13px, bỏ dòng nghề.
+export const NAME_LONG = 12
 
 /**
  * Câu nói ngắn dưới bong bóng (hình món đã nói đủ món, chữ chỉ là phụ):
@@ -177,7 +182,7 @@ export function figureSvg(persona, mood, { gender = null, who = null } = {}) {
 const sigOf = d => JSON.stringify([d.persona, d.gender, d.who, d.mood, d.name, d.regular, d.tag, d.speech, d.say, d.request, d.showSpeech !== false, bubbleMode(d.mode)])
 
 /**
- * createOrderBubble(data, opts) → { el, update(data), destroy(), enter(), react(kind), bubbleEl, figureEl }
+ * createOrderBubble(data, opts) → { el, update(data), fit(force), destroy(), enter(), react(kind), bubbleEl, figureEl }
  * data: {
  *   persona, mood ('vui'|'binh_thuong'|'buc'|'gian'), gender, who (id khách quen / khách lạ: dáng riêng), name,
  *   regular (bool), tag (vd tên kiểu khách), mode ('icons' | 'text' | 'talk', xem đầu tệp),
@@ -196,7 +201,9 @@ export function createOrderBubble(data = {}, opts = {}) {
   const figure = h('div', { class: 'co-cust-figure' }, bob, nameTag)
   const dishes = h('div', { class: 'co-bubble-dishes', testid: 'request-icons' })
   const say = h('p', { class: 'co-bubble-say' })
-  const bubble = h('div', { class: 'co-bubble', testid: 'speech-bubble', role: 'group' }, dishes, say)
+  // dấu "còn chữ bên dưới" (chỉ hiện khi lời khách vẫn dài hơn bong bóng sau khi đã co — fit(); kéo hết thì ẩn)
+  const more = h('span', { class: 'co-bubble-more', 'aria-hidden': 'true' }, '⌄')
+  const bubble = h('div', { class: 'co-bubble', testid: 'speech-bubble', role: 'group' }, dishes, say, more)
   const talkBox = h('div', { class: 'co-talk', 'aria-live': 'polite', hidden: true })
   const scene = h('div', { class: 'co-cust' }, figure, bubble, h('div', { class: 'co-cust-counter g-wood g-wood--flat', 'aria-hidden': 'true' }))
   const el = h('div', { class: 'co-cust-wrap' }, scene, talkBox)
@@ -228,6 +235,9 @@ export function createOrderBubble(data = {}, opts = {}) {
     if (cur.regular) nameTag.appendChild(h('small', { class: 'co-cust-regular' }, 'Khách quen'))
     else if (cur.tag) nameTag.appendChild(h('small', null, cur.tag))
     nameTag.hidden = !cur.name && !cur.tag && !cur.regular
+    // tên dài (khách lạ: "Anh ngư dân Phan Thiết") xuống 2 dòng, bỏ dòng nghề; khách quen ở bậc thấp chỉ còn ★ trước tên (css)
+    nameTag.classList.toggle('is-long', [...String(cur.name || '')].length > NAME_LONG)
+    nameTag.classList.toggle('is-regular', !!cur.regular)
     el.dataset.mode = mode
     bubble.dataset.mode = mode
     const lines = mode === 'icons' ? requestLines(cur.request) : []
@@ -286,6 +296,41 @@ export function createOrderBubble(data = {}, opts = {}) {
     talkBox.hidden = !list.length
   }
 
+  // Vừa màn: lời khách (bong bóng) được ưu tiên chỗ trong hàng giữa của cảnh. Đo theo SỰ KIỆN (bên gọi gọi sau khi vẽ lại /
+  // khi màn đổi cỡ; cùng nội dung thì không đo lại trừ khi force): chữ dài hơn bong bóng thì lần lượt
+  //   1. lời qua lại ("Bạn: …", "Tín: …") nhường chỗ — chỉ còn cho máy đọc (aria-live vẫn đọc), bong bóng cao hết hàng giữa;
+  //   2. chữ bong bóng co 13px, giãn dòng 1,2 (is-say-tight);
+  //   3. vẫn dài: vùng chữ cuộn được + mờ dần ở đáy + dấu ⌄ (is-more; kéo tới cuối thì tắt).
+  // Kiểu hình món (ngày 1–2) đo cả bong bóng (câu nói đã kẹp 2 dòng).
+  let fitKey = ''
+  const overflows = () => (bubbleMode(cur.mode) === 'icons'
+    ? bubble.scrollHeight > bubble.clientHeight + 1
+    : say.scrollHeight > say.clientHeight + 1)
+  function syncMore() {
+    const on = bubble.classList.contains('is-fit-more') && say.scrollTop + say.clientHeight < say.scrollHeight - 2
+    bubble.classList.toggle('is-more', on)
+  }
+  function fit(force = false) {
+    if (destroyed || !el.isConnected) return
+    const key = [say.textContent, say.hidden, talkBox.textContent, talkBox.hidden, bubble.hidden, dishes.childElementCount].join('|')
+    if (!force && key === fitKey) return
+    fitKey = key
+    el.classList.remove('is-talk-off', 'is-say-tight')
+    bubble.classList.remove('is-fit-more', 'is-more')
+    if (bubble.hidden || (say.hidden && bubbleMode(cur.mode) !== 'icons') || typeof getComputedStyle !== 'function') return
+    if (!overflows()) return
+    if (!talkBox.hidden) {
+      el.classList.add('is-talk-off')
+      if (!overflows()) return
+    }
+    if (bubbleMode(cur.mode) === 'icons') return
+    el.classList.add('is-say-tight')
+    if (!overflows()) return
+    bubble.classList.add('is-fit-more')
+    syncMore()
+  }
+  say.addEventListener('scroll', syncMore, { passive: true })
+
   function update(d = {}) {
     if (destroyed) return
     cur = { ...d }
@@ -340,6 +385,7 @@ export function createOrderBubble(data = {}, opts = {}) {
   return {
     el,
     update,
+    fit,
     enter,
     react,
     bubbleEl: bubble,

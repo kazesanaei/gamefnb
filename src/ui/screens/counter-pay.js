@@ -8,7 +8,8 @@
 // Vừa màn (bố cục cảnh + khay, div.counter.co-scene của counter.js): panel Quầy không cuộn; khâu này là KHAY (bảng giá phấn
 // | máy tính tiền), phiếu order hình đặt trên mặt quầy ở cảnh (css/cashier.css định vị theo div.counter). Mọi phép "cuộn cho
 // lọt" chỉ cuộn vùng cuộn thật (khay ở khung nhỏ), không cuộn panel (scrollBoxOf). Bản sao ở lớp hiệu ứng mang data-scene +
-// data-fit của màn (fxFrameOf / applyFxFrame) để giữ đúng cỡ theo bậc.
+// data-fit của màn (fxFrameOf / applyFxFrame) để giữ đúng cỡ theo bậc. Phiếu hình cao tới đáy bong bóng khách (nhiều hàng
+// hình, cảnh thấp) → lớp is-crowded, bong bóng nhường chỗ (markSlipCrowd).
 import { h, svgBox } from '../dom.js'
 import { scene } from '../art/scene.js'
 import { reportTotal, priceOfLines } from '../../core/order.js'
@@ -101,7 +102,68 @@ export function renderPayment(ctx, customer, c) {
   // Lần đầu khâu này hiện cho khách (vào khâu / mở lại game giữa khâu): sau khi counter.js gắn panel và tự cuộn theo khâu,
   // cuộn tiếp cho trọn máy tính tiền lọt panel. Chỉ một lần theo lượt vào khâu (vẽ lại không cuộn lại).
   if (!ctx.ui.padShown) afterRender(() => { if (revealPad(ctx)) ctx.ui.padShown = true })
+  // Phiếu order hình ở cảnh có chồng lên bong bóng khách không (đo mỗi lượt vẽ, trước khi trình duyệt vẽ — không nháy)
+  afterRender(() => watchSlipCrowd(ctx))
   return body
+}
+
+// ---------- Phiếu order hình ↔ bong bóng khách ----------
+// Phiếu hình nằm trên mặt quầy (cảnh), đáy cố định sát dải xe đẩy; bong bóng "Hết bao nhiêu vậy?" ở đầu hàng giữa của cảnh.
+// Phiếu nhiều hàng hình (đơn ≥ 3 dòng nhiều ghi chú) ở cảnh thấp (bậc m) cao tới đáy bong bóng → phiếu và ghim đè lên chữ của
+// khách. Đo thật (số hàng hình tùy bề ngang màn, số ghi chú): chồng nhau thì gắn lớp is-crowded lên phiếu, css/cashier.css
+// ẩn bong bóng ở khâu này (như bậc s / xs). Đo lại sau mỗi lượt vẽ và khi panel Quầy đổi cỡ (ResizeObserver: xoay máy, thanh
+// Safari thu gọn → đổi bậc); không đo theo khung hình, không hoạt ảnh.
+const crowdObs = new WeakMap()
+const gone = ctx => typeof ctx.destroyed === 'function' && ctx.destroyed()
+
+function watchSlipCrowd(ctx) {
+  markSlipCrowd(ctx)
+  const el = ctx.el
+  if (!el || crowdObs.has(ctx) || typeof ResizeObserver !== 'function') return
+  const ro = new ResizeObserver(() => {
+    if (gone(ctx)) { ro.disconnect(); return }
+    markSlipCrowd(ctx)
+  })
+  ro.observe(el)
+  crowdObs.set(ctx, ro)
+}
+
+/** Gắn / gỡ lớp is-crowded của phiếu order hình theo việc phiếu có chồng lên bong bóng khách → true nếu đang chồng. */
+export function markSlipCrowd(ctx) {
+  if (!ctx || gone(ctx) || !ctx.el || typeof ctx.el.querySelector !== 'function') return false
+  const slip = ctx.el.querySelector('.stage-pay .cs-slip')
+  if (!slip || !slip.isConnected) return false
+  const bub = ctx.el.querySelector('.co-bubble')   // bong bóng khách của cảnh (order-bubble.js; testid chỉ gắn ở khâu Order)
+  let crowded = false
+  if (bub && bub.offsetHeight > 0) {
+    const s = slip.getBoundingClientRect()
+    const b = layoutBox(bub, ctx.el)
+    crowded = s.height > 0 && s.top < b.bottom + 2 && s.bottom > b.top && s.left < b.right && s.right > b.left
+  }
+  slip.classList.toggle('is-crowded', crowded)
+  return crowded
+}
+
+// Hộp của node trong khung nhìn theo bố cục (offsetTop / offsetLeft tới root, bỏ qua transform — bong bóng có thể đang nảy
+// khi khách vừa tới / mở lại game). Chuỗi offsetParent không tới root thì dùng getBoundingClientRect.
+function layoutBox(node, root) {
+  let x = 0
+  let y = 0
+  let n = node
+  while (n && n !== root) {
+    x += n.offsetLeft
+    y += n.offsetTop
+    n = n.offsetParent
+    if (n && n !== root) { x += n.clientLeft; y += n.clientTop }   // offsetTop tính từ mép trong viền của khối cha
+  }
+  if (n !== root) {
+    const r = node.getBoundingClientRect()
+    return { top: r.top, bottom: r.bottom, left: r.left, right: r.right }
+  }
+  const R = root.getBoundingClientRect()
+  const top = R.top + root.clientTop + y
+  const left = R.left + root.clientLeft + x
+  return { top, bottom: top + node.offsetHeight, left, right: left + node.offsetWidth }
 }
 
 // Chạy fn sau khi lượt vẽ hiện tại xong (panel đã gắn nút mới, counter.js đã cuộn theo khâu), trước khi trình duyệt vẽ.

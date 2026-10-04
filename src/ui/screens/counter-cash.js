@@ -38,6 +38,17 @@ export const CASH_FX = Object.freeze({ bill: 340, toCustomer: 420, toDrawer: 300
 // Panel Quầy (ctx) đang mở hộp "Két không đủ tiền lẻ": không mở chồng hộp thứ hai.
 const noChangeOpen = new WeakSet()
 
+// Chậu cây nhỏ trên mặt quầy (trang trí, cùng nét mực / tô phẳng của hình M5): đứng bên trái, cân với hũ tip bên phải.
+const PLANT_SVG = '<svg viewBox="0 0 72 96" aria-hidden="true"><g stroke="#3a2618" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">' +
+  '<path d="M35 57C29 45 18 40 7 42C11 54 22 60 35 57Z" fill="#5cb84c"/>' +
+  '<path d="M37 57C43 43 55 37 66 40C62 53 50 60 37 57Z" fill="#4ea53f"/>' +
+  '<path d="M36 59C31 41 33 22 42 8C51 23 47 44 36 59Z" fill="#6cc65a"/>' +
+  '<path d="M15 60H57L53 90H19Z" fill="#d9774a"/>' +
+  '<path d="M11 51H61V62H11Z" fill="#ec9562"/></g>' +
+  '<path d="M45 64H54L51 87H43Z" fill="#b5532c" opacity=".5"/>' +
+  '<path d="M21 67L23 83M16 55H30" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".45"/>' +
+  '<path d="M37 55C37 41 38 27 42 15M12 44C20 46 27 50 33 55M64 42C56 45 48 50 40 55" fill="none" stroke="#3a2618" stroke-width="1.6" stroke-linecap="round" opacity=".45"/></svg>'
+
 // Dòng "Cần thối" (và cảnh báo thối dư): ngày 1–3 hoặc bật Hỗ trợ tính tiền.
 export function showChangeHint(ctx) {
   const s = ctx.sh()
@@ -67,8 +78,9 @@ export function renderCash(ctx, customer, c) {
     // ngày đầu (đang hiện "Cần thối"): khay nhiều hơn số cần thối → cảnh báo đỏ trước khi đưa
     hint && trayAmt > due ? h('div', { class: 'cs-over', testid: 'change-over', role: 'status' }, 'Đang thối dư ', h('b', null, formatVND(trayAmt - due))) : null))
   wrap.appendChild(body)
-  // mặt quầy gỗ ở đầu khay (bố cục cảnh: phần dư của khay; khay đủ cao thì có hũ tip trang trí) — chỉ để nhìn
-  body.appendChild(h('div', { class: 'cs-counter-top', 'aria-hidden': 'true' }, svgBox(scene('hu_tip'), 'cs-tipjar')))
+  // mặt quầy gỗ ở đầu khay (bố cục cảnh: phần dư của khay; mặt quầy đủ cao thì có chậu cây + hũ tip trang trí) — chỉ để nhìn
+  body.appendChild(h('div', { class: 'cs-counter-top', 'aria-hidden': 'true' },
+    h('span', { class: 'cs-plant', html: PLANT_SVG }), svgBox(scene('hu_tip'), 'cs-tipjar')))
   body.appendChild(renderTray(c.tray, {
     emptyText: due === 0 ? 'Không cần thối tiền' : null,
     onReturn: (b, el) => returnBill(ctx, b, el)

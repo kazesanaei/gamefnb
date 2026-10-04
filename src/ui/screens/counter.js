@@ -29,7 +29,7 @@ import { changeRemaining } from '../../core/order.js'
 import { personaObj } from '../../core/customer.js'
 import { drawerTotal } from '../../core/money.js'
 import { fill, formatVND } from '../format.js'
-import { paintCustomer, paintOrder, paintSheet, dropOrder, dropAll, sheetOpen, diSauFace, trayOf, stickyBarTop, revealInTray } from './counter-order.js'
+import { paintCustomer, paintOrder, paintSheet, dropOrder, dropAll, sheetOpen, diSauFace, trayOf, stickyBarTop, revealInTray, fitScene } from './counter-order.js'
 import { renderPayment } from './counter-pay.js'
 import { renderCash } from './counter-cash.js'
 import { renderQr } from './counter-qr.js'
@@ -189,6 +189,9 @@ export function mountCounter(root, app, opts = {}) {
     setChildren(nodes)
     paintSheet(ctx, c)
     placeTutor(c, customer)
+    // co cảnh / khay theo nội dung (bong bóng nhường chỗ cho lời khách, khay Order chật thì thực đơn một hàng) — chỉ đo khi
+    // nội dung đổi
+    fitScene(ctx)
     const glowMoved = applyGlow(c, customer)
     sig = stateSig()
     ui.lastAdded = null
@@ -453,8 +456,13 @@ export function mountCounter(root, app, opts = {}) {
   // ---------- Vòng đời ----------
 
   render()
-  const ro = typeof ResizeObserver === 'function' && root ? new ResizeObserver(() => fit()) : null
+  // đổi cỡ (xoay máy, thanh Safari, khung đổi bậc) và phông chữ nạp xong (chữ đổi bề ngang): đo lại hàng dính riêng + co lại
+  // cảnh / khay (fitScene force)
+  const refit = () => { if (destroyed) return; fit(); fitScene(ctx, true) }
+  const ro = typeof ResizeObserver === 'function' && root ? new ResizeObserver(refit) : null
   if (ro) ro.observe(root)
+  const fonts = typeof document !== 'undefined' && document.fonts && document.fonts.ready
+  if (fonts && typeof fonts.then === 'function') fonts.then(refit, () => {})
 
   // Hướng dẫn lần đầu: chỗ đang làm ở Quầy (màn ca bán chọn tour theo chỗ này).
   // 'idle' (quầy trống) | 'order' | 'order-sheet' (bảng chọn món đang mở) | 'thanh_toan' | 'tinh_tien' | 'qr' | 'receipt'

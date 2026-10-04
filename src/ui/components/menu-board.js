@@ -120,7 +120,11 @@ export function createMenuBoard(data = {}, opts = {}) {
     h('span', { class: 'co-menu-plate', 'aria-hidden': 'true' }, art),
     h('span', { class: 'co-menu-name' }, item.name),
     h('span', { class: 'co-price', 'aria-hidden': 'true' }, h('b', null, p.big), p.small ? h('small', null, p.small) : null),
-    item.rare && item.left !== null ? h('span', { class: 'co-menu-left', testid: 'rare-left-' + item.id }, `★ còn ${item.left}`) : null,
+    // "★ còn n" (chữ đúng giữ cho trình đọc / e2e); thẻ hẹp (bảng 4–5 cột) chỉ hiện "★n" — chữ "còn" ẩn kiểu máy đọc (css).
+    // Bọc một lớp span trong: nhãn là inline-flex, chữ nằm trọn một mục flex nên khoảng trắng quanh "còn" không bị cắt.
+    item.rare && item.left !== null
+      ? h('span', { class: 'co-menu-left', testid: 'rare-left-' + item.id }, h('span', null, '★', h('span', { class: 'co-menu-left-word' }, ' còn '), String(item.left)))
+      : null,
     item.rare ? h('span', { class: 'co-menu-glint', 'aria-hidden': 'true' }) : null,
     item.rare ? h('span', { class: 'co-twinkle co-twinkle--a', 'aria-hidden': 'true' }) : null,
     item.rare ? h('span', { class: 'co-twinkle co-twinkle--b', 'aria-hidden': 'true' }) : null,

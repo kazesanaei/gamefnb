@@ -3,7 +3,9 @@
 // cái: "Đọc lại đơn" và "Chốt order".
 // Vừa màn (quầy thật): phiếu là phần co giãn của khay Order — giấy kéo dài tới đáy, kẻ dòng trống; dòng nhiều hơn chỗ thì
 // danh sách dòng tự cuộn bên trong phiếu (reveal() cuộn đúng vùng đó). Móc bố cục: data-lines (số dòng), .is-dense (≥ 3
-// dòng), .is-caught (khách bắt lỗi).
+// dòng), .is-caught (khách bắt lỗi), .is-missing (có lỗi không thuộc dòng nào: ghi thiếu món). Khách bắt lỗi ở một dòng:
+// nhãn lỗi ngắn (span.co-line-err) nằm ngay trên dòng đó — bố cục cảnh chỉ hiện nhãn này, danh sách lỗi (caught-list) còn
+// hiện các lỗi không thuộc dòng nào; câu lỗi đầy đủ của mọi lỗi vẫn nằm trong caught-list cho máy đọc.
 // Hiệu ứng theo SỰ KIỆN:
 //   readback(result) — sáng lần lượt từng dòng (120 ms mỗi dòng) rồi đánh ✓ / ✗;
 //   stamp({ target }) — NHÂN BẢN phiếu vào lớp hiệu ứng, con dấu "ĐÃ CHỐT" đập xuống (1,8 → 1, xoay −8°, 200 ms, rung
@@ -27,15 +29,19 @@ export const STAMP_TEXT = 'ĐÃ CHỐT'
 // Nhịp hiệu ứng (ms): theo mục C.2 nghiên cứu giao diện và bảng 6.4 thiết kế M5.
 export const PAD_TIMING = Object.freeze({ readStep: 120, readGlow: 320, stampIn: 200, stampHold: 380, fly: 450, reducedHold: 650 })
 
-/** Mô hình một dòng phiếu: { index, recipeId, name, qty, notes: [{ id, label }], wrong, sig }. */
-export function padLine(line, index, recipes, wrongSet = null) {
+/**
+ * Mô hình một dòng phiếu: { index, recipeId, name, qty, notes: [{ id, label }], wrong, errs, sig }.
+ * errs: nhãn lỗi khách bắt ở chính dòng này (vd ['Sai ghi chú']) — bố cục cảnh ghi ngay trên dòng.
+ */
+export function padLine(line, index, recipes, wrongSet = null, errs = null) {
   const l = line || {}
   const r = recipes && recipes[l.recipeId]
   const notes = (Array.isArray(l.notes) ? l.notes : []).map(id => ({ id: String(id), label: noteLabel(id, r) }))
   const qty = Math.max(1, Math.floor(Number(l.qty) || 1))
   const wrong = !!(wrongSet && wrongSet.has(index))
   const name = r ? r.name : String(l.recipeId || '')
-  return { index, recipeId: String(l.recipeId || ''), name, qty, notes, wrong, sig: JSON.stringify([l.recipeId, qty, notes.map(n => n.id), wrong, name]) }
+  const err = Array.isArray(errs) ? errs.filter(Boolean).map(String) : []
+  return { index, recipeId: String(l.recipeId || ''), name, qty, notes, wrong, errs: err, sig: JSON.stringify([l.recipeId, qty, notes.map(n => n.id), wrong, name, ...(err.length ? [err] : [])]) }
 }
 
 /** Câu lỗi khách chỉ ra: "Dòng 2: Ghi sai số lượng", "Ghi thiếu món (trà tắc)". */
@@ -46,14 +52,23 @@ export function caughtText(e, recipes, labels = ORDER_ERROR_LABELS) {
   return at + ((labels && labels[e.type]) || ORDER_ERROR_LABELS[e.type] || String(e.type || '')) + miss
 }
 
-/** Mô hình phiếu: { lines, empty, caught: [chuỗi], draftSig }. */
+/**
+ * Mô hình phiếu: { lines, empty, caught: [chuỗi], caughtAt: [chỉ số dòng | null] (cùng thứ tự caught), draftSig }.
+ * Lỗi có chỉ số dòng còn được ghi vào errs của dòng đó (nhãn ngắn, không "Dòng n:").
+ */
 export function padModel({ draft = [], recipes = {}, caught = [], errorLabels = null } = {}) {
-  const wrong = new Set((caught || []).map(e => e && e.index).filter(i => i !== null && i !== undefined))
-  const lines = (draft || []).map((l, i) => padLine(l, i, recipes, wrong))
+  const labels = errorLabels || ORDER_ERROR_LABELS
+  const list = (caught || []).filter(Boolean)
+  const at = e => (e.index !== null && e.index !== undefined && Number.isInteger(Number(e.index)) ? Number(e.index) : null)
+  const wrong = new Set(list.map(at).filter(i => i !== null))
+  const errsOf = i => list.filter(e => at(e) === i).map(e => (labels && labels[e.type]) || ORDER_ERROR_LABELS[e.type] || String(e.type || ''))
+  const lines = (draft || []).map((l, i) => padLine(l, i, recipes, wrong, wrong.has(i) ? errsOf(i) : null))
+  const items = list.map(e => ({ text: caughtText(e, recipes, labels), index: at(e) })).filter(x => x.text)
   return {
     lines,
     empty: !lines.length,
-    caught: (caught || []).map(e => caughtText(e, recipes, errorLabels || ORDER_ERROR_LABELS)).filter(Boolean),
+    caught: items.map(x => x.text),
+    caughtAt: items.map(x => (x.index !== null && x.index < lines.length ? x.index : null)),
     draftSig: JSON.stringify((draft || []).map(l => [l.recipeId, l.qty, l.notes || []]))
   }
 }
@@ -71,36 +86,18 @@ const LABELS = Object.freeze({
   readFirst: 'Đọc lại đơn cho khách nghe trước khi chốt.'
 })
 
-// Thuộc tính bố cục / chữ được chép từ kiểu đã tính sang bản sao của phiếu (freezeStyles).
-const FREEZE_PROPS = [
-  'display', 'position', 'box-sizing', 'top', 'right', 'bottom', 'left', 'width', 'height', 'min-width', 'min-height',
-  'max-width', 'max-height', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left', 'padding-top', 'padding-right',
-  'padding-bottom', 'padding-left', 'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width',
-  'border-top-left-radius', 'border-top-right-radius', 'border-bottom-left-radius', 'border-bottom-right-radius',
-  'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'align-items', 'align-self', 'align-content',
-  'justify-content', 'justify-self', 'row-gap', 'column-gap', 'grid-template-columns', 'grid-template-rows',
-  'grid-template-areas', 'grid-row-start', 'grid-row-end', 'grid-column-start', 'grid-column-end', 'font-size',
-  'line-height', 'letter-spacing', 'font-weight', 'white-space', 'text-align', 'overflow-x', 'overflow-y',
-  'background-image', 'background-color', 'color', 'transform', 'opacity', 'z-index', 'clip-path'
-]
-
-/** Chép kiểu bố cục đã tính của cây src (phần tử HTML; bỏ ruột SVG) vào cây dst cùng cấu trúc (bản sao). Thuần trình duyệt. */
-export function freezeStyles(src, dst) {
-  if (typeof getComputedStyle !== 'function') return
-  const walk = (a, b) => {
-    if (!a || !b || a.nodeType !== 1 || b.nodeType !== 1 || !b.style) return
-    let cs = null
-    try { cs = getComputedStyle(a) } catch { return }
-    if (!cs) return
-    for (const p of FREEZE_PROPS) {
-      const v = cs.getPropertyValue(p)
-      if (v) b.style.setProperty(p, v)
-    }
-    if (String(a.tagName).toLowerCase() === 'svg') return
-    const ak = a.children, bk = b.children
-    for (let i = 0; i < ak.length && i < bk.length; i++) walk(ak[i], bk[i])
-  }
-  walk(src, dst)
+/**
+ * Số px các dòng của danh sách (ol.co-pad-lines) cao hơn chỗ của nó, theo hộp BỐ CỤC (offsetTop / offsetHeight) — không theo
+ * scrollHeight: hiệu ứng "viết ra" của dòng mới (huy hiệu ×n phóng 1,9 lần) làm scrollHeight phình tạm vài trăm ms, đo bằng
+ * nó thì tưởng phiếu chật. 0 nếu vừa (lệch dưới 1px do làm tròn cũng coi là vừa).
+ */
+export function listOverflow(list) {
+  if (!list || list.hidden || !list.children || !list.children.length) return 0
+  const first = list.children[0]
+  const last = list.children[list.children.length - 1]
+  const need = (last.offsetTop || 0) + (last.offsetHeight || 0) - (first.offsetTop || 0)
+  const over = need - (list.clientHeight || 0)
+  return over > 1 ? over : 0
 }
 
 /**
@@ -182,7 +179,9 @@ export function createOrderPad(data = {}, opts = {}) {
       class: 'co-line-main', type: 'button', testid: 'order-line-' + line.index,
       'aria-label': `Dòng ${line.index + 1}: ${line.qty} ${line.name}` + (line.notes.length ? ', ' + line.notes.map(n => n.label).join(', ') : '') + '. Chạm để sửa',
       onclick: () => { if (typeof opts.onEdit === 'function') opts.onEdit(line.index) }
-    }, art, h('span', { class: 'co-line-name' }, line.name), h('span', { class: 'co-line-qty' }, '×' + line.qty), notes)
+    }, art, h('span', { class: 'co-line-name' }, line.name), h('span', { class: 'co-line-qty' }, '×' + line.qty), notes,
+    // lỗi khách bắt ở dòng này: bố cục cảnh ghi ngay trên dòng (chữ đầy đủ vẫn trong caught-list cho máy đọc)
+    line.errs.length ? h('span', { class: 'co-line-err', 'aria-hidden': 'true' }, line.errs.join(' · ')) : null)
     const del = h('button', {
       class: 'co-line-del', type: 'button', testid: 'order-line-remove-' + line.index, 'aria-label': 'Xóa dòng ' + (line.index + 1),
       onclick: () => { if (typeof opts.onRemove === 'function') opts.onRemove(line.index) }
@@ -237,15 +236,20 @@ export function createOrderPad(data = {}, opts = {}) {
     const fs = typeof cur.face === 'string' ? cur.face : ''
     if (fs !== faceSig) { faceSig = fs; face.innerHTML = fs; face.hidden = !fs }
     // lỗi khách bắt
-    const cs = JSON.stringify(model.caught)
+    // lỗi của một dòng (có chỉ số) mang lớp is-line: bố cục cảnh chỉ để cho máy đọc (nhãn lỗi đã ghi trên dòng), danh sách
+    // còn hiện các lỗi không thuộc dòng nào (ghi thiếu món); mọi lỗi đều thuộc dòng → cả danh sách mang is-all-lines
+    const cs = JSON.stringify([model.caught, model.caughtAt])
     if (cs !== caughtSig) {
       caughtSig = cs
       caughtBox.textContent = ''
       if (model.caught.length) {
-        caughtBox.appendChild(h('ul', { class: 'co-caught', testid: 'caught-list' },
-          model.caught.map(t => h('li', null, h('span', { class: 'co-caught-x', 'aria-hidden': 'true' }, '✗'), t))))
+        const onLine = i => model.caughtAt[i] !== null && model.caughtAt[i] !== undefined
+        const all = model.caught.every((_, i) => onLine(i))
+        caughtBox.appendChild(h('ul', { class: ['co-caught', all ? 'is-all-lines' : ''], testid: 'caught-list' },
+          model.caught.map((t, i) => h('li', { class: onLine(i) ? 'is-line' : null }, h('span', { class: 'co-caught-x', 'aria-hidden': 'true' }, '✗'), t))))
       }
     }
+    el.classList.toggle('is-missing', model.caughtAt.some(i => i === null))
     if (checks && checks.sig !== model.draftSig) checks = null
     // phiếu đổi giữa lượt đọc lại: hủy lượt đó (nút đọc lại dùng được ngay cho phiếu mới)
     if (readSig !== null && readSig !== model.draftSig) stopReading()
@@ -267,7 +271,9 @@ export function createOrderPad(data = {}, opts = {}) {
     const out = []
     for (let p = node.parentElement; p; p = p.parentElement) {
       const cs = typeof getComputedStyle === 'function' ? getComputedStyle(p) : null
-      if (cs && /(auto|scroll)/.test(cs.overflowY) && p.scrollHeight > p.clientHeight + 1) out.push(p)
+      if (!cs || !/(auto|scroll)/.test(cs.overflowY)) continue
+      // danh sách dòng: chỉ cuộn khi các dòng thật sự cao hơn chỗ (đo hộp bố cục, bỏ phần phình tạm của hiệu ứng)
+      if (p === list ? listOverflow(list) > 0 : p.scrollHeight > p.clientHeight + 1) out.push(p)
     }
     return out
   }
@@ -347,18 +353,47 @@ export function createOrderPad(data = {}, opts = {}) {
   }
 
   // Bản sao tĩnh của giấy phiếu, đặt đúng chỗ trong lớp hiệu ứng (để panel vẽ lại tự do bên dưới). Kiểu của phiếu phụ thuộc
-  // ngữ cảnh (khay Order theo bậc của màn — css/counter.css): ở lớp hiệu ứng bản sao mất ngữ cảnh đó, nên "đóng băng" kiểu
-  // bố cục đã tính của từng nút vào bản sao (freezeStyles) — bản sao (và bản bay nhân bản từ nó) giống hệt phiếu đang thấy.
+  // ngữ cảnh (khay Order theo bậc của màn — css/counter.css: [data-fit] .co-scene .co-order[data-rows] .co-pad.is-dense …).
+  // Bản sao mang theo đúng chuỗi ngữ cảnh đó: khung div.co-pad-ghost (data-fit của màn) bọc các lớp vỏ display: contents
+  // (bản sao nông của từng tổ tiên từ giấy lên tới div.co-scene — chép lớp + data-*, bỏ testid / id), nên CSS tự khớp
+  // y hệt phiếu đang thấy mà không phải đọc / chép kiểu đã tính của từng nút (lúc bấm Chốt nhẹ hơn). Bản bay của vfx nhân bản
+  // cả khung nên cũng giống hệt.
   function ghostOf(layer) {
     const rect = paper.getBoundingClientRect()
     if (!layer || !rect.width || !rect.height) return null
     if (layer.childElementCount >= 30) return null
     const Lr = layer.getBoundingClientRect()
-    const g = paper.cloneNode(true)
-    freezeStyles(paper, g)
-    g.removeAttribute('data-testid')
-    for (const n of g.querySelectorAll('[data-testid],[id]')) { n.removeAttribute('data-testid'); n.removeAttribute('id') }
-    g.classList.add('co-pad-ghost')
+    const doc = el.ownerDocument || (typeof document !== 'undefined' ? document : null)
+    if (!doc) return null
+    const g = doc.createElement('div')
+    g.className = 'co-pad-ghost'
+    const near = sel => (typeof el.closest === 'function' ? el.closest(sel) : null)
+    const fitEl = near('[data-fit]')
+    if (fitEl && fitEl.getAttribute('data-fit')) g.setAttribute('data-fit', fitEl.getAttribute('data-fit'))
+    // tổ tiên của giấy tới div.co-scene (ngoài quầy: tới chính phiếu) → vỏ ngữ cảnh, ngoài vào trong
+    const stop = near('.co-scene') || el
+    const chain = []
+    for (let n = paper.parentElement; n; n = n.parentElement) {
+      chain.unshift(n)
+      if (n === stop) break
+    }
+    let host = g
+    for (const n of chain) {
+      const shell = n.cloneNode(false)
+      shell.removeAttribute('data-testid')
+      shell.removeAttribute('id')
+      shell.removeAttribute('style')
+      shell.classList.add('co-ghost-ctx')
+      host.appendChild(shell)
+      host = shell
+    }
+    const copy = paper.cloneNode(true)
+    for (const n of copy.querySelectorAll('[data-testid],[id]')) { n.removeAttribute('data-testid'); n.removeAttribute('id') }
+    copy.style.margin = '0'
+    copy.style.width = '100%'
+    copy.style.height = '100%'
+    copy.style.boxSizing = 'border-box'
+    host.appendChild(copy)
     g.style.position = 'absolute'
     g.style.left = `${rect.left - Lr.left}px`
     g.style.top = `${rect.top - Lr.top}px`
@@ -366,6 +401,9 @@ export function createOrderPad(data = {}, opts = {}) {
     g.style.height = `${rect.height}px`
     g.style.margin = '0'
     layer.appendChild(g)
+    // danh sách dòng đang cuộn (phiếu dài) → bản sao cùng chỗ cuộn
+    const cl = list.scrollTop ? copy.querySelector('.co-pad-lines') : null
+    if (cl) cl.scrollTop = list.scrollTop
     return g
   }
 
