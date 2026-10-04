@@ -6,10 +6,13 @@
 // 375×553 (vùng an toàn 47/34). Khung iOS mô phỏng iOS cắt phần tử ngoài vùng cuộn (clip-path: inset(0) trên .screen,
 // .panel, .k-main) như các e2e iPhone khác.
 //
-// Bốn luồng × sáu khung (mỗi luồng một ngữ cảnh trình duyệt, 3 luồng chạy song song, cả tệp < 8 phút):
+// Năm luồng × sáu khung (mỗi luồng một ngữ cảnh trình duyệt, 3 luồng chạy song song, cả tệp ~3,5 phút, < 8 phút):
 //  · Quầy tiền mặt (ngày 5, thực đơn 4 món, đơn 2 dòng có ghi chú): Order phiếu trống → bảng chọn món → phiếu 2 dòng → đọc
 //    lại → Thanh toán (đã gõ tổng) → Tính tiền khay trống → đã lấy tiền thối → Phiếu thu → quầy trống.
 //  · Quầy chuyển khoản: chờ tiền về (giờ trang dừng) → tiền đã về → Phiếu thu sau chuyển khoản.
+//  · Quầy đơn dài, khách bắt lỗi (thực đơn 8 món có 4 món hiếm, hàng khách đầy 3 chỗ, đơn 3 dòng món hiếm với lời gọi món dài
+//    nhất): Order → bảng chọn món hiếm → phiếu ghi sai → đọc lại, khách bắt 3 lỗi → bảng sửa dòng → phiếu 3 dòng đọc lại
+//    đúng → Thanh toán → Tính tiền → Phiếu thu 3 dòng.
 //  · Phiếu chấm có tip (tab Bếp, giao món).
 //  · Bếp (3 phiếu, bánh tráng trộn Tây Ninh 9 bước): dây phiếu → phiếu mở → Chọn (rổ trống) → Thớt → sân khấu Thái (giờ
 //    trang dừng).
@@ -21,10 +24,15 @@
 //  · elementFromPoint ở tâm phần nhìn thấy trúng chính phần tử (nút: thêm 4 điểm gần mép) — không bị thanh tab, hàng nút, lớp
 //    khác đè (thẻ thông báo đang bay ngang không tính); nút ≥ 44×44;
 //  · chữ đang thấy của màn Ca bán + lớp nổi ≥ 13px, không chữ lỗi; không tràn ngang;
-//  · khung chính: hình đĩa món của thực đơn, hình kệ Chọn, hình nguyên liệu trên Thớt ≥ 48px.
+//  · khung chính: hình đĩa món của thực đơn, hình kệ Chọn, hình nguyên liệu trên Thớt ≥ 48px;
+//  · khung chính: không nội dung nào tràn trong VÙNG CUỘN CON (INNER: chữ bong bóng, danh sách dòng phiếu, lỗi khách bắt, khay
+//    khâu, bảng giá, phiếu thu, bảng chọn món, phiếu chấm; và mọi vùng cuộn nằm giữa phần tử cần và panel): chữ / nút / phần
+//    tử có testid phải nằm trọn trong hộp nhìn thấy của vùng — hộp phần tử thấy trọn mà chữ bên trong phải cuộn mới đọc hết
+//    cũng là đỏ; nhãn "★ còn n" của món hiếm không đè tem giá.
 // Mỗi luồng gom MỌI chỗ chưa đạt (kèm số đo px) rồi mới báo đỏ một lần, để thấy đủ các chỗ phải sửa.
-// Biến môi trường: VUA_MAN_KHUNG=402x874,360x600 (chỉ chạy các khung này), VUA_MAN_LOG=1 (in bậc data-fit, --scene-h,
-// --tray-h, vùng cuộn của từng trạng thái), SHOT_DIR=<thư mục> (chụp ảnh từng trạng thái, như các e2e khác).
+// Biến môi trường: VUA_MAN_KHUNG=402x874,360x600 (chỉ chạy các khung này), VUA_MAN_LUONG=bat-loi,tien-mat (chỉ chạy các
+// luồng này), VUA_MAN_LOG=1 (in bậc data-fit, --scene-h, --tray-h, vùng cuộn của từng trạng thái), VUA_MAN_CSS=<css> (soát
+// chính bộ đo), SHOT_DIR=<thư mục> (chụp ảnh từng trạng thái, như các e2e khác).
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
@@ -37,7 +45,7 @@ import { newRecipeProgress } from '../../src/core/state.js'
 import { makeNowInfo } from '../../src/core/clock.js'
 import { refreshMeta } from '../../src/core/meta.js'
 import { startShift, advance } from '../../src/core/shift.js'
-import { priceOfLines, addLine, readback, confirmOrder, reportTotal, changeOptions } from '../../src/core/order.js'
+import { priceOfLines, addLine, updateLine, readback, confirmOrder, reportTotal, changeOptions } from '../../src/core/order.js'
 import { normalizeLines, expectedServiceSec, speechFor } from '../../src/core/customer.js'
 import { minBillsChange, BILLS } from '../../src/core/money.js'
 import { requiredIngredients } from '../../src/core/scoring.js'
@@ -61,8 +69,9 @@ for (const k of WANT) {
 }
 const FRAME_KEYS = Object.keys(FRAMES).filter(k => !WANT.length || WANT.includes(k))
 
+// VUA_MAN_CSS=<css> thêm vào mọi khung (chỉ để soát chính bộ đo: cố ý làm hỏng bố cục rồi xem e2e có báo đúng chỗ không)
 const frameCss = f => `:root { --safe-top: ${f.top}px !important; --safe-bottom: ${f.bottom}px !important; }` +
-  (f.ios ? '\n.screen, .panel, .k-main { clip-path: inset(0); }' : '')
+  (f.ios ? '\n.screen, .panel, .k-main { clip-path: inset(0); }' : '') + (process.env.VUA_MAN_CSS ? '\n' + process.env.VUA_MAN_CSS : '')
 
 // ---------- Phần tử cần của từng khâu (đặc tả mục 9) ----------
 // Cú pháp: testid ('readback'), tiền tố testid ('menu-item-*'), hoặc bộ chọn CSS (bắt đầu bằng . # [ hay có dấu cách).
@@ -76,6 +85,8 @@ const LINES = ['order-line-0', 'order-line-1', 'order-line-remove-0']
 // quầy trống sau khi kẹp phiếu: còn phiếu trên dây nên có nút "Sang Bếp" (go-kitchen)
 const IDLE = ['hud', 'hud-wallet', 'help-button', 'tab-counter', 'tab-kitchen', 'counter-idle', 'queue', 'ticket-rail', 'go-kitchen']
 const STAGE = '[data-testid="minigame-stage"]'
+// Nhãn "★ còn n" của món hiếm không đè tem giá trên cùng thẻ món (khung chính, mọi trạng thái có thực đơn)
+const MENU_APART = [['.co-menu-left', '.co-price', '[data-testid^="menu-item-"]']]
 const NEED = {
   order: { ten: 'Order · phiếu trống', main: [...QUAY, ...ORDER], small: [...QUAY, 'speech-bubble', 'confirm-order', 'any:menu-item-*'], img: [['.co-menu-plate', 48]], scene: CANH },
   sheet: { ten: 'Bảng chọn món', main: ['order-sheet', 'qty-plus', 'qty-minus', 'qty-value', 'note-chip-*', 'add-line', 'sheet-close'], small: ['add-line', 'sheet-close'] },
@@ -96,8 +107,35 @@ const NEED = {
   // "‹ Phiếu" (kitchen-back) chỉ có ở đầu bước Chọn / Thớt: ở danh sách phiếu thì có mới đo
   open: { ten: 'Bếp · phiếu mở', main: ['cook-line-*', 'kitchen-back?'], small: ['cook-line-*', 'kitchen-back?'] },
   chon: { ten: 'Bếp · Chọn (rổ trống)', main: ['recipe-card', 'minigame-stage', 'shelf-*', 'chon-basket', 'chon-done', 'kitchen-back'], small: ['chon-done', 'any:shelf-*', 'kitchen-back'], img: [['.chon-icon', 48]] },
-  thot: { ten: 'Bếp · Thớt sơ chế', main: ['board', 'board-step-*', 'finish-dish', 'abandon-dish'], small: ['finish-dish', 'any:[data-testid^="board-step-"].is-available'], img: [['.k-ing-art', 48]] }
+  thot: { ten: 'Bếp · Thớt sơ chế', main: ['board', 'board-step-*', 'finish-dish', 'abandon-dish'], small: ['finish-dish', 'any:[data-testid^="board-step-"].is-available'], img: [['.k-ing-art', 48]] },
+  // Luồng "đơn dài, khách bắt lỗi" (thực đơn 8 món có 4 món hiếm, đơn 3 dòng món hiếm, hàng khách đầy 3 chỗ): phiếu ghi sai 2 dòng + thiếu
+  // 1 món → đọc lại, khách bắt cả 3 lỗi → sửa 2 dòng, thêm món thiếu → đọc lại đúng → Thanh toán → Tính tiền → Phiếu thu.
+  big: { ten: 'Order · thực đơn 8 món (4 món hiếm), phiếu trống', main: [...QUAY, ...ORDER], small: [...QUAY, 'speech-bubble', 'confirm-order', 'any:menu-item-*'], img: [['.co-menu-plate', 48]], scene: CANH, apart: MENU_APART },
+  sheetEdit: { ten: 'Bảng chọn món · sửa dòng', main: ['order-sheet', 'qty-plus', 'qty-minus', 'qty-value', 'note-chip-*', 'add-line', 'remove-line', 'sheet-close'], small: ['add-line', 'sheet-close'] },
+  wrong: { ten: 'Order · phiếu ghi sai 2 dòng', main: [...QUAY, ...ORDER, ...LINES], small: [...QUAY, 'readback', 'confirm-order'], img: [['.co-menu-plate', 48]], scene: CANH, apart: MENU_APART },
+  // khách bắt lỗi (đặc tả mục 9: caught-list, readback, confirm-order, speech-bubble): nhãn lỗi ngay trên dòng (.co-line-err)
+  // + danh sách lỗi còn hiện lỗi "ghi thiếu món". Để sửa xong không cuộn còn phải thấy các dòng (chạm để sửa) và thẻ món bị
+  // thiếu; các thẻ món khác không bắt buộc (bảng thực đơn được thu một hàng, cuộn ngang tới món thiếu)
+  caught: { ten: 'Order · khách bắt lỗi (sai ghi chú, sai số lượng, thiếu món)', main: [...QUAY, 'speech-bubble', 'readback', 'confirm-order', 'caught-list', '.co-line-err', ...LINES, 'menu-item-tra_tac_mat_ong'], small: [...QUAY, 'readback', 'confirm-order'], scene: CANH, apart: MENU_APART },
+  fixed: { ten: 'Order · phiếu 3 dòng đã sửa, đọc lại đúng', main: [...QUAY, ...ORDER, ...LINES, 'order-line-2'], small: [...QUAY, 'readback', 'confirm-order'], scene: CANH, apart: MENU_APART },
+  pay3: { ten: 'Thanh toán (đơn 3 dòng)', main: [...QUAY, 'price-board', 'numpad-*', 'report-total'], small: [...QUAY, 'numpad-*', 'report-total'], scene: CANH },
+  cash3: { ten: 'Tính tiền · khay trống (đơn 3 dòng)', main: [...QUAY, 'given-cash', 'amount-due', 'drawer', 'drawer-*', 'tray', 'give-change'], small: [...QUAY, 'drawer', 'drawer-*', 'give-change'], scene: [...CANH, 'given-cash', 'amount-due'] },
+  tray3: { ten: 'Tính tiền · đã lấy tiền thối (đơn 3 dòng)', main: [...QUAY, 'given-cash', 'amount-due', 'drawer', 'drawer-*', 'tray', 'give-change'], small: [...QUAY, 'drawer', 'drawer-*', 'give-change'], scene: [...CANH, 'given-cash', 'amount-due'] },
+  receipt3: { ten: 'Phiếu thu 3 dòng (tiền mặt)', main: [...QUAY, 'receipt', 'clip-ticket'], small: [...QUAY, 'clip-ticket'], scene: CANH }
 }
+// Vùng con có nội dung người chơi phải đọc / chạm hết (khung chính, mọi trạng thái): chính vùng và mọi con có overflow phải
+// chứa trọn nội dung (scrollHeight ≤ clientHeight + 1) — không cuộn bên trong, không cắt câm. Thêm vào đó, mọi vùng cuộn dọc
+// nằm giữa một phần tử cần và vùng cuộn chính của màn cũng phải chứa trọn nội dung.
+const INNER = [
+  '.co-bubble-say',                  // chữ lời khách trong bong bóng
+  '[data-testid="draft"]',           // danh sách dòng phiếu order
+  '[data-testid="caught-list"]',     // lỗi khách bắt
+  '.stage',                          // khay của khâu (Order, Thanh toán, Tính tiền, chuyển khoản, phiếu thu)
+  '[data-testid="price-board"]',     // bảng giá phấn
+  '[data-testid="receipt"]',         // phiếu thu (các dòng món)
+  '[data-testid="order-sheet"]',     // bảng chọn món
+  '[data-testid="score-sheet"]'      // phiếu chấm
+]
 // Sân khấu: đích thao tác theo loại (đặc tả mục 9: "đích thao tác của mini-game, nút trong .mg-foot")
 const STAGE_TARGET = { thai: 'thai-board', cha: 'cha-area', dap: 'dap-egg', got: 'got-fruit', lua: 'lua-lift', rot: 'rot-pour', lac: 'lac-shaker', xoay: 'xoay-bowl', bay: 'bay-target', cham: 'cham-done' }
 function stageNeed(type) {
@@ -115,8 +153,35 @@ const REQUEST = [
 ]
 const MENU_EXTRA = ['ca_phe_sua_da']
 
-// Chạy thử quầy của khách trên BẢN SAO state bằng lõi (ghi đúng, đọc lại, chốt, báo đúng tổng) → khâu Tính tiền của bản sao.
-function trialCounter(state, customerId) {
+// Đơn dài nhất khách thật gọi được (makeRequest của lõi: ≤ 3 dòng, mỗi dòng ≤ 2 ghi chú khác nhóm, ×1–3), cả 3 dòng là món
+// hiếm: bánh tráng trộn Tây Ninh ×3 không rau răm + thêm trứng cút, bánh mì trứng gà ta ×2 không hành + lòng đào, trà tắc mật
+// ong rừng ×2 không đá (lời gọi món ~185 chữ, dài nhất trong 24 lần sinh). Thực đơn 8 món: 4 món thường + 4 món hiếm (nhãn
+// "★ còn n" trên thẻ). Chè bưởi là món theo dịp, không lên thực đơn ngày thường.
+const LONG_REQUEST = [
+  { recipeId: 'banh_trang_tron_tay_ninh', qty: 3, notes: ['khong_rau_ram', 'them_trung_cut'] },
+  { recipeId: 'banh_mi_trung_ga_ta', qty: 2, notes: ['khong_hanh', 'long_dao'] },
+  { recipeId: 'tra_tac_mat_ong', qty: 2, notes: ['khong_da'] }
+]
+const LONG_MENU = ['banh_mi_op_la', 'tra_tac', 'banh_trang_tron', 'ca_phe_sua_da', 'tra_tac_mat_ong', 'banh_mi_trung_ga_ta', 'banh_trang_tron_tay_ninh', 'ca_phe_muoi']
+// Phiếu ghi sai lần đầu: dòng 1 thiếu "thêm trứng cút" (sai ghi chú), dòng 2 ×1 thay vì ×2 (sai số lượng), quên trà tắc mật
+// ong (ghi thiếu món) → khách bắt cả 3 lỗi. Sửa: chạm dòng 1 thêm ghi chú, chạm dòng 2 tăng số lượng, thêm món thiếu.
+const WRONG_DRAFT = [
+  { recipeId: 'banh_trang_tron_tay_ninh', qty: 3, notes: ['khong_rau_ram'] },
+  { recipeId: 'banh_mi_trung_ga_ta', qty: 1, notes: ['khong_hanh', 'long_dao'] }
+]
+// Các bước lõi tương ứng (để chạy thử bằng lõi chọn hạt ngẫu nhiên): readback: số lỗi khách phải bắt
+const CAUGHT_STEPS = [
+  ...WRONG_DRAFT.map(l => ({ add: l })),
+  { readback: 3 },
+  { update: [0, LONG_REQUEST[0]] },
+  { update: [1, LONG_REQUEST[1]] },
+  { add: LONG_REQUEST[2] },
+  { readback: 0 }
+]
+
+// Chạy thử quầy của khách trên BẢN SAO state bằng lõi (mặc định: ghi đúng, đọc lại; steps: các bước ghi / sửa / đọc lại như
+// luồng trình duyệt), chốt, báo đúng tổng → khâu Tính tiền của bản sao. Khách bắt số lỗi khác steps thì trả null.
+function trialCounter(state, customerId, steps = null) {
   const st = JSON.parse(JSON.stringify(state))
   const ctx = makeMetaCtx({ at: COOK_SHIFT_AT })
   ctx.setState(st)
@@ -128,8 +193,16 @@ function trialCounter(state, customerId) {
   const c = sh.counter
   if (!c || c.customerId !== customerId) return null
   const cust = sh.customers[customerId]
-  for (const l of cust.request) addLine(st, l)
-  readback(st, ctx)
+  if (!steps) {
+    for (const l of cust.request) addLine(st, l)
+    readback(st, ctx)
+  } else {
+    for (const s of steps) {
+      if (s.add) addLine(st, s.add)
+      else if (s.update) updateLine(st, s.update[0], s.update[1])
+      else if ((readback(st, ctx).caught || []).length !== s.readback) return null
+    }
+  }
   if (!confirmOrder(st, ctx).ok) return null
   const result = reportTotal(st, priceOfLines(cust.request, DATA.RECIPES), ctx)
   return { counter: sh.counter, result, drawer: sh.drawer, state: st, ctx }
@@ -137,9 +210,13 @@ function trialCounter(state, customerId) {
 
 // Như counterShiftSave của helpers.mjs (4 ca người chơi hoàn hảo, mở ca ngày 5 lúc COOK_SHIFT_AT, không tình huống, khách
 // đầu rất kiên nhẫn, các khách sau tới muộn 4 phút) nhưng thực đơn đủ 4 món. pay: 'cash' (có tiền thối, két thối được) | 'qr'.
-function counterSave(pay) {
-  const { state } = playedSave(3, 4, { name: pay === 'qr' ? 'Xe Vừa Màn QR' : 'Xe Vừa Màn', freq: 'it' })
-  for (const rid of [...REQUEST.map(l => l.recipeId), ...MENU_EXTRA]) {
+// opts (luồng đơn dài): request, menu (món thêm vào thực đơn), steps (bước của trialCounter), queue (số khách xếp hàng ngay
+// sau khách đầu, tới ở giây +4, +7…, rất kiên nhẫn; hàng chờ tối đa 3 chỗ kể cả khách ở quầy nên queue ≤ 2), longest (chọn
+// lời gọi món dài nhất trong 24 lần sinh), name.
+function counterSave(pay, opts = {}) {
+  const { request = REQUEST, menu = MENU_EXTRA, steps = null, queue = 0, longest = false } = opts
+  const { state } = playedSave(3, 4, { name: opts.name || (pay === 'qr' ? 'Xe Vừa Màn QR' : 'Xe Vừa Màn'), freq: 'it' })
+  for (const rid of [...request.map(l => l.recipeId), ...menu]) {
     if (!state.recipes[rid]) state.recipes[rid] = newRecipeProgress(0)
     for (const ing of Object.keys(DATA.RECIPES[rid].rare || {})) state.rare.stock[ing] = Math.max(Number(state.rare.stock[ing]) || 0, 4)
   }
@@ -152,11 +229,22 @@ function counterSave(pay) {
   sh.incident = null
   sh.incidentQueue = []
   const customerId = sh.plan[0].customerId
-  for (const p of sh.plan.slice(1)) p.arriveAt += 240
+  const a0 = sh.plan[0].arriveAt
+  sh.plan.slice(1).forEach((p, i) => {
+    if (i < queue) {
+      p.arriveAt = a0 + 4 + 3 * i
+      const q = sh.customers[p.customerId]
+      if (q) q.patienceSec = 3600
+    } else p.arriveAt += 240
+  })
   const cust = sh.customers[customerId]
-  cust.request = normalizeLines(REQUEST)
+  cust.request = normalizeLines(request)
   cust.expectedSec = expectedServiceSec(cust.request, ctx)
   cust.speech = speechFor(cust, sh, ctx)
+  for (let i = 1; longest && i < 24; i++) {
+    const s = speechFor(cust, sh, ctx)
+    if (String(s).length > String(cust.speech).length) cust.speech = s
+  }
   cust.tutorial = false
   cust.patienceSec = 3600
   delete cust.forcePay
@@ -164,13 +252,13 @@ function counterSave(pay) {
   const base = Number(sh.rng) >>> 0
   for (let k = 0; k < 4000; k++) {
     sh.rng = (base + k * 2654435761) >>> 0
-    const t = trialCounter(state, customerId)
+    const t = trialCounter(state, customerId, steps)
     if (!t || t.result.result !== 'dung') continue
     const c = t.counter
     const ok = pay === 'qr'
       ? c.payMethod === 'qr' && !c.fakeQr
       : c.payMethod === 'cash' && c.changeDue > 0 && !changeOptions(t.state, t.ctx).length && !!minBillsChange(c.changeDue, t.drawer)
-    if (ok) return { state, customerId, total, request: cust.request }
+    if (ok) return { state, customerId, total, request: cust.request, speech: cust.speech }
   }
   throw new Error('không tìm được hạt ngẫu nhiên cho cách trả ' + pay)
 }
@@ -178,6 +266,7 @@ function counterSave(pay) {
 const SAVES = {
   cash: counterSave('cash'),
   qr: counterSave('qr'),
+  caught: counterSave('cash', { request: LONG_REQUEST, menu: LONG_MENU, steps: CAUGHT_STEPS, queue: 2, longest: true, name: 'Xe Bắt Lỗi Vừa Màn' }),
   tip: (() => {
     const { state, tickets } = tipShiftSave(1)
     const high = tickets.find(t => t.bill >= 20000)
@@ -338,12 +427,142 @@ function installVm() {
       hud: rd(F.hudBottom), tabTop: rd(F.tabTop), cuon: sc
     }
   }
+  // ---- nội dung tràn trong vùng cuộn con (khung chính) ----
+  // Hộp phần tử nằm trọn trong vùng thấy chưa đủ: chữ bong bóng, danh sách dòng phiếu, phiếu thu… có thể vẫn dài hơn hộp của
+  // chính vùng chứa (phải cuộn bên trong / bị cắt câm). Đo NỘI DUNG thật chứ không đo scrollHeight (scrollHeight còn tính cả
+  // hoạt ảnh trang trí như vệt sáng trên nút, khoảng dòng thừa của chữ): chữ (mỗi dòng lấy khung em = cỡ chữ quanh tâm dòng,
+  // nên dấu tiếng Việt cao không bị tính oan) và hộp nút / phần tử có testid, đã cắt theo các vùng cắt nằm bên trong, so với
+  // hộp nhìn thấy (client box) của vùng. Vùng cuộn chính của màn (panel, k-main) đã đo bằng hộp phần tử nên bỏ qua.
+  const MAIN_SCROLL = '.panels > .panel, .k-main'
+  // phần tử chỉ cho máy đọc (1px, clip-path inset(50%)) không tính; hình vẽ (svg) và lớp hiệu ứng không phải nội dung
+  const srOnly = el => {
+    const r = el.getBoundingClientRect()
+    return r.width <= 2 || r.height <= 2 || /inset\(\s*50%/.test(getComputedStyle(el).clipPath || '')
+  }
+  const decor = el => !!el.closest('svg, .vfx-layer')
+  const clipsOf = cs => cs.overflowX !== 'visible' || cs.overflowY !== 'visible'
+  const clientBox = a => {
+    const r = a.getBoundingClientRect()
+    const top = r.top + a.clientTop, left = r.left + a.clientLeft
+    return { top, left, bottom: top + a.clientHeight, right: left + a.clientWidth }
+  }
+  const inter = (a, b) => ({ top: Math.max(a.top, b.top), left: Math.max(a.left, b.left), bottom: Math.min(a.bottom, b.bottom), right: Math.min(a.right, b.right) })
+  // khung cắt của các vùng cắt từ `from` (kể cả) lên tới c (không kể c)
+  const clipBetween = (from, c) => {
+    let box = { top: -1e9, left: -1e9, bottom: 1e9, right: 1e9 }
+    for (let a = from; a && a !== c; a = a.parentElement) if (clipsOf(getComputedStyle(a))) box = inter(box, clientBox(a))
+    return box
+  }
+  // phần nội dung của vùng c nằm ngoài hộp nhìn thấy của c: { top, bottom, left, right } (px), mẫu chữ / phần tử bị cắt
+  const cutOf = c => {
+    const B = clientBox(c)
+    const cut = { top: 0, bottom: 0, left: 0, right: 0 }
+    const what = { top: '', bottom: '', left: '', right: '' }
+    const take = (r, label, horiz) => {
+      const d = { top: B.top - r.top, bottom: r.bottom - B.bottom, left: horiz ? B.left - r.left : 0, right: horiz ? r.right - B.right : 0 }
+      for (const k of Object.keys(d)) if (d[k] > cut[k]) { cut[k] = d[k]; what[k] = label }
+    }
+    const w = document.createTreeWalker(c, NodeFilter.SHOW_TEXT)
+    const range = document.createRange()
+    while (w.nextNode()) {
+      const t = w.currentNode
+      const txt = t.textContent.trim()
+      const p = t.parentElement
+      if (!txt || !p || decor(p) || !shown(p)) continue
+      const pcs = getComputedStyle(p)
+      const fs = parseFloat(pcs.fontSize) || 13
+      const clip = p === c ? { top: -1e9, left: -1e9, bottom: 1e9, right: 1e9 } : clipBetween(p, c)
+      // chữ "…" có chủ đích (text-overflow: ellipsis) không tính là cắt ngang
+      const horiz = pcs.textOverflow !== 'ellipsis'
+      range.selectNodeContents(t)
+      const rects = [...range.getClientRects()]
+      rects.forEach((r, i) => {
+        const cy = (r.top + r.bottom) / 2
+        const em = inter({ top: cy - fs / 2, bottom: cy + fs / 2, left: r.left, right: r.right }, clip)
+        if (em.right - em.left < 1 || em.bottom - em.top < 1) return
+        take(em, `chữ “${txt.slice(0, 24)}${txt.length > 24 ? '…' : ''}”${rects.length > 1 ? ` dòng ${i + 1}/${rects.length}` : ''}`, horiz)
+      })
+    }
+    for (const d of c.querySelectorAll('button, input, select, [data-testid]')) {
+      if (decor(d) || !shown(d) || srOnly(d)) continue
+      const v = inter(d.getBoundingClientRect(), clipBetween(d.parentElement, c))
+      if (v.right - v.left < 1 || v.bottom - v.top < 1) continue
+      take(v, nameOf(d), true)
+    }
+    return { cut, what }
+  }
+  // Chữ cắt CÓ CHỦ ĐÍCH bằng -webkit-line-clamp (hiện "…", vd dải "Khách nói" của bảng chọn món giữ như 0.5.1) không tính,
+  // trừ các vùng phải hiện trọn chữ (lời khách trong bong bóng).
+  const MUST_FIT = '.co-bubble-say'
+  const innerOverflow = (roots, reqEls) => {
+    const out = []
+    const seen = new Set()
+    const test = el => {
+      if (seen.has(el)) return
+      seen.add(el)
+      if (el.matches(MAIN_SCROLL) || !shown(el) || decor(el) || srOnly(el)) return
+      const cs = getComputedStyle(el)
+      if (!clipsOf(cs)) return
+      const clamp = cs.webkitLineClamp || cs.getPropertyValue('-webkit-line-clamp')
+      if (clamp && clamp !== 'none' && !el.matches(MUST_FIT)) return
+      const { cut, what } = cutOf(el)
+      // dải cuộn ngang có chủ đích (thực đơn > 10 món, kẹp phiếu đầy): phần tử cần trong dải đã đo bằng hộp; ở đây chỉ xét dọc
+      const carousel = /auto|scroll/.test(cs.overflowX) && /hidden|clip/.test(cs.overflowY)
+      // phần nằm TRÊN / TRÁI mép vùng khi vùng chưa cuộn là phần tràn âm (đồ của khâu trước trượt ra bằng transform, đồ trang
+      // trí): không cuộn tới được và không phải nội dung đang cần — chỉ tính khi vùng đã bị cuộn (scrollTop / scrollLeft > 0)
+      // hoặc chữ bị cắt cả hai đầu (chữ to hơn hộp)
+      const skip = k => (carousel && (k === 'left' || k === 'right')) ||
+        (k === 'top' && el.scrollTop < 0.5 && !(cut.bottom > 1)) || (k === 'left' && el.scrollLeft < 0.5 && !(cut.right > 1))
+      const bad = [['trên', 'top'], ['dưới', 'bottom'], ['trái', 'left'], ['phải', 'right']].filter(([, k]) => cut[k] > 1 && !skip(k))
+      if (!bad.length) return
+      const scroll = /auto|scroll/.test(cs.overflowY + ' ' + cs.overflowX)
+      out.push(`${nameOf(el)} ${scroll ? 'phải cuộn bên trong mới thấy hết' : 'cắt mất nội dung'}: ` +
+        bad.map(([k, key]) => `${k} ${rd(cut[key])}px (${what[key]})`).join(', ') +
+        ` (vùng ${rd(el.clientWidth)}×${rd(el.clientHeight)}, nội dung cuộn ${rd(el.scrollWidth)}×${rd(el.scrollHeight)})`)
+    }
+    // 1) vùng được nêu (bong bóng, phiếu order, khay khâu, phiếu thu…): chính nó và mọi con có overflow
+    for (const s of roots) {
+      let els = []
+      try { els = [...document.querySelectorAll(s)] } catch { els = [] }
+      for (const e of els) {
+        if (decor(e) || !shown(e)) continue
+        test(e)
+        for (const d of e.querySelectorAll('*')) if (clipsOf(getComputedStyle(d))) test(d)
+      }
+    }
+    // 2) mọi vùng cuộn (auto / scroll) nằm giữa phần tử cần và vùng cuộn chính của màn
+    for (const el of reqEls) {
+      for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
+        if (a.matches(MAIN_SCROLL)) break
+        const cs = getComputedStyle(a)
+        if (/auto|scroll/.test(cs.overflowY + ' ' + cs.overflowX)) test(a)
+      }
+    }
+    return out
+  }
+  // hai phần tử trong cùng một khối không được đè nhau (vd nhãn "★ còn n" với tem giá trên thẻ món)
+  const overlaps = pairs => {
+    const out = []
+    for (const [a, b, scope] of pairs) {
+      for (const box of document.querySelectorAll(scope)) {
+        const ea = box.querySelector(a), eb = box.querySelector(b)
+        if (!ea || !eb || !shown(ea) || !shown(eb) || srOnly(ea) || srOnly(eb)) continue
+        const ra = ea.getBoundingClientRect(), rb = eb.getBoundingClientRect()
+        const w = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left)
+        const hh = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top)
+        if (w > 0.5 && hh > 0.5) out.push(`${a} đè ${b} ở ${nameOf(box)}: giao ${rd(w)}×${rd(hh)}px (${a} x ${rd(ra.left)}–${rd(ra.right)} y ${rd(ra.top)}–${rd(ra.bottom)}; ${b} x ${rd(rb.left)}–${rd(rb.right)} y ${rd(rb.top)}–${rd(rb.bottom)})`)
+      }
+    }
+    return out
+  }
   window.__vm = {
-    // spec: { req: [...], img: [[bộ chọn, px]] } → { out: [chuỗi chưa đạt], info }
+    // spec: { req: [...], img: [[bộ chọn, px]], scene: [...], inner: [bộ chọn vùng] | null, apart: [[a, b, khối]] }
+    //   → { out: [chuỗi chưa đạt], info }
     audit(spec) {
       const F = frame()
       const cache = new Map()
       const out = []
+      const reqEls = []
       for (const raw of spec.req) {
         let s = raw, mode = 'all', opt = false
         if (s.startsWith('any:')) { mode = 'any'; s = s.slice(4) } else if (s.startsWith('first:')) { mode = 'first'; s = s.slice(6) }
@@ -351,11 +570,15 @@ function installVm() {
         let els = find(s)
         if (!els.length) { if (!opt) out.push(`thiếu ${s} (không có trong DOM hoặc đang ẩn)`); continue }
         if (mode === 'first') els = els.slice(0, 1)
+        reqEls.push(...els)
         const probs = els.map(el => checkEl(el, F, cache))
         if (mode === 'any') {
           if (!probs.some(p => !p.length)) out.push(`không ${s} nào thấy trọn: ${probs[0].join('; ')}`)
         } else for (const p of probs) out.push(...p)
       }
+      // nội dung tràn trong vùng cuộn con (chỉ khung chính: spec.inner là danh sách vùng)
+      if (spec.inner) out.push(...innerOverflow(spec.inner, reqEls))
+      if (spec.apart && spec.apart.length) out.push(...overlaps(spec.apart))
       // phần tử của cảnh không lấn khay (chỉ khi màn đã chia cảnh / khay: tab Quầy có --tray-h)
       const trayH = F.svc ? num(getComputedStyle(F.svc).getPropertyValue('--tray-h')) : 0
       if ((spec.scene || []).length && trayH > 0 && F.svc.getAttribute('data-tab') === 'counter') {
@@ -478,9 +701,11 @@ async function check(g, R, key, { wait = 400, need = null } = {}) {
   const req = R.F.main ? N.main : N.small
   const img = R.F.main ? (N.img || []) : []
   const scene = R.F.main ? (N.scene || []) : []
+  const inner = R.F.main ? INNER : null
+  const apart = R.F.main ? (N.apart || []) : []
   await page.waitForTimeout(wait)
   await settle(page, req)
-  const m = await page.evaluate(spec => window.__vm.audit(spec), { req, img, scene })
+  const m = await page.evaluate(spec => window.__vm.audit(spec), { req, img, scene, inner, apart })
   for (const s of m.out) R.add(`${N.ten}: ${s}`)
   if (LOG) {
     const i = m.info
@@ -511,9 +736,18 @@ async function tap(g, R, sel, { record = true, chinh = false } = {}) {
   await page.tap(sel)
 }
 
+// Dừng giờ trang ngay sau lúc này. Máy tải nặng: giữa lúc đọc giờ trang và lúc dừng có thể trôi quá `lead` ms, Playwright
+// báo "Cannot fast-forward to the past" — đọc lại giờ và thử với khoảng dài hơn (không phải lỗi game).
 async function pauseClock(page, lead = 60) {
-  const t = await page.evaluate(() => Date.now())
-  await page.clock.pauseAt(t + lead)
+  for (const extra of [0, 300, 1200]) {
+    const t = await page.evaluate(() => Date.now())
+    try {
+      await page.clock.pauseAt(t + lead + extra)
+      return
+    } catch (e) {
+      if (extra === 1200 || !/past/i.test(String(e && e.message))) throw e
+    }
+  }
 }
 
 function verdict(g, R) {
@@ -576,9 +810,19 @@ async function cashFlow(g, R) {
   await tap(g, R, T('confirm-order'), { chinh: true })
   await typeTotal(g, R, sv.total)
   await check(g, R, 'pay', { wait: 300 })
+  await cashAndReceipt(g, R, sv, { cash: 'cash', tray: 'tray', receipt: 'receipt' })
+  await tap(g, R, T('clip-ticket'), { chinh: true })
+  await page.waitForSelector('[data-testid^="rail-ticket-"]', { timeout: 10000 })
+  await page.waitForSelector(T('counter-idle'), { timeout: 10000 })
+  await check(g, R, 'idle', { wait: 1500 })
+}
+
+// Báo tổng → Tính tiền (khay trống) → lấy tiền thối ít tờ nhất theo két → Phiếu thu; keys: tên trạng thái trong NEED.
+async function cashAndReceipt(g, R, sv, keys) {
+  const { page } = g
   await tap(g, R, T('report-total'), { chinh: true })
   await page.waitForSelector(T('given-cash'), { timeout: 10000 })
-  await check(g, R, 'cash', { wait: 900 })
+  await check(g, R, keys.cash, { wait: 900 })
   // lấy tiền thối ra khay: ít tờ nhất theo két
   const given = Number(await page.getAttribute(T('given-cash'), 'data-amount'))
   const hint = await page.$(T('change-hint'))
@@ -591,15 +835,55 @@ async function cashFlow(g, R) {
     for (let k = 0; k < best.bills[b]; k++) await tap(g, R, T('drawer-' + b), { chinh: true })
   }
   assert.equal(Number(await page.getAttribute(T('tray'), 'data-amount')), due)
-  await check(g, R, 'tray', { wait: 500 })
+  await check(g, R, keys.tray, { wait: 500 })
   await tap(g, R, T('give-change'), { chinh: true })
   await page.waitForSelector(T('receipt'), { timeout: 10000 })
   await page.waitForSelector(`${T('clip-ticket')}:not([disabled])`, { timeout: 10000 })
-  await check(g, R, 'receipt', { wait: 1300 })
-  await tap(g, R, T('clip-ticket'), { chinh: true })
-  await page.waitForSelector('[data-testid^="rail-ticket-"]', { timeout: 10000 })
-  await page.waitForSelector(T('counter-idle'), { timeout: 10000 })
-  await check(g, R, 'idle', { wait: 1500 })
+  await check(g, R, keys.receipt, { wait: 1300 })
+}
+
+// Mở bảng chọn món của một dòng phiếu (chạm dòng để sửa), bật thêm ghi chú / tăng số lượng, "Sửa dòng".
+async function editLine(g, R, index, { notes = [], plus = 0, measure = null } = {}) {
+  const { page } = g
+  await tap(g, R, T('order-line-' + index))
+  await page.waitForSelector(T('order-sheet'))
+  if (measure) await measure()
+  for (const n of notes) await tap(g, R, T('note-chip-' + n))
+  for (let q = 0; q < plus; q++) await tap(g, R, T('qty-plus'))
+  await tap(g, R, T('add-line'), { chinh: true })
+  await page.waitForSelector(T('order-sheet'), { state: 'detached' })
+}
+
+// Đơn dài + khách bắt lỗi (thực đơn 8 món có 4 món hiếm, hàng khách đầy: khách ở quầy + 2 khách chờ): Order → bảng chọn món hiếm → phiếu ghi sai →
+// đọc lại, khách bắt 3 lỗi → sửa 2 dòng (bảng sửa dòng), thêm món thiếu → đọc lại đúng → Thanh toán → Tính tiền → Phiếu thu.
+async function caughtFlow(g, R) {
+  const { page } = g
+  const sv = SAVES.caught
+  await boot(g, sv.state)
+  await waitOrder(page)
+  // hàng khách đầy: khách ở quầy + 2 khách chờ (tới ở giây +4, +7 của ca; hàng chờ tối đa 3 chỗ kể cả khách ở quầy — thêm
+  // khách nữa thì khách đó bỏ đi vì hàng đầy); không đủ thì vẫn đo tiếp
+  const qSel = '[data-testid="queue"] [data-testid^="queue-"]:not([data-testid="queue-more"])'
+  await page.waitForFunction(s => document.querySelectorAll(s).length >= 3, qSel, { timeout: 20000 }).catch(() => {})
+  if (LOG) console.log(`[vừa màn] ${R.fk} · hàng khách: ${await page.$$eval(qSel, l => l.length)} khách (kể cả khách ở quầy)`)
+  await check(g, R, 'big', { wait: 900 })
+  await writeOrder(g, R, WRONG_DRAFT, { onFirstSheet: () => check(g, R, 'sheet', { wait: 450, need: { ...NEED.sheet, ten: 'Bảng chọn món (món hiếm, 4 ghi chú)' } }) })
+  await check(g, R, 'wrong', { wait: 700 })
+  await tap(g, R, T('readback'), { chinh: true })
+  await page.waitForSelector(T('caught-list'), { timeout: 10000 })
+  assert.equal(await page.$$eval(`${T('caught-list')} li`, l => l.length), 3, 'khách bắt đủ 3 lỗi (hạt ngẫu nhiên chọn bằng lõi)')
+  // lượt đọc sáng từng dòng + khách đáp xong
+  await check(g, R, 'caught', { wait: 1500 })
+  await editLine(g, R, 0, { notes: ['them_trung_cut'], measure: () => check(g, R, 'sheetEdit', { wait: 450 }) })
+  await editLine(g, R, 1, { plus: 1 })
+  await writeOrder(g, R, [LONG_REQUEST[2]])
+  await page.waitForSelector(T('order-line-2'))
+  await readbackOk(g, R)
+  await check(g, R, 'fixed', { wait: 900 })
+  await tap(g, R, T('confirm-order'), { chinh: true })
+  await typeTotal(g, R, sv.total)
+  await check(g, R, 'pay3', { wait: 300 })
+  await cashAndReceipt(g, R, sv, { cash: 'cash3', tray: 'tray3', receipt: 'receipt3' })
 }
 
 async function qrFlow(g, R) {
@@ -723,19 +1007,31 @@ async function kitchenFlow(g, R) {
 const FLOWS = [
   ['Quầy tiền mặt: Order → bảng chọn món → phiếu 2 dòng → đọc lại → Thanh toán → Tính tiền → Phiếu thu → quầy trống', 'tien-mat', COOK_OPEN_MS, cashFlow],
   ['Quầy chuyển khoản: chờ tiền về → tiền đã về → Phiếu thu', 'qr', COOK_OPEN_MS, qrFlow],
+  ['Quầy đơn dài, khách bắt lỗi: thực đơn 8 món (4 món hiếm) → phiếu sai → khách bắt 3 lỗi → sửa → đọc lại → Thanh toán → Tính tiền → Phiếu thu 3 dòng', 'bat-loi', COOK_OPEN_MS, caughtFlow],
   ['Phiếu chấm có tip', 'phieu-cham', vn(TIP_AT) + 2 * 60 * 1000, scoreFlow],
   ['Bếp: dây phiếu → phiếu mở → Chọn → Thớt → sân khấu Thái', 'bep', COOK_OPEN_MS, kitchenFlow]
 ]
 
+// VUA_MAN_LUONG=bat-loi,tien-mat (chỉ chạy các luồng này: tien-mat | qr | bat-loi | phieu-cham | bep)
+const WANT_FLOWS = (process.env.VUA_MAN_LUONG || '').split(',').map(s => s.trim()).filter(Boolean)
+
 describe('Vừa màn: mỗi khâu trong ca thao tác trọn một màn, không cuộn tay', { concurrency: 3 }, () => {
   for (const fk of FRAME_KEYS) {
     const f = FRAMES[fk]
-    for (const [ten, name, time, run] of FLOWS) {
-      it(`${fk} ${f.main ? '(khung chính)' : '(khung nhỏ)'} · ${ten}: ${f.main ? 'mọi testid cần của khâu' : 'nút chính của khâu'} thấy trọn, chạm trúng, không bị che, chữ ≥ 13px, không tràn ngang`, { timeout: 150000 }, async () => {
+    for (const [ten, name, time, run] of FLOWS.filter(x => !WANT_FLOWS.length || WANT_FLOWS.includes(x[1]))) {
+      it(`${fk} ${f.main ? '(khung chính)' : '(khung nhỏ)'} · ${ten}: ${f.main ? 'mọi testid cần của khâu' : 'nút chính của khâu'} thấy trọn, chạm trúng, không bị che, chữ ≥ 13px, không tràn ngang${f.main ? ', không tràn trong vùng cuộn con' : ''}`, { timeout: 210000 }, async () => {
         const g = await openFrame(fk, name, time)
         const R = recorder(fk, ten)
         try {
-          await run(g, R)
+          try {
+            await run(g, R)
+          } catch (e) {
+            // luồng dừng giữa chừng: vẫn in các chỗ chưa vừa màn đã đo được tới lúc đó
+            if (R.list.length && e && typeof e.message === 'string') {
+              e.message += `\n  (trước khi luồng dừng đã ghi ${R.list.length} chỗ chưa vừa màn)\n  - ${R.list.join('\n  - ')}`
+            }
+            throw e
+          }
           verdict(g, R)
         } finally {
           await g.close()

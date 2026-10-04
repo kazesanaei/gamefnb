@@ -140,6 +140,14 @@
 }
 [data-wait="yellow"] > .k-ticket-head .k-wait-dot, .k-wait-dot[data-wait="yellow"] { background: var(--k-yellow); }
 [data-wait="red"] > .k-ticket-head .k-wait-dot, .k-wait-dot[data-wait="red"] { background: var(--k-red); animation: k-blink-op .9s steps(2, start) infinite; }
+/* dải màu chờ ở mép trái thẻ công thức (kitchen.js recipeCard): thay chấm chờ khi đầu bảng gọn ở khung thấp bỏ hàng tên phiếu
+   (bước Chọn ≤ 640px, Thớt bậc m / s / xs — bên dưới); cùng màu với dải chờ của phiếu trên dây phiếu. Mặc định ẩn. */
+.k-card-wait {
+  display: none; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; border-radius: 11px 0 0 11px;
+  background: var(--k-green); border-right: 2px solid rgba(58, 38, 24, .35); pointer-events: none;
+}
+.k-card-wait[data-wait="yellow"] { background: var(--k-yellow); }
+.k-card-wait[data-wait="red"] { background: var(--k-red); animation: k-blink-op .9s steps(2, start) infinite; }
 
 /* dòng món: hình món to (huy hiệu ×n, dấu ✓ khi xong), tên, ghi chú, trạng thái */
 .k-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 6px 0; border-top: 2px dashed rgba(58, 38, 24, .18); }
@@ -507,11 +515,12 @@
   .k-main[data-view="chon"] { gap: 6px; padding-top: 6px; }
   .k-main[data-view="chon"] > .k-chon-top { display: flex; align-items: flex-start; gap: 6px; }
   .k-main[data-view="chon"] > .k-chon-top > .k-board-head { flex: none; position: relative; }
-  .k-main[data-view="chon"] > .k-chon-top > .k-board-head > :not(.k-back):not(.k-wait-dot) { display: none; }
-  /* chấm màu chờ của phiếu: góc trên-phải nút "‹ Phiếu" */
-  .k-main[data-view="chon"] > .k-chon-top > .k-board-head > .k-wait-dot { position: absolute; right: -4px; top: -4px; pointer-events: none; }
+  .k-main[data-view="chon"] > .k-chon-top > .k-board-head > :not(.k-back) { display: none; }
   .k-main[data-view="chon"] > .k-chon-top > .k-board-head > .k-back { padding: 4px 8px; }
+  /* màu chờ của phiếu: dải ở mép trái thẻ công thức (chấm chờ dán góc nút "‹ Phiếu" trông như huy hiệu báo phiếu mới) */
   .k-main[data-view="chon"] > .k-chon-top > .k-card { flex: 1 1 auto; min-width: 0; padding: 3px 8px 4px; }
+  .k-main[data-view="chon"] > .k-chon-top > .k-card.has-wait { padding-left: 14px; }
+  .k-main[data-view="chon"] > .k-chon-top > .k-card > .k-card-wait { display: block; }
   .k-main[data-view="chon"] > .k-chon-top .k-card-notes { margin-bottom: 0; }
   .k-main[data-view="chon"] > .k-chon-top .k-card-ings { gap: 2px 6px; margin-top: 0; }
   /* hình và nhãn phụ chồng chung một ô lưới: ô rộng bằng cái rộng hơn (nhãn không đè sang món bên cạnh), nhãn dán chân hình */
@@ -571,12 +580,16 @@
 .k-scope.is-reduced *, .reduce-motion .k-scope *, .k-scope.is-reduced *::before, .k-scope.is-reduced *::after {
   animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important;
 }
-/* vẫn giữ tín hiệu (không dùng chuyển động) cho phiếu đỏ: dải chờ sọc */
+/* vẫn giữ tín hiệu (không dùng chuyển động) cho phiếu đỏ: dải chờ sọc (dải dọc trên thẻ công thức: sọc ngang) */
 .kitchen.is-reduced .k-ticket[data-wait="red"]::after, .reduce-motion .kitchen .k-ticket[data-wait="red"]::after {
   opacity: 1; background: repeating-linear-gradient(90deg, var(--k-red) 0 8px, #fff 8px 12px);
 }
+.kitchen.is-reduced .k-card-wait[data-wait="red"], .reduce-motion .kitchen .k-card-wait[data-wait="red"] {
+  opacity: 1; background: repeating-linear-gradient(180deg, var(--k-red) 0 8px, #fff 8px 12px);
+}
 @media (prefers-reduced-motion: reduce) {
   .kitchen .k-ticket[data-wait="red"]::after { opacity: 1; background: repeating-linear-gradient(90deg, var(--k-red) 0 8px, #fff 8px 12px); }
+  .kitchen .k-card-wait[data-wait="red"] { opacity: 1; background: repeating-linear-gradient(180deg, var(--k-red) 0 8px, #fff 8px 12px); }
   .k-step.is-available .k-step-badge::after { animation: none; }
 }
 .kitchen.is-reduced .k-step.is-available .k-step-badge::after, .reduce-motion .kitchen .k-step.is-available .k-step-badge::after { animation: none; }
@@ -702,13 +715,15 @@
 .service-screen[data-fit] .kitchen .k-card.is-compact summary > .k-card-notes ~ .k-card-sum-n { display: none; }
 /* khung thấp (bậc m / s / xs: Safari 402×680, 375×667, 360×600…): nút "‹ Phiếu" đứng cạnh thẻ công thức gọn trên một hàng
    (như bước Chọn ở khung thấp); hình + tên món ở đầu bảng nhường cho dòng thẻ (tên món vào dòng thẻ khi phiếu không có
-   ghi chú); chấm màu chờ của phiếu ở góc nút "‹ Phiếu". Mở thẻ thì thẻ cao ra ngay trong hàng. */
+   ghi chú); màu chờ của phiếu thành dải ở mép trái thẻ công thức (chấm chờ dán góc nút "‹ Phiếu" trông như huy hiệu báo
+   phiếu mới / lỗi). Mở thẻ thì thẻ cao ra ngay trong hàng. */
 .service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top { display: flex; align-items: flex-start; gap: 6px; }
 .service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top > .k-board-head { flex: none; position: relative; }
-.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top > .k-board-head > :not(.k-back):not(.k-wait-dot) { display: none; }
-.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top > .k-board-head > .k-wait-dot { position: absolute; right: -4px; top: -4px; pointer-events: none; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top > .k-board-head > :not(.k-back) { display: none; }
 .service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top > .k-board-head > .k-back { min-height: 50px; padding: 4px 9px; }
 .service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top > .k-card { flex: 1 1 auto; min-width: 0; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top > .k-card.has-wait { padding-left: 16px; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top > .k-card > .k-card-wait { display: block; }
 .service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top .k-card-sum-t { display: none; }
 .service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top .k-card-sum-name {
   display: block; flex: 0 1 auto; min-width: 0; margin-right: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;

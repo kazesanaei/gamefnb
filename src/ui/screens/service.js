@@ -41,6 +41,11 @@ const END_DELAY_MS = 1200
 // M5: chế độ tập trung khi nấu chỉ bật ở khung thấp hơn chừng này (px).
 // Vừa màn (L0): so với chiều cao DÙNG ĐƯỢC của màn (cao màn − vùng an toàn trên − vùng an toàn dưới), không phải cao màn.
 export const FOCUS_MAX_H = 760
+// Chồng thông báo đang có thông báo, hoặc thẻ Mẹo nghề đang chờ chỗ (toast.js opts.fit): xét lại chỗ trống mỗi chừng này ms
+// (thẻ chờ hiện khi vừa; chồng đang nổi nhường chỗ khi bong bóng khách hiện ngay dưới). Thẻ chờ chỗ được xét lại tối đa
+// TIP_RECHECK_MAX_MS kể từ lúc mở (sau đó chỉ khi có thông báo mới / thông báo tắt / đổi tab / đổi cỡ màn).
+const TOAST_RECHECK_MS = 400
+const TIP_RECHECK_MAX_MS = 180000
 
 // ---------- Vừa màn (L0): khung chung của màn Ca bán ----------
 // Màn Ca bán chia: HUD | (tab Quầy) CẢNH cao --scene-h nằm dưới panel Quầy trong suốt — mái bạt, hàng trên (hàng khách,
@@ -63,6 +68,13 @@ export function sceneHeight(fit, avail) {
 }
 /** Mái bạt + hàng trên của cảnh tab Quầy (px) theo bậc — khớp css/game.css (--sc-row). */
 export const SCENE_ROW = Object.freeze({ l: 60, m: 58, s: 56, xs: 54 })
+/** Dải mặt trước xe đẩy ở đáy cảnh tab Quầy (px) theo bậc — khớp css/game.css (--sc-cart). */
+export const SCENE_CART = Object.freeze({ l: 36, m: 34, s: 20, xs: 16 })
+// Phần tử "để đọc" ở hàng giữa của cảnh tab Quầy (lời khách: bong bóng, lời qua lại; phiếu order hình, tiền khách đưa + Tổng
+// trên mặt quầy): chồng thông báo nổi dừng trên đỉnh phần tử cao nhất đang thấy (toastEdge), không che chữ của khách.
+const SCENE_READ_SEL = '.co-cust-area .co-bubble, .co-cust-area .co-talk, .cs-slip, .cs-mat, .cs-facts'
+// Khoảng hở (px) giữa đáy chồng thông báo và đỉnh phần tử để đọc (viền + đệm của bong bóng còn ~8px trước dòng chữ đầu).
+const TOAST_GAP = 2
 /** Tab Bếp: dải mặt khách và dây phiếu đầy đủ (px) — khớp css/game.css, css/street.css. */
 export const KITCHEN_STRIP_H = 58
 export const KITCHEN_RAIL_H = 56
@@ -122,7 +134,9 @@ export default {
     const tabbar = h('nav', { class: 'tabbar', role: 'tablist' }, tabCounter, tabKitchen)
     const sheetHost = h('div', { class: 'sheet-host' })
     const panels = h('div', { class: 'panels' }, panelCounter, panelKitchen)
-    const el = h('section', { class: 'service-screen', testid: 'screen-service', dataset: { tab: 'counter', cook: '' } },
+    // data-scene="1": bố cục CẢNH + KHAY của panel Quầy là mặc định (luôn bật) — giữ thuộc tính cho các bộ chọn [data-scene]
+    // của css/cashier.css, css/receipt.css và bản sao hiệu ứng (counter-pay.js fxFrameOf).
+    const el = h('section', { class: 'service-screen', testid: 'screen-service', dataset: { tab: 'counter', cook: '', scene: '1' } },
       hud.el, street, progress.el, rail.el, panels, tabbar, sheetHost)
     root.appendChild(el)
 
@@ -193,12 +207,16 @@ export default {
     let focusOn = false
     let revealOpen = false
     const heldToasts = []
+    // có thẻ Mẹo nghề vừa gửi (có thể đang chờ chỗ trong toast.js): xét lại hàng chờ mỗi TOAST_RECHECK_MS tới mốc này
+    let tipWaitUntil = 0
+    let toastCheckAt = 0
+    const toastStack = (app.overlay && app.overlay.querySelector('.toast-stack')) || null
     // Chiều cao dùng được (so với FOCUS_MAX_H) và mọi số đo khung: đọc lại khi màn / HUD / thanh tab đổi cỡ (ResizeObserver
     // báo sau bố cục), không đọc kích thước mỗi khung hình — đọc kích thước giữa lúc trang vừa đổi DOM ép trình duyệt tính bố
     // cục sớm rồi tính lại lần nữa trong cùng khung (máy yếu: 20+ ms mỗi khung trong lúc con dấu, ra món).
     let sizeObs = null
     if (typeof ResizeObserver === 'function') {
-      sizeObs = new ResizeObserver(() => { if (destroyed) return; measureFrame(); applyFocus() })
+      sizeObs = new ResizeObserver(() => { if (destroyed) return; measureFrame(); applyFocus(); if (tipWaitUntil) recheckToasts() })
       sizeObs.observe(el)
       sizeObs.observe(hud.el)
       sizeObs.observe(tabbar)
@@ -219,54 +237,83 @@ export default {
     const holdingToasts = () => focusOn || revealOpen
     function releaseToasts() { if (!holdingToasts()) flushToasts() }
     const realToast = app.toast
+    // gửi sang toast.js. Thẻ Mẹo nghề chỉ hiện khi vừa mốc chồng thông báo (opts.fit — không đè lời khách, xem toastEdge) và
+    // gửi ở update() kế tiếp, SAU khi panel đã vẽ lại theo thao tác vừa mở thẻ (vd khách bắt lỗi: bong bóng đổi lời, cao lên)
+    // — đo chỗ theo bong bóng mới, không theo bong bóng cũ; vẫn trước offerTour() của cùng khung hình (tour giữ thẻ đã nổi).
+    const pendingTips = []
+    function sendToast(text, opts) {
+      if (opts && opts.kind === 'tip' && !destroyed) {
+        pendingTips.push([text, { ...opts, fit: true }])
+        tipWaitUntil = performance.now() + TIP_RECHECK_MAX_MS
+        return null
+      }
+      return realToast.call(app, text, opts)
+    }
+    function sendPendingTips() {
+      for (const [t, o] of pendingTips.splice(0)) { try { realToast.call(app, t, o) } catch { /* bỏ qua */ } }
+    }
     const focusToast = function (text, opts) {
       if (holdingToasts() && !(opts && opts.now) && !destroyed) { heldToasts.push([text, opts]); return null }
-      return realToast.call(app, text, opts)
+      return sendToast(text, opts)
     }
     function flushToasts() {
       // giữ tối đa 3 thông báo thường + 2 thẻ Mẹo nghề mới nhất (cùng giới hạn hàng chờ của toast.js)
       const list = heldToasts.splice(0)
       const tips = list.filter(([, o]) => o && o.kind === 'tip').slice(-2)
       const plain = list.filter(([, o]) => !(o && o.kind === 'tip')).slice(-3)
-      for (const [t, o] of [...tips, ...plain]) { try { realToast.call(app, t, o) } catch { /* bỏ qua */ } }
+      for (const [t, o] of [...tips, ...plain]) { try { sendToast(t, o) } catch { /* bỏ qua */ } }
     }
     if (typeof realToast === 'function') app.toast = focusToast
-    // Thông báo nổi chỉ che hàng trên của cảnh: chồng thông báo không vượt xuống bong bóng khách / thanh 4 khâu; thông báo
-    // không vừa thì chờ thông báo trước tắt (toast.js; một thông báo đứng một mình vẫn hiện). Mốc (vừa màn L0):
-    //   tab Quầy: min(đáy hàng trên của cảnh + 6, đỉnh biển 4 khâu) — hàng trên = mái bạt + hàng khách / kẹp phiếu;
+    // Thông báo nổi chỉ che hàng trên của cảnh và phần trống của hàng giữa — không che chữ của khách: chồng thông báo không
+    // vượt xuống dưới mốc toastEdge(); thông báo không vừa thì chờ thông báo trước tắt (toast.js; một thông báo thường đứng
+    // một mình vẫn hiện, thông báo thường đang nổi rút ngắn khi có tin chờ). Mốc (vừa màn L0, vòng sửa):
+    //   tab Quầy: đỉnh phần tử để đọc cao nhất đang thấy ở hàng giữa (bong bóng / lời qua lại / phiếu order hình / tiền khách
+    //     đưa, SCENE_READ_SEL) − TOAST_GAP; không có gì để đọc thì đỉnh biển 4 khâu (l / m, giữa dải xe đẩy) hoặc đỉnh dải xe
+    //     đẩy (s / xs, biển đã lên hàng trên); không bao giờ cao hơn đáy hàng trên + 6 (hàng trên luôn dành cho thông báo).
     //   tab Bếp: đỉnh .panels (thanh 4 khâu cao 0 nằm ngay đó, dưới dây phiếu) — chế độ tập trung cũng vậy.
+    // Thẻ Mẹo nghề (cao ~59px) gắn opts.fit: CHỈ hiện khi vừa mốc (kể cả lúc đứng một mình) — không đè dòng đầu bong bóng
+    // khách ở lúc khách phản hồi (bắt lỗi, báo sai tổng); chờ tới khi vừa: khâu sau / khách sau / quầy trống / tab Bếp. Rời
+    // màn thì thẻ còn chờ bị bỏ (vẫn nằm trong Sổ tay nghề). Mốc đổi theo nội dung (vd quầy trống → khách bước lên, bong bóng
+    // hiện dưới chồng): mỗi ~0,4 giây khi chồng có thông báo / có thẻ chờ, màn gọi lại setLimit (update) — thẻ chờ hiện khi
+    // vừa, chồng đang nổi nhường chỗ (toast.js yieldRoom).
+    // Tab Quầy không xuống quá đỉnh .panels của tab Bếp (đáy HUD + dải mặt khách + dây phiếu): đổi tab giữa lúc chồng đang nổi
+    // không làm chồng đè lên dây phiếu / thanh 4 khâu cao 0 của tab Bếp.
     // Không bao giờ trả số ≤ 0 (toast.js coi là "không giới hạn").
     // Vòng sửa Q-D: trong màn Ca bán chồng thông báo nằm thấp hơn một chút (css/game.css .overlay-root.is-service), dưới thẻ
     // "+tiền thu trong ca" treo dưới ví HUD — thẻ đếm lên đúng lúc thông báo hiện (thối đúng, kẹp phiếu), không bị che.
     // Giới hạn chiều cao bên dưới đo theo vị trí thật của chồng nên tự co theo.
     if (app.overlay && app.overlay.classList) app.overlay.classList.add('is-service')
-    if (typeof app.toastLimit === 'function') {
-      app.toastLimit(() => {
-        const stack = app.overlay && app.overlay.querySelector('.toast-stack')
-        if (!stack || !el.isConnected) return 0
-        const top = stack.getBoundingClientRect().top
-        let edge
-        if (active === 'counter') {
-          const row = street.getBoundingClientRect().top + (SCENE_ROW[frame.fit] || SCENE_ROW.l)
-          edge = Math.min(row + 6, progress.el.getBoundingClientRect().top)
-        } else edge = panels.getBoundingClientRect().top
-        return Math.max(1, edge - top)
-      })
+    function toastEdge() {
+      if (active !== 'counter') return panels.getBoundingClientRect().top
+      const fit = SCENE_ROW[frame.fit] ? frame.fit : 'l'
+      const top = street.getBoundingClientRect().top
+      const rowEdge = top + SCENE_ROW[fit] + 6
+      let edge = fit === 's' || fit === 'xs'
+        ? top + (frame.S || sceneHeight(fit, frame.A)) - SCENE_CART[fit]
+        : progress.el.getBoundingClientRect().top
+      edge = Math.min(edge, top + KITCHEN_STRIP_H + KITCHEN_RAIL_H)
+      for (const n of panelCounter.querySelectorAll(SCENE_READ_SEL)) {
+        const r = n.getBoundingClientRect()
+        if (r.width < 2 || r.height < 2 || r.top - TOAST_GAP >= edge || r.bottom <= rowEdge) continue
+        const cs = getComputedStyle(n)
+        if (cs.visibility === 'hidden' || Number(cs.opacity) < 0.05) continue
+        edge = r.top - TOAST_GAP
+      }
+      return Math.max(rowEdge, edge)
     }
+    const toastLimitFn = () => {
+      const stack = app.overlay && app.overlay.querySelector('.toast-stack')
+      if (!stack || !el.isConnected || destroyed) return 0
+      // đang nấu tập trung / bảng ra món đang mở: thông báo mới đã được giữ lại (heldToasts); mục còn trong hàng chờ của
+      // toast.js chỉ hiện từng cái một (thông báo thường đứng một mình), thẻ Mẹo nghề chờ chỗ đợi tới khi thoát
+      if (holdingToasts()) return 1
+      return Math.max(1, toastEdge() - stack.getBoundingClientRect().top)
+    }
+    // xét lại hàng chờ của toast.js (thẻ Mẹo nghề chờ chỗ) — gọi lại setLimit với cùng hàm
+    const recheckToasts = () => { if (!destroyed && typeof app.toastLimit === 'function') app.toastLimit(toastLimitFn) }
+    recheckToasts()
 
     const counter = mountCounter(panelCounter, app, { switchTab: t => showTab(t) })
-    // Vừa màn (L0): panel Quầy theo bố cục CẢNH khi div.counter mang lớp co-scene (counter.js gắn) → data-scene="1": cảnh cao
-    // --scene-h nằm dưới panel trong suốt phủ cả A. Chưa có lớp đó (bố cục 0.5.1): cảnh gọn (mái bạt + hàng trên + dải xe
-    // đẩy), panel nằm dưới cảnh và cuộn như cũ. Xét lại mỗi khung hình (chỉ đọc lớp, không đọc kích thước).
-    let sceneOn = null
-    function syncScene() {
-      const on = !!(counter && counter.el && counter.el.classList && counter.el.classList.contains('co-scene'))
-      if (on === sceneOn) return
-      sceneOn = on
-      if (on) el.dataset.scene = '1'
-      else delete el.dataset.scene
-    }
-    syncScene()
     let kitchen = null
     const kitchenPlaceholder = h('div', { class: 'kitchen-wait muted', testid: 'kitchen-loading' }, 'Đang dọn bếp…')
     panelKitchen.appendChild(kitchenPlaceholder)
@@ -305,6 +352,8 @@ export default {
       if (name === 'kitchen' && kitchen && kitchen.onShow) kitchen.onShow()
       app.sound('click')
       paintTabs()
+      // chỗ cho chồng thông báo đổi theo tab: thẻ Mẹo nghề đang chờ chỗ có thể hiện ngay
+      if (tipWaitUntil) recheckToasts()
       app.bus.emit('ui.tab', { tab: name })
     }
     app.switchTab = showTab
@@ -1061,7 +1110,6 @@ export default {
         const sh = app.state.shift
         if (!sh.counter && sh.queue.length && !sh.paused) beginCounter(app.state, app.ctx)
         hud.update()
-        syncScene()
         renderStreet()
         paintProgress()
         rail.update()
@@ -1071,6 +1119,17 @@ export default {
           try { kitchen.update(dt) } catch (err) { console.error(err) }
         }
         applyFocus()
+        if (pendingTips.length) sendPendingTips()
+        // chồng thông báo đang nổi / thẻ Mẹo nghề đang chờ chỗ: xét lại thưa (chỗ trống đổi theo khâu / khách / bong bóng),
+        // không đo mỗi khung hình
+        else {
+          const now = performance.now()
+          if (tipWaitUntil && now > tipWaitUntil) tipWaitUntil = 0
+          if ((tipWaitUntil || (toastStack && toastStack.firstElementChild)) && now >= toastCheckAt) {
+            toastCheckAt = now + TOAST_RECHECK_MS
+            recheckToasts()
+          }
+        }
         checkComplaint()
         checkIncident()
         offerTour()
@@ -1093,6 +1152,7 @@ export default {
         focusOn = false
         revealOpen = false
         heldToasts.length = 0
+        pendingTips.length = 0
         if (app.overlay && app.overlay.classList) app.overlay.classList.remove('is-cook-focus', 'is-service')
         if (app.switchTab === showTab) app.switchTab = null
         counter.unmount()

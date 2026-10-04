@@ -878,9 +878,9 @@
    mệnh giá tờ tiền, cao ≥ 44px chạm), lòng khay thấp hơn, mép quầy / khe giữa các hàng sát lại */
 .service-screen[data-scene][data-fit="xs"] .co-scene .cs-cash-body:has(> .co-tutor-dock),
 .service-screen[data-scene][data-fit="xs"] .co-scene .cs-cash-body:has(> .cs-nochange) { --cs-drawer-w: 284px; --cs-bed: 42px; }
-.service-screen[data-scene][data-fit="xs"] .co-scene .cs-cash-body:has(> .co-tutor-dock) > .co-tutor-dock { margin-top: 4px; }
+.service-screen[data-scene][data-fit="xs"] .co-scene .cs-cash-body:has(> .co-tutor-dock) > .co-tutor-dock { margin-top: 2px; }
 .service-screen[data-scene][data-fit="xs"] .co-scene .cs-cash-body > .cs-nochange { margin-top: 0; padding: 0 0 0 6px; border-width: 2px; border-radius: 13px; }
-.service-screen[data-scene][data-fit="xs"] .co-scene .cs-cash-body:is(:has(> .co-tutor-dock), :has(> .cs-nochange)) { padding-bottom: 3px; }
+.service-screen[data-scene][data-fit="xs"] .co-scene .cs-cash-body:is(:has(> .co-tutor-dock), :has(> .cs-nochange)) { padding-bottom: 2px; }
 .service-screen[data-scene][data-fit="xs"] .co-scene .cs-cash-body:is(:has(> .co-tutor-dock), :has(> .cs-nochange)) > .cs-tray { padding-left: 4px; padding-right: 4px; }
 .service-screen[data-scene][data-fit="xs"] .co-scene .cs-cash-body:is(:has(> .co-tutor-dock), :has(> .cs-nochange)) .cs-tray-bed { padding: 1px 3px; }
 .service-screen[data-scene][data-fit="xs"] .co-scene .cs-cash-body:is(:has(> .co-tutor-dock), :has(> .cs-nochange)) .cs-tray-empty { padding: 0; }
@@ -888,7 +888,7 @@
 .service-screen[data-scene][data-fit="xs"] .co-scene .cs-cash-body:is(:has(> .co-tutor-dock), :has(> .cs-nochange)) .cs-tray-total { font-size: 14px; }
 .service-screen[data-scene][data-fit="xs"] .cs-cash .cs-nochange-ico { width: 24px; height: 24px; font-size: 15px; line-height: 19px; }
 .service-screen[data-scene][data-fit="xs"] .co-scene .cs-cash-body:is(:has(> .co-tutor-dock), :has(> .cs-nochange)) > .cs-counter-top { margin: 0 calc(-1 * var(--cs-pad)) 3px; }
-.service-screen[data-scene][data-fit="xs"] .co-scene .cs-cash-body:is(:has(> .co-tutor-dock), :has(> .cs-nochange)) > .cs-drawer { margin-bottom: 2px; }
+.service-screen[data-scene][data-fit="xs"] .co-scene .cs-cash-body:is(:has(> .co-tutor-dock), :has(> .cs-nochange)) > .cs-drawer { margin-bottom: 2px; aspect-ratio: 320 / 146; }
 .service-screen[data-scene][data-fit="xs"] .cs-cash .cs-give.g-btn { min-height: 48px; font-size: 17px; }
 
 /* két theo bậc (đặc tả 5.3): ngăn l ≈ 81×75, m ≈ 81×68, s ≈ 72×56 (bề ngang theo khay) — khung chính cho két cao hơn tỉ lệ

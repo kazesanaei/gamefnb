@@ -6,8 +6,9 @@
    ✓ xanh / ! đỏ ở đầu (khi thông báo chưa có hình riêng — luôn có biểu tượng, không chỉ dựa vào màu).
    Vị trí: ngay dưới HUD (50px + vùng an toàn trên); trong màn Ca bán hạ xuống 57px để không che thẻ "+tiền thu trong ca"
    treo dưới ví HUD (service.js gắn .is-service lên lớp nổi gốc). Chiều cao: thông báo 1 dòng ≤ 32px, thẻ Mẹo nghề ≤ 66px.
-   Vừa màn (L0): chồng thông báo chỉ phủ HÀNG TRÊN của cảnh (hàng khách, kẹp phiếu) ở tab Quầy, dây phiếu ở tab Bếp —
-   service.js toastLimit; thông báo không vừa thì chờ (một thông báo đứng một mình vẫn hiện). */
+   Vừa màn (L0): chồng thông báo ở tab Quầy phủ hàng trên của cảnh (hàng khách, kẹp phiếu) và phần trống của hàng giữa, dừng
+   trên đỉnh lời khách / phiếu order hình / tiền khách đưa (service.js toastEdge); tab Bếp: tới dây phiếu. Thông báo không vừa
+   thì chờ (một thông báo thường đứng một mình vẫn hiện; thẻ Mẹo nghề chỉ hiện khi vừa — toast.js opts.fit). */
 .toast-stack {
   position: absolute; top: calc(50px + var(--safe-top)); left: 12px; right: 12px; display: flex; flex-direction: column; gap: 5px;
   align-items: center; z-index: 60;
@@ -49,6 +50,11 @@
 .toast-bad .toast-title { color: var(--g-bad-dark); }
 .toast-tip .toast-title { color: var(--brick-dark); font-size: 14px; line-height: 1.2; }
 .toast-text { font-size: 14px; line-height: 1.3; }
+/* Vừa màn (vòng sửa L0): thẻ Mẹo nghề trong màn Ca bán gọn ~59px (tiêu đề 1 dòng + tối đa 2 dòng chữ) để vừa khoảng giữa
+   đỉnh chồng thông báo và đỉnh bong bóng khách — thẻ chỉ hiện khi vừa mốc (service.js toastEdge, toast.js opts.fit) */
+.overlay-root.is-service .toast-tip { padding-top: 2px; padding-bottom: 3px; }
+.overlay-root.is-service .toast-tip .toast-title { line-height: 1.1; }
+.overlay-root.is-service .toast-tip .toast-text { line-height: 1.2; }
 
 /* ---------- Hộp thoại ---------- */
 /* Lớp phủ nằm ở lớp nổi gốc (.overlay-root trong #app), không nằm trong vùng cuộn của màn: iOS Safari cắt phần tử
@@ -520,18 +526,14 @@ html.reduce-motion .rail-ticket[data-wait="red"] .rail-wait { animation: none; }
    service.js đo khung (mount + ResizeObserver, chỉ ghi khi đổi) và ghi lên .service-screen:
      data-fit = l | m | s | xs   bậc theo A (chỗ giữa HUD và thanh tab): ≥ 640 | ≥ 540 | ≥ 440 | < 440
      data-tab = counter | kitchen   tab đang mở;   data-cook = chon | thot | stage | (rỗng)   bếp đang ở màn nấu nào
-     data-scene = 1 khi panel Quầy theo bố cục cảnh (div.counter mang lớp co-scene)
+     data-scene = 1 luôn bật (bố cục cảnh + khay là mặc định; thuộc tính giữ cho bộ chọn của css/cashier.css, receipt.css)
      --hud-h (HUD gồm an toàn trên), --usable-h (U), --avail-h (A), --scene-h (cảnh tab Quầy), --tray-h (khay = A − cảnh),
      --kitchen-h (.k-main dự kiến ở tab Bếp)
    Tab Quầy: HUD trong luồng; CẢNH (.street) tuyệt đối ngay dưới HUD, cao --scene-h, z 0, không nhận chạm — mái bạt, hàng
    trên (hàng khách trái, kẹp phiếu phải), hàng giữa (khách ở quầy + bong bóng: panel Quầy vẽ), dải mặt trước xe đẩy mang
    biển 4 khâu; .panels phủ toàn bộ A (z 1), panel Quầy trong suốt phần trên nên thấy cảnh bên dưới; biển 4 khâu và kẹp
-   phiếu z 3 (trên panel). Thanh tab 49 + max(4, an toàn dưới).
-   Panel Quầy chưa theo bố cục cảnh (không có data-scene — bố cục 0.5.1): cảnh GỌN chỉ còn mái bạt + hàng trên + 22px tường +
-   dải xe đẩy 36px mang biển 4 khâu (mọi bậc; đỉnh biển thấp hơn đáy một thẻ Mẹo nghề 66px đứng một mình), panel bắt đầu
-   ngay dưới cảnh và cuộn như cũ (không vẽ khách chờ món ở cảnh). Panel theo
-   bố cục cảnh (data-scene="1"): cảnh cao --scene-h, dải xe đẩy theo bậc, panel phủ A và KHÔNG cuộn (overflow: clip; khay tự
-   cuộn khi thiếu chỗ ở khung nhỏ).
+   phiếu z 3 (trên panel). Thanh tab 49 + max(4, an toàn dưới). Cảnh cao --scene-h, dải xe đẩy theo bậc (--sc-cart), panel
+   Quầy phủ A và KHÔNG cuộn (overflow: clip; khay tự cuộn khi thiếu chỗ ở khung nhỏ).
    Tab Bếp: dải mặt khách 58 + dây phiếu đầy đủ 56 trong luồng, thanh 4 khâu cao 0 (ẩn, vẫn trong DOM); đang Chọn
    (data-cook="chon", mọi khung) hoặc tập trung khi nấu (.is-focus, U < 760) thì ẩn dải mặt khách.
    Đổi bố cục tức thì (không hoạt ảnh); hoạt ảnh sẵn có của hàng khách / dây phiếu vẫn chỉ kích theo sự kiện.
@@ -546,15 +548,13 @@ html.reduce-motion .rail-ticket[data-wait="red"] .rail-wait { animation: none; }
 .service-screen[data-fit="xs"] { --sc-awn: 12px; --sc-row: 54px; --sc-cart: 16px; }
 
 /* ---------- Tab Quầy: cảnh dưới panel trong suốt ---------- */
-.service-screen[data-tab="counter"] { --street-cart: 36px; --street-h: calc(var(--sc-row) + 22px + var(--street-cart)); }
-.service-screen[data-tab="counter"][data-scene] { --street-cart: var(--sc-cart); --street-h: var(--scene-h, 256px); }
+.service-screen[data-tab="counter"] { --street-cart: var(--sc-cart); --street-h: var(--scene-h, 256px); }
 .service-screen[data-tab="counter"] > .street {
   position: absolute; left: 0; right: 0; top: var(--hud-h, calc(47px + var(--safe-top))); height: var(--street-h); z-index: 0;
   pointer-events: none;
 }
 .service-screen[data-tab="counter"] > .panels { z-index: 1; }
-.service-screen[data-tab="counter"] > .panels > .panel-counter { top: var(--street-h); }
-.service-screen[data-tab="counter"][data-scene] > .panels > .panel-counter { top: 0; overflow: hidden; overflow: clip; }
+.service-screen[data-tab="counter"] > .panels > .panel-counter { overflow: hidden; overflow: clip; }
 
 /* biển 4 khâu: viên giấy viền mực cao 30 đè mép trên dải xe đẩy (l / m: chấm 24 + tên khâu đang làm) */
 .service-screen[data-tab="counter"] > .progress4 {
@@ -573,17 +573,17 @@ html.reduce-motion .rail-ticket[data-wait="red"] .rail-wait { animation: none; }
 .service-screen[data-tab="counter"] > .progress4 .p4-tick::after { left: 2.5px; top: 2.5px; width: 5px; height: 3px; }
 .service-screen[data-tab="counter"] > .progress4 .p4-step.current .p4-dot { box-shadow: 0 0 0 2px var(--g-gold); }
 /* cảnh s / xs: dải xe đẩy chỉ 20 / 16px — biển lên giữa hàng trên, chỉ còn chấm 22 */
-.service-screen[data-tab="counter"][data-scene][data-fit="s"] > .progress4,
-.service-screen[data-tab="counter"][data-scene][data-fit="xs"] > .progress4 {
+.service-screen[data-tab="counter"][data-fit="s"] > .progress4,
+.service-screen[data-tab="counter"][data-fit="xs"] > .progress4 {
   top: calc(var(--hud-h, calc(47px + var(--safe-top))) + var(--sc-awn) + (var(--sc-row) - var(--sc-awn) - 30px) / 2);
   padding: 0 3px;
 }
-.service-screen[data-tab="counter"][data-scene][data-fit="s"] > .progress4 .p4-label,
-.service-screen[data-tab="counter"][data-scene][data-fit="xs"] > .progress4 .p4-label { display: none; }
-.service-screen[data-tab="counter"][data-scene][data-fit="s"] > .progress4 .p4-dot,
-.service-screen[data-tab="counter"][data-scene][data-fit="xs"] > .progress4 .p4-dot { width: 22px; height: 22px; }
-.service-screen[data-tab="counter"][data-scene][data-fit="s"] > .progress4 .p4-ico,
-.service-screen[data-tab="counter"][data-scene][data-fit="xs"] > .progress4 .p4-ico { width: 17px; height: 17px; }
+.service-screen[data-tab="counter"][data-fit="s"] > .progress4 .p4-label,
+.service-screen[data-tab="counter"][data-fit="xs"] > .progress4 .p4-label { display: none; }
+.service-screen[data-tab="counter"][data-fit="s"] > .progress4 .p4-dot,
+.service-screen[data-tab="counter"][data-fit="xs"] > .progress4 .p4-dot { width: 22px; height: 22px; }
+.service-screen[data-tab="counter"][data-fit="s"] > .progress4 .p4-ico,
+.service-screen[data-tab="counter"][data-fit="xs"] > .progress4 .p4-ico { width: 17px; height: 17px; }
 @media (max-width: 339px) {
   .service-screen[data-tab="counter"] > .progress4 .p4-link { width: 4px; }
 }
@@ -596,8 +596,8 @@ html.reduce-motion .rail-ticket[data-wait="red"] .rail-wait { animation: none; }
   height: 53px; max-width: calc(100% - var(--queue-w, 186px) - 18px); padding: 0; gap: 4px; align-items: flex-end;
   background: none; border: 0; overflow: visible;
 }
-.service-screen[data-tab="counter"][data-scene][data-fit="s"] > .ticket-rail,
-.service-screen[data-tab="counter"][data-scene][data-fit="xs"] > .ticket-rail {
+.service-screen[data-tab="counter"][data-fit="s"] > .ticket-rail,
+.service-screen[data-tab="counter"][data-fit="xs"] > .ticket-rail {
   max-width: min(calc(100% - var(--queue-w, 92px) - 18px), calc(50% - 70px));
 }
 .service-screen[data-tab="counter"] > .ticket-rail .rail-wire { top: 4px; left: -2px; right: -4px; height: 3px; }

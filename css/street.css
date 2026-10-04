@@ -206,8 +206,6 @@ html.reduce-motion .steam i { animation: none; opacity: .85; }
 .service-screen[data-tab="counter"] > .street .q-tag { top: auto; bottom: -6px; transform: translateX(-50%); padding: 0 4px; line-height: 13px; }
 /* khách chờ món: chỉ khi quầy trống, ở mép phải hàng giữa (đứng sau dải xe đẩy, biển "Chờ món" trên dải) */
 .service-screen[data-tab="counter"] > .street.is-serving .waiting { display: none; }
-/* panel Quầy bố cục 0.5.1 (cảnh gọn, không có hàng giữa): không vẽ khách chờ món ở cảnh */
-.service-screen[data-tab="counter"]:not([data-scene]) > .street .waiting { display: none; }
 .service-screen[data-tab="counter"][data-fit="s"] > .street .wait-title,
 .service-screen[data-tab="counter"][data-fit="xs"] > .street .wait-title { top: auto; bottom: 4px; right: calc(100% + 4px); transform: none; }
 

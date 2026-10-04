@@ -8,16 +8,19 @@
 // Kiểm ở mỗi trạng thái:
 //   - bậc data-fit, biến --usable-h / --avail-h / --scene-h / --tray-h / --kitchen-h đúng bảng mục 3.1 / 3.2 (±1px);
 //     HUD = 47 + an toàn trên, thanh tab = 49 + max(4, an toàn dưới); data-tab đúng tab đang mở;
-//   - tab Quầy: cảnh (.street) tuyệt đối ngay dưới HUD, cao --scene-h khi panel Quầy theo bố cục cảnh (data-scene) hoặc mái
-//     bạt + hàng trên + 22px + dải xe đẩy 36px (bố cục 0.5.1); biển 4 khâu và kẹp phiếu nằm trọn trong cảnh; mục "Chung tab Quầy"
+//   - tab Quầy: cảnh (.street) tuyệt đối ngay dưới HUD, cao --scene-h (bố cục cảnh + khay luôn bật: data-scene="1"), panel
+//     Quầy phủ cả A; biển 4 khâu và kẹp phiếu nằm trọn trong cảnh; mục "Chung tab Quầy"
 //     của bảng 9 (hud, hud-wallet, help-button, queue, progress-4, ticket-rail, tab-counter, tab-kitchen) THẤY KHÔNG CUỘN:
 //     đang hiện, hộp nằm trọn trong [0, innerWidth] × [đáy HUD (phần tử HUD: mép dưới vùng an toàn trên), đỉnh thanh tab
 //     (thanh tab: mép trên vùng an toàn dưới)], nút ≥ 44px và elementFromPoint ở tâm + 4 điểm gần mép trúng chính nút;
 //     hàng khách: tối đa 2 khách sau khách ở quầy (1 ở bề ngang < 360, 0 ở bậc s / xs), dư thì viên "+n" (queue-more);
 //   - tab Bếp: dải mặt khách 58 (ẩn khi tập trung khi nấu), dây phiếu đầy đủ 56, thanh 4 khâu cao 0, .panels ngay dưới;
 //     .is-focus đúng chiều cao dùng được U (U < 760 khi đang nấu);
-//   - chồng thông báo: lúc có từ 2 thông báo trở lên, đáy chồng không xuống quá mốc (tab Quầy: min(đáy hàng trên của cảnh
-//     + 6, đỉnh biển 4 khâu); tab Bếp: đỉnh .panels);
+//   - chồng thông báo (vòng sửa L0): lúc có từ 2 thông báo trở lên hoặc có thẻ Mẹo nghề, đáy chồng không xuống quá mốc —
+//     tab Quầy: max(đáy hàng trên của cảnh + 6, min(đáy vùng trống, đáy HUD + 58 + 56, đỉnh phần tử để đọc cao nhất đang
+//     thấy − 2)) với đáy vùng trống = đỉnh biển 4 khâu (l / m) hoặc đỉnh dải xe đẩy (s / xs), phần tử để đọc = bong bóng /
+//     lời qua lại của khách, phiếu order hình, tiền khách đưa + Tổng (service.js toastEdge); tab Bếp: đỉnh .panels. Mốc co
+//     lại dưới chồng đang nổi (khách bước lên, bong bóng hiện) thì chồng phải nhường chỗ trong 2 giây (toast.js yieldRoom);
 //   - không tràn ngang; không lỗi console / trang.
 // Biến môi trường: VUA_MAN_KHUNG=402x874,360x600 (chỉ chạy các khung này), SHOT_DIR=<thư mục> (chụp ảnh từng trạng thái).
 import test from 'node:test'
@@ -41,6 +44,7 @@ const ONLY = (process.env.VUA_MAN_KHUNG || '').split(',').map(s => s.trim()).fil
 const RUN = ONLY.length ? FRAMES.filter(f => ONLY.includes(f.name)) : FRAMES
 const FOCUS_MAX_H = 760
 const SCENE_ROW = { l: 60, m: 58, s: 56, xs: 54 }
+const SCENE_CART = { l: 36, m: 34, s: 20, xs: 16 }
 const STRIP = 58
 const RAIL = 56
 const queueShow = (fit, w) => (fit === 's' || fit === 'xs' ? 0 : w < 360 ? 1 : 2)
@@ -109,10 +113,14 @@ function commonProbe([ids, safeTop, safeBottom]) {
 const near = (a, b, tol = 1.01) => Math.abs(a - b) <= tol
 const COMMON = ['hud', 'hud-wallet', 'help-button', 'queue', 'progress-4', 'ticket-rail', 'tab-counter', 'tab-kitchen']
 
-// Theo dõi chồng thông báo trong trang: lúc có ≥ 2 thông báo đang hiện, đáy chồng không xuống quá mốc.
+// Theo dõi chồng thông báo trong trang: lúc có ≥ 2 thông báo đang hiện hoặc có thẻ Mẹo nghề, đáy chồng không xuống quá mốc
+// (một thông báo thường đứng một mình được miễn — toast.js). Mốc tính lại theo cùng luật service.js toastEdge; mốc co lại
+// dưới chồng đang nổi thì chỉ tính lỗi khi chồng vượt mốc liền quá OVER_MS (chồng nhường chỗ: ~1 giây + 0,4 giây xét lại).
 async function watchToasts(page) {
-  await page.evaluate(([row]) => {
+  await page.evaluate(([row, cart, OVER_MS]) => {
     const W = window.__vmToast = { seen: 0, over: [], debt: 0 }
+    let overSince = 0
+    const READ = '.co-cust-area .co-bubble, .co-cust-area .co-talk, .cs-slip, .cs-mat, .cs-facts'
     const tick = () => {
       const st = document.querySelector('.toast-stack')
       const s = document.querySelector('[data-testid="screen-service"]')
@@ -120,21 +128,33 @@ async function watchToasts(page) {
         const live = [...st.children].filter(n => !n.classList.contains('hide') && n.classList.contains('show'))
         W.seen = Math.max(W.seen, live.length)
         W.debt = Math.max(W.debt, st.querySelectorAll('[data-testid="debt-toast"]').length)
-        if (live.length >= 2) {
+        if (live.length >= 2 || live.some(n => n.classList.contains('toast-tip'))) {
           let edge
           if (s.dataset.tab === 'counter') {
+            const fit = row[s.dataset.fit] ? s.dataset.fit : 'l'
             const street = s.querySelector(':scope > .street').getBoundingClientRect()
-            const p4 = s.querySelector('[data-testid="progress-4"]').getBoundingClientRect()
-            edge = Math.min(street.top + (row[s.dataset.fit] || 60) + 6, p4.top)
+            const rowEdge = street.top + row[fit] + 6
+            edge = fit === 's' || fit === 'xs' ? street.bottom - cart[fit] : s.querySelector('[data-testid="progress-4"]').getBoundingClientRect().top
+            edge = Math.min(edge, street.top + 58 + 56)
+            for (const n of s.querySelectorAll('.panel-counter ' + READ.split(', ').join(', .panel-counter '))) {
+              const r = n.getBoundingClientRect(); const cs = getComputedStyle(n)
+              if (r.width < 2 || r.height < 2 || r.bottom <= rowEdge || cs.visibility === 'hidden' || Number(cs.opacity) < 0.05) continue
+              edge = Math.min(edge, r.top - 2)
+            }
+            edge = Math.max(rowEdge, edge)
           } else edge = s.querySelector(':scope > .panels').getBoundingClientRect().top
           const b = st.getBoundingClientRect().bottom
-          if (b > edge + 1) W.over.push(`${live.length} thông báo, đáy ${Math.round(b)} > mốc ${Math.round(edge)}`)
-        }
+          if (b > edge + 1) {
+            const t = performance.now()
+            if (!overSince) overSince = t
+            else if (t - overSince > OVER_MS) W.over.push(`${live.length} thông báo, đáy ${Math.round(b)} > mốc ${Math.round(edge)} liền ${Math.round(t - overSince)}ms`)
+          } else overSince = 0
+        } else overSince = 0
       }
       W.timer = setTimeout(tick, 60)
     }
     tick()
-  }, [SCENE_ROW])
+  }, [SCENE_ROW, SCENE_CART, 2000])
 }
 
 function checkFrame(f, m, label, { tab }) {
@@ -152,10 +172,11 @@ function checkFrame(f, m, label, { tab }) {
   if (!near(m.tabbar.t - m.hud.b, f.A)) errs.push(`chỗ giữa HUD và thanh tab ${m.tabbar.t - m.hud.b} ≠ A ${f.A}`)
   if (m.sw > m.vw) errs.push(`tràn ngang ${m.sw - m.vw}px`)
   if (tab === 'counter') {
-    const sh = m.scene ? f.S : SCENE_ROW[f.fit] + 22 + 36
+    if (m.scene !== '1') errs.push(`data-scene "${m.scene}" ≠ "1" (bố cục cảnh + khay là mặc định)`)
+    const sh = f.S
     if (!m.streetShown || !near(m.street.t, m.hud.b) || !near(m.street.h, sh)) errs.push(`cảnh [${Math.round(m.street.t)}, cao ${m.street.h}] ≠ [${m.hud.b}, cao ${sh}]`)
     if (!near(m.panels.t, m.hud.b) || !near(m.panels.h, f.A)) errs.push(`.panels [${m.panels.t}, cao ${m.panels.h}] không phủ A`)
-    const pTop = m.scene ? m.hud.b : m.hud.b + sh
+    const pTop = m.hud.b
     if (!near(m.panelCounter.t, pTop)) errs.push(`panel Quầy bắt đầu ở ${m.panelCounter.t} ≠ ${pTop}`)
     for (const [k, b] of [['progress-4', m.p4], ['ticket-rail', m.rail]]) {
       if (b.t < m.street.t - 0.5 || b.b > m.street.b + 0.5) errs.push(`${k} [${Math.round(b.t)}–${Math.round(b.b)}] ra ngoài cảnh [${Math.round(m.street.t)}–${Math.round(m.street.b)}]`)

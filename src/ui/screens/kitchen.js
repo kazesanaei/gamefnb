@@ -545,6 +545,11 @@ export function mountKitchen(root, app, opts = {}) {
     })
     const noteRow = notes.length ? h('div', { class: 'k-notes k-card-notes' }, h('span', { class: 'k-card-lbl' }, 'Ghi chú:'), notes.map(n => h('span', { class: 'k-note' }, upper(n)))) : null
     const label = 'Thẻ công thức ' + (recipe.name || '')
+    // dải màu chờ của phiếu ở mép trái thẻ (xanh → vàng → đỏ, updateWaitColors tô theo data-ticket-id): chỉ hiện khi đầu
+    // bảng gọn ở khung thấp bỏ hàng tên phiếu (css/kitchen.css) — chấm chờ không dán vào góc nút "‹ Phiếu" như huy hiệu
+    const sh = tasting ? null : SH()
+    const t = sh && sh.tickets.find(x => x.id === cook.ticketId)
+    const wait = t ? h('span', { class: 'k-card-wait', 'aria-hidden': 'true', dataset: { ticketId: t.id, wait: 'green' } }) : null
     if (compact) {
       // một dòng gọn: hình món + ghi chú đỏ (không có ghi chú: chữ "Thẻ công thức") + số món / bước; chạm để mở chi tiết
       const more = h('details', { class: 'k-card-steps' },
@@ -558,11 +563,12 @@ export function mountKitchen(root, app, opts = {}) {
           h('small', { class: 'k-card-sum-n' }, `${ings.length} món · ${steps.length} bước`)),
         h('ul', { class: 'k-card-ings' }, ings), tip, h('ol', null, steps))
       if (open) more.open = true
-      return h('aside', { class: 'k-card is-compact', 'data-testid': 'recipe-card', 'aria-label': label }, more)
+      return h('aside', { class: ['k-card', 'is-compact', wait ? 'has-wait' : ''], 'data-testid': 'recipe-card', 'aria-label': label }, wait, more)
     }
     const details = h('details', { class: 'k-card-steps' }, h('summary', null, `Các bước (${steps.length})`), h('ol', null, steps))
     if (open) details.open = true
-    return h('aside', { class: 'k-card', 'data-testid': 'recipe-card', 'aria-label': label },
+    return h('aside', { class: ['k-card', wait ? 'has-wait' : ''], 'data-testid': 'recipe-card', 'aria-label': label },
+      wait,
       noteRow,
       h('ul', { class: 'k-card-ings' }, ings),
       tip,
