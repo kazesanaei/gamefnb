@@ -526,9 +526,11 @@
    nó (tên 2 dòng không tràn ô, không đè hàng kế), phần dư của cột chia đều cho các hàng: minmax(min-content, 1fr) — sàn
    min-content tính cả min-height của hàng (minmax(auto, …) thì lấy min-height làm sàn, bỏ qua nội dung). Tên món tối đa
    2 dòng: bề ngang cột tên đủ cho tên dài nhất ("Bánh tráng trộn Tây Ninh") xuống đúng 2 dòng ở mọi khung đo (bảng hẹp:
-   chữ 13, hình 22 — truy vấn khung cs-board bên dưới); khung lạ hẹp hơn nữa thì cắt "…" ở dòng 2 (title giữ tên đủ). Tên
-   có đệm trên / dưới 4px: hộp chữ của phông Baloo 2 (~1,62 lần cỡ chữ, nhô ~3,1–3,4px ra ngoài dòng 1,15 / 1,1) nằm trọn
-   trong hàng — hộp chữ hai hàng kề nhau không chồng; dấu thanh không bị cắt khi cắt dòng. */
+   chữ 13, hình 22 — truy vấn khung cs-board bên dưới); khung lạ hẹp hơn nữa thì cắt "…" ở dòng 2 (title giữ tên đủ). Hộp
+   chữ của phông Baloo 2 (~1,62 lần cỡ chữ) nhô ~3–3,4px ra ngoài dòng 1,15 / 1,1 → tên có 4px trên (đệm, trong vùng cắt:
+   dấu mũ + thanh của chữ hoa dòng 1 không bị cắt) và 4px dưới (lề, ngoài vùng cắt: vùng cắt dừng đúng đáy dòng 2, nét
+   chữ dòng 3 bị cắt không lộ; đuôi g / dấu nặng dòng 2 vẫn nằm trong dòng). Hộp chữ nằm trọn trong hàng, hai hàng kề nhau
+   không chồng. */
 .service-screen[data-scene] .cs-pay .cs-board {
   grid-area: board; align-self: stretch; min-height: 0;
   display: flex; flex-direction: column;
@@ -546,7 +548,7 @@
 .service-screen[data-scene] .cs-pay .cs-board-row.is-sub { font-size: 13px; }
 .service-screen[data-scene] .cs-pay .cs-board-name {
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
-  overflow: hidden; padding: 4px 0;
+  overflow: hidden; padding: 4px 0 0; margin-bottom: 4px;
 }
 .service-screen[data-scene] .cs-pay .cs-board-dish { width: 24px; height: 24px; }
 .service-screen[data-scene] .cs-pay .cs-board-note.co-note-ico { width: 20px; height: 20px; }
@@ -563,7 +565,7 @@
 /* bảng ngắn (≤ 4 dòng, thực đơn mấy ngày đầu) ở l / m: hàng gọn ~62px (hình món 56, tên 15, giá 17 ngay dưới tên), xếp từ
    đầu bảng, kẻ phấn đứt giữa các hàng — không giãn hàng cho đầy cột (hàng cao 100px+ trông thưa, rời rạc). Phần dư của bảng
    là hình vẽ phấn trang trí (bát bốc khói, đũa, sao — ::after của bảng) căn giữa chỗ trống dưới danh sách, co lại trước danh
-   sách khi bảng thấp (flex-shrink lớn), mất hẳn khi hết chỗ. Tên giữ đúng chỗ cũ (lề âm bù phần đệm 4px của tên). */
+   sách khi bảng thấp (flex-shrink lớn), mất hẳn khi hết chỗ. Tên giữ đúng chỗ cũ (lề âm bù phần đệm trên 4px, bỏ lề dưới). */
 .service-screen[data-scene]:is([data-fit="l"], [data-fit="m"]) .cs-pay .cs-board-list:not(:has(> li:nth-child(5))) {
   flex: 0 1 auto; grid-auto-rows: auto; align-content: start;
 }
@@ -579,7 +581,7 @@
 .service-screen[data-scene]:is([data-fit="l"], [data-fit="m"]) .cs-pay .cs-board-list:not(:has(> li:nth-child(5))) .cs-board-note.co-note-ico { width: 34px; height: 34px; }
 .service-screen[data-scene]:is([data-fit="l"], [data-fit="m"]) .cs-pay .cs-board-list:not(:has(> li:nth-child(5))) .cs-board-name { align-self: end; }
 .service-screen[data-scene]:is([data-fit="l"], [data-fit="m"]) .cs-pay .cs-board-list:not(:has(> li:nth-child(5))) .cs-board-price { grid-column: 2; align-self: start; justify-self: start; font-size: 17px; }
-.service-screen[data-scene]:is([data-fit="l"], [data-fit="m"]) .cs-pay .cs-board-list:not(:has(> li:nth-child(5))) .cs-board-name { margin: -4px 0; text-wrap: balance; }
+.service-screen[data-scene]:is([data-fit="l"], [data-fit="m"]) .cs-pay .cs-board-list:not(:has(> li:nth-child(5))) .cs-board-name { margin: -4px 0 0; text-wrap: balance; }
 .service-screen[data-scene]:is([data-fit="l"], [data-fit="m"]) .cs-pay .cs-board:not(:has(> .cs-board-list > li:nth-child(5))) > .cs-board-title { font-size: 16px; }
 /* bảng hẹp (màn < 390px: lòng bảng ≤ 152px): hình món 48 (sàn của khung chính), chữ 14 — tên món ít xuống dòng */
 @container cs-board (max-width: 157px) {
@@ -656,10 +658,10 @@
 .service-screen[data-scene][data-fit="m"] .cs-pay:has(> .cs-assist) {
   --cs-led-h: 34px; --cs-act-h: 46px; --cs-key-h: clamp(44px, calc((var(--tray-h, 377px) - 192px) / 4), 48px);
 }
-/* m + máy tự cộng: dải "Máy tính: tổng phiếu …" ở cột phải (≤ 190px) luôn 2 dòng, cao hơn dải lời Dì Sáu 9px — trừ thêm
-   9px (Safari 402×680: phím 46, panel hết cuộn 7px; SE 375×667: phím 44) */
+/* m + máy tự cộng: dải "Máy tính: tổng phiếu …" ở cột phải (≤ 190px) luôn 2 dòng (cao 44 + khe 6) — trừ thêm 15px để máy
+   tính tiền không lấn đệm đáy khay (trước đây: Safari 402×680 panel cuộn 7px, SE 375×667 cuộn 9px). Safari: phím 44,75. */
 .service-screen[data-scene][data-fit="m"] .cs-pay:has(> .cs-assist) {
-  --cs-key-h: clamp(44px, calc((var(--tray-h, 377px) - 201px) / 4), 48px);
+  --cs-key-h: clamp(44px, calc((var(--tray-h, 377px) - 207px) / 4), 48px);
 }
 .service-screen[data-scene][data-fit="l"] .cs-pay:has(> .co-tutor) .cs-pos-hint,
 .service-screen[data-scene][data-fit="l"] .cs-pay:has(> .cs-assist) .cs-pos-hint { display: none; }

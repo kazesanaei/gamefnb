@@ -1555,8 +1555,9 @@ html.reduce-motion .co-idle-bob { animation: none !important; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* bậc l: lời qua lại được 2 dòng (vd "Bạn: Dạ, tổng của mình là 75.000đ ạ." không mất con số); bong bóng chật thì về một
-   dòng (is-talk-one) */
+/* bậc l: lời qua lại được 2 dòng (vd lời khách bắt lỗi "Khoan, chú gọi … mà!", "Bạn: Dạ, tổng của mình là 75.000đ ạ." không
+   mất con số); bong bóng chật thì về một dòng (is-talk-one). Bậc m luôn một dòng (lời gọi món 4 dòng — đơn thường 2 món —
+   vẫn trọn bong bóng, không xén mép chữ) */
 [data-fit="l"] .co-scene .co-cust-wrap:not(.is-talk-one) .co-talk-line:last-child {
   display: -webkit-box;
   padding-bottom: 2px;
@@ -1565,10 +1566,11 @@ html.reduce-motion .co-idle-bob { animation: none !important; }
   -webkit-box-orient: vertical;
 }
 [data-fit="l"] .co-scene .co-cust-wrap:not(.is-talk-one) .co-talk-who { display: inline; max-width: none; margin: 0; padding: 0; }
-/* order-bubble fit đo với một dòng lời qua lại khi chưa có lời nào: hộp rỗng giữ chỗ, cao đúng một dòng (chỉ có trong lúc đo;
-   cùng lề với lời thật nên chiếm đúng 18px như lời thật) */
+/* order-bubble fit đo với một dòng lời qua lại khi chưa có lời nào: hộp rỗng giữ chỗ, cao đúng như một dòng lời thật (chỉ có
+   trong lúc đo; cùng lề với lời thật): 22px, bậc l kiểu 2 dòng (chưa is-talk-one) 24px — các bước co chọn lúc khách tới
+   trùng với lúc khách đáp, bán thân / cỡ chữ không đổi */
 .co-scene .co-cust-wrap.is-talk-slot > .co-talk { height: 22px; visibility: hidden; }
-[data-fit="l"] .co-scene .co-cust-wrap.is-talk-slot > .co-talk { height: 24px; }
+[data-fit="l"] .co-scene .co-cust-wrap.is-talk-slot:not(.is-talk-one) > .co-talk { height: 24px; }
 .co-scene .co-talk-line:not(:last-child) { position: absolute; width: 1px; height: 1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); }
 [data-fit="xs"] .co-scene .co-talk { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 

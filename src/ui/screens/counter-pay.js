@@ -38,15 +38,13 @@ const BELL_SVG = '<svg viewBox="0 0 32 32" aria-hidden="true"><g stroke="#3a2618
   '<path d="M11.4 20.4C11.6 15.6 12.6 12.4 14.8 11.2" fill="none" stroke="#fff" stroke-width="2" opacity=".6"/></g></svg>'
 
 /**
- * Vùng cuộn của khâu trong panel Quầy chứa node. Bố cục cảnh (div.counter mang lớp co-scene): panel KHÔNG cuộn, chỉ khay
- * (hoặc phần tử con của nó) cuộn khi nội dung cao hơn chỗ (khung nhỏ) → phần tử cuộn được gần nhất chứa node, null nếu khay
- * vừa (không có gì để cuộn). Bố cục cũ (panel cuộn): ctx.root.
+ * Vùng cuộn của khâu trong panel Quầy chứa node. Panel Quầy luôn theo bố cục cảnh (counter.js: div.counter.co-scene), panel
+ * KHÔNG cuộn, chỉ khay (hoặc phần tử con của nó) cuộn khi nội dung cao hơn chỗ (khung nhỏ) → phần tử cuộn được gần nhất chứa
+ * node, null nếu khay vừa (không có gì để cuộn).
  */
 export function scrollBoxOf(ctx, node) {
   const el = ctx && ctx.el
-  if (!el) return null
-  if (!el.classList || !el.classList.contains('co-scene')) return ctx.root || null
-  if (typeof getComputedStyle !== 'function') return null
+  if (!el || typeof getComputedStyle !== 'function') return null
   for (let p = node && node.parentElement; p && p !== el; p = p.parentElement) {
     const oy = getComputedStyle(p).overflowY
     if ((oy === 'auto' || oy === 'scroll') && p.scrollHeight > p.clientHeight + 1) return p
@@ -54,14 +52,13 @@ export function scrollBoxOf(ctx, node) {
   return null
 }
 
-/** Bậc khung của màn Ca bán cho bản sao ở lớp hiệu ứng: { fit, scene, cls } (cls: lớp co-fit-* của bố cục cũ, nếu còn). */
+/** Bậc khung của màn Ca bán cho bản sao ở lớp hiệu ứng: { fit, scene }. */
 export function fxFrameOf(ctx) {
   const el = ctx && ctx.el
   const scr = el && typeof el.closest === 'function' ? el.closest('[data-fit]') : null
   return {
     fit: scr ? scr.getAttribute('data-fit') || '' : '',
-    scene: !!(scr && scr.hasAttribute('data-scene')),
-    cls: el && el.classList ? [...el.classList].filter(k => k.startsWith('co-fit-')) : []
+    scene: !!(scr && scr.hasAttribute('data-scene'))
   }
 }
 
@@ -70,7 +67,6 @@ export function applyFxFrame(wrap, frame) {
   if (!wrap || !frame) return
   if (frame.fit) wrap.setAttribute('data-fit', frame.fit)
   if (frame.scene) wrap.setAttribute('data-scene', '1')
-  for (const k of frame.cls || []) wrap.classList.add(k)
 }
 
 // Máy tính tự điền tổng phiếu: bật Hỗ trợ tính tiền hoặc đã mua nâng cấp máy tính.
@@ -172,16 +168,15 @@ function afterRender(fn) {
   else Promise.resolve().then(fn)
 }
 
-// Cuộn vùng cuộn của khâu (bố cục cảnh: khay ở khung nhỏ; bố cục cũ: panel Quầy) cho trọn máy tính tiền (màn LED, mọi
-// phím, "Báo tổng") nằm trong phần nhìn thấy; máy cao hơn vùng cuộn thì đặt mép trên máy (màn LED) sát mép trên. Phần phía
-// trên máy (bảng giá, phiếu order) lộ được bao nhiêu thì lộ. Bố cục cảnh mà khay vừa: không cuộn gì.
-// → true nếu đã đo được (panel đang hiện) hoặc không có gì để cuộn.
+// Khay cuộn (khung nhỏ): cuộn khay cho trọn máy tính tiền (màn LED, mọi phím, "Báo tổng") nằm trong phần nhìn thấy; máy
+// cao hơn khay thì đặt mép trên máy (màn LED) sát mép trên. Phần phía trên máy (bảng giá) lộ được bao nhiêu thì lộ. Khay
+// vừa: không cuộn gì. → true nếu đã đo được (panel đang hiện) hoặc không có gì để cuộn.
 function revealPad(ctx) {
   if (ctx.destroyed()) return false
   const pos = ctx.el.querySelector('.cs-pos')
   if (!pos || !pos.isConnected) return false
   const sc = scrollBoxOf(ctx, pos)
-  if (!sc) return ctx.el.classList.contains('co-scene')
+  if (!sc) return true
   if (typeof sc.getBoundingClientRect !== 'function') return false
   const box = sc.getBoundingClientRect()
   const r = pos.getBoundingClientRect()
@@ -222,20 +217,9 @@ export function doReport(ctx, customer, amount) {
   app.save()
   ctx.rerender()
   if (r.result === 'du') { if (r.reason !== 'phieu_thua') ledWrong(ctx); return }
-  // tiền mặt: counter-cash.js tự cuộn khay + két vào màn khi khâu Tính tiền hiện lần đầu
-  if (r.method === 'qr') revealStageTop(ctx)
+  // khâu sau dựng khay mới: tiền mặt — counter-cash.js tự cuộn khay + két vào màn khi khâu Tính tiền hiện lần đầu; chuyển
+  // khoản — counter.js tự cuộn khay theo khâu (panel không cuộn nên không có gì phải kéo lại)
   okStamp(app, ghost)
-}
-
-// Sang khâu chuyển khoản mà panel còn cuộn ở bàn phím (khung thấp, bố cục cũ): kéo đầu khâu mới vào màn hình. Bố cục cảnh:
-// khay của khâu mới dựng mới, counter.js tự cuộn khay theo khâu — panel không cuộn nên không làm gì.
-function revealStageTop(ctx) {
-  if (ctx.destroyed() || ctx.el.classList.contains('co-scene')) return
-  const sc = ctx.root
-  const st = ctx.el.querySelector('.stage')
-  if (!sc || !st || typeof sc.getBoundingClientRect !== 'function') return
-  const over = st.getBoundingClientRect().top - sc.getBoundingClientRect().top
-  if (over < 0) sc.scrollTop += over
 }
 
 // Báo sai: màn LED của bàn phím đang hiện viền đỏ, khung màn rung (giảm chuyển động: vfx tự đổi thành viền đỏ tĩnh).
@@ -334,7 +318,7 @@ export function renderPriceBoard(ctx) {
     for (const n of r.notes || []) {
       if (!n.surcharge) continue
       rows.push(h('li', { class: 'cs-board-row is-sub', 'aria-label': `Thêm cho ${r.name}, ${n.label}: ${formatVND(n.surcharge)}` },
-        noteIcon(n.id, { recipe: r, size: 22, decorative: true, className: 'cs-board-note' }),
+        noteIcon(n.id, { recipe: r, decorative: true, className: 'cs-board-note' }),   // cỡ theo css/cashier.css (bậc, số dòng)
         h('span', { class: 'cs-board-name', title: n.label }, n.label),
         h('b', { class: 'cs-board-price' }, '+' + formatK(n.surcharge))))
     }

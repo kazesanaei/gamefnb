@@ -1,7 +1,6 @@
 // Quầy, khâu 3 (Tính tiền) — trả tiền mặt: mặt quầy gỗ với tờ tiền khách đưa (to, xòe) và phiếu số liệu (Tổng, Khách đưa,
 // Đã thối, Cần thối, Đang thối dư), khay inox đựng tiền thối, ngăn kéo két mở 7 ngăn, thẻ "két không đủ tiền lẻ" (hộp chọn
-// cách xử lý tự mở) và nút "Đưa tiền thối". Bố cục cũ (panel cuộn, không có lớp co-scene): nút dính đáy, lúc vào khâu
-// panel cuộn cho khay + két lọt trên hàng nút (revealCash).
+// cách xử lý tự mở) và nút "Đưa tiền thối".
 // M5 Đợt 2 (gói Q-B): giao diện mới, luật / tiền / điểm giữ nguyên (lõi trayAdd / trayRemove / giveChange). Mọi hàm nhận ctx
 // chung của panel Quầy (counter.js: makeCtx). Import trong Node được: không chạm DOM ở cấp module.
 // Hiệu ứng chỉ chạy theo SỰ KIỆN (thao tác), không trong renderCash: chụp vị trí + nhân bản phần tử nguồn TRƯỚC khi đổi state,
@@ -63,7 +62,7 @@ export function renderCash(ctx, customer, c) {
   const hint = showChangeHint(ctx)
   // Thẻ "Khách đưa" + phiếu số liệu (Tổng…) là con trực tiếp của khâu; két, khay, nút nằm trong thân khâu (.cs-cash-body).
   // Bố cục cảnh: hai thẻ đặt trên mặt quầy ở cảnh, thân khâu là vùng cuộn của khay (khung nhỏ) — hai thẻ nằm ngoài vùng cuộn
-  // nên không bị cắt / không trôi theo khi khay cuộn. Bố cục cũ: thân khâu "tan" vào lưới của khâu (display: contents).
+  // nên không bị cắt / không trôi theo khi khay cuộn.
   // Thân khâu cũ (lần vẽ trước, còn trong panel): vị trí cuộn của nó giữ sang thân mới.
   const prevBody = ctx.ui.cashShown ? ctx.el.querySelector('.cs-cash-body') : null
   const keepTop = prevBody ? prevBody.scrollTop : 0
@@ -102,9 +101,10 @@ export function renderCash(ctx, customer, c) {
     onclick: () => doGiveChange(ctx, customer)
   }, exact ? 'Không cần thối' : (c.changePaid > 0 ? 'Đưa tiền thối bù' : 'Đưa tiền thối'))))
   // Lần đầu khâu này hiện cho khách (vừa báo tổng / mở lại game giữa khâu): sau khi counter.js gắn panel và tự cuộn theo
-  // khâu, cuộn tiếp cho khay + két lọt trên hàng nút dính đáy. Một lần theo khách (vẽ lại, thối bù không cuộn lại).
+  // khâu, khay cuộn (khung nhỏ) thì cuộn cho két + hàng đáy lọt. Một lần theo khách (vẽ lại, thối bù không cuộn lại); các
+  // lần vẽ sau giữ vị trí cuộn của khay.
   if (!ctx.ui.cashShown) afterRender(() => { if (revealCash(ctx)) ctx.ui.cashShown = true })
-  else if (ctx.el.classList.contains('co-scene')) afterRender(() => keepCashTray(ctx, body, keepTop))
+  else afterRender(() => keepCashTray(ctx, body, keepTop))
   return wrap
 }
 
@@ -136,44 +136,17 @@ function afterRender(fn) {
   else Promise.resolve().then(fn)
 }
 
-// Cuộn panel Quầy lúc vào khâu Tính tiền (thứ tự ưu tiên): cả khâu từ tiêu đề tới đáy két lọt thì chỉ cuộn vừa đủ; không thì
-// hàng khay (panel thấp: tiền khách đưa cùng hàng) + trọn két, đáy két sát hàng nút dính đáy, phía trên lộ thêm được bao nhiêu
-// thì lộ (chỉ còn một mẩu < 28px thì thôi, đưa hàng khay sát mép trên); vẫn không lọt thì hàng khay sát mép trên panel, két
-// lộ phần đầu (hàng ngăn 5K–50K). → true nếu đã đo được (panel đang hiện).
+// Lúc vào khâu Tính tiền: khay (thân khâu) cuộn ở khung nhỏ thì cuộn cho két + hàng đáy lọt (revealCashTray). → true nếu đã
+// đo được (panel đang hiện).
 function revealCash(ctx) {
   if (ctx.destroyed()) return false
   const tray = ctx.el.querySelector('[data-testid="tray"]')
   const drawer = ctx.el.querySelector('[data-testid="drawer"]')
   if (!tray || !drawer || !drawer.isConnected) return false
-  if (ctx.el.classList.contains('co-scene')) return revealCashTray(ctx, tray, drawer)
-  const sc = ctx.root
-  if (!sc || typeof sc.getBoundingClientRect !== 'function') return false
-  const box = sc.getBoundingClientRect()
-  if (!box.height) return false
-  const bar = ctx.el.querySelector('.act-bar')
-  const br = bar ? bar.getBoundingClientRect() : null
-  const top = box.top + 4
-  const limit = (br && br.height ? Math.min(box.bottom, br.top) : box.bottom) - 4
-  const room = limit - top
-  const head = (drawer.closest('.stage') || drawer.parentNode).getBoundingClientRect()
-  const t = tray.getBoundingClientRect(), d = drawer.getBoundingClientRect()
-  // mép trên hàng chứa khay (panel thấp: tiền khách đưa nằm cùng hàng với khay)
-  const mat = ctx.el.querySelector('.cs-mat')
-  const mr = mat ? mat.getBoundingClientRect() : null
-  const rowTop = mr && mr.height && Math.abs(mr.top - t.top) < 4 ? Math.min(mr.top, t.top) : t.top
-  let delta
-  if (d.bottom - head.top <= room) delta = d.bottom > limit ? d.bottom - limit : (head.top < top ? head.top - top : 0)
-  else if (d.bottom - rowTop <= room) {
-    delta = d.bottom - limit
-    // phía trên chỉ còn lộ một mẩu (< 28px: mép thẻ, nửa dòng tiêu đề) thì đưa hàng đầu (tiền khách đưa / khay) sát mép trên
-    const above = rowTop - delta - top
-    if (above > 0 && above < 28) delta = rowTop - top
-  } else delta = rowTop - top
-  if (delta) sc.scrollTop += delta
-  return true
+  return revealCashTray(ctx, tray, drawer)
 }
 
-// Bố cục cảnh, lần vẽ lại trong cùng khâu (lấy / trả tờ tiền, thối bù): thân khâu mới giữ vị trí cuộn của thân cũ; khay tiền
+// Lần vẽ lại trong cùng khâu (lấy / trả tờ tiền, thối bù): thân khâu mới giữ vị trí cuộn của thân cũ; khay tiền
 // thối vừa xuống hàng (≥ 5 mệnh giá) mà hàng đáy bị đẩy khuất thì cuộn vừa đủ cho hàng đáy (nút "Đưa tiền thối") lọt lại.
 function keepCashTray(ctx, body, keepTop) {
   if (ctx.destroyed() || !body || !body.isConnected || typeof body.getBoundingClientRect !== 'function') return
@@ -187,7 +160,7 @@ function keepCashTray(ctx, body, keepTop) {
   if (over >= 1) body.scrollTop += over
 }
 
-// Bố cục cảnh: khay vừa thì không cuộn gì. Khay cuộn (khung nhỏ: thêm lời Dì Sáu / thẻ két hết tiền lẻ): cho cả két lẫn hàng
+// Khay vừa thì không cuộn gì. Khay cuộn (khung nhỏ: thêm lời Dì Sáu / thẻ két hết tiền lẻ): cho cả két lẫn hàng
 // đáy (khay tiền thối + "Đưa tiền thối") lọt nếu đủ chỗ, không đủ thì hàng đáy sát đáy khay, két lộ phần dưới.
 function revealCashTray(ctx, tray, drawer) {
   const sc = scrollBoxOf(ctx, drawer)
