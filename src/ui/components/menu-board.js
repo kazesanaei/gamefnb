@@ -3,6 +3,7 @@
 // Hết hàng: dán băng chéo "HẾT" (lớp is-out, aria-disabled; chạm vẫn báo cho người chơi biết).
 // Giữ testid của quầy cũ: menu-item-<id> (data-left với món hiếm), rare-left-<id> (chữ đúng "★ còn n").
 // Cấu trúc ul.co-menu-grid > li.co-menu-cell > button.co-menu-card: thẻ món là NÚT thật với trình đọc màn hình.
+// Lưới mang data-n / data-cols / data-rows / data-wide (menuLayout) để CSS xếp 1 hàng (≤ 4 món) hoặc 2 hàng (vừa màn).
 // Hoạt ảnh chỉ chạy theo SỰ KIỆN (chạm): update() với cùng dữ liệu không dựng lại thẻ, không phát lại gì.
 // Thuần ở cấp module (import trong Node được); DOM chỉ tạo khi gọi createMenuBoard.
 import { h } from '../dom.js'
@@ -37,6 +38,18 @@ export function priceParts(price) {
   const s = formatK(price)
   const m = /^(-?[\d,]+)(.*)$/.exec(s)
   return m ? { big: m[1], small: m[2] } : { big: s, small: '' }
+}
+
+/**
+ * Bố cục lưới thẻ món theo số món (vừa màn, khay Order): ≤ 4 món một hàng (2–4 cột); 5–8 món 2 hàng × 4; 9–10 món
+ * 2 hàng × 5; > 10 món 2 hàng, cột tự thêm và bảng cuộn ngang (wide). → { cols, rows, wide }. Thuần.
+ */
+export function menuLayout(n) {
+  const k = Math.max(0, Math.floor(Number(n) || 0))
+  if (k <= 4) return { cols: Math.max(2, k), rows: 1, wide: false }
+  if (k <= 8) return { cols: 4, rows: 2, wide: false }
+  if (k <= 10) return { cols: 5, rows: 2, wide: false }
+  return { cols: Math.ceil(k / 2), rows: 2, wide: true }
 }
 
 /**
@@ -156,6 +169,13 @@ export function createMenuBoard(data = {}, opts = {}) {
     for (const [id, rec] of [...nodes]) {
       if (!seen.has(id)) { rec.cell.remove(); nodes.delete(id) }
     }
+    // móc bố cục (css/counter.css): số món, số cột / hàng; bảng cuộn ngang khi quá 10 món — chỉ ghi khi đổi
+    const lay = menuLayout(items.length)
+    const put = (k, v) => { if (grid.dataset[k] !== v) grid.dataset[k] = v }
+    put('n', String(items.length))
+    put('cols', String(lay.cols))
+    put('rows', String(lay.rows))
+    put('wide', lay.wide ? '1' : '0')
   }
 
   update(data)

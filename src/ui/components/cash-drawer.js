@@ -44,8 +44,13 @@ function billStack(b, n, cls) {
 /** Két: mỗi ngăn drawer-<mệnh giá> có huy hiệu số tờ còn lại; chạm để lấy 1 tờ vào khay. onTake(bill, nút ngăn). */
 export function renderDrawer(drawer, { onTake, disabled = false } = {}) {
   const slots = drawerSlots()
+  // hình két lấp đúng khung két: khung chính của bố cục cảnh cho két cao hơn tỉ lệ gốc một chút (ngăn cao hơn, css/cashier.css)
+  // — các ngăn đặt theo % nên vẫn khớp ô trong hình
+  const art = svgBox(scene('ket_tien'), 'cs-drawer-art')
+  const svg = art.firstElementChild
+  if (svg && typeof svg.setAttribute === 'function') svg.setAttribute('preserveAspectRatio', 'none')
   return h('div', { class: 'cs-drawer', testid: 'drawer', role: 'group', 'aria-label': 'Két tiền' },
-    svgBox(scene('ket_tien'), 'cs-drawer-art'),
+    art,
     BILLS.map(b => {
       const n = Math.max(0, Number(drawer && drawer[b]) || 0)
       const s = slots[b] || {}

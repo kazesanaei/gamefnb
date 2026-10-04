@@ -261,80 +261,81 @@ html.reduce-motion .sheet-host::before { transition-duration: .001ms; }
   100% { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
 }
 
-/* màn thấp / hẹp: phiếu gọn lại để không che hết vùng thao tác */
-@media (max-height: 700px) {
-  .sheet-host .score-sheet { margin-top: 10px; padding: 8px 10px 9px; }
-  .score-sheet .ss-head { gap: 8px; }
-  .ss-face { width: 58px; height: 62px; }
-  .ss-face-img { width: 64px; margin-left: -32px; top: -3px; }
-  .ss-emote { left: -10px; top: -10px; width: 28px; height: 28px; padding: 3px; }
-  .ss-name { font-size: 17px; }
-  .ss-star { width: 24px; height: 24px; }
-  .score-sheet .ss-review { margin-top: 3px; padding: 2px 8px 3px; line-height: 1.22; }
-  .score-sheet .ss-rows { margin-top: 5px; padding-top: 4px; gap: 0; }
-  .score-sheet .ss-rows li { min-height: 23px; }
-  .ss-ico { width: 20px; height: 20px; }
-  .ss-mark { width: 18px; height: 18px; }
-  .score-sheet .ss-tags { margin-top: 5px; }
-  .score-sheet .ss-tip { margin-top: 5px; font-size: 15px; }
-  .ss-coin { width: 24px; height: 24px; }
-  .ss-tip-v { font-size: 16px; }
-}
+/* Vừa màn: cỡ phiếu theo bậc khung của màn Ca bán (data-fit = l | m | s | xs, theo chiều cao giữa HUD và thanh tab do
+   service.js ghi — một nguồn sự thật với mọi khâu, thay cho @media theo chiều cao khung nhìn của 0.5.1). Phiếu neo ngay
+   trên thanh tab (.sheet-host, css/game.css); cao tối đa A − 8 (A = --avail-h): bậc l đủ chỗ cho bản đầy đủ, m gọn một
+   bậc, s / xs bản gọn nhất (tên + sao một dòng, 5 hàng lưới 2 cột).
+   Bậc m / s / xs: phiếu gọn lại để không che hết vùng thao tác */
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .sheet-host .score-sheet { margin-top: 10px; padding: 8px 10px 9px; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .score-sheet .ss-head { gap: 8px; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .ss-face { width: 58px; height: 62px; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .ss-face-img { width: 64px; margin-left: -32px; top: -3px; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .ss-emote { left: -10px; top: -10px; width: 28px; height: 28px; padding: 3px; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .ss-name { font-size: 17px; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .ss-star { width: 24px; height: 24px; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .score-sheet .ss-review { margin-top: 3px; padding: 2px 8px 3px; line-height: 1.22; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .score-sheet .ss-rows { margin-top: 5px; padding-top: 4px; gap: 0; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .score-sheet .ss-rows li { min-height: 23px; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .ss-ico { width: 20px; height: 20px; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .ss-mark { width: 18px; height: 18px; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .score-sheet .ss-tags { margin-top: 5px; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .score-sheet .ss-tip:not(.is-zero, .ss-stranger) { font-size: 15px; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .score-sheet .ss-tip:not(.is-sticker) { margin-top: 5px; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .ss-coin { width: 24px; height: 24px; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .ss-tip-v { font-size: 16px; }
 @media (max-width: 340px) {
   .ss-face { width: 58px; height: 62px; }
   .ss-face-img { width: 64px; margin-left: -32px; top: -3px; }
   .ss-star { width: 24px; height: 24px; }
   .ss-label, .score-sheet .ss-verdict { font-size: 14px; }
 }
-/* Khung thấp (cao ≤ 600px: 375×553 có vùng an toàn, 320×568, 360×600). Phiếu neo ngay trên thanh tab, chỗ trống chỉ còn
+/* Bậc s / xs (375×553 có vùng an toàn, 320×568, 360×600). Phiếu neo ngay trên thanh tab, chỗ trống chỉ còn
    từ dây phiếu xuống → gọn tối đa để không che thanh 4 khâu (vòng sửa V1/V2): tên + sao chung một dòng, lời khách tối đa
    3 dòng (khung 375 rộng: hầu hết 1–2 dòng), 5 hàng xếp lưới 2 cột (hàng lẻ cuối "Thời gian chờ" trải hết bề ngang, giữ chấm dẫn và chữ phụ), 4 ô lưới bỏ
    chấm dẫn và chữ phụ (hạng món đã có ở dòng tên lỗi). Chữ vẫn ≥ 13px; dấu ✓/✗ và chữ Đạt / Sai giữ nguyên. */
-@media (max-height: 600px) {
-  .sheet-host .score-sheet { margin-top: 8px; padding: 5px 9px 6px; border-radius: 16px; }
-  .sheet-host .score-sheet::before { top: -10px; width: 64px; height: 17px; margin-left: -32px; }
-  .score-sheet .ss-head { gap: 8px; }
-  .ss-face { width: 46px; height: 48px; margin-top: 2px; }
-  .ss-face-frame { border-width: 2.5px; border-radius: 12px; }
-  .ss-face-img { width: 52px; margin-left: -26px; top: -2px; }
-  .ss-emote { left: -8px; top: -8px; width: 24px; height: 24px; padding: 3px; border-width: 2px; }
-  .ss-who { gap: 1px; }
-  .ss-line { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0 8px; }
-  .ss-name { min-width: 0; font-size: 16px; line-height: 1.25; }
-  .ss-star { width: 20px; height: 20px; }
-  .score-sheet .ss-stars { gap: 2px; }
-  .ss-note { font-size: 13px; line-height: 1.2; }
-  .score-sheet .ss-review { margin-top: 1px; padding: 1px 8px; border-radius: 10px; font-size: 13px; line-height: 1.22; }
-  .score-sheet .ss-review::before { left: -7px; top: 7px; width: 10px; height: 10px; }
-  .ss-review-t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
-  .score-sheet .ss-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; margin-top: 3px; padding-top: 3px; }
-  .score-sheet .ss-rows li { min-height: 20px; gap: 4px; padding: 0 3px; }
-  .score-sheet .ss-rows li:last-child:nth-child(odd) { grid-column: 1 / -1; }
-  .ss-ico { width: 18px; height: 18px; }
-  .ss-label { font-size: 14px; }
-  .ss-dots { display: none; }
-  .score-sheet .ss-rows li:last-child .ss-dots { display: block; }
-  .score-sheet .ss-verdict { margin-left: auto; gap: 3px; font-size: 14px; white-space: nowrap; }
-  .score-sheet .ss-rows li:last-child .ss-verdict { margin-left: 0; }
-  .score-sheet .ss-rows li:not(:last-child) .ss-extra { display: none; }
-  .ss-mark { width: 17px; height: 17px; }
-  .score-sheet .ss-tags { margin-top: 3px; gap: 4px 10px; }
-  .score-sheet .err-tag { font-size: 13px; }
-  .score-sheet .err-tag-ink { padding: 3px 9px 1px; }
-  .score-sheet .ss-errors { margin-top: 1px; font-size: 13px; line-height: 1.25; }
-  .score-sheet .ss-tip { margin-top: 4px; }
-  .score-sheet .ss-tip.is-sticker { top: -24px; padding: 2px 10px 2px 3px; }
-  .score-sheet .ss-tip.is-sticker .ss-tip-v { font-size: 17px; }
-  .score-sheet .ss-tip.is-sticker .ss-coin { width: 24px; height: 24px; }
-}
-/* khung thấp và hẹp (320×568): ô lưới chỉ còn ~130px → chữ hàng 13px, đệm sát hơn để "Báo tổng ✓ Đạt" vừa một ô */
-@media (max-height: 600px) and (max-width: 340px) {
-  .score-sheet .ss-rows { column-gap: 6px; }
-  .score-sheet .ss-rows li { padding: 0 2px; gap: 3px; }
-  .ss-label, .score-sheet .ss-verdict { font-size: 13px; }
-  .ss-ico { width: 17px; height: 17px; }
-  .ss-face { width: 44px; height: 46px; }
-  .ss-face-img { width: 50px; margin-left: -25px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .sheet-host .score-sheet { margin-top: 8px; padding: 5px 9px 6px; border-radius: 16px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .sheet-host .score-sheet::before { top: -10px; width: 64px; height: 17px; margin-left: -32px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .ss-head { gap: 8px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .ss-face { width: 46px; height: 48px; margin-top: 2px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .ss-face-frame { border-width: 2.5px; border-radius: 12px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .ss-face-img { width: 52px; margin-left: -26px; top: -2px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .ss-emote { left: -8px; top: -8px; width: 24px; height: 24px; padding: 3px; border-width: 2px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .ss-who { gap: 1px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .ss-line { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0 8px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .ss-name { min-width: 0; font-size: 16px; line-height: 1.25; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .ss-star { width: 20px; height: 20px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .ss-stars { gap: 2px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .ss-note { font-size: 13px; line-height: 1.2; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .ss-review { margin-top: 1px; padding: 1px 8px; border-radius: 10px; font-size: 13px; line-height: 1.22; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .ss-review::before { left: -7px; top: 7px; width: 10px; height: 10px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .ss-review-t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .ss-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; margin-top: 3px; padding-top: 3px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .ss-rows li { min-height: 20px; gap: 4px; padding: 0 3px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .ss-rows li:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .ss-ico { width: 18px; height: 18px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .ss-label { font-size: 14px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .ss-dots { display: none; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .ss-rows li:last-child .ss-dots { display: block; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .ss-verdict { margin-left: auto; gap: 3px; font-size: 14px; white-space: nowrap; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .ss-rows li:last-child .ss-verdict { margin-left: 0; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .ss-rows li:not(:last-child) .ss-extra { display: none; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .ss-mark { width: 17px; height: 17px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .ss-tags { margin-top: 3px; gap: 4px 10px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .err-tag { font-size: 13px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .err-tag-ink { padding: 3px 9px 1px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .ss-errors { margin-top: 1px; font-size: 13px; line-height: 1.25; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .ss-tip:not(.is-sticker) { margin-top: 4px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .ss-tip.is-sticker { top: -24px; padding: 2px 10px 2px 3px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .ss-tip.is-sticker .ss-tip-v { font-size: 17px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .ss-tip.is-sticker .ss-coin { width: 24px; height: 24px; }
+/* bậc s / xs và hẹp (320×568): ô lưới chỉ còn ~130px → chữ hàng 13px, đệm sát hơn để "Báo tổng ✓ Đạt" vừa một ô */
+@media (max-width: 340px) {
+  .service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .ss-rows { column-gap: 6px; }
+  .service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .ss-rows li { padding: 0 2px; gap: 3px; }
+  .service-screen:is([data-fit="s"], [data-fit="xs"]) .ss-label, .service-screen:is([data-fit="s"], [data-fit="xs"]) .score-sheet .ss-verdict { font-size: 13px; }
+  .service-screen:is([data-fit="s"], [data-fit="xs"]) .ss-ico { width: 17px; height: 17px; }
+  .service-screen:is([data-fit="s"], [data-fit="xs"]) .ss-face { width: 44px; height: 46px; }
+  .service-screen:is([data-fit="s"], [data-fit="xs"]) .ss-face-img { width: 50px; margin-left: -25px; }
 }
 
 /* ============================================== Hộp tình huống, hộp phàn nàn ============================================== */
@@ -577,6 +578,83 @@ html.reduce-motion .sheet-host::before { transition-duration: .001ms; }
   .complaint .complaint-choice { min-height: 48px; padding-top: 6px; padding-bottom: 6px; }
   .complaint-dish { width: 34px; height: 34px; }
 }
+
+/* ---- Vừa màn — khung thấp (chiều cao dùng được U < 620px: 375×553 có vùng an toàn, 320×568, 360×600; đặc tả mục 5.6) ----
+   incident-view.js gắn lớp is-low lên hộp. Bản gọn: sân khấu 56 bên trái tiêu đề, chữ 14, lựa chọn cao ≥ 44, khe 6, nhãn
+   "An toàn" thành tem dán ở góc lựa chọn — mọi lựa chọn (kể cả cách an toàn thường nằm cuối) thấy được không phải cuộn.
+   Chữ vẫn ≥ 14px trong hộp thoại, vùng chạm ≥ 44px. */
+.modal.incident-modal:has(> .incident.is-low) { padding-top: 9px; }
+.incident-modal .incident.is-low { gap: 6px; }
+.incident-modal .incident.is-low .incident-head,
+.complaint.is-low .complaint-scene { flex-direction: row; align-items: center; gap: 10px; }
+.incident-modal .incident.is-low .incident-stage,
+.complaint.is-low .complaint-stage { flex: none; width: 56px; height: 56px; border-width: 2.5px; border-radius: 13px; box-shadow: 0 3px 0 rgba(58, 38, 24, .25); }
+.incident-modal .incident.is-low .incident-stage::before,
+.complaint.is-low .complaint-stage::before {
+  height: 12px;
+  background:
+    radial-gradient(circle at 5px 0, var(--g-tomato) 0 4px, var(--g-ink) 4.5px 5.5px, transparent 6px) 0 6px / 20px 7px repeat-x,
+    radial-gradient(circle at 15px 0, #fffaf0 0 4px, var(--g-ink) 4.5px 5.5px, transparent 6px) 0 6px / 20px 7px repeat-x,
+    repeating-linear-gradient(90deg, var(--g-tomato) 0 10px, #fffaf0 10px 20px) 0 0 / 100% 7px no-repeat;
+}
+.incident-modal .incident.is-low .incident-stage::after,
+.complaint.is-low .complaint-stage::after { height: 9px; border-top-width: 2.5px; }
+.incident-modal .incident.is-low .incident-stage .incident-art.is-person,
+.incident-modal .incident.is-low .incident-stage .incident-art.is-disau,
+.complaint.is-low .complaint-stage .incident-art.is-person { width: 42px; height: 49px; margin-left: -21px; bottom: 0; }
+.incident-modal .incident.is-low .incident-stage .incident-art.is-bill { top: 15px; width: 52px; height: 26px; margin-left: -26px; }
+.incident-modal .incident.is-low .incident-emote,
+.complaint.is-low .complaint-stage .incident-emote { left: auto; right: -1px; top: 9px; width: 20px; height: 20px; padding: 2px; border-width: 2px; }
+.incident-modal .incident.is-low .incident-titles { gap: 2px; }
+.incident-modal .incident.is-low .incident-kicker { padding: 0 7px; border-width: 2px; line-height: 1.25; box-shadow: 0 1px 0 rgba(58, 38, 24, .25); }
+.incident-modal .incident.is-low .incident-title { font-size: 16px; line-height: 1.12; }
+.incident-modal .incident.is-low .incident-text { font-size: 14px; line-height: 1.27; }
+.incident-modal .incident.is-low .incident-note { font-size: 14px; line-height: 1.25; }
+.incident-modal .incident.is-low .incident-pause { gap: 5px; font-size: 14px; line-height: 1.25; }
+.incident-modal .incident.is-low .incident-pause-ico { width: 16px; height: 16px; }
+.incident-modal .incident.is-low .incident-choices { gap: 6px; padding-bottom: 2px; }
+.incident-modal .incident.is-low .incident-choice {
+  align-items: center; gap: 8px; min-height: 44px; padding: 3px 10px 4px 8px; border-width: 2.5px; border-radius: 13px;
+}
+.incident-modal .incident.is-low .incident-choice:not(:disabled) { box-shadow: inset 0 -3px 0 rgba(58, 38, 24, .1), 0 3px 0 #a8773a; }
+.incident-modal .incident.is-low .incident-choice.is-safe:not(:disabled) { box-shadow: inset 0 -3px 0 rgba(34, 107, 40, .12), 0 3px 0 #3f8f2f; }
+.incident-modal .incident.is-low .incident-choice.is-green:not(:disabled) { box-shadow: inset 0 -3px 0 rgba(34, 107, 40, .12), 0 0 0 3px var(--g-gold-light), 0 3px 0 #3f8f2f; }
+.incident-modal .incident.is-low .incident-choice-ico { width: 26px; height: 26px; margin-top: 0; }
+/* nhãn "An toàn" thành tem dán chờm mép trên, góc phải lựa chọn (không chiếm một hàng riêng; tĩnh, không hoạt ảnh) */
+.incident-modal .incident.is-low .incident-choice-body { gap: 0; }
+.incident-modal .incident.is-low .incident-choice b { font-size: 16px; line-height: 1.15; }
+.incident-modal .incident.is-low .incident-choice small { font-size: 14px; line-height: 1.22; }
+.incident-modal .incident.is-low .incident-choice .safe-badge {
+  position: absolute; z-index: 1; top: -12px; right: 10px; margin: 0; padding: 0 8px; border-width: 2px; line-height: 1.2;
+  box-shadow: 0 2px 0 rgba(58, 38, 24, .3); transform: rotate(2deg); pointer-events: none;
+}
+/* kết quả: nhãn hiệu ứng, thẻ Mẹo nghề gọn */
+.incident-modal .incident.is-low .incident-result { gap: 6px; }
+.incident-modal .incident.is-low .incident-effects { gap: 5px; }
+.incident-modal .incident.is-low .incident-fx { min-height: 28px; padding: 1px 10px 1px 3px; font-size: 14px; }
+.incident-modal .incident.is-low .incident-fx-ico { width: 20px; height: 20px; }
+.incident-modal .incident.is-low .incident-tip { gap: 6px; padding: 5px 8px; }
+.incident-modal .incident.is-low .incident-tip-ico { width: 24px; height: 24px; }
+.incident-modal .incident.is-low .incident-tip b { font-size: 15px; }
+.incident-modal .incident.is-low .incident-tip p { font-size: 14px; line-height: 1.28; }
+/* hộp phàn nàn */
+.complaint.is-low { gap: 6px; }
+.complaint.is-low .complaint-bubble { flex: 1; min-width: 0; padding: 4px 10px 5px; }
+.complaint.is-low .complaint-bubble::before { left: -9px; top: 50%; margin: -7px 0 0; border-top: 0; border-bottom: 2.5px solid var(--g-ink); }
+.complaint.is-low .complaint-bubble b { font-size: 15px; }
+.complaint.is-low .complaint-bubble p { font-size: 14px; line-height: 1.28; }
+.complaint.is-low .complaint-items { gap: 4px; font-size: 14px; }
+.complaint.is-low .complaint-item { gap: 6px; padding: 2px 8px 2px 3px; }
+.complaint.is-low .complaint-dish { width: 30px; height: 30px; }
+.complaint.is-low .complaint-step { gap: 6px; }
+.complaint.is-low .complaint-ask { font-size: 16px; }
+.complaint.is-low .complaint-choices { gap: 6px; padding-bottom: 2px; }
+.complaint.is-low .complaint-choice { min-height: 44px; gap: 8px; padding: 4px 10px 4px 8px; border-width: 2.5px; border-radius: 13px; box-shadow: inset 0 -3px 0 rgba(58, 38, 24, .1), 0 3px 0 #a8773a; }
+.complaint.is-low .complaint-choice-ico { width: 26px; height: 26px; }
+.complaint.is-low .complaint-choice-t { font-size: 14px; line-height: 1.25; }
+.complaint.is-low .complaint-actions { gap: 8px; }
+.complaint.is-low .complaint-actions .g-btn { min-height: 48px; font-size: 17px; }
+.complaint.is-low .complaint-actions .g-btn .g-ico { width: 26px; height: 26px; }
 
 /* ---- Giảm chuyển động, phiếu dựng lại: tắt hẳn hoạt ảnh con (hiện cùng lúc, không độ trễ) ---- */
 .score-sheet.is-static *, .score-sheet.is-static *::before, .score-sheet.is-static *::after { animation: none !important; }

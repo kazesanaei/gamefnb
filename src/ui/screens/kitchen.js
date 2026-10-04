@@ -224,7 +224,8 @@ export function stepStatus(s, byId = new Map()) {
     const need = (s.after || []).filter(id => !(byId.get(id) && byId.get(id).done)).map(id => (byId.get(id) || {}).label || id)
     return { text: need.length > 1 ? `Sau ${need.length} bước` : `Sau: ${need[0] || 'bước trước'}`, cls: 'is-locked' }
   }
-  return { text: s && s.method ? 'Chọn cách' : 'Chạm để làm', cls: 'is-available' }
+  // short: chữ gọn khi ô chữ của bước hẹp (< 84px, Thớt lưới 2 cột — css/kitchen.css chọn bản hiện, không cắt "…")
+  return s && s.method ? { text: 'Chọn cách', cls: 'is-available' } : { text: 'Chạm để làm', cls: 'is-available', short: 'Chạm' }
 }
 
 // Nạp css/kitchen.css một lần (khung app có thể đã gắn sẵn).
@@ -400,18 +401,29 @@ export function mountKitchen(root, app, opts = {}) {
   // thông báo bị hoãn chỉ thả ra khi bảng đã đóng). Báo cho màn ca bán mỗi khi đổi; gọi trước khi dựng mini-game để plugin
   // đo đúng khung.
   let focusSent = null
+  let kindSent = ''
   function focusWanted() {
     if (tasting || destroyed || !ui.visible) return false
     if (ui.railPending || (ui.reveal && ui.layerKind === 'reveal')) return true
     const m = mode()
     return m === 'chon' || m === 'thot'
   }
+  // Vừa màn (L4): loại màn nấu gửi kèm onFocus → màn ca bán ghi data-cook ('chon' ẩn dải mặt khách ở mọi khung; 'stage' là
+  // sân khấu một bước hoặc thẻ vào bước đang phủ Thớt). Bảng ra món đang hiện: giữ loại cũ (bố cục dưới lớp phủ không đổi).
+  function focusKind() {
+    if (ui.layerKind === 'stage' || ui.layerKind === 'card' || ui.result || (ui.play && ui.play.kind === 'step')) return 'stage'
+    const m = mode()
+    if (m === 'chon' || m === 'thot') return m
+    return kindSent || 'thot'
+  }
   function syncFocus() {
     if (!onFocus) return
     const want = focusWanted()
-    if (want === focusSent) return
+    const kind = want ? focusKind() : ''
+    if (want === focusSent && kind === kindSent) return
     focusSent = want
-    try { onFocus(want) } catch (err) { console.error(err) }
+    kindSent = kind
+    try { onFocus(want, kind) } catch (err) { console.error(err) }
   }
 
   function computeKey() {
@@ -532,10 +544,13 @@ export function mountKitchen(root, app, opts = {}) {
     if (compact) {
       // một dòng gọn: hình món + ghi chú đỏ (không có ghi chú: chữ "Thẻ công thức") + số món / bước; chạm để mở chi tiết
       const more = h('details', { class: 'k-card-steps' },
-        h('summary', null, svgBox(icon(recipe.icon || recipe.id || 'fallback'), 'k-card-sum-icon'),
+        // số phần (×n) dán góc hình món: đầu Thớt gọn ở khung thấp không còn tên phiếu "… ×2" (css/kitchen.css)
+        h('summary', null, svgBox(icon(recipe.icon || recipe.id || 'fallback'), 'k-card-sum-icon', cook.qty > 1 ? { dataset: { qty: cook.qty } } : {}),
           notes.length
             ? h('span', { class: 'k-notes k-card-notes' }, notes.map(n => h('span', { class: 'k-note' }, upper(n))))
             : h('span', { class: 'k-card-sum-t' }, 'Thẻ công thức'),
+          // tên món: chỉ hiện khi đầu Thớt gọn (khung thấp bỏ tên món ở đầu bảng — css/kitchen.css)
+          notes.length ? null : h('span', { class: 'k-card-sum-name' }, recipe.name || ''),
           h('small', { class: 'k-card-sum-n' }, `${ings.length} món · ${steps.length} bước`)),
         h('ul', { class: 'k-card-ings' }, ings), tip, h('ol', null, steps))
       if (open) more.open = true
@@ -741,8 +756,9 @@ export function mountKitchen(root, app, opts = {}) {
     const ctx = cctx()
     const recipe = recipeOf(cook.recipeId) || {}
     const bs = boardSteps(S(), ctx)
-    if (!tasting) out.appendChild(boardHeader(cook))
-    out.appendChild(recipeCard(cook, false, true))
+    // đầu Thớt + thẻ công thức gọn chung một khối (.k-thot-top): mặc định xếp dọc như cũ (display: contents); khung thấp
+    // (css/kitchen.css) xếp nút "‹ Phiếu" cạnh thẻ công thức gọn trên cùng một hàng, như bước Chọn ở khung thấp
+    out.appendChild(h('div', { class: 'k-thot-top' }, tasting ? null : boardHeader(cook), recipeCard(cook, false, true)))
 
     // Nguyên liệu trên thớt, mỗi thứ kèm các bước của nó; hình nguyên liệu theo các bước đã xong (art/state-map.js).
     const states = boardStates(cook.board || [], cook.steps || {}, { notes: cook.notes || [], activeId: null })
@@ -836,7 +852,9 @@ export function mountKitchen(root, app, opts = {}) {
     const img = ing ? ingArt(ing, st) : icon((recipe && recipe.icon) || 'fallback')
     const byId = new Map(all.map(s => [s.id, s]))
     const INGS = D().INGREDIENTS || {}
-    return h('div', { class: cls, dataset: { ing: ing || 'ca_mon', state: st || undefined } },
+    // data-steps: số bước của trạm — Thớt lưới 2 cột (css/kitchen.css) cho trạm nhiều bước chiếm chừng ấy hàng lưới, các trạm
+    // một bước xếp kín chỗ bên cạnh
+    return h('div', { class: cls, dataset: { ing: ing || 'ca_mon', state: st || undefined, steps: String(Math.max(1, Math.min(4, steps.length))) } },
       h('div', { class: 'k-ing-top' },
         h('span', { class: ['k-ing-art', ing && INGS[ing] && INGS[ing].rare ? 'is-rare' : ''] }, svgBox(img, 'k-ing-icon'),
           steps.length && steps.every(s => s.done) ? svgBox(TICK_SVG, 'k-ing-tick') : null),
@@ -868,7 +886,11 @@ export function mountKitchen(root, app, opts = {}) {
       s.critical ? h('b', { class: 'k-step-crit', 'aria-hidden': 'true' }, '★') : null),
     h('span', { class: 'k-step-text' },
       h('span', { class: 'k-step-label' }, s.label),
-      h('span', { class: 'k-step-st' }, st.text)))
+      // bản gọn (st.short) nằm sẵn bên cạnh, CSS đổi bản hiện theo bề ngang ô chữ (container query); máy đọc màn hình đọc
+      // trạng thái ở aria-label của nút
+      h('span', { class: 'k-step-st' }, st.short
+        ? [h('span', { class: 'k-st-full' }, st.text), h('span', { class: 'k-st-short', 'aria-hidden': 'true' }, st.short)]
+        : st.text)))
   }
 
   // ---------- thao tác ----------
@@ -1022,6 +1044,8 @@ export function mountKitchen(root, app, opts = {}) {
     showLayer('stage', wrap)
     const token = ++ui.token
     ui.play = { kind: 'step', handle: null, token, stepId }
+    // sân khấu đã phủ Thớt: báo loại màn nấu 'stage' (data-cook) trước khi dựng mini-game
+    syncFocus()
     const progress = stepProgress(cook, step.id)
 
     const full = stepCardFull(step, S(), { recipeId: cook.recipeId, tasting: !!tasting })
@@ -1506,7 +1530,7 @@ export function mountKitchen(root, app, opts = {}) {
     clearTimeout(ui.revealTimer)
     el.remove()
     popLayer.remove()
-    if (onFocus && focusSent) { focusSent = false; try { onFocus(false) } catch (err) { console.error(err) } }
+    if (onFocus && focusSent) { focusSent = false; kindSent = ''; try { onFocus(false, '') } catch (err) { console.error(err) } }
     revealNotice(false)
   }
 

@@ -5,6 +5,10 @@
 // Quầy (counter.js: makeCtx). Import trong Node được: không chạm DOM ở cấp module.
 // Hiệu ứng chỉ chạy theo SỰ KIỆN trong doReport (không trong renderPayment): khách nhận tổng → "keng" + dấu ✓ nảy trên bản
 // sao màn LED (nhân bản rồi để ở lớp hiệu ứng, panel vẽ lại tự do); báo sai → màn LED rung + viền đỏ (âm error).
+// Vừa màn (bố cục cảnh + khay, div.counter.co-scene của counter.js): panel Quầy không cuộn; khâu này là KHAY (bảng giá phấn
+// | máy tính tiền), phiếu order hình đặt trên mặt quầy ở cảnh (css/cashier.css định vị theo div.counter). Mọi phép "cuộn cho
+// lọt" chỉ cuộn vùng cuộn thật (khay ở khung nhỏ), không cuộn panel (scrollBoxOf). Bản sao ở lớp hiệu ứng mang data-scene +
+// data-fit của màn (fxFrameOf / applyFxFrame) để giữ đúng cỡ theo bậc.
 import { h, svgBox } from '../dom.js'
 import { scene } from '../art/scene.js'
 import { reportTotal, priceOfLines } from '../../core/order.js'
@@ -31,6 +35,42 @@ const BELL_SVG = '<svg viewBox="0 0 32 32" aria-hidden="true"><g stroke="#3a2618
   '<path d="M18.6 9.4C21.8 11 23.4 15.4 24 21.6L25 22.8H20.6C20.6 16.6 20 12.2 18.6 9.4Z" fill="#d48f0a" stroke="none"/>' +
   '<circle cx="16" cy="6.4" r="2.2" fill="#f7b928"/>' +
   '<path d="M11.4 20.4C11.6 15.6 12.6 12.4 14.8 11.2" fill="none" stroke="#fff" stroke-width="2" opacity=".6"/></g></svg>'
+
+/**
+ * Vùng cuộn của khâu trong panel Quầy chứa node. Bố cục cảnh (div.counter mang lớp co-scene): panel KHÔNG cuộn, chỉ khay
+ * (hoặc phần tử con của nó) cuộn khi nội dung cao hơn chỗ (khung nhỏ) → phần tử cuộn được gần nhất chứa node, null nếu khay
+ * vừa (không có gì để cuộn). Bố cục cũ (panel cuộn): ctx.root.
+ */
+export function scrollBoxOf(ctx, node) {
+  const el = ctx && ctx.el
+  if (!el) return null
+  if (!el.classList || !el.classList.contains('co-scene')) return ctx.root || null
+  if (typeof getComputedStyle !== 'function') return null
+  for (let p = node && node.parentElement; p && p !== el; p = p.parentElement) {
+    const oy = getComputedStyle(p).overflowY
+    if ((oy === 'auto' || oy === 'scroll') && p.scrollHeight > p.clientHeight + 1) return p
+  }
+  return null
+}
+
+/** Bậc khung của màn Ca bán cho bản sao ở lớp hiệu ứng: { fit, scene, cls } (cls: lớp co-fit-* của bố cục cũ, nếu còn). */
+export function fxFrameOf(ctx) {
+  const el = ctx && ctx.el
+  const scr = el && typeof el.closest === 'function' ? el.closest('[data-fit]') : null
+  return {
+    fit: scr ? scr.getAttribute('data-fit') || '' : '',
+    scene: !!(scr && scr.hasAttribute('data-scene')),
+    cls: el && el.classList ? [...el.classList].filter(k => k.startsWith('co-fit-')) : []
+  }
+}
+
+/** Gắn bậc khung (fxFrameOf) lên khung bản sao: luật [data-scene][data-fit="…"] .x của css/cashier.css khớp cả bản sao. */
+export function applyFxFrame(wrap, frame) {
+  if (!wrap || !frame) return
+  if (frame.fit) wrap.setAttribute('data-fit', frame.fit)
+  if (frame.scene) wrap.setAttribute('data-scene', '1')
+  for (const k of frame.cls || []) wrap.classList.add(k)
+}
 
 // Máy tính tự điền tổng phiếu: bật Hỗ trợ tính tiền hoặc đã mua nâng cấp máy tính.
 export function assistTotal(ctx) {
@@ -70,14 +110,17 @@ function afterRender(fn) {
   else Promise.resolve().then(fn)
 }
 
-// Cuộn panel Quầy cho trọn máy tính tiền (màn LED, mọi phím, "Báo tổng") nằm trong phần nhìn thấy; máy cao hơn panel thì
-// đặt mép trên máy (màn LED) sát mép trên panel. Phần phía trên máy (bảng giá, phiếu order) lộ được bao nhiêu thì lộ.
-// → true nếu đã đo được (panel đang hiện).
+// Cuộn vùng cuộn của khâu (bố cục cảnh: khay ở khung nhỏ; bố cục cũ: panel Quầy) cho trọn máy tính tiền (màn LED, mọi
+// phím, "Báo tổng") nằm trong phần nhìn thấy; máy cao hơn vùng cuộn thì đặt mép trên máy (màn LED) sát mép trên. Phần phía
+// trên máy (bảng giá, phiếu order) lộ được bao nhiêu thì lộ. Bố cục cảnh mà khay vừa: không cuộn gì.
+// → true nếu đã đo được (panel đang hiện) hoặc không có gì để cuộn.
 function revealPad(ctx) {
   if (ctx.destroyed()) return false
-  const sc = ctx.root
   const pos = ctx.el.querySelector('.cs-pos')
-  if (!sc || !pos || !pos.isConnected || typeof sc.getBoundingClientRect !== 'function') return false
+  if (!pos || !pos.isConnected) return false
+  const sc = scrollBoxOf(ctx, pos)
+  if (!sc) return ctx.el.classList.contains('co-scene')
+  if (typeof sc.getBoundingClientRect !== 'function') return false
   const box = sc.getBoundingClientRect()
   const r = pos.getBoundingClientRect()
   if (!box.height || !r.height) return false
@@ -122,11 +165,13 @@ export function doReport(ctx, customer, amount) {
   okStamp(app, ghost)
 }
 
-// Sang khâu chuyển khoản mà panel còn cuộn ở bàn phím (khung thấp): kéo đầu khâu mới vào màn hình.
+// Sang khâu chuyển khoản mà panel còn cuộn ở bàn phím (khung thấp, bố cục cũ): kéo đầu khâu mới vào màn hình. Bố cục cảnh:
+// khay của khâu mới dựng mới, counter.js tự cuộn khay theo khâu — panel không cuộn nên không làm gì.
 function revealStageTop(ctx) {
+  if (ctx.destroyed() || ctx.el.classList.contains('co-scene')) return
   const sc = ctx.root
   const st = ctx.el.querySelector('.stage')
-  if (!sc || !st || typeof sc.getBoundingClientRect !== 'function' || ctx.destroyed()) return
+  if (!sc || !st || typeof sc.getBoundingClientRect !== 'function') return
   const over = st.getBoundingClientRect().top - sc.getBoundingClientRect().top
   if (over < 0) sc.scrollTop += over
 }
@@ -141,21 +186,20 @@ function ledWrong(ctx) {
 }
 
 // Vị trí màn LED (tọa độ khung nhìn) + phần tử để nhân bản. Màn LED đang khuất một phần (khung thấp, người chơi cuộn xuống
-// bàn phím) thì đặt bản sao sát mép trên phần nhìn thấy của panel Quầy, không để nó nằm đè lên dải phố / thanh 4 khâu.
+// bàn phím) thì đặt bản sao sát mép trên phần nhìn thấy của vùng cuộn (khay / panel), không để nó nằm đè lên cảnh.
 function captureLed(ctx, led) {
   if (!led || typeof led.getBoundingClientRect !== 'function') return null
   const frame = led.closest('.cs-led-frame') || led
   const r = frame.getBoundingClientRect()
   if (!r.width || !r.height) return null
   let top = r.top
-  const sc = ctx.root
+  const sc = scrollBoxOf(ctx, frame)
   if (sc && typeof sc.getBoundingClientRect === 'function') {
     const p = sc.getBoundingClientRect()
     top = Math.max(p.top + 6, Math.min(top, p.bottom - r.height - 6))
   }
-  // lớp bố cục gọn của panel (co-fit-*) đi theo bản sao: màn LED ở lớp hiệu ứng giữ đúng cỡ chữ / khung như trên máy
-  const fit = [...ctx.el.classList].filter(k => k.startsWith('co-fit-'))
-  return { node: frame, fit, rect: { left: r.left, top, width: r.width, height: r.height } }
+  // bậc khung của màn đi theo bản sao: màn LED ở lớp hiệu ứng giữ đúng cỡ chữ / khung như trên máy
+  return { node: frame, frame: fxFrameOf(ctx), rect: { left: r.left, top, width: r.width, height: r.height } }
 }
 
 // Khách nhận tổng: bản sao màn LED (số vừa báo) đứng tại chỗ cũ ở lớp hiệu ứng, dấu ✓ nảy lên rồi cả hai mờ đi (~0,8 giây).
@@ -171,8 +215,9 @@ function okStamp(app, ghost) {
   const L = layer.getBoundingClientRect()
   const { rect } = ghost
   const wrap = doc.createElement('div')
-  wrap.className = ['cs-fx-ok', ...(ghost.fit || [])].join(' ')
-  wrap.style.padding = '0'   // luật riêng của panel (.co-fit-tiny có padding) không áp vào khung bản sao
+  wrap.className = 'cs-fx-ok'
+  applyFxFrame(wrap, ghost.frame)
+  wrap.style.padding = '0'   // luật riêng của panel (nếu có đệm) không áp vào khung bản sao
   wrap.style.left = `${(rect.left - L.left).toFixed(1)}px`
   wrap.style.top = `${(rect.top - L.top).toFixed(1)}px`
   wrap.style.width = `${rect.width.toFixed(1)}px`
@@ -237,9 +282,10 @@ export function renderPriceBoard(ctx) {
 }
 
 // Phiếu order tóm tắt: hình món nhỏ có huy hiệu ×n, tên món, hình các ghi chú (có nhãn cho trình đọc màn hình).
+// Bố cục cảnh: phiếu kẹp trên mặt quầy (cảnh); ≥ 3 dòng (lớp is-many) thì xếp ngang chỉ hình (tên đọc ở bảng giá).
 export function renderDraftSummary(ctx, draft) {
   const { R } = ctx
-  return h('div', { class: 'cs-slip' },
+  return h('div', { class: ['cs-slip', draft.length >= 3 ? 'is-many' : ''] },
     h('span', { class: 'cs-slip-pin', 'aria-hidden': 'true' }),
     h('div', { class: 'cs-slip-title' }, 'Phiếu order'),
     h('ul', { class: 'cs-slip-list' }, draft.map(l => {

@@ -1,6 +1,9 @@
 // Phiếu order giấy (M5, màn gọi món): kẹp gỗ trên đầu, giấy kem kẻ dòng có lề đỏ, mép dưới răng cưa. Mỗi dòng: hình
 // món 44px, tên, ×n viết tay, chip ghi chú có hình. Dòng mới "viết ra" (chỉ dòng vừa thêm). Hàng nút lớn ở vùng ngón
 // cái: "Đọc lại đơn" và "Chốt order".
+// Vừa màn (quầy thật): phiếu là phần co giãn của khay Order — giấy kéo dài tới đáy, kẻ dòng trống; dòng nhiều hơn chỗ thì
+// danh sách dòng tự cuộn bên trong phiếu (reveal() cuộn đúng vùng đó). Móc bố cục: data-lines (số dòng), .is-dense (≥ 3
+// dòng), .is-caught (khách bắt lỗi).
 // Hiệu ứng theo SỰ KIỆN:
 //   readback(result) — sáng lần lượt từng dòng (120 ms mỗi dòng) rồi đánh ✓ / ✗;
 //   stamp({ target }) — NHÂN BẢN phiếu vào lớp hiệu ứng, con dấu "ĐÃ CHỐT" đập xuống (1,8 → 1, xoay −8°, 200 ms, rung
@@ -67,6 +70,38 @@ const LABELS = Object.freeze({
   title: 'Phiếu order', empty: 'Chạm món trên bảng để ghi vào phiếu', readback: 'Đọc lại đơn', confirm: 'Chốt order',
   readFirst: 'Đọc lại đơn cho khách nghe trước khi chốt.'
 })
+
+// Thuộc tính bố cục / chữ được chép từ kiểu đã tính sang bản sao của phiếu (freezeStyles).
+const FREEZE_PROPS = [
+  'display', 'position', 'box-sizing', 'top', 'right', 'bottom', 'left', 'width', 'height', 'min-width', 'min-height',
+  'max-width', 'max-height', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left', 'padding-top', 'padding-right',
+  'padding-bottom', 'padding-left', 'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width',
+  'border-top-left-radius', 'border-top-right-radius', 'border-bottom-left-radius', 'border-bottom-right-radius',
+  'flex-direction', 'flex-wrap', 'flex-grow', 'flex-shrink', 'flex-basis', 'align-items', 'align-self', 'align-content',
+  'justify-content', 'justify-self', 'row-gap', 'column-gap', 'grid-template-columns', 'grid-template-rows',
+  'grid-template-areas', 'grid-row-start', 'grid-row-end', 'grid-column-start', 'grid-column-end', 'font-size',
+  'line-height', 'letter-spacing', 'font-weight', 'white-space', 'text-align', 'overflow-x', 'overflow-y',
+  'background-image', 'background-color', 'color', 'transform', 'opacity', 'z-index', 'clip-path'
+]
+
+/** Chép kiểu bố cục đã tính của cây src (phần tử HTML; bỏ ruột SVG) vào cây dst cùng cấu trúc (bản sao). Thuần trình duyệt. */
+export function freezeStyles(src, dst) {
+  if (typeof getComputedStyle !== 'function') return
+  const walk = (a, b) => {
+    if (!a || !b || a.nodeType !== 1 || b.nodeType !== 1 || !b.style) return
+    let cs = null
+    try { cs = getComputedStyle(a) } catch { return }
+    if (!cs) return
+    for (const p of FREEZE_PROPS) {
+      const v = cs.getPropertyValue(p)
+      if (v) b.style.setProperty(p, v)
+    }
+    if (String(a.tagName).toLowerCase() === 'svg') return
+    const ak = a.children, bk = b.children
+    for (let i = 0; i < ak.length && i < bk.length; i++) walk(ak[i], bk[i])
+  }
+  walk(src, dst)
+}
 
 /**
  * createOrderPad(data, opts) → { el, update(data), destroy(), lineEl(i), artEl(i), paperEl, faceEl, actionsEl, readback(result) → Promise,
@@ -190,6 +225,11 @@ export function createOrderPad(data = {}, opts = {}) {
       }
     })
     while (rows.length > model.lines.length) rows.pop().li.remove()
+    // móc bố cục (css/counter.css, vừa màn): số dòng, phiếu dày (≥ 3 dòng: dòng gọn, ghi chú chỉ còn biểu tượng), có lỗi
+    const nLines = String(model.lines.length)
+    if (el.dataset.lines !== nLines) el.dataset.lines = nLines
+    el.classList.toggle('is-dense', model.lines.length >= 3)
+    el.classList.toggle('is-caught', model.caught.length > 0)
     empty.hidden = !model.empty
     list.hidden = model.empty
     sub.textContent = cur.sub || ''
@@ -221,41 +261,49 @@ export function createOrderPad(data = {}, opts = {}) {
     hint.hidden = !cur.hint
   }
 
-  // Vùng cuộn gần nhất chứa phiếu (panel Quầy).
-  function scroller() {
-    for (let p = el.parentElement; p; p = p.parentElement) {
+  // Các vùng cuộn thật đang chứa node, từ trong ra ngoài: danh sách dòng của phiếu (phiếu dài hơn chỗ của khay — vừa màn),
+  // rồi khay / panel Quầy.
+  function scrollers(node) {
+    const out = []
+    for (let p = node.parentElement; p; p = p.parentElement) {
       const cs = typeof getComputedStyle === 'function' ? getComputedStyle(p) : null
-      if (cs && /(auto|scroll)/.test(cs.overflowY) && p.scrollHeight > p.clientHeight + 1) return p
+      if (cs && /(auto|scroll)/.test(cs.overflowY) && p.scrollHeight > p.clientHeight + 1) out.push(p)
     }
-    return null
+    return out
   }
 
   /**
-   * Cuộn vùng chứa để dòng i (mặc định dòng cuối; không có dòng thì tờ phiếu) nằm trọn phía trên hàng nút dính đáy.
-   * smooth: cuộn mượt (bỏ qua khi giảm chuyển động). Gọi trước khi cho món bay vào dòng mới (cần vị trí cuối, không mượt).
+   * Cuộn các vùng chứa để dòng i (mặc định dòng cuối; không có dòng thì tờ phiếu) nằm trọn trong phần nhìn thấy: trong danh
+   * sách dòng của phiếu, rồi trong khay phía trên hàng nút dính đáy (chỉ khi hàng nút đang dính — cột nút bên phải phiếu không
+   * che dòng nào). smooth: cuộn mượt (bỏ qua khi giảm chuyển động). Gọi trước khi cho món bay vào dòng mới (cần vị trí cuối,
+   * không mượt).
    */
   function reveal(i = null, { smooth = false } = {}) {
     if (destroyed) return
-    const sc = scroller()
-    if (!sc || typeof sc.getBoundingClientRect !== 'function') return
     const idx = Number.isInteger(i) ? i : rows.length - 1
     const node = rows[idx] ? rows[idx].li : paper
-    const box = sc.getBoundingClientRect()
-    const bar = actions.isConnected ? actions.getBoundingClientRect() : null
-    const limit = bar && bar.height && bar.top < box.bottom ? Math.min(bar.top, box.bottom) : box.bottom
+    if (!node.isConnected || typeof node.getBoundingClientRect !== 'function') return
     // mép trên dùng được: chừa dải dính đầu vùng cuộn (nếu bên gọi báo)
     const inset = typeof opts.topInset === 'function' ? Math.max(0, Number(opts.topInset()) || 0) : 0
-    const edge = box.top + inset
-    const r = node.getBoundingClientRect()
-    let delta = r.bottom - (limit - 6)
-    // không đẩy đầu dòng (hoặc đầu phiếu khi chưa có dòng) lên khuất mép trên vùng cuộn
-    if (delta > 0) delta = Math.min(delta, Math.max(0, r.top - edge - 6))
-    else if (r.top < edge + 6) delta = r.top - edge - 6
-    else return
-    if (!delta) return
-    const top = sc.scrollTop + delta
-    if (smooth && !reduced() && typeof sc.scrollTo === 'function') sc.scrollTo({ top, behavior: 'smooth' })
-    else sc.scrollTop = top
+    const stickyBar = actions.isConnected && typeof getComputedStyle === 'function' && getComputedStyle(actions).position === 'sticky'
+    for (const sc of scrollers(node)) {
+      if (typeof sc.getBoundingClientRect !== 'function') continue
+      const box = sc.getBoundingClientRect()
+      const bar = stickyBar && sc.contains(actions) ? actions.getBoundingClientRect() : null
+      const limit = bar && bar.height && bar.top < box.bottom ? Math.min(bar.top, box.bottom) : box.bottom
+      const edge = box.top + (sc === list ? 0 : inset)
+      const pad = sc === list ? 2 : 6
+      const r = node.getBoundingClientRect()
+      let delta = r.bottom - (limit - pad)
+      // không đẩy đầu dòng (hoặc đầu phiếu khi chưa có dòng) lên khuất mép trên vùng cuộn
+      if (delta > 0) delta = Math.min(delta, Math.max(0, r.top - edge - pad))
+      else if (r.top < edge + pad) delta = r.top - edge - pad
+      else continue
+      if (!delta) continue
+      const top = sc.scrollTop + delta
+      if (smooth && !reduced() && typeof sc.scrollTo === 'function') sc.scrollTo({ top, behavior: 'smooth' })
+      else sc.scrollTop = top
+    }
   }
 
   /**
@@ -298,13 +346,16 @@ export function createOrderPad(data = {}, opts = {}) {
     })
   }
 
-  // Bản sao tĩnh của giấy phiếu, đặt đúng chỗ trong lớp hiệu ứng (để panel vẽ lại tự do bên dưới).
+  // Bản sao tĩnh của giấy phiếu, đặt đúng chỗ trong lớp hiệu ứng (để panel vẽ lại tự do bên dưới). Kiểu của phiếu phụ thuộc
+  // ngữ cảnh (khay Order theo bậc của màn — css/counter.css): ở lớp hiệu ứng bản sao mất ngữ cảnh đó, nên "đóng băng" kiểu
+  // bố cục đã tính của từng nút vào bản sao (freezeStyles) — bản sao (và bản bay nhân bản từ nó) giống hệt phiếu đang thấy.
   function ghostOf(layer) {
     const rect = paper.getBoundingClientRect()
     if (!layer || !rect.width || !rect.height) return null
     if (layer.childElementCount >= 30) return null
     const Lr = layer.getBoundingClientRect()
     const g = paper.cloneNode(true)
+    freezeStyles(paper, g)
     g.removeAttribute('data-testid')
     for (const n of g.querySelectorAll('[data-testid],[id]')) { n.removeAttribute('data-testid'); n.removeAttribute('id') }
     g.classList.add('co-pad-ghost')

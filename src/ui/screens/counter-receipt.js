@@ -187,28 +187,55 @@ function animate(el, keyframes, opts) {
   try { return el.animate(keyframes, opts) } catch { return null }
 }
 
+/** Cạnh một phiếu nhỏ của kẹp phiếu ở tab Quầy (px, css/game.css). */
+export const CLIP_TICKET = 44
+
+const rectOf = el => (el && el.getClientRects && el.getClientRects().length ? el.getBoundingClientRect() : null)
+
 /**
  * Chỗ trống kế tiếp trên dây phiếu (tọa độ khung nhìn, cỡ một phiếu nhỏ): sau phiếu cuối, hoặc đầu dây (sau nhãn
  * "Phiếu n/3") khi dây trống. null nếu dây không hiện.
+ * Vừa màn: ở tab Quầy dây là KẸP NHỎ ở góc phải hàng trên của cảnh (thẻ đếm 44×44 + phiếu nhỏ 44×44, đáy thẳng hàng, khe
+ * 4px; phiếu nhiều thì cuộn ngang trong kẹp) → ô 44×44 ngay sau phiếu cuối (hoặc đầu danh sách khi kẹp trống); ô đó nằm
+ * ngoài phần thấy của kẹp (kẹp đầy / đang cuộn ngang) thì nhắm vào thẻ đếm "Phiếu n/3".
  */
 export function railSlot(doc) {
   const rail = doc && typeof doc.querySelector === 'function' ? doc.querySelector('[data-testid="ticket-rail"]') : null
-  if (!rail || !rail.getClientRects || !rail.getClientRects().length) return null
-  const R = rail.getBoundingClientRect()
-  if (!R.width || !R.height) return null
+  const R = rectOf(rail)
+  if (!R || !R.width || !R.height) return null
   const tickets = rail.querySelectorAll('[data-testid^="rail-ticket-"]')
   const last = tickets.length ? tickets[tickets.length - 1] : null
+  const count = rail.querySelector('.rail-count')
+  const cr = rectOf(count)
+  const screen = typeof rail.closest === 'function' ? rail.closest('[data-tab]') : null
+  if (screen && screen.getAttribute('data-tab') === 'counter') {
+    const S = CLIP_TICKET
+    const list = rectOf(rail.querySelector('.rail-list')) || R
+    const lr = rectOf(last)
+    const bottom = lr ? lr.bottom : (cr ? cr.bottom : list.bottom)
+    const left = lr ? lr.right + 4 : list.left + 2
+    if (left + S > Math.min(list.right, R.right) + 1 && cr) return { left: cr.left, top: cr.top, width: cr.width, height: cr.height }
+    return { left, top: bottom - S, width: S, height: S }
+  }
   const w = Math.min(110, Math.max(60, R.width / 3.4))
   const hh = Math.max(36, Math.min(R.height - 10, 76))
-  const count = rail.querySelector('.rail-count')
-  const cr = count && count.getClientRects().length ? count.getBoundingClientRect() : null
   let left = cr && cr.right < R.left + R.width / 2 ? cr.right + 10 : R.left + 12
   if (last) left = last.getBoundingClientRect().right + 8
   left = Math.min(Math.max(R.left + 4, left), R.right - w - 4)
   return { left, top: R.top + (R.height - hh) / 2, width: w, height: hh }
 }
 
-// Bản sao phiếu (kèm kẹp gỗ ở mép trên) bay vào chỗ trống trên dây phiếu; chạm tới thì phiếu mới trên dây lóe sáng.
+/** Tỉ lệ thu nhỏ cuối đường bay của bản sao phiếu (rộng w, cao h) để vừa ô đích, không quá RECEIPT_FX.flyScale. Thuần. */
+export function flyScaleFor(w, h, slot) {
+  const W = Number(w) || 0
+  const H = Number(h) || 0
+  if (!slot || W <= 0 || H <= 0) return RECEIPT_FX.flyScale
+  const k = Math.max((Number(slot.width) || 0) / W, (Number(slot.height) || 0) / H)
+  return Math.round(Math.max(0.1, Math.min(RECEIPT_FX.flyScale, k)) * 1000) / 1000
+}
+
+// Bản sao phiếu (kèm kẹp gỗ ở mép trên) bay vào chỗ trống trên dây phiếu (kẹp nhỏ ở tab Quầy: thu về cỡ một phiếu nhỏ);
+// chạm tới thì phiếu mới trên dây lóe sáng.
 function flyToRail(ctx, shot, slot, ticket) {
   const { app } = ctx
   const fx = app.vfx
@@ -225,7 +252,8 @@ function flyToRail(ctx, shot, slot, ticket) {
   clip.innerHTML = scene('kep_phieu')
   node.appendChild(clip)
   let job = null
-  try { job = fx.fly(shot.rect, slot, { node, ms: RECEIPT_FX.fly, arc: 0.35, scale: RECEIPT_FX.flyScale, bump: false }) } catch { job = null }
+  const scale = flyScaleFor(shot.rect.width, shot.rect.height, slot)
+  try { job = fx.fly(shot.rect, slot, { node, ms: RECEIPT_FX.fly, arc: 0.35, scale, bump: false }) } catch { job = null }
   if (!job || typeof job.then !== 'function') return
   job.then(ok => {
     if (!ok || ctx.destroyed()) return

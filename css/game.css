@@ -527,8 +527,9 @@ html.reduce-motion .rail-ticket[data-wait="red"] .rail-wait { animation: none; }
    trên (hàng khách trái, kẹp phiếu phải), hàng giữa (khách ở quầy + bong bóng: panel Quầy vẽ), dải mặt trước xe đẩy mang
    biển 4 khâu; .panels phủ toàn bộ A (z 1), panel Quầy trong suốt phần trên nên thấy cảnh bên dưới; biển 4 khâu và kẹp
    phiếu z 3 (trên panel). Thanh tab 49 + max(4, an toàn dưới).
-   Panel Quầy chưa theo bố cục cảnh (không có data-scene — bố cục 0.5.1): cảnh GỌN chỉ còn mái bạt + hàng trên + dải xe đẩy
-   36px mang biển 4 khâu (mọi bậc), panel bắt đầu ngay dưới cảnh và cuộn như cũ (không vẽ khách chờ món ở cảnh). Panel theo
+   Panel Quầy chưa theo bố cục cảnh (không có data-scene — bố cục 0.5.1): cảnh GỌN chỉ còn mái bạt + hàng trên + 22px tường +
+   dải xe đẩy 36px mang biển 4 khâu (mọi bậc; đỉnh biển thấp hơn đáy một thẻ Mẹo nghề 66px đứng một mình), panel bắt đầu
+   ngay dưới cảnh và cuộn như cũ (không vẽ khách chờ món ở cảnh). Panel theo
    bố cục cảnh (data-scene="1"): cảnh cao --scene-h, dải xe đẩy theo bậc, panel phủ A và KHÔNG cuộn (overflow: clip; khay tự
    cuộn khi thiếu chỗ ở khung nhỏ).
    Tab Bếp: dải mặt khách 58 + dây phiếu đầy đủ 56 trong luồng, thanh 4 khâu cao 0 (ẩn, vẫn trong DOM); đang Chọn
@@ -545,7 +546,7 @@ html.reduce-motion .rail-ticket[data-wait="red"] .rail-wait { animation: none; }
 .service-screen[data-fit="xs"] { --sc-awn: 12px; --sc-row: 54px; --sc-cart: 16px; }
 
 /* ---------- Tab Quầy: cảnh dưới panel trong suốt ---------- */
-.service-screen[data-tab="counter"] { --street-cart: 36px; --street-h: calc(var(--sc-row) + var(--street-cart)); }
+.service-screen[data-tab="counter"] { --street-cart: 36px; --street-h: calc(var(--sc-row) + 22px + var(--street-cart)); }
 .service-screen[data-tab="counter"][data-scene] { --street-cart: var(--sc-cart); --street-h: var(--scene-h, 256px); }
 .service-screen[data-tab="counter"] > .street {
   position: absolute; left: 0; right: 0; top: var(--hud-h, calc(47px + var(--safe-top))); height: var(--street-h); z-index: 0;
@@ -620,9 +621,12 @@ html.reduce-motion .rail-ticket[data-wait="red"] .rail-wait { animation: none; }
 .service-screen[data-tab="kitchen"] > .ticket-rail .rail-ticket { height: 44px; padding-bottom: 7px; }
 .service-screen[data-tab="kitchen"] > .ticket-rail .rail-count { height: 42px; }
 .service-screen[data-tab="kitchen"] > .ticket-rail .rail-dish { width: 30px; height: 30px; }
+/* thanh 4 khâu: ẩn nhưng vẫn trong bố cục (cao 0), xếp ngay dưới dây phiếu = đỉnh .panels (mốc chồng thông báo, như tập trung) */
 .service-screen[data-tab="kitchen"] > .progress4 {
-  min-height: 0; height: 0; padding: 0; border: 0; overflow: hidden; visibility: hidden;
+  order: 1; min-height: 0; height: 0; padding: 0; border: 0; overflow: hidden; visibility: hidden;
 }
+.service-screen[data-tab="kitchen"] > .panels { order: 2; }
+.service-screen[data-tab="kitchen"] > .tabbar { order: 3; }
 /* đang ở bước Chọn (mọi khung): kệ cần cả chiều cao — ẩn dải mặt khách, dây phiếu lên sát HUD */
 .service-screen[data-tab="kitchen"][data-cook="chon"] > .street { display: none; }
 /* thẻ đếm của kẹp phiếu: dải màu chờ xấu nhất khi có phiếu bị cuộn khuất (ticket-rail.js: data-band, .is-clipped) */

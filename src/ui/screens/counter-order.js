@@ -2,13 +2,16 @@
 //   - Khách ở quầy (mọi khâu): khách bán thân lớn đứng sau mặt quầy + bong bóng (components/order-bubble.js).
 //     Khâu Order: ngày 1–2 bong bóng có HÌNH MÓN, huy hiệu ×n, ghi chú bằng hình (gợi ý như dải hình món cũ) kèm câu gọi
 //     món (bỏ lời chào của khách quen đứng đầu); từ ngày 3 bong bóng chữ nguyên văn lời khách (luật cũ bỏ dải hình món từ
-//     ngày 3 — không đổi độ khó). Phiếu đã có dòng: khách thu gọn thành DẢI DÍNH đầu panel (.is-strip, position: sticky;
-//     panel thấp .co-fit-low: dải gọn nhưng không dính) để cuộn xuống phiếu vẫn so được với lời khách. Khâu sau: câu mới
-//     nhất của khách. Lời Dì Sáu (ngày 1, tutor-hint) do counter.js dựng và đặt chỗ: dưới bong bóng khi phiếu trống, còn
-//     lại dán trên hàng nút dính đáy.
-//   - Khâu Order: bảng thực đơn gỗ / phấn (menu-board.js), phiếu order giấy (order-pad.js) và hàng nút dính đáy
-//     "Đọc lại đơn" / "Chốt order" (.act-bar), bảng chọn số lượng + ghi chú (order-sheet.js, gắn qua portal ở lớp nổi gốc;
-//     đầu bảng có dải "Khách nói" nhắc lại lời khách vì bảng che bong bóng).
+//     ngày 3 — không đổi độ khó). Khâu sau: câu mới nhất của khách. Lời Dì Sáu (ngày 1, tutor-hint) do counter.js dựng và
+//     đặt chỗ (khâu Order: hàng riêng của khay, giữa thực đơn và phiếu).
+//   - Khâu Order: bảng thực đơn gỗ / phấn (menu-board.js), phiếu order giấy (order-pad.js) và cột nút "Đọc lại đơn" /
+//     "Chốt order" bên phải phiếu (.act-bar — chỉ dính đáy khi màn hẹp < 340px xếp chồng thành hàng ngang), bảng chọn số
+//     lượng + ghi chú (order-sheet.js, gắn qua portal ở lớp nổi gốc; đầu bảng có dải "Khách nói" nhắc lại lời khách vì bảng
+//     che bong bóng).
+//   - Vừa màn (L1): panel Quầy là lưới CẢNH + KHAY (counter.js, lớp co-scene): khách bán thân + bong bóng nằm ở hàng 1 (vẽ đè
+//     lên cảnh của khung, không bao giờ cuộn khuất — bỏ dải khách dính .is-strip của bản 0.5.1); phần tử khâu là hàng 3 (khay),
+//     chỉ khay tự cuộn khi thiếu chỗ (khung nhỏ). Mọi hàm "cuộn cho lọt" cuộn VÙNG CUỘN THẬT (danh sách dòng phiếu, khay), đo
+//     theo hàng nút dính đáy NẰM NGANG (cột nút Order không dính, không tính).
 // Các thành phần được giữ BỀN theo khách (WeakMap theo ctx của panel): counter.js vẽ lại panel mỗi khi stateSig đổi, nhưng
 // khách / khâu Order / bảng chọn chỉ update() tại chỗ — không dựng lại nút, không phát lại hoạt ảnh. Hoạt ảnh chỉ kích theo
 // SỰ KIỆN (thao tác): khách tới (enter), dòng mới "viết ra" (ctx.ui.lastAdded), đọc lại (sáng lần lượt từng dòng, khách
@@ -24,7 +27,7 @@ import { rareLeft } from '../../core/rare.js'
 import { moodFor } from '../components/patience.js'
 import { isReduced } from '../motion.js'
 import { createOrderBubble, orderSay } from '../components/order-bubble.js'
-import { createMenuBoard } from '../components/menu-board.js'
+import { createMenuBoard, menuLayout } from '../components/menu-board.js'
 import { createOrderPad, ORDER_ERROR_LABELS as PAD_ERROR_LABELS } from '../components/order-pad.js'
 import { createOrderSheet, QTY_MAX } from '../components/order-sheet.js'
 
@@ -109,8 +112,7 @@ function custData(ctx, customer, c) {
   }
 }
 
-// Khách ở quầy. Bền theo id khách. Khâu Order mà phiếu đã có dòng: thu gọn thành dải đầu panel (.is-strip; dính khi panel
-// đủ cao).
+// Khách ở quầy. Bền theo id khách. Vừa màn: khách luôn đứng trong cảnh (hàng 1 của lưới panel), không thu thành dải dính.
 function createCustomerView(ctx, customer, c) {
   const bubble = createOrderBubble(custData(ctx, customer, c), optsOf(ctx))
   const el = h('div', { class: 'cust-wrap co-cust-area' }, bubble.el)
@@ -120,14 +122,10 @@ function createCustomerView(ctx, customer, c) {
     bubble,
     update(cust, c) {
       bubble.update(custData(ctx, cust, c))
-      el.classList.toggle('is-strip', isStrip(c))
     },
     destroy() { bubble.destroy(); el.remove() }
   }
 }
-
-// Dải khách gọn: đang ở khâu Order và phiếu đã có dòng.
-const isStrip = c => !!(c && c.stage === 'order' && c.draft && c.draft.length)
 
 /** Khung khách đang gắn (div.cust-wrap) — counter.js đặt lời Dì Sáu ngày 1 vào đây khi phiếu còn trống; null nếu chưa có. */
 export function customerSlot(ctx) {
@@ -136,20 +134,74 @@ export function customerSlot(ctx) {
 }
 
 /**
- * Số px đầu vùng cuộn đang bị dải khách dính che (0 nếu không có dải). Các hàm cuộn "cho lọt màn" chừa phần này để không
- * đẩy dòng phiếu / nút được tô sáng xuống dưới dải.
+ * Số px đầu vùng cuộn đang bị dải khách dính che. Vừa màn: khách nằm trong cảnh, không còn dải dính → luôn 0 (giữ hàm cho
+ * tương thích: order-pad topInset, counter.js revealGlow).
  */
-export function stripInset(ctx) {
-  const v = views(ctx)
-  const s = v.cust && v.cust.el
-  if (!s || !s.isConnected || !s.classList.contains('is-strip') || typeof s.getBoundingClientRect !== 'function') return 0
-  // panel thấp: dải không dính (css) → không che gì khi cuộn
-  if (typeof getComputedStyle === 'function' && getComputedStyle(s).position !== 'sticky') return 0
-  const sc = ctx.root
-  if (!sc || typeof sc.getBoundingClientRect !== 'function') return 0
-  const box = sc.getBoundingClientRect()
-  const r = s.getBoundingClientRect()
-  return r.height ? Math.max(0, Math.round(r.bottom - box.top)) : 0
+export function stripInset(_ctx) {
+  return 0
+}
+
+// ---------- Vùng cuộn thật của khay (vừa màn) ----------
+
+const scrollable = n => {
+  if (!n || typeof getComputedStyle !== 'function' || typeof n.getBoundingClientRect !== 'function') return false
+  const cs = getComputedStyle(n)
+  return (cs.overflowY === 'auto' || cs.overflowY === 'scroll') && n.scrollHeight > n.clientHeight + 1
+}
+
+/** Khay đang hiện: phần tử khâu (con .co-tray của div.counter) hoặc null. */
+export function trayOf(ctx) {
+  const el = ctx && ctx.el
+  if (!el || !el.children) return null
+  for (const n of el.children) if (n.classList && n.classList.contains('co-tray')) return n
+  return null
+}
+
+/**
+ * Mép trên của hàng nút dính đáy NẰM NGANG trong vùng cuộn sc (px màn hình) hoặc null. Chỉ tính .act-bar đang hiện và đang
+ * position: sticky (cột nút Order ở bố cục cảnh không dính → bỏ qua); có nhiều hàng thì lấy mép trên cao nhất.
+ */
+export function stickyBarTop(sc) {
+  if (!sc || typeof sc.querySelectorAll !== 'function' || typeof getComputedStyle !== 'function') return null
+  let top = null
+  for (const b of sc.querySelectorAll('.act-bar')) {
+    if (getComputedStyle(b).position !== 'sticky') continue
+    const r = b.getBoundingClientRect()
+    if (!r.height) continue
+    top = top === null ? r.top : Math.min(top, r.top)
+  }
+  return top
+}
+
+/**
+ * Cuộn các vùng cuộn thật chứa node (từ trong ra ngoài, dừng ở div.counter: danh sách dòng phiếu, khay) để node nằm trọn
+ * phía trên hàng nút dính đáy nằm ngang, không đẩy đầu node khuất mép trên. Không có gì để cuộn (khay vừa) thì thôi.
+ * → true nếu đã cuộn.
+ */
+export function revealInTray(ctx, node, { smooth = false, gap = 6 } = {}) {
+  if (!node || !node.isConnected || typeof node.getBoundingClientRect !== 'function') return false
+  const stop = ctx && ctx.el
+  const body = typeof document !== 'undefined' ? document.body : null
+  // node nằm trong chính hàng nút dính đáy: hàng đó không che nó
+  const inBar = typeof node.closest === 'function' && !!node.closest('.act-bar')
+  let moved = false
+  for (let sc = node.parentElement; sc && sc !== stop && sc !== body; sc = sc.parentElement) {
+    if (!scrollable(sc)) continue
+    const box = sc.getBoundingClientRect()
+    const bar = inBar ? null : stickyBarTop(sc)
+    const limit = bar !== null ? Math.min(box.bottom, bar) : box.bottom
+    const r = node.getBoundingClientRect()
+    let d = r.bottom - (limit - gap)
+    if (d > 0) d = Math.min(d, Math.max(0, r.top - box.top - gap))
+    else if (r.top < box.top + gap) d = r.top - box.top - gap
+    else continue
+    if (Math.abs(d) < 1) continue
+    const top = sc.scrollTop + d
+    if (smooth && !isReduced(ctx.app) && typeof sc.scrollTo === 'function') sc.scrollTo({ top, behavior: 'smooth' })
+    else sc.scrollTop = top
+    moved = true
+  }
+  return moved
 }
 
 /**
@@ -202,17 +254,21 @@ function createOrderView(ctx, customer) {
     onReadback: () => doReadback(ctx, ctx.customerOf(ctx.counter())),
     onConfirm: () => doConfirm(ctx)
   })
-  // hàng nút "Đọc lại đơn" / "Chốt order" là con cuối của khâu: dính đáy vùng cuộn suốt (.act-bar: counter.revealAboveBar,
-  // tour chừa chỗ thanh dính)
+  // nút "Đọc lại đơn" / "Chốt order" là con cuối của khâu: cột bên phải phiếu (lưới khay, css/counter.css); màn hẹp < 340px
+  // thành hàng ngang dính đáy khay (.act-bar sticky: counter.revealAboveBar, tour chừa chỗ thanh dính)
   pad.actionsEl.classList.add('act-bar')
-  const el = h('div', { class: 'stage stage-order co-order' }, menu.el, pad.el, pad.actionsEl)
+  const el = h('div', { class: 'stage stage-order co-order co-tray' }, menu.el, pad.el, pad.actionsEl)
   return {
     id: customer.id,
     el,
     menu,
     pad,
     update(cust, c) {
-      menu.update({ recipes: ctx.R, menu: orderableRecipes(app.state, app.ctx), left: id => rareLeft(app.state, id, app.ctx) })
+      const ids = orderableRecipes(app.state, app.ctx)
+      menu.update({ recipes: ctx.R, menu: ids, left: id => rareLeft(app.state, id, app.ctx) })
+      // móc bố cục của khay (css/counter.css): thực đơn 2 hàng (5+ món) thì phiếu dùng dòng gọn, bỏ đầu phiếu
+      const rows = String(menuLayout(ids.filter(id => ctx.R[id]).length).rows)
+      if (el.dataset.rows !== rows) el.dataset.rows = rows
       const draftKey = JSON.stringify(c.draft)
       const canConfirm = !!c.readbackDone && c.draft.length > 0
       const ui = ctx.ui
@@ -285,6 +341,9 @@ function openSheet(ctx, recipeId, editIndex) {
 
 // Đích bay của phiếu khi chốt: ô kế tiếp trên dây phiếu (sau phiếu cuối), cỡ một phiếu nhỏ. Phiếu bếp của khách chỉ có
 // sau khi thu tiền và kẹp phiếu, nên lúc chốt phiếu order bay vào chỗ trống kế tiếp của dây.
+// Vừa màn: ở tab Quầy dây là KẸP NHỎ góc phải hàng trên của cảnh (thẻ đếm + phiếu 44×44) — đích là ô 44×44 ngay sau phiếu
+// cuối (chưa có phiếu: ngay sau thẻ đếm), kẹp vào trong khung nhìn; kẹp đã đầy và đang cuộn ngang thì nhắm vào thẻ đếm.
+// Dây cao (> 60px, bố cục cũ) giữ cách tính cũ.
 export function railTarget(doc) {
   const rail = doc && typeof doc.querySelector === 'function' ? doc.querySelector('[data-testid="ticket-rail"]') : null
   if (!rail || !rail.getClientRects || !rail.getClientRects().length) return { el: null, target: null }
@@ -292,11 +351,25 @@ export function railTarget(doc) {
   if (!R.width || !R.height) return { el: null, target: null }
   const tickets = rail.querySelectorAll('[data-testid^="rail-ticket-"]')
   const last = tickets.length ? tickets[tickets.length - 1] : null
+  const count = rail.querySelector('.rail-count')
+  const cr = count && count.getClientRects().length ? count.getBoundingClientRect() : null
+  if (R.height <= 60) {
+    const list = rail.querySelector('.rail-list')
+    const view = doc.defaultView
+    const vw = view && view.innerWidth ? view.innerWidth : R.right + 4
+    const lr = last ? last.getBoundingClientRect() : null
+    const cell = lr && lr.width ? lr : cr
+    const size = cell ? Math.max(36, Math.min(48, Math.round(cell.height))) : 44
+    const full = !!(list && list.scrollWidth > list.clientWidth + 1)
+    if (full && cr) return { el: rail, target: { left: cr.left, top: cr.top, width: cr.width, height: cr.height } }
+    let left = cell ? cell.right + 4 : R.left + 4
+    left = Math.max(4, Math.min(left, vw - size - 4))
+    const top = cell ? cell.bottom - size : R.top + (R.height - size) / 2
+    return { el: rail, target: { left, top, width: size, height: size } }
+  }
   const w = Math.min(110, Math.max(60, R.width / 3.4))
   const hh = Math.max(36, Math.min(R.height - 10, 76))
   // dây trống: đầu khu phiếu (sau nhãn đếm "Phiếu n/3" nếu có), không đè nhãn
-  const count = rail.querySelector('.rail-count')
-  const cr = count && count.getClientRects().length ? count.getBoundingClientRect() : null
   let left = cr && cr.right < R.left + R.width / 2 ? cr.right + 10 : R.left + 12
   if (last) left = last.getBoundingClientRect().right + 8
   left = Math.min(Math.max(R.left + 4, left), R.right - w - 4)
@@ -342,9 +415,9 @@ export function doReadback(ctx, _customer) {
     if (v.cust) v.cust.bubble.react(bad ? 'bad' : 'ok')
     reactPad(ctx, ui, bad)
     ctx.rerender()
-    // khách bắt lỗi: kéo khung lỗi lên trên hàng nút dính đáy (màn thấp: hàng nút che mất); đúng hết: dòng cuối
+    // khách bắt lỗi: kéo khung lỗi vào phần nhìn thấy của khay (khung nhỏ: khay cuộn); đúng hết: dòng cuối
     const caught = bad && v.order ? v.order.pad.el.querySelector('[data-testid="caught-list"]') : null
-    if (caught) revealInPanel(ctx, caught, true)
+    if (caught) revealInTray(ctx, caught, { smooth: true })
     else if (v.order) v.order.pad.reveal(null, { smooth: true })
   }
   const pad = orderPad(ctx)
@@ -353,22 +426,6 @@ export function doReadback(ctx, _customer) {
   pad.readback(res).then(finish, finish)
   // phiếu bị gỡ giữa lượt sáng (chốt, đổi khách): Promise của phiếu không kết thúc → nhả cờ sau thời lượng tối đa
   setTimeout(finish, 120 * c.draft.length + 900)
-}
-
-// Cuộn panel để node nằm trọn trên hàng nút dính đáy (.act-bar), không đẩy đầu node khuất mép trên (dưới dải khách dính).
-function revealInPanel(ctx, node, smooth) {
-  const sc = ctx.root
-  if (!node || !node.isConnected || !sc || typeof sc.getBoundingClientRect !== 'function') return
-  const bar = ctx.el.querySelector('.act-bar')
-  const box = sc.getBoundingClientRect()
-  const limit = bar ? Math.min(box.bottom, bar.getBoundingClientRect().top) : box.bottom
-  const r = node.getBoundingClientRect()
-  let d = r.bottom - (limit - 6)
-  if (d <= 0) return
-  d = Math.min(d, Math.max(0, r.top - box.top - stripInset(ctx) - 6))
-  const top = sc.scrollTop + d
-  if (smooth && !isReduced(ctx.app) && typeof sc.scrollTo === 'function') sc.scrollTo({ top, behavior: 'smooth' })
-  else sc.scrollTop = top
 }
 
 // Mặt khách trên phiếu đổi theo kết quả đọc lại (vui / bực) trong 1,4 giây, kèm nhịp gật đầu hoặc lắc đầu — thấy được

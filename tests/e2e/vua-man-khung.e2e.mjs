@@ -9,7 +9,7 @@
 //   - bậc data-fit, biến --usable-h / --avail-h / --scene-h / --tray-h / --kitchen-h đúng bảng mục 3.1 / 3.2 (±1px);
 //     HUD = 47 + an toàn trên, thanh tab = 49 + max(4, an toàn dưới); data-tab đúng tab đang mở;
 //   - tab Quầy: cảnh (.street) tuyệt đối ngay dưới HUD, cao --scene-h khi panel Quầy theo bố cục cảnh (data-scene) hoặc mái
-//     bạt + hàng trên + dải xe đẩy 36px (bố cục 0.5.1); biển 4 khâu và kẹp phiếu nằm trọn trong cảnh; mục "Chung tab Quầy"
+//     bạt + hàng trên + 22px + dải xe đẩy 36px (bố cục 0.5.1); biển 4 khâu và kẹp phiếu nằm trọn trong cảnh; mục "Chung tab Quầy"
 //     của bảng 9 (hud, hud-wallet, help-button, queue, progress-4, ticket-rail, tab-counter, tab-kitchen) THẤY KHÔNG CUỘN:
 //     đang hiện, hộp nằm trọn trong [0, innerWidth] × [đáy HUD (phần tử HUD: mép dưới vùng an toàn trên), đỉnh thanh tab
 //     (thanh tab: mép trên vùng an toàn dưới)], nút ≥ 44px và elementFromPoint ở tâm + 4 điểm gần mép trúng chính nút;
@@ -152,7 +152,7 @@ function checkFrame(f, m, label, { tab }) {
   if (!near(m.tabbar.t - m.hud.b, f.A)) errs.push(`chỗ giữa HUD và thanh tab ${m.tabbar.t - m.hud.b} ≠ A ${f.A}`)
   if (m.sw > m.vw) errs.push(`tràn ngang ${m.sw - m.vw}px`)
   if (tab === 'counter') {
-    const sh = m.scene ? f.S : SCENE_ROW[f.fit] + 36
+    const sh = m.scene ? f.S : SCENE_ROW[f.fit] + 22 + 36
     if (!m.streetShown || !near(m.street.t, m.hud.b) || !near(m.street.h, sh)) errs.push(`cảnh [${Math.round(m.street.t)}, cao ${m.street.h}] ≠ [${m.hud.b}, cao ${sh}]`)
     if (!near(m.panels.t, m.hud.b) || !near(m.panels.h, f.A)) errs.push(`.panels [${m.panels.t}, cao ${m.panels.h}] không phủ A`)
     const pTop = m.scene ? m.hud.b : m.hud.b + sh

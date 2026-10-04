@@ -107,6 +107,9 @@
 /* trong khung bếp: thanh dính phủ kín cả phần đệm dưới của .k-main (như .k-toolbar) — màn thấp phải cuộn thì kệ không lộ ra
    bên dưới thanh "Trong rổ / Xong" */
 .k-main .mg-chon .mg-foot { bottom: -16px; padding-bottom: 16px; margin-bottom: -16px; }
+/* màn Ca bán (vừa màn L4): khung bếp đệm dưới 12px (css/kitchen.css) — thanh dính khớp đúng phần đệm đó, không tràn khung bếp
+   (tràn vài px là chon.js tưởng thiếu chỗ, thu hình kệ về sàn và bỏ đầu sân khấu) */
+.service-screen[data-fit] .k-main .mg-chon .mg-foot { bottom: -12px; padding-bottom: 12px; margin-bottom: -12px; }
 .mg-stage.g-frame2.mg-chon > .mg-foot.g-foot2 { min-height: 64px; }
 .mg-chon .mg-foot .mg-done { flex: none; min-width: 96px; }
 

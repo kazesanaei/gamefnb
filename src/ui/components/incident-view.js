@@ -11,6 +11,11 @@
 // (tên + cái giá / lý do khóa) và của nhãn hiệu ứng giữ nguyên văn; hình đều là SVG không có chữ.
 // Hoạt ảnh (css/sheet.css) chỉ transform/opacity, hữu hạn, đặt trên phần tử con; lớp hiệu ứng vfx nằm dưới lớp hộp thoại
 // nên hộp này không dùng vfx.
+// Vừa màn (đặc tả mục 5.6): khung thấp — chiều cao dùng được (trừ vùng an toàn) U < LOW_FRAME_H (620: đặc tả ghi 600,
+// nâng lên để 360×600 cũng dùng bản gọn — tình huống chữ dài nhất ở đó lòi lựa chọn cuối 13px) — hộp mang lớp is-low,
+// css/sheet.css dựng bản gọn (sân khấu 56, chữ 14, lựa chọn cao ≥ 44, khe 6, nhãn "An toàn" cùng hàng tên lựa chọn) để mọi
+// lựa chọn, kể cả cách an toàn thường nằm cuối, thấy được mà không phải cuộn ở 375×553 (có vùng an toàn) và 320×568. U đọc
+// từ biến --usable-h mà service.js ghi lên màn Ca bán (đo lúc mở hộp; hộp không đổi bản khi xoay máy giữa chừng).
 // Import trong Node được: không chạm DOM ở cấp module.
 import { h, svgBox } from '../dom.js'
 import { billSvg, icon } from '../art.js'
@@ -75,6 +80,24 @@ export function outcomeMood(eff = {}) {
 }
 
 const EMOTE_OF_MOOD = { vui: 'tim', binh_thuong: 'ba_cham', buc: 'mo_hoi', gian: 'gian' }
+
+/** Ngưỡng khung thấp (px, chiều cao dùng được U): dưới mức này hộp tình huống / phàn nàn dùng bản gọn. */
+export const LOW_FRAME_H = 620
+
+/**
+ * Chiều cao dùng được U (px) của màn đang mở: biến --usable-h trên màn Ca bán (service.js ghi, đã trừ vùng an toàn); chưa
+ * có thì chiều cao khung nhìn. Không có DOM → Infinity.
+ */
+export function usableHeight(doc = typeof document !== 'undefined' ? document : null) {
+  if (!doc || typeof doc.querySelector !== 'function') return Infinity
+  const scr = doc.querySelector('.service-screen')
+  const v = scr && scr.style ? parseFloat(scr.style.getPropertyValue('--usable-h')) : NaN
+  if (Number.isFinite(v) && v > 0) return v
+  const w = doc.defaultView
+  return w && w.innerHeight > 0 ? w.innerHeight : Infinity
+}
+
+const isLowFrame = () => usableHeight() < LOW_FRAME_H
 
 /**
  * Hình minh họa của tình huống: tờ tiền, người trong tình huống vẽ bán thân (kiểu khách khai báo, khách liên quan đang ở
@@ -157,7 +180,7 @@ export function effectChips(eff) {
  */
 export function createIncidentBox(app, view, { onChoose } = {}) {
   const cfgI = app.data.INCIDENT_CONFIG || {}
-  const box = h('div', { class: 'incident', dataset: { incident: view.id, kind: view.kind || '' } })
+  const box = h('div', { class: ['incident', isLowFrame() ? 'is-low' : ''], dataset: { incident: view.id, kind: view.kind || '' } })
   // thay nội dung hộp (bỏ qua mục rỗng: Element.append(null) sẽ in chữ "null")
   const fillBox = (...nodes) => { box.textContent = ''; for (const n of nodes) if (n) box.appendChild(n) }
   const kicker = (view.when === 'mo_hang' ? (cfgI.introOpening || 'Tình huống đầu ca') : (cfgI.intro || 'Tình huống giữa hai khách')) +
@@ -239,7 +262,7 @@ export function renderComplaint(app, customer, { says, aps, items, refund, remak
       class: 'choice complaint-choice', type: 'button', testid: 'complaint-apology-' + a.i, style: { '--k': String(k) },
       onclick: () => { apology = a.i; step1.hidden = true; step2.hidden = false }
     }, svgBox(TALK_ICON, 'complaint-choice-ico'), h('span', { class: 'complaint-choice-t' }, a.text)))))
-  return h('div', { class: 'complaint' },
+  return h('div', { class: ['complaint', isLowFrame() ? 'is-low' : ''] },
     h('div', { class: 'complaint-scene' },
       h('div', { class: 'incident-stage complaint-stage has-person is-xau' },
         face ? svgBox(face, 'incident-art is-person') : null,

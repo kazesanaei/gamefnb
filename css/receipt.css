@@ -525,67 +525,163 @@
   .qc-btn.g-btn { font-size: 15px; }
   .qc-btn .qc-btn-ico { display: none; }
 }
-/* panel thấp (counter.js gắn .co-fit-low / .co-fit-tiny theo chiều cao vùng cuộn) */
-.co-fit-low .qc-qr { --qc-phone: 100px; --qc-stand: 52px; --qc-lap: 12px; --qc-gap: 8px; gap: 8px; }
-.co-fit-low .qc-side { gap: 8px; padding-bottom: 28px; }
-.co-fit-low .qc-due { padding: 3px 8px 5px; }
-.co-fit-low .qc-due-k { font-size: 13px; }
-.co-fit-low .qc-due-v { font-size: 21px; }
-.co-fit-low .qc-due-v.is-long { font-size: 19px; }
-.co-fit-low .rc-paper .rc-head { flex-flow: row wrap; justify-content: center; column-gap: 8px; margin-bottom: 4px; padding-bottom: 4px; }
-.co-fit-low .rc-no { letter-spacing: 0; }
-.co-fit-low .rc-day { display: none; }
-.co-fit-low .rc-shop { flex: 0 0 100%; font-size: 16px; line-height: 1.1; }
-.co-fit-low .rc-lines { gap: 2px; }
-.co-fit-low .rc-total { margin-top: 4px; padding-top: 4px; }
-.co-fit-low .rc-total .rc-v { font-size: 20px; }
-/* hàng nút gọn hơn để phần phiếu nhìn thấy (đầu phiếu → Tiền thối) rộng thêm */
-.co-fit-low .rc-act.act-bar { padding-top: 6px; padding-bottom: 7px; }
-.co-fit-low .rc-clip.g-btn { min-height: 50px; font-size: 20px; }
-.co-fit-low .qc-status-src { display: none; }
-.co-fit-low .rc-win { padding-top: 9px; }
-.co-fit-low .rc-paper { padding-top: 5px; }
-.co-fit-low .rc-name,
-.co-fit-low .rc-notes { line-height: 1.2; }
-.co-fit-low .rc-line { grid-template-columns: 26px minmax(0, 1fr) auto; }
-.co-fit-low .rc-dish { width: 26px; height: 26px; }
-/* rất thấp (iPhone SE có vùng an toàn: phần nhìn thấy trên thanh nút chỉ ~100px): cảnh một hàng thấp, Tổng một dòng */
-/* điện thoại nhỏ: màn hình chỉ còn dấu ✓ của ảnh chụp; kệ QR giữ nhãn hai dòng */
-.co-fit-tiny .qc-qr { --qc-phone: 56px; --qc-stand: 50px; --qc-lap: 6px; --qc-gap: 8px; gap: 6px; }
-.co-fit-tiny .qc-scene { padding: 6px 8px 0 8px; }
-.co-fit-tiny .qc-stand { margin-bottom: 6px; }
-.co-fit-tiny .qc-stand-card { padding: 3px 2px 2px; }
-.co-fit-tiny .qc-hold { margin-bottom: -8px; }
-.co-fit-tiny .qc-plank { height: 14px; }
-.co-fit-tiny .qc-side { gap: 6px; padding-bottom: 20px; }
-.co-fit-tiny .qc-due { flex-direction: row; justify-content: center; align-items: baseline; gap: 8px; padding: 2px 8px 4px; }
-.co-fit-tiny .qc-due-k { font-size: 13px; }
-.co-fit-tiny .qc-due-v,
-.co-fit-tiny .qc-due-v.is-long { font-size: 18px; }
-.co-fit-tiny .qc-status { grid-template-columns: 28px minmax(0, 1fr); column-gap: 6px; padding: 4px 6px 4px 4px; }
-.co-fit-tiny .qc-status-ico { width: 28px; height: 28px; }
-.co-fit-tiny .qc-status-text { font-size: 14px; }
-.co-fit-tiny .qc-shot-t,
-.co-fit-tiny .qc-shot-to,
-.co-fit-tiny .qc-shot-amt { display: none; }
-.co-fit-tiny .qc-shot-ok { width: 70%; }
-.co-fit-tiny .qc-note { display: none; }
-.co-fit-tiny .qc-btn.g-btn { min-height: 48px; }
-/* phiếu thu ở panel rất thấp: phần nhìn thấy trên hàng nút chỉ ~110px → phiếu gọn để đầu phiếu, các món và hàng Tổng cùng lộ
-   khi panel cuộn đầu phiếu lên sát mép trên (counter.js revealReceipt): đầu phiếu một hàng (tên xe + số phiếu, bỏ giờ in),
-   món một hàng (bỏ hình món và ghi chú, giữ số lượng × tên + thành tiền) */
-.co-fit-tiny .rc-win { padding-top: 9px; }
-.co-fit-tiny .rc-paper { padding-top: 4px; }
-.co-fit-tiny .rc-paper .rc-head { gap: 0 8px; margin-bottom: 3px; padding-bottom: 3px; }
-.co-fit-tiny .rc-shop { flex: 0 1 auto; font-size: 15px; line-height: 1.2; }
-.co-fit-tiny .rc-meta { display: none; }
-.co-fit-tiny .rc-lines { gap: 0; }
-.co-fit-tiny .rc-line,
-.co-fit-tiny .rc-line.no-notes { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name amt"; line-height: 1.3; }
-.co-fit-tiny .rc-dish,
-.co-fit-tiny .rc-notes { display: none; }
-.co-fit-tiny .rc-name { line-height: 1.3; }
-.co-fit-tiny .rc-total { margin-top: 3px; padding-top: 3px; font-size: 16px; }
-.co-fit-tiny .rc-total .rc-v { font-size: 19px; }
-.co-fit-tiny .rc-act.act-bar { padding-top: 5px; padding-bottom: 6px; }
-.co-fit-tiny .rc-clip.g-btn { min-height: 48px; font-size: 19px; }
+
+/* ==================== Vừa màn: khay của khâu chuyển khoản QR và phiếu thu (bố cục CẢNH + KHAY) ====================
+   service.js ghi data-scene + data-fit (l | m | s | xs — theo chiều cao giữa HUD và thanh tab) lên màn Ca bán; panel Quầy
+   là lưới cảnh + khay (css/counter.css), khâu Tính tiền là KHAY (.stage.stage-cash), chỉ cuộn bên trong khi nội dung cao
+   hơn khay (khung nhỏ). Đặc tả vừa màn mục 5.4, 5.5. Cỡ theo bậc rời (không clamp theo chiều cao), bề ngang dùng @media.
+   - Chuyển khoản QR: khay là một cột — khối QR (kệ mã QR của xe + điện thoại khách + thẻ Tổng + ô báo tiền, đứng trên mép
+     quầy gỗ) ở trên, lời nhắc ngay trên hàng nút "Từ chối ảnh giả | Đã nhận đủ" dính đáy. Phần dư: tường của khối QR cao
+     thêm (tối đa 60px trên đầu điện thoại), còn nữa thì nằm giữa khối QR và lời nhắc.
+   - Đã thu bằng chuyển khoản: dòng "Đã nhận … · Chuyển khoản QR" thành thẻ nhỏ đặt TRÊN MẶT QUẦY (cảnh, phải bán thân, đáy
+     sát mép trên dải xe đẩy — như thẻ "Khách đưa" của khâu tiền mặt), khay dành trọn cho phiếu thu. Bậc s / xs bỏ thẻ này
+     (phiếu đã ghi "Trả bằng: Chuyển khoản QR" và con dấu ĐÃ THU / ẢNH GIẢ).
+   - Phiếu thu: khay là một cột — phiếu giấy trên khe máy in, thân máy in thấy dưới phiếu (l 40 / m, s 24 / xs 16px), mép
+     quầy gỗ, hàng nút "Kẹp phiếu bếp" dính đáy (cao 54 ở l / m, 48 ở s / xs). Phần dư: máy in hiện thêm thân (tới hết hình),
+     còn nữa thì nằm trên đầu phiếu. Phiếu gọn theo bậc: đầu phiếu 2 dòng (tên xe / số phiếu + giờ in), chữ l 14–19,
+     m 13–17, s / xs 13–15; con dấu vẫn nằm trong hàng "Cảm ơn quý khách!" (không đè số tiền). */
+
+/* ---------- Chung: khay của khâu là cột flex, hàng nút dính đáy sát mép ---------- */
+.service-screen[data-scene] .co-scene > .stage-cash:has(> .qc-qr, > .rc-wrap) { display: flex; flex-direction: column; overflow-anchor: none; }
+.service-screen[data-scene] .stage-cash :is(.qc-act, .rc-act).act-bar {
+  margin: 0 calc(-1 * var(--co-padx, 10px)); padding: 6px var(--co-padx, 10px) 8px;
+}
+
+/* ---------- Chuyển khoản QR (chưa thu) ---------- */
+.service-screen[data-scene] .qc-qr { --qc-phone: 136px; --qc-stand: 74px; --qc-lap: 16px; --qc-gap: 10px; }
+@media (min-height: 900px) { .service-screen[data-scene][data-fit="l"] .qc-qr { --qc-phone: 150px; --qc-stand: 80px; } }
+.service-screen[data-scene][data-fit="m"] .qc-qr { --qc-phone: 120px; --qc-stand: 66px; --qc-lap: 14px; }
+.service-screen[data-scene][data-fit="s"] .qc-qr { --qc-phone: 100px; --qc-stand: 58px; --qc-lap: 12px; --qc-gap: 8px; }
+.service-screen[data-scene][data-fit="xs"] .qc-qr { --qc-phone: 88px; --qc-stand: 54px; --qc-lap: 10px; --qc-gap: 8px; }
+/* bề ngang hẹp: cột phải (thẻ Tổng + ô báo tiền) phải còn ≥ 130px */
+@media (max-width: 389px) {
+  .service-screen[data-scene]:is([data-fit="l"], [data-fit="m"]) .qc-qr { --qc-phone: 116px; --qc-stand: 62px; --qc-lap: 14px; }
+}
+@media (max-width: 369px) {
+  .service-screen[data-scene]:is([data-fit="l"], [data-fit="m"]) .qc-qr { --qc-phone: 106px; --qc-stand: 54px; --qc-lap: 12px; --qc-gap: 8px; }
+}
+@media (max-width: 339px) {
+  .service-screen[data-scene][data-fit] .qc-qr { --qc-phone: 96px; --qc-stand: 50px; --qc-lap: 12px; --qc-gap: 6px; }
+}
+.service-screen[data-scene] .stage-cash > .qc-qr { flex: 1 0 auto; gap: 8px; }
+/* khối QR: tường cao thêm theo phần dư (đồ vật đứng trên mép quầy ở đáy khối) */
+.service-screen[data-scene] .stage-cash > .qc-qr > .qc-scene { flex: 1 0 auto; padding: 10px 12px 0; align-content: stretch; }
+.service-screen[data-scene] .qc-stand-label { text-wrap: balance; }
+.service-screen[data-scene] .qc-side { justify-content: flex-end; gap: 8px; padding: 0 0 28px; }
+.service-screen[data-scene] .qc-due { padding: 4px 6px 6px; }
+.service-screen[data-scene] .qc-due-k { font-size: 14px; line-height: 1.15; }
+.service-screen[data-scene] .qc-due-v { font-size: 30px; line-height: 1.08; }
+.service-screen[data-scene] .qc-due-v.is-long { font-size: 26px; }
+.service-screen[data-scene][data-fit="m"] .qc-due-v { font-size: 27px; }
+.service-screen[data-scene][data-fit="m"] .qc-due-v.is-long { font-size: 24px; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .qc-due { padding: 2px 6px 4px; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .qc-due-k { font-size: 13px; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .qc-due-v { font-size: 22px; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .qc-due-v.is-long { font-size: 20px; }
+@media (max-width: 369px) {
+  .service-screen[data-scene] .qc-due-v { font-size: 24px; }
+  .service-screen[data-scene] .qc-due-v.is-long { font-size: 21px; }
+}
+/* ô báo tiền: chuông / loa 40 + chữ 15 (l, m); s / xs: 32 + chữ 14, bỏ dòng nguồn báo (chữ phụ) */
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .qc-status { grid-template-columns: 32px minmax(0, 1fr); column-gap: 6px; padding: 4px 7px 4px 5px; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .qc-status-ico { width: 32px; height: 32px; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .qc-status-text { font-size: 14px; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .qc-status-src { display: none; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .qc-side { gap: 6px; padding-bottom: 24px; }
+/* lời nhắc ngay trên hàng nút (dồn đáy cả khi khối QR không giãn, vd khay cuộn ở khung nhỏ) */
+.service-screen[data-scene] .stage-cash > .qc-qr > .qc-note { margin-top: auto; font-size: 13px; line-height: 1.3; }
+.service-screen[data-scene] .stage-cash > .qc-qr > .qc-warn { font-size: 14px; line-height: 1.25; padding: 4px 9px; }
+/* cúp điện (thêm dòng cảnh báo): khối QR thấp hơn một bậc */
+.service-screen[data-scene]:is([data-fit="l"], [data-fit="m"]) .qc-qr:has(> .qc-warn) { --qc-phone: 108px; --qc-stand: 58px; --qc-lap: 12px; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .qc-qr:has(> .qc-warn) { --qc-phone: 84px; --qc-stand: 50px; --qc-lap: 10px; }
+.service-screen[data-scene] .qc-btn.g-btn { min-height: 54px; }
+.service-screen[data-scene][data-fit="m"] .qc-btn.g-btn { min-height: 52px; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .qc-btn.g-btn { min-height: 48px; }
+
+/* ---------- Đã thu bằng chuyển khoản: thẻ "Đã nhận" trên mặt quầy (cảnh) ---------- */
+.service-screen[data-scene] .co-scene > .stage-cash > .qc-qr.is-paid {
+  position: absolute; z-index: 5; flex: none; display: flex; flex-direction: row; justify-content: flex-end; align-items: flex-end;
+  left: calc(var(--co-padx, 10px) + var(--co-bust, 124px) + 10px); right: var(--co-padx, 10px);
+  top: calc(var(--scene-h, 256px) - var(--sc-cart, 36px) - 4px); transform: translateY(-100%);
+  pointer-events: none;
+}
+.service-screen[data-scene] .qc-qr.is-paid > .qc-paidline {
+  min-width: 0; max-width: 100%; gap: 7px; padding: 3px 10px 3px 6px; border-width: 2.5px; border-radius: 13px;
+  box-shadow: inset 0 -3px 0 rgba(58, 38, 24, .08), 0 3px 0 rgba(58, 38, 24, .25);
+}
+.service-screen[data-scene] .qc-paidline .qc-phone.is-small { width: 26px; }
+.service-screen[data-scene] .qc-paidline .qc-status { grid-template-columns: 28px minmax(0, 1fr); column-gap: 6px; }
+.service-screen[data-scene] .qc-paidline .qc-status-ico { width: 28px; height: 28px; }
+.service-screen[data-scene] .qc-paidline .qc-status-text { font-size: 15px; line-height: 1.15; white-space: nowrap; }
+.service-screen[data-scene] .qc-paidline .qc-status-src { font-size: 13px; line-height: 1.2; white-space: nowrap; }
+.service-screen[data-scene][data-fit="m"] .qc-paidline .qc-status-src { display: none; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .co-scene > .stage-cash > .qc-qr.is-paid { display: none; }
+/* lời qua lại của cảnh nhường chỗ cho thẻ "Đã nhận"; bong bóng lên đầu hàng giữa, không chạm thẻ */
+.service-screen[data-scene]:is([data-fit="l"], [data-fit="m"]) .co-scene:has(> .stage-cash > .qc-qr.is-paid) .co-talk { visibility: hidden; }
+.service-screen[data-scene]:is([data-fit="l"], [data-fit="m"]) .co-scene:has(> .stage-cash > .qc-qr.is-paid) .co-cust-wrap .co-bubble {
+  align-self: start; max-height: calc(var(--co-mid, 160px) - 50px);
+}
+
+/* ---------- Phiếu thu ---------- */
+.service-screen[data-scene] .stage-cash > .rc-wrap { flex: 1 0 auto; gap: 0; }
+.service-screen[data-scene] .rc-print {
+  --rc-body: 40px;
+  flex: 1 0 auto; justify-content: flex-end; margin: 0 calc(-1 * var(--co-padx, 10px));
+}
+.service-screen[data-scene]:is([data-fit="m"], [data-fit="s"]) .rc-print { --rc-body: 24px; }
+.service-screen[data-scene][data-fit="xs"] .rc-print { --rc-body: 16px; }
+/* phần dư: trước hết cho thân máy in (tới hết hình), còn nữa thì nằm trên đầu phiếu (lề trên tự co giãn) */
+.service-screen[data-scene] .rc-win { flex: none; margin-top: auto; padding-top: 12px; }
+.service-screen[data-scene] .rc-machine {
+  flex: 1 0 auto; height: auto; min-height: calc(var(--rc-body) + var(--rc-k) * 6); max-height: calc(var(--rc-k) * 68);
+}
+.service-screen[data-scene] .rc-plank { flex: none; height: 14px; }
+.service-screen[data-scene] .rc-clip.g-btn { min-height: 54px; font-size: 21px; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .rc-clip.g-btn { min-height: 48px; font-size: 19px; }
+.service-screen[data-scene] .rc-full { font-size: 14px; line-height: 1.25; }
+
+/* giấy: chữ l 14–19 */
+.service-screen[data-scene] .rc-paper { padding: 7px 14px calc(var(--rc-k, 2px) * 6 + 5px); font-size: 14px; line-height: 1.28; }
+.service-screen[data-scene] .rc-paper .rc-head {
+  flex-flow: row wrap; justify-content: center; align-items: baseline; gap: 0 8px; margin: 0 0 5px; padding: 0 0 5px;
+}
+.service-screen[data-scene] .rc-shop { flex: 0 0 100%; font-size: 17px; line-height: 1.15; }
+.service-screen[data-scene] .rc-no { font-size: 14px; letter-spacing: .02em; }
+.service-screen[data-scene] .rc-meta { font-size: 13px; }
+.service-screen[data-scene] .rc-lines { gap: 3px; }
+.service-screen[data-scene] .rc-line { grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: 7px; }
+.service-screen[data-scene] .rc-dish { width: 28px; height: 28px; }
+.service-screen[data-scene] .rc-name, .service-screen[data-scene] .rc-notes { line-height: 1.22; }
+.service-screen[data-scene] .rc-adjust { margin-top: 4px; }
+.service-screen[data-scene] .rc-total { margin-top: 5px; padding-top: 4px; font-size: 16px; }
+.service-screen[data-scene] .rc-total .rc-v { font-size: 19px; }
+.service-screen[data-scene] .rc-method { margin-top: 1px; }
+.service-screen[data-scene] .rc-thanks { margin-top: 0; }
+.service-screen[data-scene] .rc-stamp { margin: 10px 6px 3px 0; padding: 3px 8px 0; font-size: 16px; }
+/* m: chữ 13–17 */
+.service-screen[data-scene][data-fit="m"] .rc-paper { padding-top: 6px; padding-left: 13px; padding-right: 13px; font-size: 13px; line-height: 1.26; }
+.service-screen[data-scene][data-fit="m"] .rc-shop { font-size: 15px; }
+.service-screen[data-scene][data-fit="m"] .rc-no { font-size: 13px; }
+.service-screen[data-scene][data-fit="m"] .rc-line { grid-template-columns: 26px minmax(0, 1fr) auto; column-gap: 6px; }
+.service-screen[data-scene][data-fit="m"] .rc-dish { width: 26px; height: 26px; }
+.service-screen[data-scene][data-fit="m"] .rc-total { font-size: 15px; }
+.service-screen[data-scene][data-fit="m"] .rc-total .rc-v { font-size: 17px; }
+.service-screen[data-scene][data-fit="m"] .rc-stamp { margin-top: 9px; font-size: 15px; }
+/* s / xs: chữ 13–15, bỏ "Ngày n ·" ở dòng giờ in (HUD đã có ngày) */
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .rc-win { padding-top: 10px; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .rc-paper { padding: 4px 11px calc(var(--rc-k, 2px) * 6 + 4px); font-size: 13px; line-height: 1.22; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .rc-paper .rc-head { margin-bottom: 3px; padding-bottom: 3px; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .rc-shop { font-size: 14px; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .rc-no { font-size: 13px; letter-spacing: 0; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .rc-day { display: none; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .rc-lines { gap: 1px; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .rc-line { grid-template-columns: 24px minmax(0, 1fr) auto; column-gap: 6px; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .rc-dish { width: 24px; height: 24px; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .rc-total { margin-top: 3px; padding-top: 3px; font-size: 14px; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .rc-total .rc-v { font-size: 15px; }
+.service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .rc-stamp { margin: 7px 6px 3px 0; padding: 2px 7px 0; border-width: 3px; font-size: 14px; }
+/* xs: món một hàng (số lượng × tên + thành tiền; bỏ hình món và ghi chú — đã nằm trên phiếu order lúc gọi món) */
+.service-screen[data-scene][data-fit="xs"] .rc-line,
+.service-screen[data-scene][data-fit="xs"] .rc-line.no-notes { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name amt"; }
+.service-screen[data-scene][data-fit="xs"] .rc-dish,
+.service-screen[data-scene][data-fit="xs"] .rc-notes { display: none; }

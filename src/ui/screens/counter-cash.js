@@ -1,8 +1,7 @@
 // Quầy, khâu 3 (Tính tiền) — trả tiền mặt: mặt quầy gỗ với tờ tiền khách đưa (to, xòe) và phiếu số liệu (Tổng, Khách đưa,
 // Đã thối, Cần thối, Đang thối dư), khay inox đựng tiền thối, ngăn kéo két mở 7 ngăn, thẻ "két không đủ tiền lẻ" (hộp chọn
-// cách xử lý tự mở) và nút "Đưa tiền thối" dính đáy. Panel thấp (.co-fit-low / .co-fit-tiny): tiền khách đưa và khay gọn
-// nằm cùng một hàng, phiếu số liệu thành dải giấy cạnh nút "Đưa tiền thối" (luôn thấy khi cuộn tới két), panel rất thấp xếp
-// 7 ngăn két thành một hàng; lúc vào khâu panel cuộn cho hàng khay + két lọt trên hàng nút (revealCash).
+// cách xử lý tự mở) và nút "Đưa tiền thối". Bố cục cũ (panel cuộn, không có lớp co-scene): nút dính đáy, lúc vào khâu
+// panel cuộn cho khay + két lọt trên hàng nút (revealCash).
 // M5 Đợt 2 (gói Q-B): giao diện mới, luật / tiền / điểm giữ nguyên (lõi trayAdd / trayRemove / giveChange). Mọi hàm nhận ctx
 // chung của panel Quầy (counter.js: makeCtx). Import trong Node được: không chạm DOM ở cấp module.
 // Hiệu ứng chỉ chạy theo SỰ KIỆN (thao tác), không trong renderCash: chụp vị trí + nhân bản phần tử nguồn TRƯỚC khi đổi state,
@@ -13,13 +12,19 @@
 //     của onArrive trong vfx.coins + source: 'tien_mat') trên phần tử [data-testid="hud-wallet"] để HUD đếm số; thối thiếu bị
 //     đòi bù → khay rung.
 // Giảm chuyển động: không bay, không nảy (số liệu cập nhật ngay); âm thanh giữ nguyên.
-import { h } from '../dom.js'
+// Vừa màn (bố cục cảnh + khay, div.counter.co-scene của counter.js): panel Quầy không cuộn. Thẻ "Khách đưa" (given-cash) và
+// thẻ Tổng (phiếu số liệu) đặt trên mặt quầy ở CẢNH (css/cashier.css định vị theo div.counter), KHAY là két 7 ngăn + hàng
+// đáy [khay tiền thối | "Đưa tiền thối"] dồn đáy; khay chỉ cuộn ở khung nhỏ (scrollBoxOf). Bản sao két ở lớp hiệu ứng mang
+// data-scene + data-fit của màn (applyFxFrame).
+import { h, svgBox } from '../dom.js'
 import { DI_SAU } from '../art.js'
+import { scene } from '../art/scene.js'
 import { trayAdd, trayRemove, giveChange, changeOptions, resolveNoChange, changeRemaining } from '../../core/order.js'
 import { drawerTotal } from '../../core/money.js'
 import { renderDrawer, renderTray, renderGivenCash } from '../components/cash-drawer.js'
 import { isReduced } from '../motion.js'
 import { formatVND, formatK } from '../format.js'
+import { scrollBoxOf, fxFrameOf, applyFxFrame } from './counter-pay.js'
 
 export const NO_CHANGE_LABELS = {
   xin_tien_le: ['Xin khách tiền lẻ', 'Khách có thể có tiền lẻ, nhưng sẽ hơi sốt ruột.'],
@@ -45,7 +50,14 @@ export function renderCash(ctx, customer, c) {
   const due = changeRemaining(app.state)
   const trayAmt = drawerTotal(c.tray)
   const hint = showChangeHint(ctx)
+  // Thẻ "Khách đưa" + phiếu số liệu (Tổng…) là con trực tiếp của khâu; két, khay, nút nằm trong thân khâu (.cs-cash-body).
+  // Bố cục cảnh: hai thẻ đặt trên mặt quầy ở cảnh, thân khâu là vùng cuộn của khay (khung nhỏ) — hai thẻ nằm ngoài vùng cuộn
+  // nên không bị cắt / không trôi theo khi khay cuộn. Bố cục cũ: thân khâu "tan" vào lưới của khâu (display: contents).
+  // Thân khâu cũ (lần vẽ trước, còn trong panel): vị trí cuộn của nó giữ sang thân mới.
+  const prevBody = ctx.ui.cashShown ? ctx.el.querySelector('.cs-cash-body') : null
+  const keepTop = prevBody ? prevBody.scrollTop : 0
   const wrap = h('div', { class: 'cs-cash' })
+  const body = h('div', { class: 'cs-cash-body' })
   wrap.appendChild(h('div', { class: 'cs-mat', 'aria-label': 'Nắp két' }, renderGivenCash(c.given)))
   wrap.appendChild(h('div', { class: 'cs-facts' },
     h('div', { class: 'cs-fact is-total' }, h('span', { class: 'cs-fact-k' }, 'Tổng'), h('b', { class: 'cs-fact-v', testid: 'amount-due' }, formatVND(c.amountDue))),
@@ -54,14 +66,17 @@ export function renderCash(ctx, customer, c) {
       h('span', { class: 'cs-fact-k' }, c.changePaid > 0 ? 'Cần thối bù' : 'Cần thối'), h('b', { class: 'cs-fact-v' }, formatVND(due))) : null,
     // ngày đầu (đang hiện "Cần thối"): khay nhiều hơn số cần thối → cảnh báo đỏ trước khi đưa
     hint && trayAmt > due ? h('div', { class: 'cs-over', testid: 'change-over', role: 'status' }, 'Đang thối dư ', h('b', null, formatVND(trayAmt - due))) : null))
-  wrap.appendChild(renderTray(c.tray, {
+  wrap.appendChild(body)
+  // mặt quầy gỗ ở đầu khay (bố cục cảnh: phần dư của khay; khay đủ cao thì có hũ tip trang trí) — chỉ để nhìn
+  body.appendChild(h('div', { class: 'cs-counter-top', 'aria-hidden': 'true' }, svgBox(scene('hu_tip'), 'cs-tipjar')))
+  body.appendChild(renderTray(c.tray, {
     emptyText: due === 0 ? 'Không cần thối tiền' : null,
     onReturn: (b, el) => returnBill(ctx, b, el)
   }))
-  wrap.appendChild(renderDrawer(s.drawer, { onTake: (b, el) => takeBill(ctx, b, el) }))
+  body.appendChild(renderDrawer(s.drawer, { onTake: (b, el) => takeBill(ctx, b, el) }))
   const opts = changeOptions(app.state, app.ctx)
   if (opts.length) {
-    wrap.appendChild(h('div', { class: 'cs-nochange', testid: 'no-change' },
+    body.appendChild(h('div', { class: 'cs-nochange', testid: 'no-change' },
       h('span', { class: 'cs-nochange-ico', 'aria-hidden': 'true' }, '!'),
       h('span', { class: 'cs-nochange-text' }, S.messages.noChange),
       h('button', { class: 'g-btn g-btn--gold g-btn--small cs-nochange-btn', type: 'button', testid: 'no-change-open', onclick: () => openNoChange(ctx, true) }, 'Chọn cách xử lý')))
@@ -69,7 +84,7 @@ export function renderCash(ctx, customer, c) {
     if (ctx.ui.noChangeKey !== key) { ctx.ui.noChangeKey = key; setTimeout(() => openNoChange(ctx, false), 0) }
   }
   const exact = due === 0 && trayAmt === 0
-  wrap.appendChild(h('div', { class: 'act-bar cs-act' }, renderSum(c, { due, trayAmt, hint }), h('button', {
+  body.appendChild(h('div', { class: 'act-bar cs-act' }, renderSum(c, { due, trayAmt, hint }), h('button', {
     class: ['g-btn', 'g-btn--go', 'g-btn--block', 'cs-give', exact ? 'is-exact' : ''], type: 'button', testid: 'give-change',
     dataset: { exact: exact ? 'true' : 'false' },
     onclick: () => doGiveChange(ctx, customer)
@@ -77,13 +92,14 @@ export function renderCash(ctx, customer, c) {
   // Lần đầu khâu này hiện cho khách (vừa báo tổng / mở lại game giữa khâu): sau khi counter.js gắn panel và tự cuộn theo
   // khâu, cuộn tiếp cho khay + két lọt trên hàng nút dính đáy. Một lần theo khách (vẽ lại, thối bù không cuộn lại).
   if (!ctx.ui.cashShown) afterRender(() => { if (revealCash(ctx)) ctx.ui.cashShown = true })
+  else if (ctx.el.classList.contains('co-scene')) afterRender(() => keepCashTray(ctx, body, keepTop))
   return wrap
 }
 
-// Dải số liệu gọn nằm cạnh nút "Đưa tiền thối" trong hàng nút dính đáy (chỉ hiện ở panel thấp, css/cashier.css): cuộn
-// xuống két vẫn thấy tiền khách đưa, tổng, (cần thối) và tổng khay. Thường 3 dòng: Khách đưa / Tổng / Khay, ngày đầu
-// (đang hiện "Cần thối") là Tổng / Cần thối / Khay; đã thối một lần thì thêm dòng Đã thối. Khay dư so với số cần thối → đỏ,
-// vừa đủ → xanh (chỉ khi đang hiện "Cần thối", như phiếu số liệu).
+// Dải số liệu gọn nằm cạnh nút "Đưa tiền thối" (.cs-sum; css/cashier.css hiện không cho hiện — số liệu đã ở thẻ Khách đưa
+// / thẻ Tổng trên mặt quầy và đầu khay tiền thối): tiền khách đưa, tổng, (cần thối) và tổng khay. Thường 3 dòng: Khách đưa /
+// Tổng / Khay, ngày đầu (đang hiện "Cần thối") là Tổng / Cần thối / Khay; đã thối một lần thì thêm dòng Đã thối. Khay dư so
+// với số cần thối → đỏ, vừa đủ → xanh (chỉ khi đang hiện "Cần thối", như phiếu số liệu).
 export function sumRows(c, { due, trayAmt, hint }) {
   const given = (c.given && c.given.total) || drawerTotal((c.given && c.given.bills) || {})
   const rows = []
@@ -114,10 +130,12 @@ function afterRender(fn) {
 // lộ phần đầu (hàng ngăn 5K–50K). → true nếu đã đo được (panel đang hiện).
 function revealCash(ctx) {
   if (ctx.destroyed()) return false
-  const sc = ctx.root
   const tray = ctx.el.querySelector('[data-testid="tray"]')
   const drawer = ctx.el.querySelector('[data-testid="drawer"]')
-  if (!sc || !tray || !drawer || !drawer.isConnected || typeof sc.getBoundingClientRect !== 'function') return false
+  if (!tray || !drawer || !drawer.isConnected) return false
+  if (ctx.el.classList.contains('co-scene')) return revealCashTray(ctx, tray, drawer)
+  const sc = ctx.root
+  if (!sc || typeof sc.getBoundingClientRect !== 'function') return false
   const box = sc.getBoundingClientRect()
   if (!box.height) return false
   const bar = ctx.el.querySelector('.act-bar')
@@ -140,6 +158,39 @@ function revealCash(ctx) {
     if (above > 0 && above < 28) delta = rowTop - top
   } else delta = rowTop - top
   if (delta) sc.scrollTop += delta
+  return true
+}
+
+// Bố cục cảnh, lần vẽ lại trong cùng khâu (lấy / trả tờ tiền, thối bù): thân khâu mới giữ vị trí cuộn của thân cũ; khay tiền
+// thối vừa xuống hàng (≥ 5 mệnh giá) mà hàng đáy bị đẩy khuất thì cuộn vừa đủ cho hàng đáy (nút "Đưa tiền thối") lọt lại.
+function keepCashTray(ctx, body, keepTop) {
+  if (ctx.destroyed() || !body || !body.isConnected || typeof body.getBoundingClientRect !== 'function') return
+  if (keepTop) body.scrollTop = keepTop
+  if (body.scrollHeight <= body.clientHeight + 1) return
+  const box = body.getBoundingClientRect()
+  const tray = body.querySelector('[data-testid="tray"]')
+  const give = body.querySelector('[data-testid="give-change"]')
+  const bottom = Math.max(tray ? tray.getBoundingClientRect().bottom : 0, give ? give.getBoundingClientRect().bottom : 0)
+  const over = bottom - (box.bottom - 4)
+  if (over >= 1) body.scrollTop += over
+}
+
+// Bố cục cảnh: khay vừa thì không cuộn gì. Khay cuộn (khung nhỏ: thêm lời Dì Sáu / thẻ két hết tiền lẻ): cho cả két lẫn hàng
+// đáy (khay tiền thối + "Đưa tiền thối") lọt nếu đủ chỗ, không đủ thì hàng đáy sát đáy khay, két lộ phần dưới.
+function revealCashTray(ctx, tray, drawer) {
+  const sc = scrollBoxOf(ctx, drawer)
+  if (!sc) return true
+  if (typeof sc.getBoundingClientRect !== 'function') return false
+  const box = sc.getBoundingClientRect()
+  if (!box.height) return false
+  const give = ctx.el.querySelector('[data-testid="give-change"]')
+  const d = drawer.getBoundingClientRect()
+  const bottom = Math.max(tray.getBoundingClientRect().bottom, give ? give.getBoundingClientRect().bottom : 0)
+  const top = box.top + 4, limit = box.bottom - 4
+  let delta = 0
+  if (bottom > limit) delta = bottom - limit
+  if (bottom - d.top <= limit - top && d.top - delta < top) delta = d.top - top
+  if (Math.abs(delta) >= 1) sc.scrollTop += delta
   return true
 }
 
@@ -175,14 +226,20 @@ function measureOf(node) {
   return { node, rect: { left: r.left, top: r.top, width: r.width, height: r.height } }
 }
 
-// Tâm phần tử nằm trong phần nhìn thấy của panel Quầy (trên thanh nút dính đáy)? Đích khuất thì không bay (khỏi bay
-// xuyên qua thanh tab ra ngoài màn).
+// Tâm phần tử nằm trong phần nhìn thấy của vùng cuộn (khay ở khung nhỏ / panel Quầy) và trên hàng nút dính đáy (chỉ hàng
+// đang position: sticky — hàng nút nằm trong lưới của bố cục cảnh không che gì)? Đích khuất thì không bay (khỏi bay xuyên
+// qua thanh tab ra ngoài màn).
 function inPanelView(ctx, el) {
-  const sc = ctx.root
-  if (!el || !sc || typeof sc.getBoundingClientRect !== 'function') return false
+  if (!el || typeof el.getBoundingClientRect !== 'function') return false
+  const sc = scrollBoxOf(ctx, el) || ctx.el
+  if (!sc || typeof sc.getBoundingClientRect !== 'function') return false
   const a = el.getBoundingClientRect(), b = sc.getBoundingClientRect()
-  const bar = ctx.el.querySelector('.act-bar')
-  const bottom = bar && !bar.contains(el) ? Math.min(b.bottom, bar.getBoundingClientRect().top) : b.bottom
+  let bottom = b.bottom
+  for (const bar of ctx.el.querySelectorAll('.act-bar')) {
+    if (bar.contains(el) || getComputedStyle(bar).position !== 'sticky') continue
+    const r = bar.getBoundingClientRect()
+    if (r.height) bottom = Math.min(bottom, r.top)
+  }
   const cy = a.top + a.height / 2
   return a.width > 0 && cy > b.top && cy < bottom
 }
@@ -243,12 +300,15 @@ function playGive(ctx, shot, res, sale) {
   const fx = app.vfx
   if (!fx) return
   const reduced = isReduced(app)
-  // tiền trong khay sang tay khách (bay lên phía khách ở đầu panel)
+  // tiền trong khay sang tay khách (bay lên bán thân khách ở cảnh; không có hình bán thân thì phía khách ở đầu panel)
   if (!reduced && shot.tray.length && res.given > 0) {
+    const fig = ctx.el.querySelector('.co-cust-figure')
+    const fr = fig ? fig.getBoundingClientRect() : null
     const cust = ctx.el.querySelector('.cust-wrap')
     const cr = cust ? cust.getBoundingClientRect() : null
     shot.tray.forEach((t, i) => {
-      const to = cr && cr.height ? { x: cr.left + cr.width * 0.3, y: cr.top + cr.height * 0.45 } : { x: t.rect.left + t.rect.width / 2, y: 0 }
+      const to = fr && fr.height ? { x: fr.left + fr.width * 0.5, y: fr.top + fr.height * 0.6 }
+        : cr && cr.height ? { x: cr.left + cr.width * 0.3, y: cr.top + cr.height * 0.45 } : { x: t.rect.left + t.rect.width / 2, y: 0 }
       try { fx.fly(t.rect, to, { node: t.node, ms: CASH_FX.toCustomer + i * 50, arc: 0.3, scale: 0.6, bump: false }) } catch { /* bỏ qua */ }
     })
   }
@@ -304,9 +364,10 @@ function drawerGhost(ctx, shot) {
   if (!layer || !doc || doc.visibilityState === 'hidden') return null
   const L = layer.getBoundingClientRect()
   const wrap = doc.createElement('div')
-  // lớp bố cục gọn của panel (co-fit-*) đi theo bản sao: két ở lớp hiệu ứng giữ đúng kiểu xếp ngăn như trong panel
-  wrap.className = ['cs-fx-drawer', ...[...ctx.el.classList].filter(k => k.startsWith('co-fit-'))].join(' ')
-  wrap.style.padding = '0'   // luật riêng của panel (.co-fit-tiny có padding) không áp vào khung bản sao
+  // bậc khung của màn đi theo bản sao: két ở lớp hiệu ứng giữ đúng cỡ ngăn / huy hiệu như trong khay
+  wrap.className = 'cs-fx-drawer'
+  applyFxFrame(wrap, fxFrameOf(ctx))
+  wrap.style.padding = '0'   // luật riêng của khay (nếu có đệm) không áp vào khung bản sao
   wrap.style.left = `${(shot.rect.left - L.left).toFixed(1)}px`
   wrap.style.top = `${(shot.rect.top - L.top).toFixed(1)}px`
   wrap.style.width = `${shot.rect.width.toFixed(1)}px`

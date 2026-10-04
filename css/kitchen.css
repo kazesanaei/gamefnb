@@ -604,3 +604,142 @@
   transform: rotate(45deg); transition: transform .15s ease-out;
 }
 .k-card.is-compact .k-card-steps[open] summary::after { transform: translate(0, 3px) rotate(-135deg); }
+
+/* =====================================================================================================================
+   VỪA MÀN (gói L4, sau 0.5.1): màn Bếp trong ca vừa một màn điện thoại — dây phiếu, bước Chọn, Thớt sơ chế thấy trọn
+   không phải cuộn ở các khung chính (iPhone 16 Pro cài app 402×874, Safari 402×680 / 760, 390×844, 360×780, 412×915).
+   Chỉ áp trong màn Ca bán (.service-screen mang data-fit = l | m | s | xs do service.js ghi); màn Nấu thử ở Chợ Công Thức
+   giữ bố cục cũ. Chiều cao .k-main theo bảng 3.2 của đặc tả: dây phiếu 56 + dải mặt khách 58 (ẩn khi đang Chọn — data-cook
+   "chon" — hoặc tập trung khi nấu ở khung thấp). Không đổi chữ, testid, lớp móc; chỉ cỡ và cách xếp.
+   ===================================================================================================================== */
+/* trạng thái bước: bản gọn ("Chạm") thay bản đủ ("Chạm để làm") khi ô chữ của bước hẹp dưới 84px — không cắt "…" */
+.k-step-text { container: k-st / inline-size; }
+.k-st-short { display: none; }
+@container k-st (max-width: 83.98px) {
+  .k-st-full { display: none; }
+  .k-st-short { display: inline; }
+}
+/* đầu Thớt + thẻ công thức (kitchen.js renderBoard): mặc định xếp dọc như cũ; tên món trong dòng thẻ gọn chỉ dùng khi đầu
+   Thớt gọn (khung thấp, bên dưới) */
+.k-thot-top { display: contents; }
+.k-card-sum-name { display: none; }
+
+/* khung bếp: đệm gọn hơn; thanh dính (Bỏ món / Ra món) phủ kín phần đệm dưới như cũ */
+.service-screen[data-fit] .kitchen .k-main { gap: 8px; padding: 8px 12px 12px; }
+.service-screen[data-fit] .kitchen .k-toolbar { bottom: -12px; padding: 6px 0 12px; margin-bottom: -12px; }
+
+/* ----- Dây phiếu: phiếu gọn — đầu phiếu 28, dòng món 52 (hình món 48), "Giao cho khách" 48 ----- */
+.service-screen[data-fit] .kitchen .k-rail-head { min-height: 28px; }
+.service-screen[data-fit] .kitchen .k-tickets { gap: 14px; padding-top: 6px; }
+.service-screen[data-fit] .kitchen .k-ticket { padding: 11px 10px 6px; }
+.service-screen[data-fit] .kitchen .k-ticket-head { min-height: 26px; margin-bottom: 0; }
+.service-screen[data-fit] .kitchen .k-ticket-no { font-size: 18px; }
+.service-screen[data-fit] .kitchen .k-line { gap: 2px 8px; padding: 2px 0; }
+.service-screen[data-fit] .kitchen .k-line-art { flex-basis: 48px; width: 48px; height: 48px; }
+.service-screen[data-fit] .kitchen .k-line-name { font-size: 15px; }
+.service-screen[data-fit] .kitchen .k-line .k-notes { margin-top: 1px; }
+.service-screen[data-fit] .kitchen .k-line-st { padding: 0 8px; font-size: 13px; }
+.service-screen[data-fit] .kitchen .k-line-go { min-height: 46px; margin-bottom: 4px; }
+.service-screen[data-fit] .kitchen .k-serve { min-height: 48px; margin: 4px 0 4px; }
+.service-screen[data-fit] .kitchen .k-last { padding: 6px 10px; }
+.service-screen[data-fit] .kitchen .k-last-icon { width: 50px; height: 50px; }
+
+/* ----- Thớt sơ chế: đầu 44 · thẻ công thức gọn 44 · thớt lưới 2 cột trạm · thanh dính 56 ----- */
+.service-screen[data-fit] .kitchen .k-main[data-view="thot"] { gap: 6px; }
+.service-screen[data-fit] .kitchen .k-board-head { min-height: 44px; }
+/* thớt nhận phần dư của khung bếp (còn dư thì giãn đều khe giữa các hàng trạm, không để một khoảng trống chết), thanh
+   Bỏ món / Ra món ở đáy (vùng ngón cái) */
+.service-screen[data-fit] .kitchen .k-thot { flex: 1 0 auto; display: flex; flex-direction: column; padding: 4px 6px 6px; border-radius: 20px; }
+.service-screen[data-fit] .kitchen .k-thot > * { flex: none; }
+.service-screen[data-fit] .kitchen .k-thot-title { margin: 2px 34px 4px 6px; font-size: 14px; line-height: 16px; }
+.service-screen[data-fit] .kitchen .k-thot-hole { top: 5px; right: 10px; width: 18px; height: 18px; border-width: 2.5px; }
+.service-screen[data-fit] .kitchen .k-thot > .k-disau { margin: 0 2px 6px; }
+/* trạm: thẻ gọn [hình nguyên liệu 48 | các bước]; trạm n bước chiếm n hàng lưới, trạm một bước lấp chỗ bên cạnh (dense) */
+.service-screen[data-fit] .kitchen .k-thot > .k-board {
+  flex: 1 0 auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: auto; align-content: space-evenly;
+  grid-auto-flow: row dense; align-items: stretch; gap: 6px;
+}
+.service-screen[data-fit] .kitchen .k-ing {
+  align-items: center; gap: 0; padding: 3px 4px 3px 3px; border-radius: 12px;
+  background: rgba(255, 250, 240, .5); box-shadow: inset 0 0 0 2px rgba(111, 66, 25, .18);
+}
+.service-screen[data-fit] .kitchen .k-ing + .k-ing { padding-top: 3px; border-top: 0; }
+.service-screen[data-fit] .kitchen .k-ing[data-steps="2"] { grid-row: span 2; }
+.service-screen[data-fit] .kitchen .k-ing[data-steps="3"] { grid-row: span 3; }
+.service-screen[data-fit] .kitchen .k-ing[data-steps="4"] { grid-row: span 4; }
+.service-screen[data-fit] .kitchen .k-ing.is-finished { background: rgba(227, 244, 214, .6); }
+.service-screen[data-fit] .kitchen .k-ing-top { position: relative; z-index: 0; width: 48px; }
+.service-screen[data-fit] .kitchen .k-ing-art { width: 48px; height: 48px; }
+.service-screen[data-fit] .kitchen .k-ing-art.is-rare::before { left: -4px; top: -4px; width: 18px; height: 18px; line-height: 14px; }
+.service-screen[data-fit] .kitchen .k-ing-tick { right: -4px; bottom: -2px; width: 20px; height: 20px; }
+/* tên nguyên liệu: chỉ cho máy đọc (nhãn bước đã gọi tên nguyên liệu) */
+.service-screen[data-fit] .kitchen .k-ing-name {
+  position: absolute; width: 1px; height: 1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+/* cột bước gối lên mép phải hình nguyên liệu 10px (mép hình phần lớn là nền trong suốt): nhãn bước rộng thêm cho chữ */
+.service-screen[data-fit] .kitchen .k-steps { position: relative; z-index: 1; gap: 4px; margin-left: -10px; }
+/* bước: huy hiệu 36 (biểu tượng 23) ghim lên nhãn giấy; nhãn 13px ≤ 2 dòng; trạng thái 13px một dòng */
+.service-screen[data-fit] .kitchen .k-step { min-height: 48px; }
+.service-screen[data-fit] .kitchen .k-step-badge { width: 36px; height: 36px; border-width: 2.5px; box-shadow: inset 0 -3px 0 rgba(58, 38, 24, .14), 0 2px 0 #a8773a; }
+.service-screen[data-fit] .kitchen .k-step-ico { width: 23px; height: 23px; }
+.service-screen[data-fit] .kitchen .k-step.is-done .k-step-ico { width: 21px; height: 21px; }
+.service-screen[data-fit] .kitchen .k-step.is-available .k-step-badge::after { inset: -5px; border-width: 2.5px; }
+.service-screen[data-fit] .kitchen .k-step-text { min-height: 44px; margin-left: -12px; padding: 2px 4px 2px 15px; border-radius: 0 10px 10px 0; }
+/* nhãn bước tối đa 3 dòng (nhãn dài nhất 28 chữ: "Nêm sa tế, muối tôm, vắt tắc" vừa 3 dòng ở ô hẹp nhất) — cắt ở dòng 2 thì
+   chân dấu của dòng 3 lộ lên dưới chữ (phông Baloo 2 cao hơn dòng 15px) */
+.service-screen[data-fit] .kitchen .k-step-label { font-size: 13px; line-height: 15px; -webkit-line-clamp: 3; line-clamp: 3; }
+.service-screen[data-fit] .kitchen .k-step-st { line-height: 16px; }
+.service-screen[data-fit] .kitchen .k-step-lock, .service-screen[data-fit] .kitchen .k-step-tick { right: -6px; bottom: -4px; width: 20px; height: 20px; }
+.service-screen[data-fit] .kitchen .k-step-crit { left: -6px; top: -6px; width: 19px; height: 19px; line-height: 15px; }
+/* dòng thẻ công thức gọn có ghi chú đỏ: tem gọn, tối đa 2 hàng trong dòng 44px; bỏ "n món · n bước" để tem đủ chỗ */
+.service-screen[data-fit] .kitchen .k-card.is-compact summary > .k-card-notes { gap: 3px 4px; }
+.service-screen[data-fit] .kitchen .k-card.is-compact summary .k-note { padding: 0 5px; line-height: 1.3; }
+.service-screen[data-fit] .kitchen .k-card.is-compact summary > .k-card-notes ~ .k-card-sum-n { display: none; }
+/* khung thấp (bậc m / s / xs: Safari 402×680, 375×667, 360×600…): nút "‹ Phiếu" đứng cạnh thẻ công thức gọn trên một hàng
+   (như bước Chọn ở khung thấp); hình + tên món ở đầu bảng nhường cho dòng thẻ (tên món vào dòng thẻ khi phiếu không có
+   ghi chú); chấm màu chờ của phiếu ở góc nút "‹ Phiếu". Mở thẻ thì thẻ cao ra ngay trong hàng. */
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top { display: flex; align-items: flex-start; gap: 6px; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top > .k-board-head { flex: none; position: relative; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top > .k-board-head > :not(.k-back):not(.k-wait-dot) { display: none; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top > .k-board-head > .k-wait-dot { position: absolute; right: -4px; top: -4px; pointer-events: none; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top > .k-board-head > .k-back { min-height: 50px; padding: 4px 9px; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top > .k-card { flex: 1 1 auto; min-width: 0; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top .k-card-sum-t { display: none; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top .k-card-sum-name {
+  display: block; flex: 0 1 auto; min-width: 0; margin-right: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--k-font); font-weight: 800; font-size: 15px;
+}
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top .k-card-sum-n { display: none; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top .k-card-sum-icon { position: relative; }
+.service-screen:is([data-fit="m"], [data-fit="s"], [data-fit="xs"]) .kitchen .k-thot-top .k-card-sum-icon[data-qty]::after {
+  content: '×' attr(data-qty); position: absolute; right: -8px; bottom: -4px; min-width: 22px; padding: 0 3px;
+  border: 2px solid var(--k-ink); border-radius: 999px; background: var(--g-tomato, #e8483a); color: #fff;
+  font-family: var(--k-font); font-size: 13px; font-weight: 800; line-height: 15px; text-align: center; text-shadow: 0 1px 0 var(--k-ink);
+}
+/* nguyên liệu sẵn sàng: hàng gọn 36 (hình 30) */
+.service-screen[data-fit] .kitchen .k-ready { min-height: 36px; margin: 6px 0 0; padding: 1px 8px; gap: 2px 6px; }
+.service-screen[data-fit] .kitchen .k-ready-item { width: 30px; height: 30px; }
+.service-screen[data-fit] .kitchen .k-ready-tick { width: 16px; height: 16px; }
+/* bề ngang hẹp (360–389px): khung bếp và thớt đệm ngang gọn lại để nhãn bước đủ chỗ hai dòng */
+@media (max-width: 389px) {
+  .service-screen[data-fit] .kitchen .k-main[data-view="thot"] { padding-left: 8px; padding-right: 8px; }
+  .service-screen[data-fit] .kitchen .k-thot { padding-left: 4px; padding-right: 4px; }
+  .service-screen[data-fit] .kitchen .k-thot > .k-board { gap: 5px; }
+  .service-screen[data-fit] .kitchen .k-step-text { padding-left: 14px; padding-right: 3px; }
+}
+/* khung nhỏ (bậc s / xs: 360×600, 320×568, 375×553): dòng món 48 (hình 40); kết quả món vừa ra xuống dưới các phiếu để phiếu
+   đủ món (nút "Giao cho khách") lên đầu; Thớt: hình nguyên liệu 40, huy hiệu 32 — được cuộn ngắn trong khung bếp, thanh
+   Bỏ món / Ra món dính đáy */
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .kitchen .k-line-art { flex-basis: 40px; width: 40px; height: 40px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .kitchen .k-tickets { gap: 12px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .kitchen .k-main[data-view="rail"] > .k-last { order: 3; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .kitchen .k-main[data-view="rail"] > .k-disau { order: 4; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .kitchen .k-ing-top { width: 40px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .kitchen .k-ing-art { width: 40px; height: 40px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .kitchen .k-step { min-height: 44px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .kitchen .k-step-badge { width: 32px; height: 32px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .kitchen .k-step-ico { width: 20px; height: 20px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .kitchen .k-step.is-done .k-step-ico { width: 19px; height: 19px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .kitchen .k-step-text { min-height: 42px; margin-left: -10px; padding-left: 13px; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .kitchen .k-step-lock,
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .kitchen .k-step-tick { width: 18px; height: 18px; }

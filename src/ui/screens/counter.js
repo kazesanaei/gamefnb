@@ -1,17 +1,26 @@
 // Panel Quầy: Order → Thanh toán → Tính tiền (→ kẹp phiếu, khách sang Làm đồ).
 // Vẽ lại panel khi state quầy đổi (stateSig); trạng thái giao diện tạm (bảng trượt, số đang gõ) giữ ở `ui`.
-// M5 Đợt 2: tệp này chỉ còn phần điều phối — mount, stateSig, vẽ lại, portal bảng chọn món, cuộn theo khâu, lớp co-fit theo
-// chiều cao panel, hướng dẫn ngày 1 (gợi ý + viền sáng), quầy trống, tourSpot. Phần dựng từng khâu nằm ở các module cùng
-// thư mục, nhận chung một ctx (bên dưới): counter-order.js (khách ở quầy, Order, bảng chọn món — thành phần BỀN theo khách,
-// vẽ lại chỉ update tại chỗ), counter-pay.js (Thanh toán), counter-cash.js (tiền mặt, két, hộp két hết tiền lẻ),
-// counter-qr.js (chuyển khoản), counter-receipt.js (phiếu thu, kẹp phiếu) — các khâu này dựng mới mỗi lần vẽ lại.
+// M5 Đợt 2: tệp này chỉ còn phần điều phối — mount, stateSig, vẽ lại, portal bảng chọn món, cuộn theo khâu, hướng dẫn ngày 1
+// (gợi ý + viền sáng), quầy trống, tourSpot. Phần dựng từng khâu nằm ở các module cùng thư mục, nhận chung một ctx (bên
+// dưới): counter-order.js (khách ở quầy, Order, bảng chọn món — thành phần BỀN theo khách, vẽ lại chỉ update tại chỗ),
+// counter-pay.js (Thanh toán), counter-cash.js (tiền mặt, két, hộp két hết tiền lẻ), counter-qr.js (chuyển khoản),
+// counter-receipt.js (phiếu thu, kẹp phiếu) — các khâu này dựng mới mỗi lần vẽ lại.
 // Vẽ lại không gỡ nút bền (khách, khâu Order): chỉ thay các nút con khác của panel, nên hoạt ảnh của chúng không chạy lại.
 // Hiệu ứng (Đợt 2) chỉ kích theo SỰ KIỆN (thao tác / bus), không kích trong render(): vẽ lại không phát lại hoạt ảnh.
-// Lời Dì Sáu ngày 1 (tutor-hint, placeTutor): một nút bền cho cả panel; phiếu order còn trống thì nằm dưới bong bóng khách
-// (đầu panel, lúc đó panel ở đầu), còn lại dán như tờ giấy nhắc NGAY TRÊN hàng nút dính đáy của khâu (.act-bar) — các hàm
-// cuộn của mọi khâu đo theo mép trên .act-bar nên không cuộn lời nhắc ra khỏi màn. Khâu Thanh toán không có hàng nút (phím
-// "Báo tổng" nằm trong máy tính tiền): lời nhắc một dòng nằm ngay trên máy tính tiền (máy được cuộn trọn vào màn nên dòng
-// ngay trên nó lộ theo). Sau khi thu tiền: cuộn cho đầu phiếu thu (và hàng Tổng nếu đủ chỗ) lọt màn (revealReceipt).
+//
+// Vừa màn (L1): div.counter mang lớp co-scene → service.js bật data-scene, panel Quầy phủ cả chỗ giữa HUD và thanh tab và
+// KHÔNG cuộn. div.counter là lưới 3 hàng (css/counter.css): hàng 1 trong suốt (thấy CẢNH của khung bên dưới: mái bạt, hàng
+// khách, kẹp phiếu) chứa khách bán thân + bong bóng (div.cust-wrap.co-cust-area); hàng 2 là dải mặt trước xe đẩy (trống, thấy
+// biển 4 khâu); hàng 3 là KHAY = phần tử khâu (lớp co-tray: .stage của Order / Thanh toán / Tính tiền, hoặc quầy trống), tự
+// cuộn khi nội dung cao hơn khay (khung nhỏ). Bậc theo chiều cao do service.js ghi (data-fit trên màn, biến --scene-h,
+// --tray-h…); bỏ lớp co-fit-low / co-fit-tiny của bản 0.5.1 (fitOf, FIT_LOW, FIT_TINY giữ để tương thích, không dùng).
+// Mọi hàm "cuộn cho lọt" (revealStage, revealReceipt, revealGlow, revealAboveBar) cuộn KHAY (vùng cuộn thật), đo theo hàng nút
+// dính đáy NẰM NGANG của khâu (cột nút Order không dính, không tính); khay vừa thì không cuộn gì. Khay của khâu dựng mới mỗi
+// lần vẽ lại (Thanh toán, Tính tiền…) giữ vị trí cuộn cũ qua lần vẽ lại.
+// Lời Dì Sáu ngày 1 (tutor-hint, placeTutor): một nút bền cho cả panel. Khâu Order: một hàng riêng của khay (giữa thực đơn và
+// phiếu, dải giấy trong luồng — không đẩy cảnh, không vào cột nút). Khâu có hàng nút dính đáy nằm ngang (Tính tiền, chuyển
+// khoản, phiếu thu): tờ giấy nhắc trong hàng dính riêng NGAY TRÊN hàng nút (.act-bar.co-tutor-dock). Khâu không có hàng nút
+// (Thanh toán: phím "Báo tổng" nằm trong máy tính tiền): lời nhắc một dòng ngay trên phần thao tác cuối của khâu.
 import { h, svgBox, createPortal } from '../dom.js'
 import { DI_SAU } from '../art.js'
 import { DI_SAU_POSES } from '../art/people.js'
@@ -20,14 +29,14 @@ import { changeRemaining } from '../../core/order.js'
 import { personaObj } from '../../core/customer.js'
 import { drawerTotal } from '../../core/money.js'
 import { fill, formatVND } from '../format.js'
-import { paintCustomer, paintOrder, paintSheet, dropOrder, dropAll, sheetOpen, customerSlot, stripInset, diSauFace } from './counter-order.js'
+import { paintCustomer, paintOrder, paintSheet, dropOrder, dropAll, sheetOpen, diSauFace, trayOf, stickyBarTop, revealInTray } from './counter-order.js'
 import { renderPayment } from './counter-pay.js'
 import { renderCash } from './counter-cash.js'
 import { renderQr } from './counter-qr.js'
 import { renderReceipt } from './counter-receipt.js'
 
-// Ngưỡng chiều cao vùng cuộn của panel (px) cho bố cục gọn: thấp (360×600, 320×568, iPhone có thanh Safari) và rất thấp
-// (iPhone SE có vùng an toàn: panel còn ~190px) — khách + bong bóng thu gọn để hàng thẻ món đầu lộ trên hàng nút dính đáy.
+// Ngưỡng chiều cao vùng cuộn của panel (px) cho bố cục gọn của bản 0.5.1 (lớp co-fit-low / co-fit-tiny). Vừa màn: không
+// dùng nữa (bậc theo data-fit của màn Ca bán) — giữ export cho tương thích.
 export const FIT_LOW = 420
 export const FIT_TINY = 250
 
@@ -53,8 +62,14 @@ function idlePose(s) {
   return 'lau_mo_hoi'
 }
 
+// Bậc khung của màn Ca bán (service.js ghi data-fit lên .service-screen): 'l' | 'm' | 's' | 'xs' | '' (ngoài màn Ca bán).
+const fitAt = node => {
+  const f = node && typeof node.closest === 'function' ? node.closest('[data-fit]') : null
+  return f ? f.dataset.fit || '' : ''
+}
+
 export function mountCounter(root, app, opts = {}) {
-  const el = h('div', { class: 'counter', testid: 'counter-panel' })
+  const el = h('div', { class: 'counter co-scene', testid: 'counter-panel' })
   root.appendChild(el)
   const R = app.data.RECIPES
   const S = app.data.STRINGS
@@ -68,7 +83,6 @@ export function mountCounter(root, app, opts = {}) {
   // lời Dì Sáu ngày 1: nút bền, chỉ đổi chữ / chỗ đặt (không hoạt ảnh: vẽ lại không phát lại gì)
   const tutorText = h('span', { class: 'co-tutor-text' })
   const tutor = h('div', { class: 'co-tutor', testid: 'tutor-hint', role: 'note' }, svgBox(diSauFace('vui'), 'co-tutor-face'), tutorText)
-  let tutorHost = null // .act-bar đang chứa lời Dì Sáu (gắn lớp co-has-tutor)
   const tutorDock = h('div', { class: 'act-bar co-tutor-dock' })   // hàng dính riêng ngay trên hàng nút của khâu khác
   // Bảng chọn món gắn ở lớp nổi gốc của app, KHÔNG nằm trong panel Quầy (vùng cuộn): iOS Safari cắt lớp phủ nằm trong
   // vùng cuộn theo khung panel nên thanh tab Quầy/Bếp che mất nút "Thêm vào phiếu" (lỗi trên iPhone thật).
@@ -137,13 +151,10 @@ export function mountCounter(root, app, opts = {}) {
     while (el.children.length > nodes.length) el.lastElementChild.remove()
   }
 
-  // Lớp bố cục gọn theo chiều cao vùng cuộn (ResizeObserver gọi lại khi panel đổi cỡ: xoay máy, dải phố co lại…).
+  // Panel đổi cỡ (xoay máy, khung đổi bậc): đo lại hàng dính riêng của lời nhắc (ResizeObserver gọi lại). Bố cục theo bậc là
+  // CSS thuần ([data-fit] của màn), không bật lớp nào ở đây.
   function fit() {
     if (destroyed) return
-    const k = fitOf(root && root.clientHeight)
-    if (k === null) return
-    el.classList.toggle('co-fit-low', k === 'low' || k === 'tiny')
-    el.classList.toggle('co-fit-tiny', k === 'tiny')
     syncDock()
   }
 
@@ -152,7 +163,10 @@ export function mountCounter(root, app, opts = {}) {
     const c = counter()
     const customer = customerOf(c)
     if ((customer ? customer.id : null) !== ui.customerId) ui = freshUi(customer ? customer.id : null)
-    const scroll = el.scrollTop
+    // khay cũ (khâu dựng mới mỗi lần vẽ lại): giữ vị trí cuộn cho khay mới của CÙNG khâu
+    const oldTray = trayOf(ctx)
+    const oldTop = oldTray ? oldTray.scrollTop : 0
+    const oldKey = ui.stageKey
     el.dataset.stage = c ? c.stage : ''
     fit()
     if (!s) { dropAll(ctx); idle = null; setChildren([]); sheetPortal.set(null); return }
@@ -170,74 +184,81 @@ export function mountCounter(root, app, opts = {}) {
         else if (c.stage === 'tinh_tien') nodes.push(renderCashier(customer, c))
       }
     }
+    // khay = phần tử khâu / quầy trống (hàng 3 của lưới, css/counter.css .co-tray); khách là hàng 1
+    for (const n of nodes) if (n && n.classList && !n.classList.contains('co-cust-area')) n.classList.add('co-tray')
     setChildren(nodes)
     paintSheet(ctx, c)
     placeTutor(c, customer)
     const glowMoved = applyGlow(c, customer)
-    el.scrollTop = scroll
     sig = stateSig()
     ui.lastAdded = null
-    // sang khâu mới: cuộn panel để phần thao tác của khâu đó lọt vào màn hình
+    // sang khâu mới: cuộn khay để phần thao tác của khâu đó lọt vào màn hình
     const stageKey = c && customer ? [customer.id, c.stage, isPaid(c)].join(':') : ''
     const stageMoved = stageKey !== ui.stageKey
+    const tray = trayOf(ctx)
+    if (!stageMoved && tray && tray !== oldTray && oldTop && stageKey === oldKey) tray.scrollTop = oldTop
     if (stageMoved) {
       ui.stageKey = stageKey
       if (c) revealStage(c)
     }
-    // ngày 1: nút được tô sáng vừa đổi mà còn khuất dưới hàng nút dính đáy (màn thấp) → cuộn cho thấy. Bước chạm thẻ món
-    // (phiếu trống): không cuộn khuất lời gọi món của khách — Dì Sáu bảo "ghi y vậy" thì người mới phải thấy khách nói gì.
-    if (glowMoved && glowEl) revealGlow(glowEl, c && c.stage === 'order' && !c.draft.length ? el.querySelector('[data-testid="speech-bubble"]') : null)
+    // ngày 1: nút được tô sáng vừa đổi mà còn khuất (khay cuộn ở khung nhỏ) → cuộn khay cho thấy
+    if (glowMoved && glowEl) revealGlow(glowEl)
   }
 
   const isPaid = c => !!(c && (c.payMethod === 'cash' ? c.changeDone : c.paid))
 
-  function revealStage(c) {
-    const sc = root
-    if (!sc || destroyed || !sc.getBoundingClientRect) return
-    if (c.stage === 'order') { sc.scrollTop = 0; return }
-    const st = el.querySelector('.stage')
-    if (!st) return
-    const paper = c.stage === 'tinh_tien' && isPaid(c) ? st.querySelector('[data-testid="receipt"]') : null
-    if (paper) { revealReceipt(st, paper); return }
-    const a = st.getBoundingClientRect(), b = sc.getBoundingClientRect()
-    const over = a.bottom - b.bottom
-    // đẩy lên vừa đủ để thấy đáy khâu, nhưng không đẩy tiêu đề khâu ra khỏi màn hình
-    if (over > 0) sc.scrollTop += Math.min(over, Math.max(0, a.top - b.top))
+  // Khay đang cuộn được (nội dung cao hơn khay — khung nhỏ) hoặc null (khay vừa: không có gì để cuộn).
+  function scrollTray() {
+    const t = trayOf(ctx)
+    if (!t || destroyed || typeof t.getBoundingClientRect !== 'function') return null
+    return t.scrollHeight > t.clientHeight + 1 ? t : null
   }
 
-  // Vừa thu tiền xong (két / điện thoại thu lại, phiếu thu hiện): nội dung panel đổi hẳn cao thấp nên vị trí cuộn cũ có thể
-  // để đầu phiếu nằm trên mép panel. Thứ tự ưu tiên trong phần nhìn thấy (dưới mép trên, trên hàng nút dính đáy):
-  // cả khâu (tiêu đề → đáy phiếu) → trọn tờ phiếu (đáy phiếu sát hàng nút, phía trên lộ thêm được bao nhiêu thì lộ) →
-  // đầu phiếu (tên xe, "Phiếu thu #00n") sát mép trên, hàng Tổng lộ nếu còn đủ chỗ.
-  function revealReceipt(st, paper) {
-    const sc = root
+  // Vào khâu mới: Order về đầu khay (thực đơn); vừa thu tiền (phiếu thu hiện) thì cho phiếu lọt; khâu khác có hàng nút dính
+  // đáy thì đầu khay (hàng nút luôn thấy); khâu không có hàng nút dính (Thanh toán: "Báo tổng" ở đáy máy tính tiền) thì cuộn
+  // vừa đủ để đáy khâu lọt (nút chính của khâu luôn thấy lúc vào khâu).
+  function revealStage(c) {
+    const t = trayOf(ctx)
+    if (!t || destroyed) return
+    if (t.scrollTop) t.scrollTop = 0
+    if (c.stage === 'order' || !scrollTray()) return
+    const paper = c.stage === 'tinh_tien' && isPaid(c) ? t.querySelector('[data-testid="receipt"]') : null
+    if (paper) { revealReceipt(t, paper); return }
+    if (stickyBarTop(t) !== null) return
+    const over = t.scrollHeight - t.clientHeight
+    if (over > 0) t.scrollTop = over
+  }
+
+  // Vừa thu tiền xong (két / điện thoại thu lại, phiếu thu hiện): cuộn KHAY để thấy, theo thứ tự ưu tiên trong phần nhìn thấy
+  // (dưới mép trên khay, trên hàng nút dính đáy): cả khâu (đầu khay → đáy phiếu) → trọn tờ phiếu (đáy phiếu sát hàng nút,
+  // phía trên lộ thêm được bao nhiêu thì lộ) → đầu phiếu (tên xe, "Phiếu thu #00n") sát mép trên, hàng Tổng lộ nếu đủ chỗ.
+  function revealReceipt(sc, paper) {
     const box = sc.getBoundingClientRect()
     if (!box.height) return
-    const bar = st.querySelector('.act-bar')
-    const br = bar ? bar.getBoundingClientRect() : null
+    const barTop = stickyBarTop(sc)
     const top = box.top + 4
-    const limit = (br && br.height ? Math.min(box.bottom, br.top) : box.bottom) - 4
+    const limit = (barTop !== null ? Math.min(box.bottom, barTop) : box.bottom) - 4
     const room = limit - top
-    const a = st.getBoundingClientRect()
+    const first = [...sc.children].find(n => n !== tutorDock && n.getClientRects().length && !n.classList.contains('act-bar'))
+    const aTop = (first ? first.getBoundingClientRect().top : box.top) - 4
     const p = paper.getBoundingClientRect()
     if (room <= 0 || !p.height) return
     const pTop = p.top - 12   // chừa mép răng cưa trên đầu tờ phiếu
     let d
-    if (p.bottom - a.top <= room) d = a.top < top ? a.top - top : Math.max(0, p.bottom - limit)
+    if (p.bottom - aTop <= room) d = aTop < top ? aTop - top : Math.max(0, p.bottom - limit)
     else if (p.bottom - pTop <= room) d = p.bottom - limit
     else d = pTop - top
     if (Math.abs(d) >= 1) sc.scrollTop += d
   }
 
   // Đặt lời Dì Sáu (ngày 1) theo khâu:
-  //   'under'  phiếu order trống → dưới bong bóng khách (panel đang ở đầu);
-  //   'dock'   khâu có hàng nút dính đáy → tờ giấy nhắc dính ngay trên hàng nút. Hàng nút "Đọc lại đơn / Chốt order" của
-  //            khâu Order (của gói này) nhận lời nhắc làm dòng đầu; hàng nút của khâu khác (Tính tiền, chuyển khoản, phiếu
-  //            thu — bố cục riêng của module khâu) giữ nguyên, lời nhắc nằm trong một hàng dính riêng .act-bar.co-tutor-dock
-  //            đứng NGAY TRƯỚC nó, ôm luôn chỗ của hàng nút (syncDock). Hàng dính riêng là .act-bar đầu tiên của panel nên
-  //            mọi hàm cuộn "lọt trên hàng nút" (đo mép trên .act-bar đầu tiên) chừa luôn lời nhắc.
-  //            Panel rất thấp (.co-fit-tiny, ~190px): hàng riêng KHÔNG dính (bỏ lớp act-bar, nằm theo dòng ngay trên hàng
-  //            nút) — dính thêm một hàng ở đó sẽ đè kín két / phím, người chơi cuộn tới cuối khâu thì đọc được;
+  //   'row'    khâu Order (phiếu trống hay đã có dòng) → hàng riêng của khay Order (lưới "tutor", giữa thực đơn và phiếu):
+  //            dải giấy trong luồng, không đẩy cảnh (khách + bong bóng đứng yên), không vào cột nút "Đọc lại đơn / Chốt order";
+  //   'dock'   khâu có hàng nút dính đáy nằm ngang (Tính tiền, chuyển khoản, phiếu thu — bố cục riêng của module khâu) → lời
+  //            nhắc trong một hàng dính riêng .act-bar.co-tutor-dock đứng NGAY TRƯỚC hàng nút, ôm luôn chỗ của hàng nút
+  //            (syncDock). Hàng dính riêng là .act-bar đầu tiên của khay nên mọi hàm cuộn "lọt trên hàng nút" chừa luôn lời
+  //            nhắc. Khay rất thấp (bậc xs) hoặc hàng nút không dính: hàng riêng KHÔNG dính (bỏ lớp act-bar, nằm theo dòng ngay
+  //            trên hàng nút) — dính thêm một hàng ở đó sẽ đè kín két / phím;
   //   'inline' khâu không có hàng nút (Thanh toán) → ngay trên phần thao tác cuối của khâu, chỉ câu đầu của lời nhắc cho gọn
   //            một dòng (phần "gõ theo nghìn" đã in sẵn trên máy tính tiền).
   // Không có lời → gỡ ra.
@@ -247,14 +268,15 @@ export function mountCounter(root, app, opts = {}) {
     let ref = null
     let mode = ''
     if (full) {
-      if (c.stage === 'order' && !c.draft.length) { host = customerSlot(ctx); mode = 'under' }
-      else {
-        const st = el.querySelector('.stage')
+      const st = trayOf(ctx)
+      if (c.stage === 'order') {
+        if (st) { host = st; mode = 'row' }
+      } else {
         const bar = st ? [...st.querySelectorAll('.act-bar')].find(b => b !== tutorDock && !b.contains(tutorDock)) : null
         if (bar) {
           mode = 'dock'
-          if (c.stage === 'order') host = bar
-          else { host = tutorDock; ref = bar }
+          host = tutorDock
+          ref = bar
         } else if (st) {
           const kids = [...st.children].filter(n => n !== tutor)
           ref = kids.length > 1 ? kids[kids.length - 1] : null
@@ -265,51 +287,48 @@ export function mountCounter(root, app, opts = {}) {
     }
     const hint = mode === 'inline' ? firstSentence(full) : full
     if (tutorText.textContent !== hint) tutorText.textContent = hint
-    // lời nhắc dưới bong bóng: panel thấp thu gọn khách (css .co-tut-under) để bong bóng + lời nhắc + đầu hàng thẻ món cùng lọt
-    el.classList.toggle('co-tut-under', mode === 'under')
-    const inBar = mode === 'dock' && host !== tutorDock
-    if (tutorHost && tutorHost !== host) tutorHost.classList.remove('co-has-tutor')
-    tutorHost = inBar ? host : null
     if (tutorDock.parentNode && host !== tutorDock) tutorDock.remove()
     if (!host) { if (tutor.parentNode) tutor.remove(); return }
+    tutor.classList.toggle('is-row', mode === 'row')
     tutor.classList.toggle('is-dock', mode === 'dock')
     tutor.classList.toggle('is-inline', mode === 'inline')
-    if (inBar) {
-      host.classList.add('co-has-tutor')
-      if (host.firstElementChild !== tutor) host.insertBefore(tutor, host.firstChild)
+    if (mode === 'row') {
+      // ngay sau bảng thực đơn (lưới đặt theo vùng tên; thứ tự DOM giữ cho trình đọc màn hình và bố cục xếp chồng < 340px)
+      const menuEl = host.querySelector(':scope > .co-menu')
+      const at = menuEl ? menuEl.nextElementSibling : host.firstElementChild
+      if (tutor.parentNode !== host || (at !== tutor && tutor.previousElementSibling !== menuEl)) host.insertBefore(tutor, at)
     } else if (host === tutorDock) {
       if (tutorDock.parentNode !== ref.parentNode || tutorDock.nextElementSibling !== ref) ref.parentNode.insertBefore(tutorDock, ref)
       if (tutor.parentNode !== tutorDock) tutorDock.appendChild(tutor)
       syncDock()
     } else if (mode === 'inline') {
       if (tutor.parentNode !== host || tutor.nextElementSibling !== ref) host.insertBefore(tutor, ref)
-    } else if (host.lastElementChild !== tutor) host.appendChild(tutor)
+    }
   }
 
   // Hàng dính riêng của lời nhắc: dính đáy (bottom 0) với phần đệm dưới đúng bằng chiều cao hàng nút của khâu và lề dưới âm
   // cùng cỡ — hàng nút (đứng sau, vẽ đè lên) nằm gọn trong phần đệm đó, tờ giấy nhắc lộ ngay trên. Nhờ vậy chiều cao hàng
-  // dính riêng = lời nhắc + hàng nút: hàm cuộn nào chừa "thanh dính cao nhất" (vd tour) cũng chừa đủ. Đo lại mỗi lần vẽ /
-  // đổi bố cục. Panel rất thấp: hàng thường theo dòng (không phải .act-bar, không dính, không đệm).
+  // dính riêng = lời nhắc + hàng nút: hàm cuộn nào chừa "thanh dính cao nhất" (vd tour) cũng chừa đủ. Chỉ khi hàng nút của
+  // khâu là hàng ngang ĐANG DÍNH (position: sticky) và khay không ở bậc xs; còn lại là hàng thường theo dòng (không phải
+  // .act-bar, không dính, không đệm). Đo lại mỗi lần vẽ / đổi bố cục.
   function syncDock() {
-    const flat = el.classList.contains('co-fit-tiny')
+    const bar = tutorDock.isConnected ? tutorDock.nextElementSibling : null
+    const sticky = !!bar && typeof getComputedStyle === 'function' && getComputedStyle(bar).position === 'sticky'
+    const flat = !sticky || fitAt(el) === 'xs'
     tutorDock.classList.toggle('act-bar', !flat)
     tutorDock.classList.toggle('is-flat', flat)
-    const bar = tutorDock.nextElementSibling
-    const hgt = !flat && tutorDock.isConnected && bar ? Math.max(0, Math.round(bar.offsetHeight || 0)) : 0
+    const hgt = !flat && bar ? Math.max(0, Math.round(bar.offsetHeight || 0)) : 0
     const pad = hgt ? hgt + 'px' : ''
     const mar = hgt ? -hgt + 'px' : ''
     if (tutorDock.style.paddingBottom !== pad) tutorDock.style.paddingBottom = pad
     if (tutorDock.style.marginBottom !== mar) tutorDock.style.marginBottom = mar
   }
 
-  // Cuộn panel để phần tử nằm trên thanh nút dính đáy (.act-bar) của khâu hiện tại.
+  // Cuộn KHAY để phần tử nằm trên hàng nút dính đáy nằm ngang của khâu hiện tại (khay vừa: không cuộn gì). Các module khâu
+  // gọi qua ctx.revealAboveBar.
   function revealAboveBar(node) {
-    const sc = root
-    if (!node || destroyed || !sc || !sc.getBoundingClientRect) return
-    const bar = el.querySelector('.act-bar')
-    const limit = bar ? bar.getBoundingClientRect().top : sc.getBoundingClientRect().bottom
-    const over = node.getBoundingClientRect().bottom - (limit - 6)
-    if (over > 0) sc.scrollTop += over
+    if (!node || destroyed) return
+    revealInTray(ctx, node)
   }
 
   // Quầy trống: Dì Sáu đứng sau quầy (dáng theo tình huống) + tấm giấy ghi lời nhắn, nút "Qua Bếp" khi dây bếp có phiếu.
@@ -344,7 +363,8 @@ export function mountCounter(root, app, opts = {}) {
 
   function renderCashier(customer, c) {
     const body = h('div', { class: 'stage stage-cash' })
-    body.appendChild(h('h3', { class: 'stage-title' }, c.payMethod === 'qr' ? 'Nhận chuyển khoản' : 'Tính tiền, thối tiền'))
+    // tiêu đề khâu chỉ còn cho trình đọc màn hình ở bố cục cảnh (biển 4 khâu đã gọi tên khâu, khay chừa chỗ cho két / QR)
+    body.appendChild(h('h3', { class: 'stage-title co-stage-title' }, c.payMethod === 'qr' ? 'Nhận chuyển khoản' : 'Tính tiền, thối tiền'))
     const paid = c.payMethod === 'cash' ? c.changeDone : c.paid
     if (c.payMethod === 'qr') body.appendChild(renderQr(ctx, customer, c))
     else if (!c.changeDone) body.appendChild(renderCash(ctx, customer, c))
@@ -421,28 +441,13 @@ export function mountCounter(root, app, opts = {}) {
     return moved
   }
 
-  // Cuộn panel (tức thì) để nút được tô sáng nằm trọn phía trên hàng nút dính đáy, không đẩy đầu nút khuất mép trên.
-  // keep (tùy chọn): phần tử đang thấy đỉnh thì không được cuộn khuất đỉnh (lời gọi món của khách ở bước chạm thẻ món). Màn
-  // thấp không đủ chỗ cho cả hai: thẻ món chỉ lộ phần trên (viền sáng vẫn thấy), người chơi cuộn xuống — như bản 0.5.0.
-  function revealGlow(t, keep = null) {
-    const sc = root
-    if (destroyed || !sc || !sc.getBoundingClientRect || !el.contains(t)) return
-    // nút nằm trong một hàng dính đáy thì luôn thấy
-    if (t.closest('.act-bar')) return
-    const bar = el.querySelector('.act-bar')
-    const box = sc.getBoundingClientRect()
-    if (!box.height) return
-    const limit = bar && bar.getBoundingClientRect().height ? Math.min(box.bottom, bar.getBoundingClientRect().top) : box.bottom
-    const r = t.getBoundingClientRect()
-    const over = r.bottom - (limit - 8)
-    if (over <= 0) return
-    let d = Math.min(over, Math.max(0, r.top - box.top - stripInset(ctx) - 8))
-    if (keep && keep.isConnected) {
-      const k = keep.getBoundingClientRect()
-      const edge = box.top + stripInset(ctx) + 4
-      if (k.height && k.top >= edge - 0.5) d = Math.min(d, Math.max(0, k.top - edge))
-    }
-    if (d > 0) sc.scrollTop += d
+  // Cuộn KHAY (tức thì) để nút được tô sáng nằm trọn phía trên hàng nút dính đáy nằm ngang, không đẩy đầu nút khuất mép
+  // trên. Khách + bong bóng ở cảnh luôn thấy (không cần giữ); khay vừa thì không cuộn gì; nút trong hàng dính đáy luôn thấy.
+  // Nút ở lớp nổi (bảng chọn món) không thuộc khay: bỏ qua.
+  function revealGlow(t) {
+    if (destroyed || !t || !el.contains(t)) return
+    if (t.closest('.act-bar') && getComputedStyle(t.closest('.act-bar')).position === 'sticky') return
+    revealInTray(ctx, t, { gap: 8 })
   }
 
   // ---------- Vòng đời ----------
@@ -481,7 +486,6 @@ export function mountCounter(root, app, opts = {}) {
       dropAll(ctx)
       sheetPortal.set(null)
       glowEl = null
-      tutorHost = null
       el.remove()
     }
   }
