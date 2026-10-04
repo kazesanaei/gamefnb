@@ -318,7 +318,8 @@ function okStamp(app, ghost) {
   } catch { end() }
 }
 
-// Bảng giá phấn: mỗi món thực đơn một dòng (hình món, tên, giá gọn "20k"), phần cộng thêm của ghi chú là dòng phụ.
+// Bảng giá phấn: mỗi món thực đơn một dòng (hình món, tên, giá gọn "20k"), phần cộng thêm của ghi chú là dòng phụ. Tên tối
+// đa 2 dòng (css/cashier.css; bảng hẹp hơn mọi khung đo thì cắt "…" ở dòng 2): title giữ tên đầy đủ.
 export function renderPriceBoard(ctx) {
   const { app, R } = ctx
   const menu = orderableRecipes(app.state, app.ctx)
@@ -328,13 +329,13 @@ export function renderPriceBoard(ctx) {
     if (!r) continue
     rows.push(h('li', { class: 'cs-board-row', 'aria-label': `${r.name}: ${formatVND(r.price)}` },
       dishArt(r, 'cs-board-dish'),
-      h('span', { class: 'cs-board-name' }, r.name),
+      h('span', { class: 'cs-board-name', title: r.name }, r.name),
       h('b', { class: 'cs-board-price' }, formatK(r.price))))
     for (const n of r.notes || []) {
       if (!n.surcharge) continue
       rows.push(h('li', { class: 'cs-board-row is-sub', 'aria-label': `Thêm cho ${r.name}, ${n.label}: ${formatVND(n.surcharge)}` },
         noteIcon(n.id, { recipe: r, size: 22, decorative: true, className: 'cs-board-note' }),
-        h('span', { class: 'cs-board-name' }, n.label),
+        h('span', { class: 'cs-board-name', title: n.label }, n.label),
         h('b', { class: 'cs-board-price' }, '+' + formatK(n.surcharge))))
     }
   }

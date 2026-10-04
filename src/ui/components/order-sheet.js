@@ -4,7 +4,9 @@
 // Giữ testid cũ: order-sheet, sheet-close, qty-row, qty-minus, qty-value (CHỈ chứa con số), qty-plus, note-block,
 // note-chip-<id> (aria-pressed), add-line, remove-line.
 // Dải "Khách nói" (data.heard, tùy chọn) ở đầu bảng: bảng che bong bóng của khách nên lời khách được nhắc lại ngay trên
-// bảng — kiểu 'text' ghi nguyên văn (tối đa 3 dòng), kiểu 'icons' hiện hình món, ×n và ghi chú bằng hình kèm câu gọi món.
+// bảng — kiểu 'text' ghi nguyên văn, kiểu 'icons' hiện hình món, ×n và ghi chú bằng hình kèm câu gọi món. Lời gọi món dài
+// (kiểu 'text' quá 4 dòng): fit() cho hiện TRỌN khi bảng còn chỗ (thân bảng không phải cuộn — khung chính); hết chỗ (khung
+// nhỏ) thì kẹp 4 dòng "…" và cả dải thành nút "chạm để xem đủ" (dấu ⌄, chạm lần nữa thu lại).
 // Bảng tự giữ số lượng / ghi chú đang chọn và báo ra ngoài qua onChange; update(data) đồng bộ lại khi bên gọi vẽ lại
 // (cùng dữ liệu thì không đổi gì, không phát lại hiệu ứng). Hiệu ứng chỉ theo thao tác: phần mới nảy vào, chip bật nảy.
 // Thuần ở cấp module (import trong Node được).
@@ -76,7 +78,7 @@ export function heardModel(heard) {
 }
 
 /**
- * createOrderSheet(data, opts) → { el, sheetEl, update(data), destroy(), leave() → Promise, heroEl(), state() }
+ * createOrderSheet(data, opts) → { el, sheetEl, update(data), fit(force), destroy(), leave() → Promise, heroEl(), state() }
  * data: { recipe, qty, notes, editIndex, qtyMax, rareMax,
  *   heard: { mode: 'icons' | 'text', text (lời khách), lines: [{ recipeId, qty, notes }] (kiểu 'icons'), recipes } (tùy chọn) }
  * opts: {
@@ -116,6 +118,8 @@ export function createOrderSheet(data = {}, opts = {}) {
   const bodyEl = h('div', { class: 'co-sheet-body' }, stage, noteBlock)
   const actions = h('div', { class: 'co-sheet-actions' })
   const heardEl = h('div', { class: 'co-heard', role: 'note', hidden: true })
+  // dấu "còn chữ" của dải Khách nói bị kẹp (chỉ hiện khi is-clamped; mở rồi thì lật lên)
+  const heardMore = h('span', { class: 'co-heard-more', 'aria-hidden': 'true' }, '⌄')
   const sheet = h('div', { class: 'co-sheet', testid: 'order-sheet', role: 'dialog', 'aria-modal': 'true' },
     h('div', { class: 'co-sheet-grip', 'aria-hidden': 'true' }),
     heardEl,
@@ -222,7 +226,7 @@ export function createOrderSheet(data = {}, opts = {}) {
     heardSig = k
     heardEl.textContent = ''
     heardEl.hidden = !m
-    if (!m) { heardEl.removeAttribute('aria-label'); return }
+    if (!m) { heardEl.removeAttribute('aria-label'); heardEl.classList.remove('is-full', 'is-clamped', 'is-open'); syncHeardRole(); return }
     const R = (cur.heard && cur.heard.recipes) || {}
     heardEl.dataset.mode = m.mode
     heardEl.setAttribute('aria-label', L.heard + ': ' + (m.text || m.lines.map(l => `${l.qty} ${R[l.recipeId] ? R[l.recipeId].name : l.recipeId}`).join(', ')))
@@ -230,6 +234,8 @@ export function createOrderSheet(data = {}, opts = {}) {
     const label = h('span', { class: 'co-heard-label', 'aria-hidden': 'true' }, L.heard)
     if (m.mode === 'text') {
       heardEl.appendChild(h('p', { class: 'co-heard-text', 'aria-hidden': 'true' }, label, ' ', `“${m.text}”`))
+      heardEl.appendChild(heardMore)
+      fitHeard(true)
       return
     }
     heardEl.appendChild(label)
@@ -243,7 +249,52 @@ export function createOrderSheet(data = {}, opts = {}) {
       })))
     }
     if (m.text) heardEl.appendChild(h('p', { class: 'co-heard-text', 'aria-hidden': 'true' }, `“${m.text}”`))
+    fitHeard(true)
   }
+
+  // Lời gọi món dài ở dải "Khách nói" (kiểu chữ, kẹp 4 dòng). Đo theo SỰ KIỆN — lời đổi, bên gọi gọi fit() sau khi gắn bảng /
+  // khi màn đổi cỡ (force) — không mỗi khung hình: chữ dài hơn 4 dòng mà bảng còn chỗ (thân bảng vẫn không phải cuộn) thì
+  // hiện trọn (is-full); hết chỗ thì giữ kẹp, cả dải thành nút chạm để xem đủ (is-clamped; is-open khi đang mở).
+  let heardFitKey = ''
+  function fitHeard(force = false) {
+    if (destroyed || !el.isConnected || typeof getComputedStyle !== 'function') return
+    const key = [heardSig, sheet.clientWidth, el.clientHeight].join('|')
+    if (!force && key === heardFitKey) return
+    heardFitKey = key
+    heardEl.classList.remove('is-full', 'is-clamped', 'is-open')
+    syncHeardRole()
+    const text = heardEl.querySelector('.co-heard-text')
+    if (heardEl.hidden || heardEl.dataset.mode !== 'text' || !text || text.scrollHeight <= text.clientHeight + 1) return
+    const bodyScrolls = () => bodyEl.scrollHeight > bodyEl.clientHeight + 1
+    const scrolled = bodyScrolls()
+    heardEl.classList.add('is-full')
+    if (!scrolled && !bodyScrolls()) return
+    heardEl.classList.remove('is-full')
+    heardEl.classList.add('is-clamped')
+    syncHeardRole()
+  }
+  // dải bị kẹp là nút (bàn phím: Enter / Space); còn lại là ghi chú thường
+  function syncHeardRole() {
+    const btn = heardEl.classList.contains('is-clamped')
+    heardEl.setAttribute('role', btn ? 'button' : 'note')
+    if (btn) {
+      heardEl.tabIndex = 0
+      heardEl.setAttribute('aria-expanded', heardEl.classList.contains('is-open') ? 'true' : 'false')
+    } else {
+      heardEl.removeAttribute('tabindex')
+      heardEl.removeAttribute('aria-expanded')
+    }
+  }
+  function toggleHeard() {
+    if (destroyed || leaving || !heardEl.classList.contains('is-clamped')) return
+    heardEl.classList.toggle('is-open')
+    syncHeardRole()
+    sound('click')
+  }
+  heardEl.addEventListener('click', toggleHeard)
+  heardEl.addEventListener('keydown', e => {
+    if ((e.key === 'Enter' || e.key === ' ') && heardEl.classList.contains('is-clamped')) { e.preventDefault(); toggleHeard() }
+  })
 
   function paintActions() {
     const key = model.editing ? 'edit' : 'add'
@@ -321,6 +372,7 @@ export function createOrderSheet(data = {}, opts = {}) {
     el,
     sheetEl: sheet,
     update,
+    fit: force => fitHeard(!!force),
     leave,
     destroy,
     heroEl: () => plate,

@@ -1201,6 +1201,31 @@ html.reduce-motion .co-line.is-reading::before { animation: none !important; opa
 /* kiểu chữ: nhãn đứng đầu đoạn, chữ chảy tiếp sau nhãn */
 .co-heard-text > .co-heard-label { display: inline-block; margin-right: 2px; vertical-align: 1px; font-style: normal; }
 .co-heard[data-mode="text"] .co-heard-text { -webkit-line-clamp: 4; }
+/* lời gọi món dài (order-sheet fitHeard): bảng còn chỗ thì hiện trọn (is-full); hết chỗ thì kẹp 4 dòng và cả dải là nút chạm
+   để xem đủ (is-clamped: dấu ⌄ góc phải dưới; is-open: hiện trọn, dấu lật lên — chạm lần nữa thu lại) */
+.co-heard.is-full .co-heard-text,
+.co-heard.is-open .co-heard-text { display: block; -webkit-line-clamp: none; overflow: visible; }
+.co-heard-more { display: none; }
+.co-heard.is-clamped { cursor: pointer; padding-right: 30px; }
+.co-heard.is-clamped .co-heard-more {
+  position: absolute;
+  right: 6px;
+  bottom: 5px;
+  display: block;
+  width: 22px;
+  height: 18px;
+  border: 2px solid var(--g-ink);
+  border-radius: 9px;
+  background: var(--g-gold, #f7b928);
+  color: var(--g-ink);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 10px;
+  text-align: center;
+  pointer-events: none;
+}
+.co-heard.is-open .co-heard-more { transform: rotate(180deg); }
+.co-heard.is-clamped:focus-visible { outline: 3px solid var(--g-gold, #f7b928); outline-offset: 2px; }
 /* màn thấp: kiểu hình chỉ còn nhãn + hàng món (một dòng), chừa chỗ cho thớt và chip ghi chú */
 @media (max-height: 700px) {
   .co-heard { margin-top: 4px; padding: 4px 10px; }
@@ -1442,8 +1467,9 @@ html.reduce-motion .co-idle-bob { animation: none !important; }
 [data-fit="m"] .co-scene .co-bubble,
 [data-fit="m"] .co-scene .co-cust-wrap .co-bubble { max-height: calc(100% - 3px); margin: 1px 0 2px; padding: 4px 10px 5px; }
 [data-fit="m"] .co-scene .co-bubble[data-mode] .co-bubble-say { line-height: 1.24; }
-/* lời khách dài hơn bong bóng (order-bubble fit): 1. lời qua lại nhường chỗ (chỉ còn cho máy đọc — aria-live vẫn đọc);
-   2. chữ 13px giãn 1,2; 3. vẫn dài: vùng chữ cuộn được, mờ dần ở đáy + dấu ⌄ (kéo tới cuối thì tắt) */
+/* lời khách dài hơn bong bóng (order-bubble fit — khâu gọi món ở khung chính giữ lời qua lại, xem .co-talk bên dưới): lời
+   qua lại nhường chỗ (chỉ còn cho máy đọc — aria-live vẫn đọc); chữ 13px giãn 1,2; bong bóng sát hàng giữa; bán thân thu nhỏ;
+   vẫn dài: vùng chữ cuộn được, mờ dần ở đáy + dấu ⌄ (kéo tới cuối thì tắt) */
 .co-scene .co-cust-wrap.is-talk-off .co-talk { position: absolute; width: 1px; height: 1px; margin: 0; padding: 0; overflow: hidden; clip-path: inset(50%); }
 .co-scene .co-cust-wrap.is-say-tight { --co-say: 13px; }
 .co-scene .co-cust-wrap.is-say-tight .co-bubble { padding-top: 4px; padding-bottom: 4px; }
@@ -1455,10 +1481,13 @@ html.reduce-motion .co-idle-bob { animation: none !important; }
 [data-fit] .co-scene .co-cust-wrap.is-say-full .co-bubble { max-height: 100%; margin-top: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 2px; }
 .co-scene .co-cust-wrap.is-say-full .co-bubble[data-mode] .co-bubble-say { padding-top: 2px; line-height: 1.15; }
 /* 4. vẫn dài: bán thân khách thu nhỏ một nấc (bậc l 124 / 116 → 104, m 100 → 84, s 82 → 70; xs giữ 60) để bong bóng rộng
-   thêm ~16px, bớt một dòng. Nhãn tên, chỗ cắt ở mặt quầy theo --co-bust nên tự theo. */
-[data-fit="l"] .co-scene .co-cust-wrap.is-say-wide { --co-bust: min(104px, calc(var(--co-mid) * 1.01)); }
-[data-fit="m"] .co-scene .co-cust-wrap.is-say-wide { --co-bust: min(84px, calc(var(--co-mid) * 1.01)); }
-[data-fit="s"] .co-scene .co-cust-wrap.is-say-wide { --co-bust: min(70px, calc(var(--co-mid) * 1.01)); }
+   thêm ~16px, bớt một dòng; order-bubble giữ lớp này tới hết lượt khách (Thanh toán, Tính tiền…). Đặt --co-bust trên CHÍNH
+   lưới cảnh (div.counter) chứ không chỉ khung khách: nhãn tên, chỗ cắt ở mặt quầy và đồ trên mặt quầy của khâu sau (phiếu
+   order hình, thẻ Khách đưa / Tổng, thẻ Đã nhận — --cs-left của css/cashier.css, receipt.css tính từ --co-bust của lưới)
+   cùng theo cỡ bán thân thật, khe giữa bán thân và đồ trên quầy giữ 10px */
+[data-fit="l"] .co-scene:has(> .co-cust-area > .co-cust-wrap.is-say-wide) { --co-bust: min(104px, calc(var(--co-mid) * 1.01)); }
+[data-fit="m"] .co-scene:has(> .co-cust-area > .co-cust-wrap.is-say-wide) { --co-bust: min(84px, calc(var(--co-mid) * 1.01)); }
+[data-fit="s"] .co-scene:has(> .co-cust-area > .co-cust-wrap.is-say-wide) { --co-bust: min(70px, calc(var(--co-mid) * 1.01)); }
 .co-bubble-more { display: none; }
 .co-scene .co-bubble.is-more .co-bubble-say {
   -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 18px), transparent);
@@ -1499,20 +1528,47 @@ html.reduce-motion .co-idle-bob { animation: none !important; }
 .co-scene .co-bubble[data-n] .co-bubble-notes { flex-wrap: nowrap; gap: 0; margin: 0 0 0 -2px; max-width: none; }
 .co-scene .co-bubble-notes .co-note-ico,
 .co-scene .co-bubble[data-n] .co-bubble-notes .co-note-ico { width: 24px; height: 24px; }
-/* lời qua lại (đọc lại đơn, báo giá): MỘT dòng mới nhất dưới bong bóng (lời cũ hơn vẫn trong DOM cho trình đọc màn hình) */
-.co-scene .co-talk { grid-column: 2; grid-row: 2; gap: 0; margin: 0 0 3px; pointer-events: auto; }
+/* lời qua lại (đọc lại đơn, báo giá): MỘT dòng mới nhất dưới bong bóng, cao 22px (lời cũ hơn vẫn trong DOM cho trình đọc màn
+   hình). Khâu gọi món ở khung chính (l / m) luôn thấy (order-bubble fit). Viên lời đáp gài vào mép dưới bong bóng (lề trên
+   −4px — chỉ chồng lên viền + đệm dưới của bong bóng, không che chữ; thụt 8px khỏi góc bo) như mẩu giấy kẹp dưới lời gọi
+   món: chỉ tốn 18px của hàng giữa, lời gọi món 5 dòng ở bậc m vẫn trọn bong bóng. Tên người nói tối đa 45% dòng: tên khách
+   lạ dài ("Anh ngư dân Phan Thiết") tự rút "…" trước, lời khách đáp giữ được nhiều nhất. Tên là khối nội tuyến cắt chữ
+   riêng — kéo vùng cắt lên 2px (đệm trên + lề âm) cho dấu tiếng Việt chồng (Ở, Ễ) không bị xén */
+.co-scene .co-talk { position: relative; grid-column: 2; grid-row: 2; gap: 0; margin: -4px 0 0 8px; pointer-events: auto; }
 .co-scene .co-talk-line {
   max-width: 100%;
-  padding: 2px 9px;
+  padding: 2px 9px 0;
   border-width: 2px;
   font-size: 13px;
-  line-height: 1.3;
+  line-height: 16px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* bậc l: lời qua lại được 2 dòng (vd "Bạn: Dạ, tổng của mình là 75.000đ ạ." không mất con số) */
-[data-fit="l"] .co-scene .co-talk-line { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.co-scene .co-talk-who {
+  display: inline-block;
+  max-width: 45%;
+  margin: -2px .28em 0 0;
+  padding-top: 2px;
+  vertical-align: top;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* bậc l: lời qua lại được 2 dòng (vd "Bạn: Dạ, tổng của mình là 75.000đ ạ." không mất con số); bong bóng chật thì về một
+   dòng (is-talk-one) */
+[data-fit="l"] .co-scene .co-cust-wrap:not(.is-talk-one) .co-talk-line:last-child {
+  display: -webkit-box;
+  padding-bottom: 2px;
+  white-space: normal;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+[data-fit="l"] .co-scene .co-cust-wrap:not(.is-talk-one) .co-talk-who { display: inline; max-width: none; margin: 0; padding: 0; }
+/* order-bubble fit đo với một dòng lời qua lại khi chưa có lời nào: hộp rỗng giữ chỗ, cao đúng một dòng (chỉ có trong lúc đo;
+   cùng lề với lời thật nên chiếm đúng 18px như lời thật) */
+.co-scene .co-cust-wrap.is-talk-slot > .co-talk { height: 22px; visibility: hidden; }
+[data-fit="l"] .co-scene .co-cust-wrap.is-talk-slot > .co-talk { height: 24px; }
 .co-scene .co-talk-line:not(:last-child) { position: absolute; width: 1px; height: 1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); }
 [data-fit="xs"] .co-scene .co-talk { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 

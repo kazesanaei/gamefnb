@@ -348,14 +348,16 @@ export function paintOrder(ctx, customer, c) {
 }
 
 /**
- * Vừa màn: co cảnh / khay theo nội dung đang có (bong bóng nhường chỗ cho lời khách — order-bubble fit(); khay Order chật thì
- * thực đơn một hàng). counter.js gọi sau mỗi lần vẽ lại (chỉ đo khi nội dung đổi) và khi màn đổi cỡ / phông chữ nạp xong
- * (force). Không gọi mỗi khung hình.
+ * Vừa màn: co cảnh / khay theo nội dung đang có (bong bóng và lời qua lại chia hàng giữa — order-bubble fit(); khay Order chật
+ * thì thực đơn một hàng; dải "Khách nói" của bảng chọn món hiện trọn lời gọi món dài khi bảng còn chỗ — order-sheet fit()).
+ * counter.js gọi sau mỗi lần vẽ lại (chỉ đo khi nội dung đổi) và khi màn đổi cỡ / phông chữ nạp xong (force). Không gọi mỗi
+ * khung hình.
  */
 export function fitScene(ctx, force = false) {
   const v = views(ctx)
   if (v.cust && typeof v.cust.bubble.fit === 'function') v.cust.bubble.fit(force)
   if (v.order) v.order.fit(force)
+  if (v.sheet && typeof v.sheet.comp.fit === 'function') v.sheet.comp.fit(force)
 }
 
 /** Tương thích API bước 0. */
