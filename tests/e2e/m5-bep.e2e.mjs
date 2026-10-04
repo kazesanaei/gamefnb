@@ -224,7 +224,9 @@ const touch = (cdp, type, p) => cdp.send('Input.dispatchTouchEvent', { type, tou
 
 // Đóng băng đồng hồ trang: từ đây giờ của trang (setTimeout, requestAnimationFrame, performance.now) chỉ chạy khi gọi runFor.
 async function freeze(page) {
-  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 20)
+  // hẹn dừng sau 300 ms: giữa lúc đọc giờ trang và lúc gọi pauseAt, máy chạy nặng có thể trôi quá vài chục ms
+  // → pauseAt báo "không thể tua về quá khứ" (cùng cách sửa ở fix-leftovers/iphone-overlays trước đây)
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 300)
 }
 
 // Một nét vuốt: touchStart ở điểm đầu, touchMove qua từng điểm — giữa hai điểm giờ trang chạy đúng stepMs (runFor) và chờ

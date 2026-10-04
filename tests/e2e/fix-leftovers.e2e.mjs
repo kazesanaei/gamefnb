@@ -604,7 +604,9 @@ async function touchSwipe(page, cdp, points) {
 // Đóng băng đồng hồ trang trong lúc vuốt: mỗi sự kiện chạm qua CDP chậm hơn ngón tay thật (nhất là khi máy chạy bận) nên
 // điểm chỉ phản ánh độ sạch / số lượt, không phụ thuộc tốc độ của bộ test (phạt chậm > 2 × par không phải điều cần đo ở đây).
 async function freezePageClock(page) {
-  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 60)
+  // hẹn dừng sau 300 ms: giữa lúc đọc giờ trang và lúc gọi pauseAt, máy chạy nặng có thể trôi quá vài chục ms
+  // → pauseAt báo "không thể tua về quá khứ" (cùng cách sửa ở fix-leftovers/iphone-overlays trước đây)
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 300)
 }
 
 // Đo sân khấu Chà: tràn cuộn, đầu sân khấu, thanh chân, thanh tab, thớt và từng vết (elementFromPoint tại tâm).
