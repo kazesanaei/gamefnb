@@ -15,6 +15,9 @@
 //     báo như cũ.
 // Hoạt ảnh trên nút của panel dùng WAAPI (không phải lớp CSS) để lần vẽ lại sau đó không phát lại. Giảm chuyển động: phiếu
 // và dấu hiện ngay, không bay; âm giữ nguyên.
+// Vừa màn (bố cục cảnh + khay, bậc data-fit của màn — css/receipt.css): khâu này là KHAY — phiếu trên khe máy in, thân máy
+// in hiện thêm theo phần dư, nút "Kẹp phiếu bếp" dính đáy; phiếu gọn theo bậc. Dây phiếu ở tab Quầy là KẸP NHỎ góc phải hàng
+// trên của cảnh (railSlot nhắm ô 44×44 phiếu mới sẽ nằm; bản sao thu về cỡ đó — flyScaleFor).
 // Mọi hàm nhận ctx chung của panel Quầy (counter.js). Import trong Node được: không chạm DOM ở cấp module.
 import { h, svgBox } from '../dom.js'
 import { scene } from '../art/scene.js'
@@ -192,12 +195,28 @@ export const CLIP_TICKET = 44
 
 const rectOf = el => (el && el.getClientRects && el.getClientRects().length ? el.getBoundingClientRect() : null)
 
+// Bề rộng tối đa (px) của phần tử: max-width của kẹp phiếu là biểu thức theo % (vd min(100% − 66px, 50% − 70px)) nên đọc
+// getComputedStyle không ra số → đo bằng một phần tử dò tạm (vô hình, cùng khối chứa, gỡ ngay). Không giới hạn → Infinity.
+function maxWidthPx(el, view) {
+  const v = view && typeof view.getComputedStyle === 'function' ? view.getComputedStyle(el).maxWidth : ''
+  if (!v || v === 'none') return Infinity
+  if (/^[\d.]+px$/.test(v)) return parseFloat(v)
+  const host = el.parentElement
+  if (!host) return Infinity
+  const probe = el.ownerDocument.createElement('div')
+  probe.style.cssText = `position:absolute;left:0;top:0;height:0;visibility:hidden;pointer-events:none;width:${v}`
+  host.appendChild(probe)
+  const w = probe.getBoundingClientRect().width
+  probe.remove()
+  return w > 0 ? w : Infinity
+}
+
 /**
  * Chỗ trống kế tiếp trên dây phiếu (tọa độ khung nhìn, cỡ một phiếu nhỏ): sau phiếu cuối, hoặc đầu dây (sau nhãn
- * "Phiếu n/3") khi dây trống. null nếu dây không hiện.
- * Vừa màn: ở tab Quầy dây là KẸP NHỎ ở góc phải hàng trên của cảnh (thẻ đếm 44×44 + phiếu nhỏ 44×44, đáy thẳng hàng, khe
- * 4px; phiếu nhiều thì cuộn ngang trong kẹp) → ô 44×44 ngay sau phiếu cuối (hoặc đầu danh sách khi kẹp trống); ô đó nằm
- * ngoài phần thấy của kẹp (kẹp đầy / đang cuộn ngang) thì nhắm vào thẻ đếm "Phiếu n/3".
+ * "Phiếu n/3") khi dây trống. null nếu dây không hiện. Đo TRƯỚC khi dây thêm phiếu mới.
+ * Vừa màn: ở tab Quầy dây là KẸP NHỎ neo góc phải hàng trên của cảnh (thẻ đếm 44×44 + phiếu nhỏ 44×44, đáy thẳng hàng, khe
+ * 4px, lề phải danh sách 2px; css/game.css). Kẹp neo mép phải nên thêm phiếu thì kẹp nở sang trái và phiếu mới nằm sát mép
+ * phải → ô 44×44 ở đó. Kẹp đã chạm bề rộng tối đa (phiếu mới sẽ nằm trong phần cuộn ngang, khuất) thì nhắm vào thẻ đếm.
  */
 export function railSlot(doc) {
   const rail = doc && typeof doc.querySelector === 'function' ? doc.querySelector('[data-testid="ticket-rail"]') : null
@@ -210,12 +229,12 @@ export function railSlot(doc) {
   const screen = typeof rail.closest === 'function' ? rail.closest('[data-tab]') : null
   if (screen && screen.getAttribute('data-tab') === 'counter') {
     const S = CLIP_TICKET
-    const list = rectOf(rail.querySelector('.rail-list')) || R
-    const lr = rectOf(last)
-    const bottom = lr ? lr.bottom : (cr ? cr.bottom : list.bottom)
-    const left = lr ? lr.right + 4 : list.left + 2
-    if (left + S > Math.min(list.right, R.right) + 1 && cr) return { left: cr.left, top: cr.top, width: cr.width, height: cr.height }
-    return { left, top: bottom - S, width: S, height: S }
+    const listEl = rail.querySelector('.rail-list')
+    const list = rectOf(listEl) || R
+    const bottom = cr ? cr.bottom : list.bottom
+    const clipped = !!listEl && list.width > 0 && listEl.scrollWidth > list.width + 1
+    if (cr && (clipped || R.width + S + 4 > maxWidthPx(rail, doc.defaultView) + 0.5)) return { left: cr.left, top: cr.top, width: cr.width, height: cr.height }
+    return { left: list.right - 2 - S, top: bottom - S, width: S, height: S }
   }
   const w = Math.min(110, Math.max(60, R.width / 3.4))
   const hh = Math.max(36, Math.min(R.height - 10, 76))
@@ -225,12 +244,12 @@ export function railSlot(doc) {
   return { left, top: R.top + (R.height - hh) / 2, width: w, height: hh }
 }
 
-/** Tỉ lệ thu nhỏ cuối đường bay của bản sao phiếu (rộng w, cao h) để vừa ô đích, không quá RECEIPT_FX.flyScale. Thuần. */
+/** Tỉ lệ thu nhỏ cuối đường bay của bản sao phiếu (rộng w, cao h) để lọt trọn ô đích, không quá RECEIPT_FX.flyScale. Thuần. */
 export function flyScaleFor(w, h, slot) {
   const W = Number(w) || 0
   const H = Number(h) || 0
   if (!slot || W <= 0 || H <= 0) return RECEIPT_FX.flyScale
-  const k = Math.max((Number(slot.width) || 0) / W, (Number(slot.height) || 0) / H)
+  const k = Math.min((Number(slot.width) || 0) / W, (Number(slot.height) || 0) / H)
   return Math.round(Math.max(0.1, Math.min(RECEIPT_FX.flyScale, k)) * 1000) / 1000
 }
 

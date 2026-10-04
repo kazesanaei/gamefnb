@@ -7,6 +7,10 @@
 //     chỉ ô này mới cho biết tiền đã về thật.
 // Thanh nút dính đáy: "Từ chối ảnh giả" / "Đã nhận đủ". Đã thu xong: thu gọn thành một dòng (điện thoại nhỏ + "Đã nhận …")
 // để phiếu thu bên dưới đủ chỗ.
+// Vừa màn (bố cục cảnh + khay của panel Quầy, bậc data-fit của màn — css/receipt.css): khâu này là KHAY — khối QR ở trên
+// (tường cao thêm theo phần dư, đồ vật đứng trên mép quầy), lời nhắc ngay trên hàng nút dính đáy; cỡ điện thoại / kệ QR /
+// thẻ Tổng theo bậc. Dòng "Đã nhận …" sau khi thu thành thẻ nhỏ đặt trên mặt quầy (cảnh), khay dành trọn cho phiếu thu.
+// Không đổi DOM, testid, chữ.
 //
 // Hiệu ứng chỉ chạy theo SỰ KIỆN, vẽ lại không phát lại (panel Quầy vẽ lại toàn bộ theo stateSig):
 //   - tiền về: sự kiện 'qr.arrived' trên bus (nghe bằng một lần đăng ký cho mỗi panel, tự gỡ khi panel đã hủy) → âm "ting",
@@ -273,7 +277,7 @@ function fitShot(shot, shop) {
   const title = shot.querySelector('.qc-shot-t')
   const W = shot.clientWidth
   const H = shot.clientHeight
-  if (!W || !H || !to.getClientRects().length) return   // màn hình đang ẩn chữ (panel rất thấp) / chưa có bố cục
+  if (!W || !H || !to.getClientRects().length) return   // màn hình đang ẩn chữ / chưa có bố cục
   const key = `${full}|${W}|${H}|${title ? title.offsetHeight : 0}`
   let res = shotFit.get(key)
   if (res === undefined) {
@@ -295,8 +299,8 @@ function fitShot(shot, shop) {
   else put(res)
 }
 
-// Đo lại khi màn hình điện thoại đổi cỡ mà panel không vẽ lại (lớp co-fit đổi khi xoay máy / dải phố co lại) và khi phông
-// tiêu đề tải xong. Panel gỡ nút → ResizeObserver báo cỡ 0 → tự ngắt.
+// Đo lại khi màn hình điện thoại đổi cỡ mà panel không vẽ lại (bậc data-fit của màn đổi khi xoay máy / đổi cỡ khung) và khi
+// phông tiêu đề tải xong. Panel gỡ nút → ResizeObserver báo cỡ 0 → tự ngắt.
 function watchShot(shot, shop) {
   fitShot(shot, shop)
   const doc = shot.ownerDocument

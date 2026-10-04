@@ -567,6 +567,18 @@
 /* khối QR: tường cao thêm theo phần dư (đồ vật đứng trên mép quầy ở đáy khối) */
 .service-screen[data-scene] .stage-cash > .qc-qr > .qc-scene { flex: 1 0 auto; padding: 10px 12px 0; align-content: stretch; }
 .service-screen[data-scene] .qc-stand-label { text-wrap: balance; }
+/* dây cờ đuôi nheo căng ngang đầu tường (trang trí tĩnh, nằm dưới đồ vật): tường cao thêm không trống trơn */
+.service-screen[data-scene] .stage-cash > .qc-qr > .qc-scene::before {
+  content: ''; position: absolute; z-index: 0; left: 0; right: 0; top: 5px; height: 21px; pointer-events: none;
+  background:
+    linear-gradient(var(--g-ink), var(--g-ink)) 0 2px / 100% 2px no-repeat,
+    conic-gradient(from -30deg at 12px 100%, var(--g-tomato) 0 60deg, transparent 0) 6px 4px / 96px 15px repeat-x,
+    conic-gradient(from -30deg at 12px 100%, var(--g-gold) 0 60deg, transparent 0) 30px 4px / 96px 15px repeat-x,
+    conic-gradient(from -30deg at 12px 100%, var(--g-go) 0 60deg, transparent 0) 54px 4px / 96px 15px repeat-x,
+    conic-gradient(from -30deg at 12px 100%, var(--g-sky) 0 60deg, transparent 0) 78px 4px / 96px 15px repeat-x,
+    conic-gradient(from -34deg at 12px 100%, var(--g-ink) 0 68deg, transparent 0) 6px 2px / 24px 19px repeat-x;
+  opacity: .9;
+}
 .service-screen[data-scene] .qc-side { justify-content: flex-end; gap: 8px; padding: 0 0 28px; }
 .service-screen[data-scene] .qc-due { padding: 4px 6px 6px; }
 .service-screen[data-scene] .qc-due-k { font-size: 14px; line-height: 1.15; }
@@ -623,17 +635,15 @@
 }
 
 /* ---------- Phiếu thu ---------- */
+/* khối máy in + phiếu giãn theo khay; không bao giờ nhỏ hơn nội dung tối thiểu (phiếu không đè hàng nhắc / hàng nút —
+   thiếu chỗ thì khay cuộn) */
 .service-screen[data-scene] .stage-cash > .rc-wrap { flex: 1 0 auto; gap: 0; }
-.service-screen[data-scene] .rc-print {
-  --rc-body: 40px;
-  flex: 1 0 auto; justify-content: flex-end; margin: 0 calc(-1 * var(--co-padx, 10px));
-}
-.service-screen[data-scene]:is([data-fit="m"], [data-fit="s"]) .rc-print { --rc-body: 24px; }
-.service-screen[data-scene][data-fit="xs"] .rc-print { --rc-body: 16px; }
-/* phần dư: trước hết cho thân máy in (tới hết hình), còn nữa thì nằm trên đầu phiếu (lề trên tự co giãn) */
+.service-screen[data-scene] .rc-print { flex: 1 0 auto; margin: 0 calc(-1 * var(--co-padx, 10px)); }
+/* phần dư: trước hết cho thân máy in (tới hết hình; khay thường còn ≥ 40px ở l, ≥ 24px ở m / s), còn nữa thì nằm trên đầu
+   phiếu (lề trên tự co giãn). Thiếu chỗ (phiếu nhiều dòng) thì thân máy in chỉ còn mép khe 4px */
 .service-screen[data-scene] .rc-win { flex: none; margin-top: auto; padding-top: 12px; }
 .service-screen[data-scene] .rc-machine {
-  flex: 1 0 auto; height: auto; min-height: calc(var(--rc-body) + var(--rc-k) * 6); max-height: calc(var(--rc-k) * 68);
+  flex: 1 1 0; height: auto; min-height: calc(var(--rc-k) * 6 + 4px); max-height: calc(var(--rc-k) * 68);
 }
 .service-screen[data-scene] .rc-plank { flex: none; height: 14px; }
 .service-screen[data-scene] .rc-clip.g-btn { min-height: 54px; font-size: 21px; }
@@ -658,6 +668,10 @@
 .service-screen[data-scene] .rc-method { margin-top: 1px; }
 .service-screen[data-scene] .rc-thanks { margin-top: 0; }
 .service-screen[data-scene] .rc-stamp { margin: 10px 6px 3px 0; padding: 3px 8px 0; font-size: 16px; }
+/* phiếu ≥ 3 dòng món: dòng món sát hơn để phiếu vẫn trọn trên hàng nút */
+.service-screen[data-scene] .rc-paper:has(.rc-line:nth-child(3)) .rc-lines { gap: 1px; }
+.service-screen[data-scene] .rc-paper:has(.rc-line:nth-child(3)) .rc-dish { width: 24px; height: 24px; }
+.service-screen[data-scene] .rc-paper:has(.rc-line:nth-child(3)) :is(.rc-name, .rc-notes) { line-height: 1.16; }
 /* m: chữ 13–17 */
 .service-screen[data-scene][data-fit="m"] .rc-paper { padding-top: 6px; padding-left: 13px; padding-right: 13px; font-size: 13px; line-height: 1.26; }
 .service-screen[data-scene][data-fit="m"] .rc-shop { font-size: 15px; }
@@ -680,7 +694,12 @@
 .service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .rc-total { margin-top: 3px; padding-top: 3px; font-size: 14px; }
 .service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .rc-total .rc-v { font-size: 15px; }
 .service-screen[data-scene]:is([data-fit="s"], [data-fit="xs"]) .rc-stamp { margin: 7px 6px 3px 0; padding: 2px 7px 0; border-width: 3px; font-size: 14px; }
-/* xs: món một hàng (số lượng × tên + thành tiền; bỏ hình món và ghi chú — đã nằm trên phiếu order lúc gọi món) */
+/* xs: món một hàng (số lượng × tên + thành tiền; bỏ hình món và ghi chú — đã nằm trên phiếu order lúc gọi món), mép quầy
+   và khoảng trên phiếu mỏng hơn */
+.service-screen[data-scene][data-fit="xs"] .rc-win { padding-top: 9px; }
+.service-screen[data-scene][data-fit="xs"] .rc-plank { height: 10px; }
+.service-screen[data-scene][data-fit="xs"] .rc-paper { padding-bottom: calc(var(--rc-k, 2px) * 6 + 2px); }
+.service-screen[data-scene][data-fit="xs"] .rc-stamp { margin-top: 6px; margin-bottom: 2px; }
 .service-screen[data-scene][data-fit="xs"] .rc-line,
 .service-screen[data-scene][data-fit="xs"] .rc-line.no-notes { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name amt"; }
 .service-screen[data-scene][data-fit="xs"] .rc-dish,

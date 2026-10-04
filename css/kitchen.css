@@ -612,12 +612,17 @@
    giữ bố cục cũ. Chiều cao .k-main theo bảng 3.2 của đặc tả: dây phiếu 56 + dải mặt khách 58 (ẩn khi đang Chọn — data-cook
    "chon" — hoặc tập trung khi nấu ở khung thấp). Không đổi chữ, testid, lớp móc; chỉ cỡ và cách xếp.
    ===================================================================================================================== */
-/* trạng thái bước: bản gọn ("Chạm") thay bản đủ ("Chạm để làm") khi ô chữ của bước hẹp dưới 84px — không cắt "…" */
+/* trạng thái bước: bản gọn thay bản đủ khi ô chữ của bước hẹp — "Chạm để làm" → "Chạm" dưới 84px, "Chọn cách" → "Chọn"
+   dưới 64px (data-short-below, kitchen.js stepStatus) — không cắt "…" */
 .k-step-text { container: k-st / inline-size; }
 .k-st-short { display: none; }
 @container k-st (max-width: 83.98px) {
-  .k-st-full { display: none; }
-  .k-st-short { display: inline; }
+  .k-step-st[data-short-below="84"] > .k-st-full { display: none; }
+  .k-step-st[data-short-below="84"] > .k-st-short { display: inline; }
+}
+@container k-st (max-width: 63.98px) {
+  .k-step-st[data-short-below="64"] > .k-st-full { display: none; }
+  .k-step-st[data-short-below="64"] > .k-st-short { display: inline; }
 }
 /* đầu Thớt + thẻ công thức (kitchen.js renderBoard): mặc định xếp dọc như cũ; tên món trong dòng thẻ gọn chỉ dùng khi đầu
    Thớt gọn (khung thấp, bên dưới) */
@@ -678,7 +683,7 @@
 }
 /* cột bước gối lên mép phải hình nguyên liệu 10px (mép hình phần lớn là nền trong suốt): nhãn bước rộng thêm cho chữ */
 .service-screen[data-fit] .kitchen .k-steps { position: relative; z-index: 1; gap: 4px; margin-left: -10px; }
-/* bước: huy hiệu 36 (biểu tượng 23) ghim lên nhãn giấy; nhãn 13px ≤ 2 dòng; trạng thái 13px một dòng */
+/* bước: huy hiệu 36 (biểu tượng 23) ghim lên nhãn giấy; nhãn 13px ≤ 3 dòng; trạng thái 13px một dòng */
 .service-screen[data-fit] .kitchen .k-step { min-height: 48px; }
 .service-screen[data-fit] .kitchen .k-step-badge { width: 36px; height: 36px; border-width: 2.5px; box-shadow: inset 0 -3px 0 rgba(58, 38, 24, .14), 0 2px 0 #a8773a; }
 .service-screen[data-fit] .kitchen .k-step-ico { width: 23px; height: 23px; }
@@ -732,6 +737,13 @@
    Bỏ món / Ra món dính đáy */
 .service-screen:is([data-fit="s"], [data-fit="xs"]) .kitchen .k-line-art { flex-basis: 40px; width: 40px; height: 40px; }
 .service-screen:is([data-fit="s"], [data-fit="xs"]) .kitchen .k-tickets { gap: 12px; }
+/* phiếu mở ở khung nhỏ: nút "Làm món này" / "Làm tiếp" đứng cạnh tên món (thay viên trạng thái "Chờ" / "Đang làm"), không
+   thêm một hàng 50px dưới mỗi dòng — mọi nút làm món của phiếu thấy ngay khi mở phiếu */
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .kitchen .k-line.has-go { flex-wrap: nowrap; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .kitchen .k-line.has-go > .k-line-st { display: none; }
+.service-screen:is([data-fit="s"], [data-fit="xs"]) .kitchen .k-line.has-go > .k-line-go {
+  flex: none; width: auto; min-height: 44px; margin: 0; padding: 6px 10px 4px; font-size: 16px;
+}
 .service-screen:is([data-fit="s"], [data-fit="xs"]) .kitchen .k-main[data-view="rail"] > .k-last { order: 3; }
 .service-screen:is([data-fit="s"], [data-fit="xs"]) .kitchen .k-main[data-view="rail"] > .k-disau { order: 4; }
 .service-screen:is([data-fit="s"], [data-fit="xs"]) .kitchen .k-ing-top { width: 40px; }

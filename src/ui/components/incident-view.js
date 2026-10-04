@@ -13,7 +13,7 @@
 // nên hộp này không dùng vfx.
 // Vừa màn (đặc tả mục 5.6): khung thấp — chiều cao dùng được (trừ vùng an toàn) U < LOW_FRAME_H (620: đặc tả ghi 600,
 // nâng lên để 360×600 cũng dùng bản gọn — tình huống chữ dài nhất ở đó lòi lựa chọn cuối 13px) — hộp mang lớp is-low,
-// css/sheet.css dựng bản gọn (sân khấu 56, chữ 14, lựa chọn cao ≥ 44, khe 6, nhãn "An toàn" cùng hàng tên lựa chọn) để mọi
+// css/sheet.css dựng bản gọn (sân khấu 56, chữ 14, lựa chọn cao ≥ 44, khe 6, nhãn "An toàn" thành tem dán góc) để mọi
 // lựa chọn, kể cả cách an toàn thường nằm cuối, thấy được mà không phải cuộn ở 375×553 (có vùng an toàn) và 320×568. U đọc
 // từ biến --usable-h mà service.js ghi lên màn Ca bán (đo lúc mở hộp; hộp không đổi bản khi xoay máy giữa chừng).
 // Import trong Node được: không chạm DOM ở cấp module.

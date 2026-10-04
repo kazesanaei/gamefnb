@@ -3,9 +3,10 @@
 // tourSpot(), busy(), guideHold(on), focusWanted() } (tourSpot, busy, guideHold: hướng dẫn lần đầu, bản 0.4.1).
 // opts.tasting = { onDone(dish) }: chế độ NẤU THỬ ở Chợ Công Thức (app là app "hộp cát" có state/ctx riêng):
 // không đếm giờ (giới hạn bước nới rộng, ẩn thanh thời gian), không nút về dây phiếu / bỏ món, Ra món xong gọi onDone.
-// opts.onFocus(want) (M5): màn ca bán bật "chế độ tập trung" (ẩn dải khách, thanh 4 khâu ở khung thấp) khi bếp đang nấu
-// (Chọn, Thớt, sân khấu). Bếp gọi hàm này mỗi khi trạng thái nấu đổi, và luôn gọi TRƯỚC khi dựng mini-game (plugin đo
-// kích thước khung lúc dựng).
+// opts.onFocus(want, kind) (M5; kind từ bản vừa màn): màn ca bán bật "chế độ tập trung" (ẩn dải khách, thanh 4 khâu ở
+// khung thấp) khi bếp đang nấu (Chọn, Thớt, sân khấu) và ghi data-cook = kind ('chon' | 'thot' | 'stage', rỗng khi không nấu).
+// Bếp gọi hàm này mỗi khi trạng thái nấu hoặc loại màn nấu đổi, và luôn gọi TRƯỚC khi dựng mini-game (plugin đo kích thước
+// khung lúc dựng).
 //
 // M5 (0.5.0, thiết kế mục 1.8): luồng bước mới
 // - Thẻ vào bước (components/step-card.js) thay thẻ gợi ý chữ: món nấu chưa tới HINT_HIDE_AFTER_COOKS lần thì thẻ đầy đủ
@@ -224,8 +225,11 @@ export function stepStatus(s, byId = new Map()) {
     const need = (s.after || []).filter(id => !(byId.get(id) && byId.get(id).done)).map(id => (byId.get(id) || {}).label || id)
     return { text: need.length > 1 ? `Sau ${need.length} bước` : `Sau: ${need[0] || 'bước trước'}`, cls: 'is-locked' }
   }
-  // short: chữ gọn khi ô chữ của bước hẹp (< 84px, Thớt lưới 2 cột — css/kitchen.css chọn bản hiện, không cắt "…")
-  return s && s.method ? { text: 'Chọn cách', cls: 'is-available' } : { text: 'Chạm để làm', cls: 'is-available', short: 'Chạm' }
+  // short / shortBelow: chữ gọn khi ô chữ của bước hẹp dưới shortBelow px (Thớt lưới 2 cột ở màn hẹp — css/kitchen.css chọn
+  // bản hiện bằng container query, không cắt "…")
+  return s && s.method
+    ? { text: 'Chọn cách', cls: 'is-available', short: 'Chọn', shortBelow: 64 }
+    : { text: 'Chạm để làm', cls: 'is-available', short: 'Chạm', shortBelow: 84 }
 }
 
 // Nạp css/kitchen.css một lần (khung app có thể đã gắn sẵn).
@@ -625,6 +629,8 @@ export function mountKitchen(root, app, opts = {}) {
           notesRow(notes)),
         h('span', { class: ['k-line-st', done ? 'grade-' + done.grade : '', cooking ? 'is-cooking' : ''] }, status))
       if (open && !done) {
+        // has-go: dòng có nút làm món (khung nhỏ xếp nút cạnh tên món thay cho viên trạng thái — css/kitchen.css)
+        row.classList.add('has-go')
         row.appendChild(h('button', {
           class: 'btn btn-primary k-line-go', type: 'button', 'data-testid': 'cook-line-' + i,
           onclick: e => { e.stopPropagation(); openLine(t.id, i) }
@@ -888,7 +894,7 @@ export function mountKitchen(root, app, opts = {}) {
       h('span', { class: 'k-step-label' }, s.label),
       // bản gọn (st.short) nằm sẵn bên cạnh, CSS đổi bản hiện theo bề ngang ô chữ (container query); máy đọc màn hình đọc
       // trạng thái ở aria-label của nút
-      h('span', { class: 'k-step-st' }, st.short
+      h('span', { class: 'k-step-st', dataset: st.short ? { shortBelow: st.shortBelow } : {} }, st.short
         ? [h('span', { class: 'k-st-full' }, st.text), h('span', { class: 'k-st-short', 'aria-hidden': 'true' }, st.short)]
         : st.text)))
   }

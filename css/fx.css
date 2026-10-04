@@ -542,6 +542,11 @@
 @media (max-width: 400px) {
   .g-head2.is-crowded .g-head2-title { display: none; }
 }
+/* vừa màn (L4): đầu sân khấu đông chấm (≥ 5 bước) còn hẹp ở khung 401–420px (iPhone 16 Pro 402, Android 412): bỏ tên bước
+   (thẻ vào bước, ruy băng "Bước k/N" đã nói tên) thay vì cắt còn vài chữ "Chọ…", "Thái d…" */
+@container g-head (max-width: 420px) {
+  .mg-stage.g-frame2 .g-head2.is-crowded .g-head2-title { display: none; }
+}
 /* Món nhiều bước (≥ 8 chấm, .is-lots) ở đầu sân khấu hẹp (≤ 300px — màn 320px): chấm nhỏ (css/mg-prep.css) vẫn chưa đủ chỗ
    khi đã xong 7–8 bước (chín chấm rộng ~203px > ~190px còn lại cạnh thanh giờ, chấm hiện tại lấn sát đồng hồ), nên các
    chấm đã xong khít lại, chồng mép lên nhau như chuỗi xu — vẫn thấy dấu ✓ và màu hạng của từng bước, chấm xong gần nhất nằm
