@@ -526,7 +526,8 @@
    nó (tên 2 dòng không tràn ô, không đè hàng kế), phần dư của cột chia đều cho các hàng: minmax(min-content, 1fr) — sàn
    min-content tính cả min-height của hàng (minmax(auto, …) thì lấy min-height làm sàn, bỏ qua nội dung). Tên món tối đa
    2 dòng: bề ngang cột tên đủ cho tên dài nhất ("Bánh tráng trộn Tây Ninh") xuống đúng 2 dòng ở mọi khung đo (bảng hẹp:
-   chữ 13, hình 22 — truy vấn khung cs-board bên dưới); khung lạ hẹp hơn nữa thì cắt "…" ở dòng 2 (title giữ tên đủ). Hộp
+   chữ 13, hình 22 / 20 — truy vấn khung cs-board bên dưới); khung lạ hẹp hơn nữa thì cắt "…" ở dòng 2 (title giữ tên đủ).
+   Ngắt dòng tham lam (không text-wrap: balance — cân dòng tách cụm "Bánh / tráng trộn"). Hộp
    chữ của phông Baloo 2 (~1,62 lần cỡ chữ) nhô ~3–3,4px ra ngoài dòng 1,15 / 1,1 → tên có 4px trên (đệm, trong vùng cắt:
    dấu mũ + thanh của chữ hoa dòng 1 không bị cắt) và 4px dưới (lề, ngoài vùng cắt: vùng cắt dừng đúng đáy dòng 2, nét
    chữ dòng 3 bị cắt không lộ; đuôi g / dấu nặng dòng 2 vẫn nằm trong dòng). Hộp chữ nằm trọn trong hàng, hai hàng kề nhau
@@ -561,6 +562,13 @@
   .service-screen[data-scene] .cs-pay .cs-board-dish { width: 22px; height: 22px; }
   .service-screen[data-scene] .cs-pay .cs-board-price,
   .service-screen[data-scene] .cs-pay .cs-board-row.is-sub .cs-board-price { font-size: 13px; }
+}
+/* bảng rất hẹp (màn 340–355px như 344×882: lòng bảng 134–143px): hình 20, khe 4 — cột tên 83–92px ("trộn Tây Ninh" chữ 13
+   rộng 85px: 344 vẫn đủ 2 dòng); hẹp hơn nữa thì cắt "…" ở dòng 2 */
+@container cs-board (max-width: 143px) {
+  .service-screen[data-scene] .cs-pay .cs-board-row,
+  .service-screen[data-scene] .cs-pay .cs-board-row.is-sub { grid-template-columns: 20px minmax(0, 1fr) auto; column-gap: 4px; }
+  .service-screen[data-scene] .cs-pay :is(.cs-board-dish, .cs-board-note.co-note-ico) { width: 20px; height: 20px; }
 }
 /* bảng ngắn (≤ 4 dòng, thực đơn mấy ngày đầu) ở l / m: hàng gọn ~62px (hình món 56, tên 15, giá 17 ngay dưới tên), xếp từ
    đầu bảng, kẻ phấn đứt giữa các hàng — không giãn hàng cho đầy cột (hàng cao 100px+ trông thưa, rời rạc). Phần dư của bảng

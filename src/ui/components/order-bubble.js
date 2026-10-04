@@ -309,20 +309,23 @@ export function createOrderBubble(data = {}, opts = {}) {
   //   2. chữ bong bóng co 13px, giãn dòng 1,2 (is-say-tight) — kiểu hình món (ngày 1–2): câu gọi món còn 1 dòng (is-say-line;
   //      hình món, ×n, hình ghi chú vẫn đủ món);
   //   3. (lời gọi món) bong bóng sát trọn phần hàng giữa còn lại (bỏ lề, đệm dọc mỏng), giãn dòng 1,15 (is-say-full);
-  //   4. (lời gọi món) bán thân khách thu nhỏ một nấc để bong bóng rộng ra (is-say-wide).
-  // Vẫn dài (lời gọi món ~150 chữ trở lên ở bậc m: hàng giữa không chứa nổi cả bong bóng lẫn một dòng lời qua lại) thì bước co
+  //   4. (lời gọi món) bán thân khách thu nhỏ một nấc để bong bóng rộng ra (is-say-wide);
+  //   5. (lời gọi món) chữ nét thường 500 thay 650, cùng cỡ — mỗi dòng thêm vài chữ (is-say-thin; lời gọi món ~190 chữ ở bậc m
+  //      còn 5 dòng, vừa cùng một dòng lời qua lại).
+  // Vẫn dài (lời gọi món dài hơn ~190 chữ ở bậc m: hàng giữa không chứa nổi cả bong bóng lẫn một dòng lời qua lại) thì bước co
   // chọn như lúc chưa có lời nào (lời gọi món trọn bong bóng lúc khách mới gọi, bán thân / cỡ chữ không nhảy khi khách đáp);
   // khi đã có lời qua lại thì câu mới nhất vẫn thấy một dòng, bong bóng thấp lại và phần lời gọi món khuất cuộn trong bong
   // bóng (dấu ⌄). Kiểu hình món vẫn không vừa (món xếp hai hàng — hiếm): lời qua lại nhường chỗ như khung nhỏ.
   // Khung nhỏ (bậc s / xs) và các khâu sau Order (kiểu 'talk' — câu mới nhất của khách đã nằm trong bong bóng): chữ dài hơn
   // bong bóng thì lần lượt
   //   1. lời qua lại nhường chỗ — chỉ còn cho máy đọc (aria-live vẫn đọc), bong bóng cao hết hàng giữa (is-talk-off);
-  //   2–4. như trên (kiểu 'talk' chỉ bước 2);
-  //   5. vẫn dài: vùng chữ cuộn được + mờ dần ở đáy + dấu ⌄ (is-more; kéo tới cuối thì tắt).
+  //   2–5. như trên (kiểu 'talk' chỉ bước 2);
+  //   6. vẫn dài: vùng chữ cuộn được + mờ dần ở đáy + dấu ⌄ (is-more; kéo tới cuối thì tắt).
   // Mỗi bước đo lại thật trên máy (cỡ chữ, chỗ xuống dòng của từng trình duyệt), dừng ngay ở bước đã đủ chỗ.
   // Kiểu hình món (ngày 1–2) đo cả bong bóng (câu nói đã kẹp 2 dòng): chỉ có các bước của lời qua lại (và is-say-line).
   let fitKey = ''
-  const FIT_CLASSES = ['is-talk-off', 'is-talk-one', 'is-talk-slot', 'is-say-line', 'is-say-tight', 'is-say-full', 'is-say-wide']
+  let fitSay = ''
+  const FIT_CLASSES = ['is-talk-off', 'is-talk-one', 'is-talk-slot', 'is-say-line', 'is-say-tight', 'is-say-full', 'is-say-wide', 'is-say-thin']
   const overflows = () => (bubbleMode(cur.mode) === 'icons'
     ? bubble.scrollHeight > bubble.clientHeight + 1
     : say.scrollHeight > say.clientHeight + 1)
@@ -346,11 +349,15 @@ export function createOrderBubble(data = {}, opts = {}) {
     const key = [mode, tier, say.textContent, say.hidden, talkBox.textContent, talkBox.hidden, bubble.hidden, dishes.childElementCount].join('|')
     if (!force && key === fitKey) return
     fitKey = key
+    // cùng lời khách, đo lại vì lời qua lại đổi (khách đáp) / màn đổi cỡ: giữ chỗ người chơi đã kéo tới trong bong bóng cuộn
+    const keepTop = say.textContent === fitSay ? say.scrollTop : 0
+    fitSay = say.textContent
     el.classList.remove(...FIT_CLASSES)
     bubble.classList.remove('is-fit-more', 'is-more')
     if (mode === 'talk' && keepWide) el.classList.add('is-say-wide')
     fitSteps(mode, tier)
     if (mode !== 'talk') keepWide = el.classList.contains('is-say-wide')
+    if (keepTop > 0 && bubble.classList.contains('is-fit-more')) { say.scrollTop = keepTop; syncMore() }
   }
   // thêm dồn từng lớp tới khi chữ vừa → true nếu đã vừa
   function addUntilFit(steps) {
@@ -374,9 +381,9 @@ export function createOrderBubble(data = {}, opts = {}) {
   }
   function fitSteps(mode, tier) {
     if (bubble.hidden || (say.hidden && mode !== 'icons') || typeof getComputedStyle !== 'function') return
-    // bước 3–4 chỉ cho lời gọi món (khâu Order): ở các khâu sau, đồ trên mặt quầy (phiếu hình, thẻ Khách đưa, thẻ Đã nhận)
+    // bước 3–5 chỉ cho lời gọi món (khâu Order): ở các khâu sau, đồ trên mặt quầy (phiếu hình, thẻ Khách đưa, thẻ Đã nhận)
     // xếp theo chiều cao bong bóng sẵn có (css/cashier.css, receipt.css)
-    const sayFit = mode === 'icons' ? [] : mode === 'talk' ? ['is-say-tight'] : ['is-say-tight', 'is-say-full', 'is-say-wide']
+    const sayFit = mode === 'icons' ? [] : mode === 'talk' ? ['is-say-tight'] : ['is-say-tight', 'is-say-full', 'is-say-wide', 'is-say-thin']
     if (mode !== 'talk' && (tier === 'l' || tier === 'm')) {
       // chưa có lời nào: hộp lời qua lại (rỗng) hiện tạm, cao đúng một dòng, trong lúc đo (đo xong ẩn lại ngay — không khung
       // hình nào vẽ ra)
@@ -392,7 +399,7 @@ export function createOrderBubble(data = {}, opts = {}) {
         yieldTalk(mode, sayFit)
         return
       }
-      // lời gọi món dài (~150 chữ trở lên ở bậc m): bước co chọn như lúc chưa có lời nào — lời gọi món trọn bong bóng lúc
+      // lời gọi món rất dài (hơn ~190 chữ ở bậc m): bước co chọn như lúc chưa có lời nào — lời gọi món trọn bong bóng lúc
       // khách mới gọi; bán thân, cỡ chữ không đổi khi khách đáp. Đo với lời qua lại tạm nhường chỗ (is-talk-off — vẫn trong
       // cây trợ năng, không đổi hidden của vùng aria-live)
       if (hasTalk) el.classList.add('is-talk-off')

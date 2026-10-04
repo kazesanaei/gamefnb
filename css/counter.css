@@ -1488,6 +1488,9 @@ html.reduce-motion .co-idle-bob { animation: none !important; }
 [data-fit="l"] .co-scene:has(> .co-cust-area > .co-cust-wrap.is-say-wide) { --co-bust: min(104px, calc(var(--co-mid) * 1.01)); }
 [data-fit="m"] .co-scene:has(> .co-cust-area > .co-cust-wrap.is-say-wide) { --co-bust: min(84px, calc(var(--co-mid) * 1.01)); }
 [data-fit="s"] .co-scene:has(> .co-cust-area > .co-cust-wrap.is-say-wide) { --co-bust: min(70px, calc(var(--co-mid) * 1.01)); }
+/* 5. vẫn dài: chữ lời gọi món nét thường (500 thay 650 — cùng cỡ 13px, mỗi dòng chứa thêm vài chữ): lời gọi món ~190 chữ ở bậc
+   m còn 5 dòng, vừa bong bóng cùng một dòng lời qua lại */
+.co-scene .co-cust-wrap.is-say-thin .co-bubble[data-mode] .co-bubble-say { font-weight: 500; }
 .co-bubble-more { display: none; }
 .co-scene .co-bubble.is-more .co-bubble-say {
   -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 18px), transparent);
