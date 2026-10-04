@@ -1,12 +1,12 @@
 // E2E "Vừa màn" (M5, sau 0.5.1) — mỗi khâu trong ca thao tác TRỌN TRONG MỘT MÀN, KHÔNG cuộn tay, trên khung điện thoại thật.
 // Đặc tả: phương án ghép "Cảnh + Khay" (mục 9 của đặc tả "Vừa màn": testid phải thấy không cuộn ngay khi vào khâu).
 //
-// Khung CHÍNH (mọi testid cần cho khâu): 402×874 iPhone 16 Pro cài app (vùng an toàn 62/34), 402×680 iPhone 16 Pro Safari,
-// 390×844 (vùng an toàn 47/34), 360×780 Android. Khung NHỎ (cột "khung nhỏ" của bảng mục 9 — nút chính của khâu): 360×600,
-// 375×553 (vùng an toàn 47/34). Khung iOS mô phỏng iOS cắt phần tử ngoài vùng cuộn (clip-path: inset(0) trên .screen,
-// .panel, .k-main) như các e2e iPhone khác.
+// Khung CHÍNH (mọi testid cần cho khâu): 402×874 iPhone 16 Pro cài app (vùng an toàn 62/34), 402×680 iPhone 16 Pro Safari
+// (thanh dưới mở), 402×760 iPhone 16 Pro Safari (thanh thu gọn), 390×844 (vùng an toàn 47/34), 360×780 và 412×915 Android.
+// Khung NHỎ (cột "khung nhỏ" của bảng mục 9 — nút chính của khâu): 360×600, 375×553 (vùng an toàn 47/34). Khung iOS mô
+// phỏng iOS cắt phần tử ngoài vùng cuộn (clip-path: inset(0) trên .screen, .panel, .k-main) như các e2e iPhone khác.
 //
-// Năm luồng × sáu khung (mỗi luồng một ngữ cảnh trình duyệt, 3 luồng chạy song song, cả tệp ~3,5 phút, < 8 phút):
+// Năm luồng × tám khung (mỗi luồng một ngữ cảnh trình duyệt, 3 luồng chạy song song, cả tệp ~3,5–5 phút tùy tải máy, < 8 phút):
 //  · Quầy tiền mặt (ngày 5, thực đơn 4 món, đơn 2 dòng có ghi chú): Order phiếu trống → bảng chọn món → phiếu 2 dòng → đọc
 //    lại → Thanh toán (đã gõ tổng) → Tính tiền khay trống → đã lấy tiền thối → Phiếu thu → quầy trống.
 //  · Quầy chuyển khoản: chờ tiền về (giờ trang dừng) → tiền đã về → Phiếu thu sau chuyển khoản.
@@ -56,8 +56,10 @@ const LOG = !!process.env.VUA_MAN_LOG
 const FRAMES = {
   '402x874': { w: 402, h: 874, top: 62, bottom: 34, ios: true, main: true, ten: 'iPhone 16 Pro cài app (an toàn 62/34)' },
   '402x680': { w: 402, h: 680, top: 0, bottom: 0, ios: true, main: true, ten: 'iPhone 16 Pro Safari 402×680' },
+  '402x760': { w: 402, h: 760, top: 0, bottom: 0, ios: true, main: true, ten: 'iPhone 16 Pro Safari thanh thu gọn 402×760' },
   '390x844': { w: 390, h: 844, top: 47, bottom: 34, ios: true, main: true, ten: 'iPhone 390×844 cài app (an toàn 47/34)' },
   '360x780': { w: 360, h: 780, top: 0, bottom: 0, ios: false, main: true, ten: 'Android 360×780' },
+  '412x915': { w: 412, h: 915, top: 0, bottom: 0, ios: false, main: true, ten: 'Android 412×915' },
   '360x600': { w: 360, h: 600, top: 0, bottom: 0, ios: false, main: false, ten: 'Android thấp 360×600 (khung nhỏ)' },
   '375x553': { w: 375, h: 553, top: 47, bottom: 34, ios: true, main: false, ten: 'iPhone SE + Safari 375×553 (khung nhỏ, an toàn 47/34)' }
 }

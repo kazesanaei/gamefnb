@@ -266,7 +266,8 @@ export default {
     if (typeof realToast === 'function') app.toast = focusToast
     // Thông báo nổi chỉ che hàng trên của cảnh và phần trống của hàng giữa — không che chữ của khách: chồng thông báo không
     // vượt xuống dưới mốc toastEdge(); thông báo không vừa thì chờ thông báo trước tắt (toast.js; một thông báo thường đứng
-    // một mình vẫn hiện, thông báo thường đang nổi rút ngắn khi có tin chờ). Mốc (vừa màn L0, vòng sửa):
+    // một mình vẫn hiện, thông báo thường đang nổi rút ngắn khi có thông báo thường chờ — thẻ Mẹo nghề chờ thì không rút ai).
+    // Mốc (vừa màn L0, vòng sửa):
     //   tab Quầy: đỉnh phần tử để đọc cao nhất đang thấy ở hàng giữa (bong bóng / lời qua lại / phiếu order hình / tiền khách
     //     đưa, SCENE_READ_SEL) − TOAST_GAP; không có gì để đọc thì đỉnh biển 4 khâu (l / m, giữa dải xe đẩy) hoặc đỉnh dải xe
     //     đẩy (s / xs, biển đã lên hàng trên); không bao giờ cao hơn đáy hàng trên + 6 (hàng trên luôn dành cho thông báo).
@@ -275,7 +276,10 @@ export default {
     // khách ở lúc khách phản hồi (bắt lỗi, báo sai tổng); chờ tới khi vừa: khâu sau / khách sau / quầy trống / tab Bếp. Rời
     // màn thì thẻ còn chờ bị bỏ (vẫn nằm trong Sổ tay nghề). Mốc đổi theo nội dung (vd quầy trống → khách bước lên, bong bóng
     // hiện dưới chồng): mỗi ~0,4 giây khi chồng có thông báo / có thẻ chờ, màn gọi lại setLimit (update) — thẻ chờ hiện khi
-    // vừa, chồng đang nổi nhường chỗ (toast.js yieldRoom).
+    // vừa, thông báo thường đang nổi nhường chỗ (toast.js yieldRoom). Thẻ Mẹo nghề ĐÃ NỔI thì giữ đủ 3 giây như 0.5.1 dù mốc
+    // co lại (vòng sửa nhỏ L0): mốc chỉ tính phần tử đang thấy, mà bong bóng khách có lúc ẩn tạm (khách phản ứng — báo tổng dư,
+    // đơn nhiều dòng: phiếu order hình chiếm chỗ, css/cashier.css) rồi hiện lại ở khâu sau; thẻ đè vài px mép trên bong bóng
+    // phần thời gian còn lại, không bị rút còn nửa.
     // Tab Quầy không xuống quá đỉnh .panels của tab Bếp (đáy HUD + dải mặt khách + dây phiếu): đổi tab giữa lúc chồng đang nổi
     // không làm chồng đè lên dây phiếu / thanh 4 khâu cao 0 của tab Bếp.
     // Không bao giờ trả số ≤ 0 (toast.js coi là "không giới hạn").

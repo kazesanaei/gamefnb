@@ -11,11 +11,16 @@
 //   — chờ tới khi vừa giới hạn (gọi lại setLimit để xét lại hàng chờ, vd khi đổi khâu / đổi tab); trong lúc chờ không giữ chân
 //   thông báo thường đến sau; bỏ giới hạn (rời màn, setLimit(null)) thì bỏ luôn các thẻ đang chờ chỗ (thẻ vẫn nằm trong Sổ tay
 //   nghề), không nổi đè lên màn sau.
-// - Có thông báo thường đang chờ chỗ: thông báo thường đang nổi rút ngắn còn BUSY_SHOW_MS kể từ lúc hiện (không ngắn hơn phần
-//   đã định), để tin đến sau lên kịp, không chờ quá MAX_WAIT_MS rồi bị bỏ.
-// - Chỗ co lại dưới chồng đang nổi (vd khách bước lên quầy, bong bóng hiện ngay dưới; đổi tab): chồng NHƯỜNG CHỖ — thông báo
-//   thường tắt khi đã nổi YIELD_SHOW_MS, thẻ Mẹo nghề (không bị giữ) tắt khi đã thật sự nổi TIP_YIELD_MS. Xét lúc pump (có
-//   thông báo mới / tắt, hoặc màn gọi lại setLimit).
+// - Có THÔNG BÁO THƯỜNG đang chờ chỗ: thông báo thường đang nổi rút ngắn còn BUSY_SHOW_MS kể từ lúc hiện (không ngắn hơn phần
+//   đã định), để tin đến sau lên kịp, không chờ quá MAX_WAIT_MS rồi bị bỏ. Thẻ Mẹo nghề chờ chồng vơi thì KHÔNG rút ai: thông
+//   báo đang nổi giữ đủ thời gian của nó, thẻ lên ngay sau (như 0.5.1 — vd báo tổng dư: "Khách thấy tổng cao quá…" nổi đủ
+//   2,2 giây rồi mới tới thẻ "Báo tổng rõ ràng").
+// - Chỗ co lại dưới chồng đang nổi (vd khách bước lên quầy, bong bóng hiện ngay dưới; đổi tab; bếp giữ thông báo lúc nấu tập
+//   trung / ra món): thông báo thường NHƯỜNG CHỖ — tắt khi đã nổi YIELD_SHOW_MS. Xét lúc pump (có thông báo mới / tắt, hoặc
+//   màn gọi lại setLimit). Thẻ Mẹo nghề đang nổi KHÔNG bị rút (vòng sửa nhỏ L0): giữ đủ thời gian như 0.5.1 (3 giây, chỉ tính
+//   lúc thật sự nổi) — mốc chồng có thể co lại vì thứ không liên quan tới thẻ: bong bóng khách ẩn tạm lúc khách phản ứng (báo
+//   tổng dư, đơn nhiều dòng: phiếu order hình chiếm chỗ ở khâu Thanh toán) rồi hiện lại ở khâu Tính tiền, khách bước lên quầy
+//   trống… Thẻ (~58px) chỉ đè vài px mép trên bong bóng phần thời gian còn lại — chấp nhận (đặc tả vừa màn mục 4.2).
 import { h, svgBox } from '../dom.js'
 
 export const MAX_TOASTS = 2
@@ -25,7 +30,6 @@ export const MAX_WAIT_MS = 3500
 export const TIP_RESUME_MS = 1500
 export const BUSY_SHOW_MS = 1500
 export const YIELD_SHOW_MS = 1000
-export const TIP_YIELD_MS = 1500
 
 /**
  * createToaster(host) → { show(text, opts), setLimit(fn), hold(on), isHeld() }
@@ -42,7 +46,7 @@ export function createToaster(host) {
   let tipShowing = false
   let limitFn = null
   let held = false
-  let tipLive = null           // thẻ Mẹo nghề đang nổi: { left (ms còn lại), since, seen (ms đã nổi trước lần chạy này), timer, finish }
+  let tipLive = null           // thẻ Mẹo nghề đang nổi: { left (ms còn lại), since, timer, finish }
   const plainLive = new Map()  // thông báo thường đang nổi → { shown (lúc hiện), end (lúc tắt dự kiến), timer, finish }
 
   const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now())
@@ -98,24 +102,17 @@ export function createToaster(host) {
     }
   }
 
-  // Chồng đang nổi cao hơn giới hạn hiện tại (chỗ vừa co lại): nhường chỗ (xem đầu tệp).
+  // Chồng đang nổi cao hơn giới hạn hiện tại (chỗ vừa co lại): thông báo thường nhường chỗ; thẻ Mẹo nghề đang nổi giữ đủ
+  // thời gian (xem đầu tệp).
   function yieldRoom() {
     if (!limitFn || !box.firstElementChild || fits()) return
     hurry(YIELD_SHOW_MS)
-    const live = tipLive
-    if (!live || held || !live.timer) return
-    const t = now()
-    const end = Math.max(t, t + TIP_YIELD_MS - (live.seen + (t - live.since)))
-    if (end >= live.since + live.left - 20) return
-    clearTimeout(live.timer)
-    live.left = end - live.since
-    live.timer = setTimeout(live.finish, end - t)
   }
 
   // Thẻ Mẹo nghề: đồng hồ dừng được (hold). Thời gian chỉ tính lúc thẻ thật sự nổi.
   function presentTip(item, duration) {
     requestAnimationFrame(() => item.classList.add('show'))
-    const live = { left: duration, since: now(), seen: 0, timer: 0, finish: null }
+    const live = { left: duration, since: now(), timer: 0, finish: null }
     live.finish = () => {
       if (tipLive === live) tipLive = null
       item.classList.remove('show')
@@ -156,23 +153,22 @@ export function createToaster(host) {
 
   // Hiện các mục đang chờ theo thứ tự đến, tới khi hết chỗ. Thẻ Mẹo nghề chờ thẻ trước tắt (mỗi lần 1 thẻ). Thẻ chờ chỗ
   // (opts.fit): đứng một mình cũng không vừa → không giữ chân thông báo thường đến sau; vừa nhưng chồng đang chật → giữ
-  // lượt (thông báo đến sau chờ sau thẻ) để thẻ không bị tin mới chen mãi. Còn mục chờ chỗ → rút ngắn thông báo đang nổi.
+  // lượt (thông báo đến sau chờ sau thẻ) để thẻ không bị tin mới chen mãi. Còn thông báo thường chờ chỗ → rút ngắn thông báo
+  // thường đang nổi (chỉ thẻ chờ thì không — xem đầu tệp).
   function pump() {
     const t = now()
     for (let i = queue.length - 1; i >= 0; i--) if (!queue[i].tip && t - queue[i].at > MAX_WAIT_MS) queue.splice(i, 1)
-    let crowded = false
     for (let i = 0; i < queue.length;) {
       const e = queue[i]
       if (e.tip && (tipShowing || held)) { i++; continue }
       const r = place(e)
       if (r !== 'ok') {
         if (e.tip && r === 'nofit') { i++; continue }
-        crowded = true
         break
       }
       queue.splice(i, 1)
     }
-    if (crowded || queue.some(e => !e.tip)) hurry()
+    if (queue.some(e => !e.tip)) hurry()
     yieldRoom()
   }
 
@@ -209,9 +205,7 @@ export function createToaster(host) {
         // dừng đồng hồ: phần đã nổi được trừ đi, phần còn lại chờ thôi giữ
         clearTimeout(live.timer)
         live.timer = 0
-        const ran = now() - live.since
-        live.seen += ran
-        live.left = Math.max(0, live.left - ran)
+        live.left = Math.max(0, live.left - (now() - live.since))
       } else if (live && !on) {
         live.left = Math.max(live.left, TIP_RESUME_MS)
         live.since = now()

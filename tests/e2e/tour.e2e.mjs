@@ -22,6 +22,8 @@
 //     'card-<loại>'): món chưa nấu lần nào → chạm bước trên Thớt → thẻ đầy đủ hiện, tour tự hiện ngay trên thẻ (bước 1 khoét
 //     sáng tay mẫu step-card-demo, bước 2 nút step-card-go), ca TẠM DỪNG và thẻ đứng chờ (không tự vào trò dù quá 1,1 giây);
 //     "Bỏ qua hướng dẫn" → tour ghi đã xem, ca chạy tiếp, thẻ chạy tiếp phần thời gian còn lại rồi tự vào trò, chơi tiếp được.
+// 10. Tour Quầy (0.5.1: Order, Bảng chọn món, Thanh toán, Tính tiền, Phiếu thu, Ca bán, Chuyển khoản) đủ bước, đích đúng chỗ ở
+//     375×553 (vùng an toàn 47/34), 390×844, iPhone 16 Pro cài app 402×874 (vùng an toàn 62/34) và Safari 402×680.
 // Không có lỗi console ở mọi kịch bản.
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -833,9 +835,12 @@ for (const c of CARD_TOURS) {
 
 // ---------- 10. M5 Đợt 2 (0.5.1): tour Quầy theo giao diện mới ----------
 
-// Mô phỏng iPhone có tai thỏ + thanh Home (vùng an toàn 47/34), iOS cắt phần tử nằm ngoài vùng cuộn.
-const COUNTER_SAFE_CSS = `:root { --safe-top: 47px !important; --safe-bottom: 34px !important; }
-.screen, .panel, .k-main { clip-path: inset(0); }`
+// Mô phỏng iPhone: vùng an toàn (tai thỏ / Dynamic Island + thanh Home, [trên, dưới] px) và iOS cắt phần tử nằm ngoài vùng
+// cuộn (ios).
+const counterCss = f => [
+  f.safe ? `:root { --safe-top: ${f.safe[0]}px !important; --safe-bottom: ${f.safe[1]}px !important; }` : '',
+  f.ios ? '.screen, .panel, .k-main { clip-path: inset(0); }' : ''
+].filter(Boolean).join('\n')
 const COUNTER_TOURS = ['quay_order', 'quay_bang_mon', 'quay_thanh_toan', 'quay_tinh_tien', 'quay_qr', 'quay_phieu_thu', 'ca_ban']
 const COUNTER_REQUEST = [{ recipeId: 'banh_mi_op_la', qty: 2, notes: ['them_trung'] }, { recipeId: 'tra_tac', qty: 1, notes: [] }]
 
@@ -855,12 +860,18 @@ async function walkAll(g, id, label) {
   return steps
 }
 
-const COUNTER_FRAMES = [{ vp: { width: 375, height: 553 }, safe: true }, { vp: { width: 390, height: 844 }, safe: false }]
+const COUNTER_FRAMES = [
+  { vp: { width: 375, height: 553 }, safe: [47, 34], ios: true },
+  { vp: { width: 390, height: 844 }, safe: null, ios: false },
+  // iPhone 16 Pro: cài app (Dynamic Island + thanh Home, vùng an toàn 62/34) và Safari thanh dưới mở (khung thấp nhất của máy)
+  { vp: { width: 402, height: 874 }, safe: [62, 34], ios: true },
+  { vp: { width: 402, height: 680 }, safe: null, ios: true }
+]
 
 for (const f of COUNTER_FRAMES) {
-  const label = vpName(f.vp) + (f.safe ? ' vùng an toàn' : '')
+  const label = vpName(f.vp) + (f.safe ? ` vùng an toàn ${f.safe[0]}/${f.safe[1]}` : '')
   test(`tour Quầy mới (${label}): Order, Bảng chọn món, Thanh toán, Tính tiền, Phiếu thu, Ca bán (quầy trống), Chuyển khoản — đủ bước, đích đúng chỗ`, { timeout: 300000 }, async () => {
-    const opts = { clock: { time: COOK_OPEN_MS }, viewport: f.vp, initCss: f.safe ? COUNTER_SAFE_CSS : '', contextOptions: { userAgent: UA, deviceScaleFactor: 3, isMobile: true, hasTouch: true } }
+    const opts = { clock: { time: COOK_OPEN_MS }, viewport: f.vp, initCss: counterCss(f), contextOptions: { userAgent: UA, deviceScaleFactor: 3, isMobile: true, hasTouch: true } }
     // (a) tiền mặt: Order → bảng chọn món → Thanh toán → Tính tiền → Phiếu thu → quầy trống (nút "?" → tour Ca bán)
     let g = await openGame({ ...opts, name: 'tour-quay-tien-mat' })
     try {
