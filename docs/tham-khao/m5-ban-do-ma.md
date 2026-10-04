@@ -526,3 +526,290 @@ Ràng buộc kèm theo:
 - **audio.js:** bộ tổng hợp `tone`/`noise` và 12 âm. Thêm âm mới chỉ cần thêm một mục vào `RECIPES` và `SOUND_NAMES`.
 - **Thuật toán bố cục đã có test:** `cha.js` (`fitSpotsBox`, `spotLayout`, `rubSpots`), `thaiGuides`, `nearestUncut`, `revealTargets`, `revealStage`/`revealAboveBar`, và quy ước thanh dính `.act-bar`/`.k-toolbar`/`.mg-foot`. Giữ các quy ước này để không làm vỡ các kiểm tra iPhone và màn thấp.
 - **Quy ước testid và `data-*`:** giữ nguyên tên trên phần tử tương đương trong giao diện mới để phần lớn e2e và tour chạy tiếp.
+
+---
+
+## 9. Màn ngoài ca (Đợt 3, bản 0.5.2; gói S3 lập ở bước 0)
+
+Mục này liệt kê những gì e2e (`tests/e2e/*.mjs`, kể cả `helpers.mjs` và `hanh-trinh.mjs`), dữ liệu tour (`src/data/tours.js`: `target`, `span`, `requires`) và lớp phủ tour (`src/ui/components/tour.js`) đang bám vào ở các màn ngoài ca. Gói nào làm lại một màn thì giữ nguyên các mục dưới đây trên phần tử tương đương, hoặc sửa test có chủ ý và ghi rõ lý do.
+
+Ký hiệu: ⚠ = test hoặc tour bám vào lớp CSS, cấu trúc DOM, thẻ HTML hoặc chữ hiển thị (đổi giao diện dễ làm hỏng). Chỉ ghi `testid` = test chỉ tìm, chạm hoặc chờ phần tử. Viết `x-*` nghĩa là testid có hậu tố động (id món, id việc…).
+
+### 9.1 CSS sau bước 0: tệp nào chứa gì, thứ tự gắn
+
+Bước 0 chỉ chuyển chỗ: 3360 luật của bản trước và bản sau trùng nhau từng luật (bộ chọn, khai báo, `@media`), không mất luật nào, không thêm luật nào. Thứ tự gắn trong `index.html`:
+
+`… mg-mix.css → meta.css → prep.css → shop.css → quests.css → mail.css → book.css → summary.css → market.css → settings.css → tour.css → theme.css → fx.css → counter.css → cashier.css → receipt.css → sheet.css`
+
+| Tệp | Nội dung | Ghi chú |
+|---|---|---|
+| `css/meta.css` | Phần **dùng chung**: luật chữ 14px của các màn, viên tiền / Muỗng Vàng (`.pill*`), chấm đỏ (`.red-dot`), thanh tiến độ (`.pbar*`), phần thưởng (`.rw-chip*`), `.rewind-note`, `.badge-lock/.badge-event`, `.ev-assist, .ev-grace-note`, `.chain-prog/.quest-prog`, `.chain-num/.quest-num`, khung màn M2 (`.meta-screen`, `.meta-head`, `.meta-back`, `.meta-title*`, `.meta-body`, `.meta-section`, `.meta-hint`, `.seg-tab*`), màn hẹp chung (`.seg-tab`, `.meta-title` ở ≤ 370px), `.rare-star` | ⚠ `.ev-assist, .ev-grace-note` phải **đứng trước** `.meta-hint`: dòng ân hạn ở màn Sự kiện có cả hai lớp (`p.meta-hint.ev-grace-note`, testid `event-grace-chain`) và đang lấy màu của `.meta-hint` |
+| `css/prep.css` | Màn Chuẩn bị: đầu màn, lưới lối vào (`.nav-*`, `.icon-tile`), thẻ sự kiện có thời hạn (`.event-card*`), sự kiện ngày + Phiếu Chợ Sớm (`.day-event-card`, `.day-ev-*`, `.day-choice*`, `.coupon-*`), thẻ chuỗi "Dì Sáu dặn" (`.chain-*`), thẻ Lên chặng / Giấc mơ (`.dream-*`, `.stage-card`), **màn Lên chặng** (`.stage-*`, `.cond*`, `.goal-recipes`, `.records`), thẻ Hôm nay (`.prep-today`, `.prep-dish*`), `.tip-card`, gánh hàng quê và kho hàng hiếm (`.stall-*`, `.rare-stock*`, `.rare-frag*`, `.basket-*`, `.pbar-luck`) | `.day-event-card`/`.day-ev-*` còn dùng ở Tổng kết (thẻ "Báo trước", `is-tomorrow`); thẻ chuỗi còn hiện ở Việc hôm nay và Sự kiện |
+| `css/shop.css` | Chợ Công Thức (`.shop-*`, `.knife*`, `.teaser*`, `.up-*`, `.spoon-*`, `.cart-view`, `.parasol*`, `.deco-*`, `.bag-*`) và Nấu thử (`.tasting-*`, `.kitchen.is-tasting …`) | |
+| `css/quests.css` | Việc hôm nay (`.quest-*`, `.chest-*`), bảng điểm danh (`.checkin-modal`, `.ck-*`), màn Sự kiện (`.ev-*`, `.ex-*`); màn hẹp: `.ck-slot`, `.ex-grid` | |
+| `css/mail.css` | Hộp thư (`.mail-*`) | `.meta-screen > .mail-bar` nằm ở meta.css |
+| `css/book.css` | Sổ tay nghề (`.nb-*`), Sổ công thức, chi tiết món, Sổ từ vùng miền (`.book-*`, `.dialect-*`) | Luật `.book-detail-body small, .incident small, .sum-incident small` giữ ở đây (dùng chung cho hộp tình huống trong ca và Tổng kết) |
+| `css/summary.css` | Tổng kết: `.summary-screen .stat-label`, tiến độ meta (`.sum-meta*`, `.sum-quests`, `.sq-num`), tình huống / sổ ghi nợ / tiền sự kiện (`.sum-incident*`, `.sum-event-notes`, `.sum-debt`) | Phần còn lại của màn Tổng kết (sổ lãi lỗ `.ledger`, `.sum-head-row`…) vẫn ở `css/game.css` |
+| `css/market.css` | Gánh hàng quê / Lựa hàng (`.market-*`) | Kệ `chon` dùng chung với bếp (`css/mg-prep.css`); thẻ Mẹo ở kết quả Lựa hàng dùng lớp `.incident-tip` (kiểu nằm ở sheet.css) |
+| `css/sheet.css` (đầu tệp) | Kiểu nền hộp tình huống trong ca (`.incident*`, `.safe-badge`, `.choice-hint`, `@media (max-height: 760px)`) chuyển từ meta.css | Đặt ở đầu tệp nên các luật kiểu game của gói Q-E bên dưới vẫn đè như cũ |
+
+Quy tắc cho các gói Đợt 3:
+
+- Mỗi gói chỉ sửa tệp CSS của mình. Muốn đè kiểu ở tệp khác thì tăng độ ưu tiên (thêm lớp màn, ví dụ `.prep-screen .x`), đừng dựa vào thứ tự gắn.
+- Thêm lớp mới thì đặt tiền tố riêng của màn để không trùng lớp màn khác (lớp kiểu game dùng tiền tố `g-` của `theme.css`).
+- Thêm hay đổi tên tệp CSS thì sửa `index.html`, `PRECACHE` của `sw.js` và tăng phiên bản. `tests/unit/pwa.test.mjs` kiểm `index.html` gắn đủ mọi `css/*.css` và thứ tự (base đầu tiên; meta, settings, tour trước theme; theme → fx → counter; sheet.css cuối).
+
+Cách kiểm bước 0:
+
+1. **So điểm ảnh.** Chụp 70 trạng thái của 12 luồng (Mở đầu, Điểm danh, Chuẩn bị ngày 1 và ngày 7 có sự kiện ngày, Phiếu Chợ Sớm, gánh hàng và kho hiếm, Chợ Công Thức 3 tab, Nấu thử, Việc hôm nay, Hộp thư, Sự kiện 20/11, Sổ công thức kèm chi tiết và Sổ từ, Sổ tay nghề, Cài đặt, Hướng dẫn và Cách chơi, Lên chặng, Tổng kết, Gánh hàng, Lựa hàng, hộp tình huống) ở 390×844 và 360×600. Mỗi màn chụp cả các trang cuộn. Lúc chụp cố định `Math.random`, đồng hồ, tắt service worker, cho hoạt ảnh chạy xong. Kết quả: mọi ảnh sau giống hệt từng điểm ảnh với một lần chụp trước. Riêng thanh thời gian của Lựa hàng do JS chạy theo giờ, nên che thanh này rồi so thì giống hệt.
+2. **So computed style.** Đã so mọi thuộc tính của mọi phần tử (cả `::before`, `::after`, `::marker`) trong 70 trạng thái: không khác chỗ nào, trừ `transform` của thanh thời gian Lựa hàng.
+3. **Soát tĩnh.** Dò mọi cặp luật bị đổi thứ tự có cùng độ ưu tiên, cùng thuộc tính (tính cả thuộc tính viết tắt) và khác giá trị. Với mỗi cặp, xét hai bộ chọn có thể khớp cùng một phần tử hay không: lớp đứng chung trong chuỗi `class` của mã nguồn hoặc trong DOM đã chụp, lớp lồng nhau trong DOM đã chụp, quan hệ `import` giữa các tệp tạo lớp. Kết quả:
+   - Có đúng 1 cặp xung đột thật: `.ev-grace-note` với `.meta-hint`, đã sửa bằng cách giữ khối đó ở meta.css.
+   - Còn 46 cặp giữa khối tình huống và các lớp gắn lúc chạy trên phần tử khác: `co-fit-tiny` và `co-has-tutor` trên panel Quầy, `cs-bill-under` trên tờ tiền của két, `g-pill--go/--bad` trên bộ đếm Lắc. Các cặp này không thể rơi vào cùng một phần tử.
+   - Các cặp còn lại hoặc có lớp không bao giờ đứng chung một phần tử, hoặc thuộc luật chết (lớp không còn dùng trong game: `nav-sub`, `tasting-dish`, `settings-btn`, `g-chalk*`…).
+
+### 9.2 Bảng màn
+
+| Màn (tên route) | Tệp, hàm | Thành phần dùng chung | CSS |
+|---|---|---|---|
+| Mở đầu (`title`) | `screens/title.js`, `default.mount(root, app)`; export `DEFAULT_SHOP_NAME` | `meta-ui.cartOptions`, `settings.openImport` | `game.css` (`.title-*`), `theme.css` |
+| Chuẩn bị (`prep`) | `screens/prep.js`, `default.mount(root, app)`; export `dayEffectLines`, `dayEventWarnLine`, `choiceCostText`, `forecastCustomers`, `forecastDetail`, `prepTalk`, `isFirstVisit` (Tổng kết và unit test dùng) | `meta-ui` (`spoonPill`, `progressBar`, `redDot`, `rewindNote`, `durationText`, `reasonText`), `chain-card.chainCard`, `checkin-popup.openCheckin`, `help.helpButton`, hình `GEAR_SVG`/`NOTEBOOK_SVG`/`RECIPE_BOOK_SVG`, `event.phaseText`, `market.starText`; `app.updateSlot()` | `prep.css`, `game.css` (`.prep-head`, `.stat`, `.sticky-foot`…), `settings.css` (nhắc sao lưu, "Có bản mới") |
+| Điểm danh (hộp nổi) | `components/checkin-popup.js`, `openCheckin(app, { auto, onClaim })`: tự mở lần đầu trong ngày ở màn Chuẩn bị, hoặc mở từ ô `open-checkin` | `app.modal` | `quests.css` |
+| Chợ Công Thức (`shop`) | `screens/shop.js`, `default.mount(root, app, params)` | `meta-ui.screenHead`, `spoonPill`, `cartView`, `DEFAULT_UMBRELLA` | `shop.css` |
+| Nấu thử (`tasting`) | `screens/tasting.js`, `default.mount(root, app, params)` → `kitchen.mountKitchen` | `meta-ui.reasonText` | `shop.css` + toàn bộ CSS bếp |
+| Việc hôm nay (`quests`) | `screens/quests.js`, `default.mount(root, app)` | `screenHead`, `rewardChips`, `rewardLine`, `progressBar`, `rewindNote`, `chainCard` | `quests.css` |
+| Hộp thư (`mailbox`) | `screens/mailbox.js`, `default.mount(root, app)` | `screenHead`, `rewardChips`, `rewardLine`, `rewindNote` | `mail.css` |
+| Sự kiện (`event`) | `screens/event.js`, `default.mount(root, app, { eventId })`; export `phaseText` | `screenHead`, `rewardChips`, `progressBar`, `rewindNote`, `chainCard` (`stepTestid: 'event-chain-step'`) | `quests.css` |
+| Lên chặng (`stage-up`) | `screens/stage-up.js`, `default.mount(root, app)`; lối vào là thẻ `dream-card` / `stage-up-card` và hộp mời ở màn Chuẩn bị | `screenHead`, `progressBar`, `cartView` | `prep.css` |
+| Sổ công thức (`recipe-book`) | `screens/recipe-book.js`, `default.mount(root, app, params)`; export `RECIPE_BOOK_SVG` | `screenHead`, `progressBar` | `book.css` |
+| Sổ tay nghề (`notebook`) | `screens/notebook.js`, `default.mount(root, app, params)`; export `NOTEBOOK_SVG` | `screenHead`, `rewardChips`, `rewardLine`, `progressBar` | `book.css` |
+| Cài đặt (`settings`) | `screens/settings.js`, `default.mount`; export `GEAR_SVG`, `CODE_ERRORS`, `formatTime`, `slugify`, `backupFileText`, `copyBackup`, `downloadBackup`, `openImport`, `resetGame`, `openAbout` | `screenHead` | `settings.css` |
+| Hướng dẫn (hộp nổi) | `components/help.js`: `helpButton(app)`, `openHelp(app)`, `howToPlay(app)` | `app.tour` | `tour.css` |
+| Tổng kết (`summary`) | `screens/summary.js`, `default.mount(root, app, { summary })`; export `incidentLines` | `progressBar`, `chainTitle`, các hàm của prep.js, `helpButton` | `summary.css`, `game.css` (sổ lãi lỗ, `.sum-head-row`), `prep.css` (thẻ báo trước) |
+| Gánh hàng / Lựa hàng (`market`) | `screens/market.js`, `default.mount(root, app, params)`; export `starText` | `screenHead`, `reasonText`, `rewindNote`, plugin kệ `chon` | `market.css`, `mg-prep.css` |
+
+Unit test import thẳng mã giao diện ngoài ca nên không được chạm DOM ở cấp module: `review-m4-round2.test.mjs` (`dayEffectLines` của prep.js, `incidentLines` của summary.js), `ui-rewards.test.mjs` (`mergeRewards` của chain-card.js, `rewardLine` của meta-ui.js), `tour.test.mjs` (`STICKY` phải có `.sticky-foot`, `.meta-head`).
+
+### 9.3 Bộ chọn, chữ và `data-*` mà test và tour bám vào, theo màn
+
+**Chung cho mọi màn con (meta-ui `screenHead`):**
+- `meta-back` (gần như mọi e2e có vào màn con; `stability` bấm 20 vòng trong trang).
+- `help-button` nằm trong `.meta-head`: ⚠ `tour.e2e:321` dùng `.meta-head [help-button]`; `tour.e2e:636-638` đo nút "?" ở `.meta-head` trúng chạm khi cuộn tới đáy, và `meta-back` nằm dưới vùng an toàn trên 47px.
+- ⚠ `tour.js STICKY` = `.act-bar, .sticky-foot, .k-toolbar, .meta-head, .mg-foot, .prep-toprow, .sum-head-row, .co-pad-actions`. Đầu màn và nút dính đáy phải giữ các lớp này để tour chừa chỗ.
+- ⚠ `#screen[data-screen]` (`stability:128`).
+
+**Mở đầu:**
+- testid: `screen-title` (pwa-backup), `shop-name-input` (helpers `startNewGame`, hầu hết e2e; tour `mo_dau` `requires`), `start-button` (helpers `enterPrep`, hầu hết e2e), `title-import` (pwa-backup, save-safety), `title-talk`, `title-tip`.
+- ⚠ Lớp `.title-shop` phải chứa **đúng** tên xe (`page.textContent('.title-shop')` so bằng: pwa-backup:126, 184, 361; save-safety:171; subpath:131).
+- Tour `mo_dau`: `title-talk`, `shop-name-input`, `title-import`, `start-button`.
+
+**Điểm danh:**
+- testid: `checkin-popup`, `checkin-claim`, `checkin-close`.
+- ⚠ Chữ trên `checkin-claim` chứa "Ngày 1" (checkin-quests:52). Nút bị khóa (`disabled`) khi không nhận được (checkin-quests, m2-meta).
+- `checkin-slot-<i>` có `data-claimed` (`true`/`false`).
+- ⚠ `checkin-note`: chữ chứa "lùi"; thuộc tính **`class` phải đúng bằng `'ck-note is-warn'`** (checkin-quests:104).
+- helpers `claimCheckinIfShown`: chờ `checkin-popup` tối đa 1,5–3 giây, bấm `checkin-claim`, chờ `checkin-popup` rời DOM.
+- `tour.e2e:200-205`: tour màn Chuẩn bị không được chồng lên bảng điểm danh.
+- e2e phủ: checkin-quests, m2-meta, m2-ui (soát 360×740), stability (mở/đóng 20 vòng), tour, iphone-overlays, pwa-backup, review-m3-ux, save-safety, subpath, m4-rare, event-2011 (qua helpers).
+
+**Chuẩn bị:**
+- Đầu màn: `screen-prep`.
+  - ⚠ `prep-day` chữ "Ngày N" (one-shift:64, pwa-backup:372, subpath:134).
+  - `prep-stats` (tour), `prep-wallet` (`data-amount`), `prep-rating`, `prep-spoons` (`data-amount`, review-m2:65).
+  - ⚠ `tour.e2e:627-630`: `.prep-screen [help-button]` trúng chạm khi cuộn tới đáy ở 375×553 với vùng an toàn 47/34; `.prep-toprow .prep-shop` vẫn hiện.
+- Lưới lối vào `prep-nav`, 7 ô: `open-shop`, `open-quests`, `open-checkin`, `open-mail`, `open-recipe-book`, `open-notebook`, `open-settings`.
+  - Mỗi ô có `data-dot` (incident-notebook:106 đòi ô nào cũng có).
+  - Chấm đỏ có testid `<ô>-dot`.
+  - Giá trị `data-dot` đang bị kiểm: `open-notebook` = `'1'` (incident-notebook:108); `open-checkin` = `'0'` (checkin-quests:59, 98; m2-meta:65); `open-quests` ≥ 1 (checkin-quests:152).
+  - ⚠ `incident-notebook:263` dùng `.icon-grid .icon-tile`: đủ 7 ô, 4 ô đầu cùng một hàng ở 360×740.
+  - ⚠ Tour `chuan_bi` khoanh vùng sáng là một dải từ `open-shop` tới `open-mail`, và một dải từ `open-recipe-book` tới `open-settings` (dùng `span`). Đổi bố cục lưới thì mỗi dải vẫn phải liền thành một khối hình chữ nhật.
+- Thẻ sự kiện có thời hạn: `event-card` có `data-event-id`, `data-phase` (`sap_dien_ra`/`dang_dien_ra`/`an_han`), `data-dot`.
+  - ⚠ Chữ: "Đang diễn ra", "Sắp diễn ra", "Tri ân 20/11", "Mở sau 2 ngày" (event-2011:63, 159-162); "chờ nhận" (review-m2:141).
+  - Kèm `event-card-dot`, `event-pending`, `open-event`.
+- Sự kiện ngày: `day-event-card` có `data-event`, `data-kind`.
+  - ⚠ Chữ "Có lựa chọn" (m4-tip-events-attp:32).
+  - `day-event-choice-<id>` có `aria-pressed` (m2-ui, iphone-overlays, m4-tip-events-attp). Tour `su_kien_ngay` dùng bộ chọn `[data-testid^="day-event-choice-"]`.
+  - ⚠ `day-event-warn` chữ "Ngày N đã bị nhắc nhở".
+  - `day-choice-toast`.
+- Phiếu Chợ Sớm: `coupon-card`, `use-coupon` (`aria-pressed`, m2-ui).
+- Gánh hàng quê và kho hàng hiếm (m4-rare, iphone-overlays):
+  - `stall-card` có `data-state` (`open`/`pending`/`done`/`locked`/`early`) và `data-stall`.
+  - ⚠ Chữ trong `stall-card`: "Xe ba gác trưa · Chú Tư", "Xe ba gác trưa 11:00–13:30 · đang mở", "Chợ sớm 05:00–09:00", "Gánh đặc sản tối 17:30–21:00", "Hôm nay đã ghé".
+  - `stall-title`, `open-market`.
+  - `rare-stock-card`: ⚠ tour `hang_hiem` nhắm `[data-testid="rare-stock-card"] .rare-stock`.
+  - `rare-stock-<nguyên liệu>` (`data-n`), `rare-fragments-<món>` (`data-status`, `data-n`), `rare-taste-<món>`.
+  - `basket-luck` (`data-pity`, `data-sure`, `data-frag-sure`, `data-all`; tour).
+- Thẻ Hôm nay:
+  - `prep-forecast`, `prep-incident-bonus` (`data-kind`).
+  - ⚠ `prep-debts` chữ "Sổ ghi nợ: Cô Thu|Bạn Nam 20.000đ" (incident-notebook:181).
+  - `prep-dish-<món>`: ⚠ chữ "Tri ân 20/11 · 2026" (event-2011:132).
+  - `rare-left-<món>`: ⚠ chữ "★ còn N phần" (m4-rare).
+- Khác:
+  - `prep-talk`, `prep-tip`, `prep-tip-notebook`.
+  - Thẻ chuỗi `chain-card` (tour) hoặc `chain-card-<id>`; `chain-claim-<chuỗi>[-<bước>]` (review-m2, event-2011, m2-meta, hanh-trinh); `chain-assist-<id>`.
+  - `dream-card` hoặc `stage-up-card` (`role=button`; m2-ui:188 cuộn tới rồi chạm).
+  - `loan-info`, `take-loan`, `backup-reminder` (pwa-backup).
+  - `update-ready`: ⚠ chữ "Có bản mới". Kèm `update-reload` (pwa-backup).
+  - `rewind-note`: ⚠ chữ "lùi" (checkin-quests:97).
+  - `mail-toast`, `event-auto-toast`; hộp mời lên chặng `stage-up-modal`, `stage-up-open`, `stage-up-later` (hanh-trinh, m4-rare, m4-tip-events-attp).
+  - `open-shift`: ⚠ nằm trong `.sticky-foot`, luôn nằm trọn khung nhìn ở 360×740 dù cuộn tới đâu (incident-notebook `openShiftVisible`); hầu hết e2e bấm nút này.
+- Tour `chuan_bi`: `prep-stats`, `open-shop`→`open-mail`, `open-recipe-book`→`open-settings`, `chain-card`, `help-button`, `open-shift`.
+- Tour `su_kien_ngay`: `day-event-card`, `[data-testid^="day-event-choice-"]`.
+- Tour `hang_hiem`: `stall-card`, `rare-stock-card`, `basket-luck`.
+
+**Chợ Công Thức:**
+- testid: `screen-shop`; `shop-tab-recipes|upgrades|spoons` (m2-ui duyệt cả 3 tab; tour khoanh từ `shop-tab-recipes` tới `shop-tab-spoons`); khu `shop-<tab>`.
+- `shop-item-<món>`: ⚠ có lớp `.is-owned` khi đã mua (shop:71, m2-meta:153, hanh-trinh). ⚠ Tour nhắm `[data-testid^="shop-item-"]:not(.is-owned) .shop-facts`.
+- `shop-buy-<món>` (`data-price`, `disabled`).
+- `shop-trial-<món>`: ⚠ tour nhắm `button[data-testid^="shop-trial-"]`, nên phần tử phải là thẻ `button`. Bị khóa sau khi đã nấu thử (m2-ui).
+- `shop-trial-note-<món>`, `shop-teaser-<món>`, `shop-bought`, `shop-event-<món>`.
+- `upgrade-<id>`: ⚠ có `.is-owned` (shop:82, iphone-overlays:334). Kèm `upgrade-buy-<id>` (`disabled`).
+- Dù và đồ trang trí: `parasol-card-<id>`, `parasol-<id>`, `parasol-preview-<id>`, `parasol-previewing`, `deco-<id>`, `deco-use-<id>`.
+- Túi đồ: `bag`, `bag-basket`, `bag-rare-<id>`.
+- `cart-view` có `data-umbrella` (shop:92).
+- Hộp xác nhận: `confirm-ok`, `confirm-cancel`.
+- e2e phủ: shop, m2-meta, m2-ui, iphone-overlays, stability, tour, hanh-trinh.
+
+**Nấu thử:**
+- testid: `screen-tasting`; `tasting-label` ⚠ chữ "Nấu thử" (m2-ui:93); `tasting-result` (`data-grade`); `tasting-back`, `tasting-buy`, `tasting-retry`, `tasting-exit`, `tasting-unlocked`, `tasting-not-yet`; `panel-kitchen`.
+- ⚠ Không được có `kitchen-back` và `abandon-dish` (m2-ui kiểm là không có).
+- Bếp bên trong dùng chung bộ giải của helpers (`minigame-stage[data-type="chon"]`, `shelf-*`, `chon-done`, `board`, `playBoard`, `finish-dish`).
+- e2e phủ: m2-ui, m4-rare (mở món hiếm), shop.
+
+**Việc hôm nay:**
+- `screen-quests`.
+- `quest-<i>` có `data-id`, `data-target`, `data-progress` (checkin-quests); tour nhắm `quest-0`.
+- `quest-claim-<i>`: ⚠ chữ "Đã nhận" (checkin-quests:164); `disabled`. Tour chọn lần lượt `[data-testid^="quest-claim-"]:not([disabled])`, `quest-claim-0`, rồi `[data-testid^="quest-claim-"]`.
+- `quest-reroll-<i>` (`disabled`; tour).
+- `daily-chest-card` (tour); `daily-chest` (`disabled`, hanh-trinh).
+- Hộp xác nhận `confirm-*`.
+- ⚠ `tour.e2e:741-748` kiểm vùng sáng ôm đúng `quest-claim-1` và `quest-reroll-0`, sai lệch ≤ 1,5px.
+- e2e phủ: checkin-quests, m2-meta, m2-ui, stability, tour, hanh-trinh.
+
+**Hộp thư:**
+- `screen-mail`.
+- `mail-list` (tour), `mail-item-<id>`.
+- `mail-claim-<id>`: ⚠ tour nhắm `button[data-testid^="mail-claim-"]:not([data-testid="mail-claim-all"])`, nên phải là thẻ `button`.
+- `mail-claim-all` (review-m2; tour; `disabled` ở hanh-trinh).
+- e2e phủ: review-m2, m2-ui, stability, hanh-trinh.
+
+**Sự kiện:**
+- `screen-event`: ⚠ chữ "04:00 ngày 12/11/2026" lúc sự kiện sắp diễn ra (event-2011:167).
+- `event-tem` (`data-amount`), `event-checkin-claim`, `event-quest-<id>`, `event-quest-claim-<id>`.
+- `event-recipe-<món>`: ⚠ có `.is-owned` khi đã nhận; chữ "Tri ân 20/11 · 2026", "nhận công thức".
+- `event-exchange-<id>`, `event-exchange-item-<id>`.
+- `event-chain-step` (`data-step`): ⚠ chữ "Mở hàng một ca hôm nay".
+- `event-grace-chain` (review-m2): ⚠ phần tử `p.meta-hint.ev-grace-note`, xem mục 9.1.
+- `chain-claim-tri_an_20_11_chuoi-4`.
+- e2e phủ: event-2011, m2-meta, review-m2, m2-ui, hanh-trinh.
+
+**Lên chặng:**
+- `screen-stage-up` (`data-eligible`), `stage-conditions`, `stage-cond-<id>`, `stage-up-locked`, `post-goals`.
+- e2e phủ: m2-ui (soát bố cục 360×740), hanh-trinh.
+
+**Sổ công thức:**
+- `screen-recipe-book`.
+- `recipe-book-tab-mon`, `recipe-book-tab-tu` (tour khoanh từ tab này tới tab kia).
+- `book-recipe-<món>`:
+  - `data-status` (`owned`/`teaser`…), `data-cooks`, `data-best`, `data-flawless`.
+  - ⚠ chữ "Có sẵn", "Công thức hiếm", "Tri ân 20/11 · 2026".
+  - Tour dùng bộ chọn `[data-testid^="book-recipe-"]`.
+- `book-open-<món>` (tour; stability).
+- `book-rare-<món>`: ⚠ chữ "Mảnh n/3" (m4-rare:139).
+- `book-taste-<món>`, `book-level-<món>`, `book-cooks-<món>`, `book-best-<món>`, `book-flawless-<món>`, `book-hiem-cost-<món>`.
+- Chi tiết món: `recipe-detail`, `recipe-detail-close`, `recipe-detail-ing-<id>` (test kiểm **không** lộ nguyên liệu bẫy), `recipe-detail-step-<id>`.
+- Sổ từ: `dialect-list`; `dialect-<món>` ⚠ chữ "trà tắc … trà quất", "nâu đá".
+- e2e phủ: incident-notebook, m4-rare, stability, hanh-trinh.
+
+**Sổ tay nghề:**
+- `screen-notebook`.
+- `notebook-progress` (`data-total`, `data-unlocked`).
+- `notebook-tab-<nhóm>` (`data-dot`).
+- `notebook-group-<nhóm>`, `notebook-claim-<nhóm>`, `notebook-claimed-<nhóm>`.
+- `notebook-tip-<id>`: thẻ khóa có `data-unlocked="false"`, ⚠ chữ "Cách mở: " (incident-notebook:207).
+- `notebook-featured`, `notebook-toast`.
+- e2e phủ: incident-notebook, stability, hanh-trinh.
+
+**Cài đặt:**
+- Sao lưu:
+  - `screen-settings`, `settings-backup`.
+  - `backup-copy`, `backup-copy-again`; `backup-copy-status` (`data-copied`, chữ).
+  - `backup-last`: ⚠ chữ "Chưa sao lưu", "Lần sao lưu gần nhất: dd/mm/yyyy hh:mm".
+  - `backup-code-modal`, `backup-code`, `backup-done`, `backup-download`.
+  - `backup-import`, `backup-import-modal`, `backup-input`, `backup-check`.
+  - `backup-error`: ⚠ chữ "Chưa có mã", "sai hoặc thiếu ký tự", "không phải mã sao lưu".
+  - `backup-preview`: `data-shop`, `data-day`, `data-wallet`, `data-chang`, `data-recipes`; ⚠ chữ "Bản hiện tại".
+  - `backup-confirm`: ⚠ chữ đúng bằng "Dùng bản này" hoặc "Vẫn dùng bản này" (save-safety).
+  - `backup-newer` (chữ), `backup-change`, `backup-cancel`.
+  - Bản lưu đã cất: `archive-list`, `archive-restore-*`, `broken-archives` (chữ).
+- Đặt lại game: `reset-game`, `reset-step1` (⚠ chữ "không bị xóa"), `reset-step2`, `reset-next`, `reset-confirm`, `reset-cancel`.
+- Thiết lập: `setting-volume` và `setting-volume-value` (⚠ chữ "50%"), `setting-sound`, `setting-tips`, `setting-assistCash`, `setting-incident-<mức>` (`aria-checked`), `setting-tour`.
+- `app-version`: ⚠ chữ chứa số phiên bản.
+- Giới thiệu: `open-about`, `about-close`; `about-modal` ⚠ chữ "hư cấu", "số liệu minh họa", "không liên quan tới thương hiệu".
+- Cài game, chơi offline: `install-app`, `install-hint` (⚠ chữ), `install-hint-ok`, `offline-state` (⚠ chữ "sẵn sàng chơi khi không có mạng").
+- e2e phủ: pwa-backup, save-safety, review-m3-ux, iphone-overlays, stability, tour, hanh-trinh.
+
+**Hướng dẫn và Cách chơi:**
+- `help-button`, `help-sheet`.
+- `help-replay`: ⚠ chữ là tên tour của màn, ví dụ "Quầy · Order", "Tổng kết ca", "Ca bán".
+- `help-how`; `how-to-play` ⚠ chữ "Order … Thanh toán … Tính tiền … Làm đồ"; `how-card-<id>` (số thẻ = `HOW_TO_PLAY.length`).
+- `help-reset`, `help-reset-confirm`, `help-reset-cancel`, `help-reset-done`, `help-back`, `help-close`.
+- e2e phủ: tour.
+
+**Tổng kết:**
+- `summary`.
+- ⚠ helpers `readLedger` và `checkLedger` đọc `[data-testid="summary"] table.ledger`:
+  - mỗi `tr` gồm 2 ô `td`, ô đầu ghi nhãn, so bằng `STRINGS.summary.tips`, `eventIn`, `eventOut`;
+  - dòng lãi là `tr.total`;
+  - các dòng cộng lại phải bằng lãi.
+- `summary-profit` (`data-amount`, chữ có số).
+- `summary-drawer-diff`: ⚠ chữ đúng bằng "0đ" (one-shift:41).
+- `summary-tip-rule` ⚠ chữ; `summary-event-money` gồm các `li[data-event]` có `data-money`, ⚠ chữ "Giải Nhất|Khuyến khích…", "Chưa có giải", "Tái phạm lỗi …".
+- `summary-incident` (`data-incident`, `data-choice`, chữ).
+- `summary-quests`, `summary-event-chain`, `summary-day-event` (`data-event`), `next-day`.
+- ⚠ `tour.e2e:613-615`: `.summary-screen [help-button]` trúng chạm khi cuộn tới đáy.
+- ⚠ Tour `tong_ket` nhắm `['.ledger .total', '.ledger']`, `summary-drawer-diff`, `summary-stars`, `summary-reviews`, `next-day`.
+- e2e phủ: one-shift, subpath, checkin-quests, event-2011, incident-notebook, m4-tip-events, m4-tip-events-attp, tour, hanh-trinh (qua helpers `playShiftUi`).
+
+**Gánh hàng và Lựa hàng:**
+- `screen-market`.
+- `market-intro` (`data-stall`): ⚠ tour `lua_hang` nhắm `[data-testid="market-intro"] .npc-talk` và `.market-goods`.
+- `stall-start`: ⚠ chữ "Lựa tiếp" khi đang lựa dở (m4-rare:208); tour `requires`.
+- `stall-locked`.
+- `market-stage` (`data-stall`) chứa `minigame-stage[data-type="chon"]`: ⚠ m4-rare đếm `[data-testid^="shelf-"].chon-cell` đúng bằng 9.
+- `market-result` (`data-score`, `data-got`).
+- `market-got-<id>`: ⚠ chữ "+n phần <tên>".
+- `market-fragment`, `market-tip` (lớp `.incident-tip`), `market-done`, `market-back`, `confirm-*`.
+- e2e phủ: m4-rare, iphone-overlays.
+
+**Hộp tình huống trong ca:** đã ghi ở mục 6. Kiểu nền của hộp chuyển sang đầu `css/sheet.css`; e2e phủ: incident-notebook, m4-tip-events-attp, helpers.
+
+### 9.4 Soát chung trên các màn ngoài ca và tệp e2e phủ màn nào
+
+Những e2e soát chung trên nhiều màn:
+
+- `m2-ui` (360×740): bảng điểm danh, Chuẩn bị, Chợ Công Thức đủ 3 tab, Việc hôm nay, Hộp thư, Sự kiện, Lên chặng. Đòi không tràn ngang, chữ ≥ 14px, vùng chạm ≥ 44px với `button, a, input, select, [role=button], summary`.
+- `incident-notebook` (360×740): cũng soát như trên ở Chuẩn bị, Sổ tay nghề, Sổ công thức, chi tiết món, Sổ từ và hộp tình huống.
+- `pwa-backup`: cũng soát như trên ở Cài đặt và Giới thiệu.
+- `hanh-trinh`: báo lỗi khi chữ < 13px, vùng chạm < 44px, có chữ "undefined/NaN/{biến}", hoặc trang tràn ngang.
+- `iphone-overlays`: `measure()` dùng `elementFromPoint` ở tâm và 4 mép mỗi nút: nút Cài đặt, Chợ (tab Nâng cấp), lựa chọn sự kiện ngày, Gánh hàng và Lựa hàng.
+- ⚠ `stability`: chuyển nhanh 20 vòng giữa Chuẩn bị và các màn con. Sau đó số bộ nghe trên bus, trên window/document, số phần tử bị tách khỏi trang còn giữ trong bộ nhớ và **số vòng `requestAnimationFrame` đang chạy ở màn Chuẩn bị** phải giữ nguyên. Hoạt ảnh JS mới ở màn Chuẩn bị phải tự dừng và tự dọn khi rời màn.
+
+| Tệp e2e | Màn ngoài ca phủ |
+|---|---|
+| `checkin-quests` | Mở đầu, Chuẩn bị (`data-dot`, lùi giờ), Điểm danh, Việc hôm nay, Tổng kết (`summary-quests`) |
+| `event-2011` | Mở đầu, Chuẩn bị (thẻ sự kiện ở các pha), Điểm danh, Sự kiện, chuỗi sự kiện, Tổng kết |
+| `m2-meta` | Mở đầu, Chuẩn bị, Điểm danh, Chợ Công Thức (mua món, dù), Việc hôm nay, Sự kiện |
+| `m2-ui` | Nấu thử, Chuẩn bị (sự kiện ngày + Phiếu Chợ Sớm), soát 360×740 các màn M2 + Lên chặng |
+| `review-m2` | Mở đầu, Chuẩn bị (`prep-spoons`, thẻ sự kiện ân hạn), Hộp thư, Sự kiện, `chain-claim-*`, dải Giờ giả, khóa tab |
+| `stability` | Chuẩn bị ↔ Sổ tay nghề, Sổ công thức (+ chi tiết, Sổ từ), Cài đặt (+ Giới thiệu), Chợ, Việc hôm nay, Hộp thư, Điểm danh |
+| `m4-rare` | Chuẩn bị (gánh hàng, kho hiếm, mảnh), Gánh hàng / Lựa hàng, Nấu thử món hiếm, Sổ công thức (Công thức hiếm), hộp mời lên chặng |
+| `shop` | Chuẩn bị, Chợ Công Thức (món, nâng cấp, dù), Nấu thử (`tasting-buy`) |
+| `incident-notebook` | Chuẩn bị (lưới 7 ô, `data-dot`, sổ ghi nợ), Sổ tay nghề, Sổ công thức, Tổng kết (`summary-incident`), hộp tình huống |
+| `pwa-backup` | Mở đầu (`.title-shop`), Chuẩn bị (nhắc sao lưu, "Có bản mới"), Cài đặt, Điểm danh |
+| `save-safety`, `review-m3-ux` | Mở đầu, Cài đặt (mã sao lưu, bản đã cất), Chuẩn bị |
+| `iphone-overlays` | Cài đặt, Chợ (Nâng cấp), Chuẩn bị (sự kiện ngày), Gánh hàng / Lựa hàng |
+| `tour` | Mở đầu, Chuẩn bị, Điểm danh, Cài đặt (`setting-tour`), Chợ (nút "?"), Việc hôm nay (vùng sáng), Tổng kết, Hướng dẫn / Cách chơi |
+| `one-shift`, `subpath` | Mở đầu, Chuẩn bị (`prep-day`), Tổng kết (`summary-profit`, `summary-drawer-diff`), `next-day` |
+| `m4-tip-events`, `m4-tip-events-attp` | Tổng kết (sổ lãi lỗ, tiền sự kiện, luật tip), Chuẩn bị (thẻ ATTP, `day-event-warn`), hộp tình huống |
+| `hanh-trinh` (chạy tay) | Toàn bộ màn ngoài ca |
