@@ -15,11 +15,13 @@
 // mục thật). Trang mẫu (mau.html, mau/) và fonts/OFL.txt KHÔNG nằm trong PRECACHE.
 // 0.5.0 (M5 Đợt 1): thêm 5 thao tác bếp mới (src/ui/minigames/{dap,xoay,got,lac,bay}.js, _gesture.js), bảng ánh xạ
 // bước → hình trạng thái (src/ui/art/state-map.js); bộ hình mới đã vào ICONS qua mặt tiền src/ui/art.js.
+// 0.5.2 (vừa màn hình điện thoại): mọi khâu trong ca (Quầy, Bếp) thao tác trọn một màn ở khung iPhone 16 Pro (cảnh + khay);
+//   tách meta.css thành css/{prep,shop,quests,mail,book,summary,market}.css (chỉ chuyển chỗ), thêm src/ui/art/meta.js.
 // 0.5.1 (M5 Đợt 2, chỉ đổi giao diện trong ca): Quầy tách theo khâu (src/ui/screens/counter-{order,pay,cash,qr,receipt}.js),
 // thành phần mới (components/{numpad,cash-drawer,score-sheet,incident-view}.js), hình người và cảnh quầy
 // (src/ui/art/{people,scene}.js), CSS theo khâu (css/{street,cashier,receipt,sheet}.css).
 
-const VERSION = '0.5.1'
+const VERSION = '0.5.2'
 const CACHE_PREFIX = 'bkn-'
 const CACHE = CACHE_PREFIX + VERSION
 

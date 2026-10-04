@@ -141,8 +141,9 @@ test('save v2 → thư phiên bản 0.4.0: luật tip mới, quà làm quen 1 m�
   const r = refreshMeta(s, ni, ctx)
   // M5 (sửa có chủ ý): bản 0.5.0 có thêm thư phiên bản 0.5.0 (không quà) → save 0.3 nhận thư 0.4.0 và 0.5.0
   // M5 Đợt 2 (sửa có chủ ý): bản 0.5.1 có thêm thư phiên bản 0.5.1 (không quà) → save 0.3 nhận thư 0.4.0, 0.5.0 và 0.5.1
-  assert.deepEqual(r.newMail.filter(id => id.startsWith('phien_ban')), ['phien_ban_0_4_0', 'phien_ban_0_5_0', 'phien_ban_0_5_1'], 'save 0.3 nhận thư 0.4.0, 0.5.0 và 0.5.1')
-  assert.equal(s.mail.seenVersion, '0.5.1')
+  // 0.5.2 (sửa có chủ ý): thêm thư 0.5.2 (vừa màn hình, không quà)
+  assert.deepEqual(r.newMail.filter(id => id.startsWith('phien_ban')), ['phien_ban_0_4_0', 'phien_ban_0_5_0', 'phien_ban_0_5_1', 'phien_ban_0_5_2'], 'save 0.3 nhận thư 0.4.0, 0.5.0, 0.5.1 và 0.5.2')
+  assert.equal(s.mail.seenVersion, '0.5.2')
   const m = s.mail.list.find(x => x.id === 'phien_ban_0_4_0')
   // (soát lỗi M4, sửa có chủ ý: câu cũ "hóa đơn … và khách chấm 5 sao sẽ bỏ hũ tip" sai chủ ngữ)
   assert.match(m.body, /hóa đơn từ 20\.000đ mà khách chấm 5 sao thì khách bỏ hũ tip 5\.000đ/i)
@@ -167,7 +168,7 @@ test('save v2 → thư phiên bản 0.4.0: luật tip mới, quà làm quen 1 m�
   const fresh = defaultState(3, DATA)
   refreshMeta(fresh, makeNowInfo(fresh, vn('2026-10-06T08:00')), makeMetaCtx({ state: fresh }))
   assert.ok(!fresh.mail.list.some(x => x.kind === 'phien_ban'))
-  assert.equal(fresh.mail.seenVersion, '0.5.1')
+  assert.equal(fresh.mail.seenVersion, '0.5.2')
 })
 
 test('save v1 → v3: trường meta M2, tình huống M3, trường M4 đều mặc định; nhận thư 0.2.0 và 0.4.0', () => {

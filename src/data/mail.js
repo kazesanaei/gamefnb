@@ -9,8 +9,8 @@ function deepFreeze(o) {
 
 export const MAIL_CONFIG = deepFreeze({
   // phiên bản nội dung mới nhất (thư phiên bản ≤ số này được gửi cho save cũ); 0.3.0 không có thư riêng
-  // (0.4.1, 0.4.2 cũng không; 0.5.0 có thư giới thiệu bếp mới, 0.5.1 có thư giới thiệu quầy mới, đều không kèm quà)
-  currentVersion: '0.5.1',
+  // (0.4.1, 0.4.2 cũng không; 0.5.0 có thư giới thiệu bếp mới, 0.5.1 có thư giới thiệu quầy mới, 0.5.2 có thư báo màn hình gọn vừa điện thoại, đều không kèm quà)
+  currentVersion: '0.5.2',
   maxMails: 100,           // đầy thì bỏ thư cũ nhất đã nhận
   expireDays: 30,          // hạn nhận mặc định
   holidayExpireDays: 14,   // quà lễ
@@ -87,6 +87,14 @@ export const MAIL_VERSIONS = deepFreeze([
       'Chuyển khoản thì khách giơ điện thoại có mã QR, tiền về nghe "ting". Phiếu thu in ra từ máy in nhỏ. ' +
       'Phiếu chấm mới có mặt khách vui hay buồn theo số sao, sao bật lên từng ngôi, được tip thì xu bay về ví. ' +
       'Giá bán, giá vốn, cách chấm sao và luật tip vẫn giữ như cũ. Con ra quầy bán thử nha!',
+    reward: {} },
+  { version: '0.5.2', id: 'phien_ban_0_5_2', kind: 'phien_ban',
+    title: 'Có gì mới: màn hình gọn, vừa điện thoại',
+    body: 'Quầy và bếp đã được sắp lại cho vừa màn hình điện thoại, không phải vuốt lên vuốt xuống nữa! ' +
+      'Phía trên là cảnh quầy có khách đứng chờ, phía dưới là khay đồ nghề đổi theo từng việc: thực đơn và phiếu order, ' +
+      'máy tính tiền, két tiền, điện thoại nhận chuyển khoản, phiếu thu. ' +
+      'Thanh trên cùng và thanh Quầy – Bếp cũng gọn hơn để chừa chỗ cho tay thao tác. ' +
+      'Giá bán, giá vốn, cách chấm sao và luật tip vẫn giữ như cũ. Con ra quầy thử nha!',
     reward: {} }
 ])
 

@@ -2,7 +2,7 @@
 
 Bếp Khởi Nghiệp là game bán hàng chơi trên trình duyệt, thiết kế cho điện thoại cầm dọc. Bạn khởi nghiệp với một chiếc xe đẩy đầu hẻm: tự tay nhận order, báo tổng tiền, thối tiền, rồi vào bếp chọn nguyên liệu, rửa, thái, gọt, đập trứng, chiên, khuấy, lắc, nêm cho từng món. Mỗi khách chấm sao riêng phần quầy và phần bếp, nên bạn biết mình sai ở đâu để sửa. Game lồng nhẹ các "Mẹo nghề" về vận hành quán ăn, dùng được để giải trí lẫn để ôn nghề cho nhân viên mới.
 
-Bản hiện tại (**0.5.1**) là **Chặng 1 "Xe đẩy đầu hẻm"** của bản MVP, đã xong bốn mốc: M1 (lõi chơi được), M2 (kinh tế, nhiệm vụ, sự kiện), M3 (hoàn thiện: chơi offline, sao lưu, Cài đặt, nội dung thêm) và M4 (tip mới, sự kiện thưởng/phạt tiền, nguyên liệu và món hiếm). Mốc M5 đang làm lại giao diện theo kiểu game nấu ăn: bản 0.5.0 xong phần **Bếp** và **5 thao tác mới**, bản 0.5.1 xong **Quầy**, thanh trên, dải phố, dây phiếu và phiếu chấm (mục "Có gì mới" bên dưới); các màn ngoài ca làm ở bản 0.5.2.
+Bản hiện tại (**0.5.2**) là **Chặng 1 "Xe đẩy đầu hẻm"** của bản MVP, đã xong bốn mốc: M1 (lõi chơi được), M2 (kinh tế, nhiệm vụ, sự kiện), M3 (hoàn thiện: chơi offline, sao lưu, Cài đặt, nội dung thêm) và M4 (tip mới, sự kiện thưởng/phạt tiền, nguyên liệu và món hiếm). Mốc M5 đang làm lại giao diện theo kiểu game nấu ăn: bản 0.5.0 xong phần **Bếp** và **5 thao tác mới**, bản 0.5.1 xong **Quầy**, thanh trên, dải phố, dây phiếu và phiếu chấm, bản 0.5.2 làm **vừa màn hình điện thoại** (mục "Có gì mới" bên dưới); các màn ngoài ca làm ở bản 0.5.3.
 
 ---
 
@@ -56,6 +56,8 @@ Bản hiện tại (**0.5.1**) là **Chặng 1 "Xe đẩy đầu hẻm"** của 
 - Nút bấm kiểu "bánh kẹo" cho toàn game, font tiêu đề tròn đậm Baloo 2 (tự lưu, chơi offline được), âm thanh riêng cho từng thao tác mới. Hiệu ứng tôn trọng công tắc "Giảm chuyển động".
 - Hướng dẫn lần đầu có thêm 5 tour ngắn trên thẻ bước của 5 thao tác mới (người chơi cũ cũng được xem).
 - **Không đổi cân bằng**: giá bán, giá vốn, thời gian dành cho mỗi bước, trọng số bước giữ nguyên. Bản lưu cũ (kể cả đang dở một món trên Thớt) mở bình thường; bước chưa làm hiện thao tác mới, bước đã làm giữ điểm. Người chơi cũ nhận thư "Có gì mới: bếp mới và 5 thao tác mới" (không kèm quà).
+
+**Có gì mới ở 0.5.2 (vừa màn hình điện thoại)** — chỉ đổi bố cục, luật chơi và tiền giữ nguyên: mọi khâu trong ca (Order, Thanh toán, Tính tiền, Chuyển khoản, Phiếu thu, phiếu chấm, tình huống, Bếp) thao tác trọn một màn, không phải vuốt lên xuống, ở các khung chính (iPhone 16 Pro cài app 402×874 và Safari 402×680/760, 390×844, 360×780, 412×915). Màn ca bán chia **cảnh** (khách đứng ở quầy, bong bóng lời) và **khay đồ nghề** đổi theo khâu; thanh trên và thanh Quầy – Bếp gọn hơn; bố cục co theo chiều cao dùng được (bậc l/m/s/xs). Kiểm bằng e2e `m5-vua-man`, `vua-man-*`.
 
 **Có gì mới ở 0.5.1 (M5 Đợt 2: quầy mới, thanh trên, dải phố, phiếu chấm)** — chỉ đổi giao diện, luật chơi và tiền giữ nguyên:
 - **Thanh trên** bằng gỗ: giờ ca có mặt trời chạy tới cuối ca, ví "Tiền quán" kèm thẻ xanh "+…đ" là tiền đã thu trong ca (cộng vào Tiền quán lúc đóng ca); mỗi lần thu tiền, đồng xu bay về ví và thẻ đếm lên đúng số.
