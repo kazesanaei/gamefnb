@@ -1510,12 +1510,18 @@ html.reduce-motion .co-idle-bob { animation: none !important; }
   text-align: center;
   pointer-events: none;
 }
+/* lời gọi món dài cuộn trong bong bóng trong khi lời qua lại vẫn thấy (is-talk-one): dấu ⌄ nằm gọn trong bong bóng, không đè
+   viền trên của viên lời qua lại gài sát mép dưới */
+.co-scene .co-cust-wrap.is-talk-one .co-bubble.is-more .co-bubble-more { bottom: 4px; }
 /* kiểu hình món (ngày 1–2): hàng món + câu gọi món cạnh nhau (câu xuống dưới khi hẹp); câu tối đa 2 dòng (đủ: hình món nói
    đủ món) */
 .co-scene .co-bubble[data-mode="icons"] { flex-flow: row wrap; align-items: center; gap: 2px 10px; }
 .co-scene .co-bubble[data-mode="icons"] .co-bubble-dishes { flex: none; justify-content: flex-start; gap: 2px 14px; }
 .co-scene .co-bubble[data-mode="icons"] .co-bubble-dish { flex-direction: row; align-items: flex-end; }
 .co-scene .co-bubble[data-mode="icons"] .co-bubble-say { flex: 1 1 130px; display: -webkit-box; -webkit-line-clamp: 2; overflow: hidden; }
+/* khâu gọi món ở khung chính có lời qua lại (order-bubble fit is-say-line): câu còn một dòng — hình món, ×n, hình ghi chú vẫn
+   đủ món — để bong bóng hình món và một dòng lời qua lại cùng vừa hàng giữa (bậc m, đơn 2 món) */
+.co-scene .co-cust-wrap.is-say-line .co-bubble[data-mode="icons"] .co-bubble-say { -webkit-line-clamp: 1; }
 .co-scene .co-bubble .co-bubble-art,
 .co-scene .co-bubble[data-n] .co-bubble-art { width: 56px; height: 56px; }
 .co-scene .co-bubble[data-n="3"] .co-bubble-art, .co-scene .co-bubble[data-n="4"] .co-bubble-art { width: 46px; height: 46px; }
