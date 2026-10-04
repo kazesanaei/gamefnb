@@ -39,7 +39,38 @@ export { TOTAL_CODES, CHANGE_CODES, renderScoreSheet } from '../components/score
 const SHEET_MS = 2000
 const END_DELAY_MS = 1200
 // M5: chế độ tập trung khi nấu chỉ bật ở khung thấp hơn chừng này (px).
+// Vừa màn (L0): so với chiều cao DÙNG ĐƯỢC của màn (cao màn − vùng an toàn trên − vùng an toàn dưới), không phải cao màn.
 export const FOCUS_MAX_H = 760
+
+// ---------- Vừa màn (L0): khung chung của màn Ca bán ----------
+// Màn Ca bán chia: HUD | (tab Quầy) CẢNH cao --scene-h nằm dưới panel Quầy trong suốt — mái bạt, hàng trên (hàng khách,
+// kẹp phiếu), hàng giữa (khách ở quầy + bong bóng do panel Quầy vẽ), dải mặt trước xe đẩy mang biển 4 khâu — rồi KHAY công
+// cụ của khâu (phần còn lại) | thanh tab. Tab Bếp: dải mặt khách 58 + dây phiếu đầy đủ 56 trong luồng, thanh 4 khâu cao 0.
+// Bậc (data-fit) theo chỗ giữa HUD và thanh tab (A); cảnh theo bậc; mọi số đo ghi lên .service-screen KHI ĐỔI (mount và
+// ResizeObserver), không đọc kích thước mỗi khung hình.
+/** Bậc khung theo chiều cao giữa HUD và thanh tab (px): 'l' | 'm' | 's' | 'xs'. */
+export function frameFit(avail) {
+  const a = Number(avail) || 0
+  return a >= 640 ? 'l' : a >= 540 ? 'm' : a >= 440 ? 's' : 'xs'
+}
+/** Chiều cao cảnh tab Quầy (px) theo bậc và chỗ giữa HUD và thanh tab. */
+export function sceneHeight(fit, avail) {
+  const a = Number(avail) || 0
+  if (fit === 'l') return Math.min(296, Math.round(0.375 * a))
+  if (fit === 'm') return Math.min(226, Math.round(0.335 * a))
+  if (fit === 's') return Math.min(176, Math.round(0.325 * a))
+  return 116
+}
+/** Mái bạt + hàng trên của cảnh tab Quầy (px) theo bậc — khớp css/game.css (--sc-row). */
+export const SCENE_ROW = Object.freeze({ l: 60, m: 58, s: 56, xs: 54 })
+/** Tab Bếp: dải mặt khách và dây phiếu đầy đủ (px) — khớp css/game.css, css/street.css. */
+export const KITCHEN_STRIP_H = 58
+export const KITCHEN_RAIL_H = 56
+/** Số khách xếp hàng (ngoài khách ở quầy) hiện ở hàng trên của cảnh tab Quầy; dư thì gộp viên "+n". */
+export function queueShowMax(fit, width) {
+  if (fit === 's' || fit === 'xs') return 0
+  return (Number(width) || 0) < 360 ? 1 : 2
+}
 
 // ---------- Dải phố (gói Q-D) ----------
 /** Cỡ khách trong hàng theo vị trí (khách ở quầy 100%, kế tiếp 85%, cuối 70%); khách chờ món nhỏ hơn nữa. */
@@ -90,14 +121,65 @@ export default {
     const tabKitchen = h('button', { class: 'tab', type: 'button', testid: 'tab-kitchen', role: 'tab', onclick: () => showTab('kitchen') })
     const tabbar = h('nav', { class: 'tabbar', role: 'tablist' }, tabCounter, tabKitchen)
     const sheetHost = h('div', { class: 'sheet-host' })
-    const el = h('section', { class: 'service-screen', testid: 'screen-service' },
-      hud.el, street, progress.el, rail.el, h('div', { class: 'panels' }, panelCounter, panelKitchen), tabbar, sheetHost)
+    const panels = h('div', { class: 'panels' }, panelCounter, panelKitchen)
+    const el = h('section', { class: 'service-screen', testid: 'screen-service', dataset: { tab: 'counter', cook: '' } },
+      hud.el, street, progress.el, rail.el, panels, tabbar, sheetHost)
     root.appendChild(el)
 
     let active = 'counter'
     const dots = { counter: false, kitchen: false }
     let destroyed = false
     const offs = []
+
+    // ---------- Vừa màn (L0): đo khung (mount + ResizeObserver, không đọc kích thước mỗi khung hình) ----------
+    // H = cao màn; HUD = 47 + an toàn trên; thanh tab = 49 + max(4, an toàn dưới). An toàn đọc qua phần đệm đã tính của HUD /
+    // thanh tab (biến --safe-* trên iOS là chuỗi env(...), đọc thẳng ra NaN). U = H − an toàn (so FOCUS_MAX_H); A = H − HUD −
+    // thanh tab (bậc, cảnh). Ghi data-fit + biến --hud-h, --usable-h, --avail-h, --scene-h, --tray-h, --kitchen-h CHỈ KHI ĐỔI.
+    const frame = { H: -1, W: 0, U: -1, A: 0, fit: '', S: 0 }
+    let cook = ''
+    const varCache = Object.create(null)
+    const setVar = (name, px) => {
+      const v = Math.round(px) + 'px'
+      if (varCache[name] === v) return
+      varCache[name] = v
+      el.style.setProperty(name, v)
+    }
+    // chiều cao .k-main dự kiến (tab Bếp): dây phiếu 56, dải mặt khách 58 trừ khi đang Chọn hoặc tập trung khi nấu
+    const writeKitchenH = () => {
+      if (frame.U < 0) return
+      setVar('--kitchen-h', Math.max(0, frame.A - KITCHEN_RAIL_H - (focusOn || cook === 'chon' ? 0 : KITCHEN_STRIP_H)))
+    }
+    function measureFrame() {
+      if (destroyed || !el.isConnected) return false
+      const H = el.clientHeight
+      if (!(H > 0)) return false
+      const hudH = hud.el.offsetHeight
+      const tabH = tabbar.offsetHeight
+      const st = Math.max(0, (parseFloat(getComputedStyle(hud.el).paddingTop) || 0) - 4)
+      const pb = parseFloat(getComputedStyle(tabbar).paddingBottom) || 0
+      const sb = pb > 4.5 ? pb : 0
+      frame.H = H
+      frame.W = el.clientWidth
+      frame.U = H - st - sb
+      frame.A = Math.max(0, H - hudH - tabH)
+      frame.fit = frameFit(frame.A)
+      frame.S = sceneHeight(frame.fit, frame.A)
+      if (el.dataset.fit !== frame.fit) el.dataset.fit = frame.fit
+      setVar('--hud-h', hudH)
+      setVar('--usable-h', frame.U)
+      setVar('--avail-h', frame.A)
+      setVar('--scene-h', frame.S)
+      setVar('--tray-h', frame.A - frame.S)
+      writeKitchenH()
+      return true
+    }
+    function setCook(kind) {
+      const k = kind === 'chon' || kind === 'thot' || kind === 'stage' ? kind : ''
+      if (k === cook) return
+      cook = k
+      el.dataset.cook = k
+      writeKitchenH()
+    }
 
     // ---------- M5: chế độ tập trung khi nấu (thiết kế mục 1.9) ----------
     // Tab Bếp đang nấu (bước Chọn, Thớt hoặc sân khấu một bước) và khung cao dưới FOCUS_MAX_H: .service-screen.is-focus ẩn
@@ -111,23 +193,25 @@ export default {
     let focusOn = false
     let revealOpen = false
     const heldToasts = []
-    // Chiều cao màn (so với FOCUS_MAX_H): đọc lại khi màn đổi cỡ (ResizeObserver báo sau bố cục), không đọc clientHeight mỗi
-    // khung hình — đọc kích thước giữa lúc trang vừa đổi DOM ép trình duyệt tính bố cục sớm rồi tính lại lần nữa trong cùng
-    // khung (máy yếu: 20+ ms mỗi khung trong lúc con dấu, ra món).
-    let screenH = -1
-    const readScreenH = () => { screenH = el.isConnected ? el.clientHeight : 0 }
+    // Chiều cao dùng được (so với FOCUS_MAX_H) và mọi số đo khung: đọc lại khi màn / HUD / thanh tab đổi cỡ (ResizeObserver
+    // báo sau bố cục), không đọc kích thước mỗi khung hình — đọc kích thước giữa lúc trang vừa đổi DOM ép trình duyệt tính bố
+    // cục sớm rồi tính lại lần nữa trong cùng khung (máy yếu: 20+ ms mỗi khung trong lúc con dấu, ra món).
     let sizeObs = null
     if (typeof ResizeObserver === 'function') {
-      sizeObs = new ResizeObserver(() => { if (destroyed) return; readScreenH(); applyFocus() })
+      sizeObs = new ResizeObserver(() => { if (destroyed) return; measureFrame(); applyFocus() })
       sizeObs.observe(el)
+      sizeObs.observe(hud.el)
+      sizeObs.observe(tabbar)
     }
+    measureFrame()
     function applyFocus() {
       if (destroyed) return
-      if (!sizeObs || screenH < 0) readScreenH()
-      const on = kitchenWantsFocus && active === 'kitchen' && el.isConnected && screenH > 0 && screenH < FOCUS_MAX_H
+      if (!sizeObs || frame.U < 0) measureFrame()
+      const on = kitchenWantsFocus && active === 'kitchen' && el.isConnected && frame.U > 0 && frame.U < FOCUS_MAX_H
       if (on === focusOn) return
       focusOn = on
       el.classList.toggle('is-focus', on)
+      writeKitchenH()
       // chồng thông báo nổi (lớp nổi gốc của app) lên sát HUD: không phủ xuống vùng nấu (css/game.css)
       if (app.overlay && app.overlay.classList) app.overlay.classList.toggle('is-cook-focus', on)
       if (!on) releaseToasts()
@@ -147,10 +231,11 @@ export default {
       for (const [t, o] of [...tips, ...plain]) { try { realToast.call(app, t, o) } catch { /* bỏ qua */ } }
     }
     if (typeof realToast === 'function') app.toast = focusToast
-    // Thông báo nổi chỉ che dải khách (đặc tả mục 12): chồng thông báo không vượt xuống thanh 4 khâu; thông báo không
-    // vừa thì chờ thông báo trước tắt (toast.js). Chế độ tập trung: thanh 4 khâu ẩn nhưng vẫn nằm trong bố cục (cao 0) ngay
-    // dưới dây phiếu (css/game.css), nên mốc này là mép trên vùng nấu. Không bao giờ trả số ≤ 0 (toast.js coi là "không
-    // giới hạn").
+    // Thông báo nổi chỉ che hàng trên của cảnh: chồng thông báo không vượt xuống bong bóng khách / thanh 4 khâu; thông báo
+    // không vừa thì chờ thông báo trước tắt (toast.js; một thông báo đứng một mình vẫn hiện). Mốc (vừa màn L0):
+    //   tab Quầy: min(đáy hàng trên của cảnh + 6, đỉnh biển 4 khâu) — hàng trên = mái bạt + hàng khách / kẹp phiếu;
+    //   tab Bếp: đỉnh .panels (thanh 4 khâu cao 0 nằm ngay đó, dưới dây phiếu) — chế độ tập trung cũng vậy.
+    // Không bao giờ trả số ≤ 0 (toast.js coi là "không giới hạn").
     // Vòng sửa Q-D: trong màn Ca bán chồng thông báo nằm thấp hơn một chút (css/game.css .overlay-root.is-service), dưới thẻ
     // "+tiền thu trong ca" treo dưới ví HUD — thẻ đếm lên đúng lúc thông báo hiện (thối đúng, kẹp phiếu), không bị che.
     // Giới hạn chiều cao bên dưới đo theo vị trí thật của chồng nên tự co theo.
@@ -158,13 +243,30 @@ export default {
     if (typeof app.toastLimit === 'function') {
       app.toastLimit(() => {
         const stack = app.overlay && app.overlay.querySelector('.toast-stack')
-        const bar = progress.el
-        if (!stack || !bar || !bar.isConnected) return 0
-        return Math.max(1, bar.getBoundingClientRect().top - stack.getBoundingClientRect().top - 4)
+        if (!stack || !el.isConnected) return 0
+        const top = stack.getBoundingClientRect().top
+        let edge
+        if (active === 'counter') {
+          const row = street.getBoundingClientRect().top + (SCENE_ROW[frame.fit] || SCENE_ROW.l)
+          edge = Math.min(row + 6, progress.el.getBoundingClientRect().top)
+        } else edge = panels.getBoundingClientRect().top
+        return Math.max(1, edge - top)
       })
     }
 
     const counter = mountCounter(panelCounter, app, { switchTab: t => showTab(t) })
+    // Vừa màn (L0): panel Quầy theo bố cục CẢNH khi div.counter mang lớp co-scene (counter.js gắn) → data-scene="1": cảnh cao
+    // --scene-h nằm dưới panel trong suốt phủ cả A. Chưa có lớp đó (bố cục 0.5.1): cảnh gọn (mái bạt + hàng trên + dải xe
+    // đẩy), panel nằm dưới cảnh và cuộn như cũ. Xét lại mỗi khung hình (chỉ đọc lớp, không đọc kích thước).
+    let sceneOn = null
+    function syncScene() {
+      const on = !!(counter && counter.el && counter.el.classList && counter.el.classList.contains('co-scene'))
+      if (on === sceneOn) return
+      sceneOn = on
+      if (on) el.dataset.scene = '1'
+      else delete el.dataset.scene
+    }
+    syncScene()
     let kitchen = null
     const kitchenPlaceholder = h('div', { class: 'kitchen-wait muted', testid: 'kitchen-loading' }, 'Đang dọn bếp…')
     panelKitchen.appendChild(kitchenPlaceholder)
@@ -174,7 +276,8 @@ export default {
       if (typeof fn !== 'function') throw new Error('kitchen.js thiếu mountKitchen')
       kitchenPlaceholder.remove()
       kitchen = fn(panelKitchen, app, {
-        onFocus: want => { kitchenWantsFocus = !!want; applyFocus() },
+        // bếp báo đang nấu (want) và loại màn nấu (kind: 'chon' | 'thot' | 'stage' → data-cook; bếp cũ không gửi kind → rỗng)
+        onFocus: (want, kind) => { kitchenWantsFocus = !!want; setCook(want ? kind : ''); applyFocus() },
         onReveal: on => { revealOpen = !!on; if (!revealOpen) releaseToasts() }
       }) || null
       if (kitchen && active === 'kitchen' && kitchen.onShow) kitchen.onShow()
@@ -189,8 +292,11 @@ export default {
       if (name === active) { paintTabs(); return }
       const prev = active
       active = name
+      el.dataset.tab = name
       panelCounter.hidden = name !== 'counter'
       panelKitchen.hidden = name !== 'kitchen'
+      // bố cục cảnh đổi ngay theo tab (css/game.css): vẽ lại hàng khách cùng lúc (thẻ tròn ↔ bán thân), không đợi khung hình sau
+      if (app.state && app.state.shift) renderStreet()
       if (prev === 'counter') counter.onHide && counter.onHide()
       if (prev === 'kitchen' && kitchen && kitchen.onHide) kitchen.onHide()
       // chế độ tập trung: tắt ngay khi rời Bếp; sang Bếp thì bếp tự báo (onFocus) lúc dựng lại, trước khi dựng mini-game
@@ -259,12 +365,19 @@ export default {
     // thành THẺ TRÒN nhỏ (.is-away: mặt tròn + vòng kiên nhẫn + mũi tên ↓ chỉ xuống panel, nhãn "Ở quầy"), hàng chờ dồn sang
     // trái; sang tab Bếp (panel Quầy ẩn) thì bán thân hiện lại ở dải phố. Đổi qua lại theo SỰ KIỆN đổi tab / đổi khách ở quầy
     // (thẻ nảy ra, bán thân lớn dần từ chỗ thẻ), vẽ lại không phát lại.
+    // Vừa màn (L0): tab Quầy, hàng khách nằm ở HÀNG TRÊN của cảnh (cao 44): MỌI khách xếp hàng thu thành thẻ tròn (mặt trong
+    // vòng kiên nhẫn; khách ở quầy 42 + mũi tên ↓ chỉ xuống bán thân lớn của panel, khách sau 40 / 34), tối đa 2 khách sau
+    // khách ở quầy (1 ở bề ngang < 360, 0 ở bậc s / xs); dư thì gộp viên "+n" (queue-more, nền đỏ nhạt khi trong số khách bị
+    // gộp có khách sắp hết kiên nhẫn). Khách bị gộp vẫn giữ nút (ẩn bằng lớp .is-over) nên không phát hoạt ảnh rời đi. Đang
+    // phục vụ (có khách ở quầy) thì khách chờ món không hiện ở cảnh Quầy (.street.is-serving): dải màu chờ trên kẹp phiếu và
+    // dải mặt khách tab Bếp đã báo. Tab Bếp: dải mặt khách 58 (bán thân nhỏ), đủ 3 khách xếp hàng như cũ.
     let queueSig = ''
     const custNodes = new Map()   // 'q:' | 'w:' + id khách → nút đang hiện
     const enteredIds = new Set()
     const leftIds = new Set()
     let streetFirst = true
     const queueEmpty = h('div', { class: 'queue-empty' }, 'Chưa có khách xếp hàng')
+    const queueMore = h('span', { class: 'queue-more', testid: 'queue-more' })
     const waitTitle = h('div', { class: 'wait-title' }, 'Chờ món')
     const waitRow = h('div', { class: 'wait-row' })
     const waitMore = h('span', { class: 'wait-more' })
@@ -301,7 +414,7 @@ export default {
       }
       const tag = kind === 'q' ? h('div', { class: 'q-tag' }) : null
       const el = h('div', { class: kind === 'q' ? 'q-cust' : 'w-cust', testid: (kind === 'q' ? 'queue-' : 'waiting-') + c.id }, fig, here, tag)
-      return { id: c.id, kind, el, fig, img, ring, here, hereRing, hereImg, tag, mood: '', headMood: '', tagKey: '', low: null, pos: -1, away: null, swap: false }
+      return { id: c.id, kind, el, fig, img, ring, here, hereRing, hereImg, tag, mood: '', headMood: '', tagKey: '', low: null, pos: -1, away: null, swap: false, over: false }
     }
 
     const looksOf = c => {
@@ -317,7 +430,8 @@ export default {
         rec.mood = mood
         rec.img.innerHTML = bust(c.persona, mood, looksOf(c))
       }
-      const away = rec.kind === 'q' && !!awayOn && c.id === counterId
+      // tab Quầy: mọi khách xếp hàng là thẻ tròn ở hàng trên của cảnh (khách ở quầy có thêm mũi tên ↓, css/street.css)
+      const away = rec.kind === 'q' && !!awayOn
       if (away !== rec.away) {
         // đổi bán thân ↔ thẻ tròn (không tính lần vẽ đầu của nút): hoạt ảnh một lần ở layoutStreet
         if (rec.away !== null) rec.swap = true
@@ -438,6 +552,13 @@ export default {
       node.addEventListener('animationend', off, { once: true })
       later(off, 900)
     }
+    // thẻ tròn / bán thân đổi chỗ (khách trước rời quầy, hàng dồn lên): trượt từ chỗ cũ; nút đang ẩn (gộp "+n") thì thôi
+    function flipShown(rec, r0) {
+      if (!r0 || !r0.width) return
+      const node = shownOf(rec)
+      const r1 = node.getBoundingClientRect()
+      if (r1.width) flip(node, r0, r1)
+    }
     // bán thân ↔ thẻ tròn (đổi tab, khách mới lên quầy): thẻ nảy ra; bán thân lớn dần từ chỗ thẻ cũ
     function playSwap(rec, r0) {
       try {
@@ -447,7 +568,7 @@ export default {
       } catch { /* bỏ qua */ }
     }
 
-    function layoutStreet(sh, inQueue, waiting, counterId, awayOn) {
+    function layoutStreet(sh, inQueue, waiting, counterId, awayOn, more) {
       const shown = street.isConnected && street.offsetParent !== null && !(typeof document !== 'undefined' && document.visibilityState === 'hidden')
       const animate = shown && !streetFirst
       const reduced = isReduced(app)
@@ -479,7 +600,7 @@ export default {
           const at = box.children[i] || null
           if (at !== rec.el) box.insertBefore(rec.el, at)
         })
-        if (anchor) box.appendChild(anchor)
+        if (anchor && box.lastChild !== anchor) box.appendChild(anchor)
       }
       const qRecs = inQueue.map((c, i) => {
         const k = 'q:' + c.id
@@ -495,12 +616,29 @@ export default {
         paintCust(rec, sh, c, i, counterId, false)
         return rec
       })
+      // khách quá chỗ của hàng trên (tab Quầy) → ẩn (giữ nút), gộp vào viên "+n"
+      qRecs.forEach((rec, i) => {
+        const over = i >= more.max
+        if (rec.over !== over) { rec.over = over; rec.el.classList.toggle('is-over', over) }
+      })
+      if (more.n > 0) {
+        const t = '+' + more.n
+        if (queueMore.textContent !== t) {
+          queueMore.textContent = t
+          queueMore.setAttribute('aria-label', `Còn ${more.n} khách đang xếp hàng`)
+          queueMore.title = `Còn ${more.n} khách đang xếp hàng`
+        }
+        queueMore.classList.toggle('is-low', more.low)
+      } else if (queueMore.parentNode) queueMore.remove()
       if (queueEmpty.parentNode && inQueue.length) queueEmpty.remove()
-      place(queueBox, qRecs, null)
+      place(queueBox, qRecs, more.n > 0 ? queueMore : null)
       if (!inQueue.length && !queueEmpty.parentNode) queueBox.appendChild(queueEmpty)
+      street.classList.toggle('is-serving', !!counterId)
+      // bề ngang hàng khách ở hàng trên (tab Quầy): kẹp phiếu chừa đúng chỗ này (css/game.css --queue-w); đo khi hàng đổi
+      if (awayOn && queueBox.isConnected) setVar('--queue-w', queueBox.offsetWidth)
       place(waitRow, wRecs, null)
-      const more = waiting.length - waitShown.length
-      if (more > 0) { waitMore.textContent = '+' + more; waitRow.appendChild(waitMore) } else if (waitMore.parentNode) waitMore.remove()
+      const wMore = waiting.length - waitShown.length
+      if (wMore > 0) { waitMore.textContent = '+' + wMore; waitRow.appendChild(waitMore) } else if (waitMore.parentNode) waitMore.remove()
       waitBox.classList.toggle('is-on', waiting.length > 0)
       // 3. hoạt ảnh sau bố cục mới: vào hàng, sang chỗ chờ, lên chỗ
       for (const rec of fresh) {
@@ -523,7 +661,7 @@ export default {
           if (fresh.includes(rec)) continue
           const r0 = before.get(rec.kind + ':' + rec.id)
           if (rec.swap) playSwap(rec, r0)
-          else if (!rec.away && r0 && r0.width) flip(rec.fig, r0, rec.fig.getBoundingClientRect())
+          else flipShown(rec, r0)
         }
       }
       for (const rec of qRecs) rec.swap = false
@@ -539,13 +677,21 @@ export default {
         const v = valueOf(sh, c, kind)
         return [c.id, c.tutorial ? 'vui' : moodFor(v), !c.tutorial && v < LOW_PATIENCE]
       }
-      // tab Quầy đang mở: khách ở quầy thu thành thẻ tròn (panel đã có bán thân lớn của khách)
+      // tab Quầy đang mở: khách xếp hàng thu thành thẻ tròn ở hàng trên của cảnh (panel đã có bán thân lớn của khách ở quầy);
+      // quá chỗ thì gộp "+n" (đổi số chỉ ghi chữ, không hoạt ảnh)
       const awayOn = active === 'counter'
-      const key = JSON.stringify([awayOn, inQueue.map(c => [...sigOf(c, 'q'), c.id === counterId, !!c.bigOrder, c.stranger || '']),
+      const max = awayOn ? 1 + queueShowMax(frame.fit, frame.W) : QUEUE_SCALES.length
+      const rest = sh.queue.slice(Math.min(max, inQueue.length))
+      const more = {
+        max, n: rest.length,
+        low: rest.some(id => { const c = sh.customers[id]; return !!c && !c.tutorial && c.patience < LOW_PATIENCE })
+      }
+      const key = JSON.stringify([awayOn, max, more.n, more.low, counterId || '',
+        inQueue.map(c => [...sigOf(c, 'q'), c.id === counterId, !!c.bigOrder, c.stranger || '']),
         waiting.map(c => sigOf(c, 'w'))])
       if (key !== queueSig) {
         queueSig = key
-        layoutStreet(sh, inQueue, waiting, counterId, awayOn)
+        layoutStreet(sh, inQueue, waiting, counterId, awayOn, more)
       }
       for (const rec of custNodes.values()) {
         const c = sh.customers[rec.id]
@@ -915,6 +1061,7 @@ export default {
         const sh = app.state.shift
         if (!sh.counter && sh.queue.length && !sh.paused) beginCounter(app.state, app.ctx)
         hud.update()
+        syncScene()
         renderStreet()
         paintProgress()
         rail.update()
@@ -937,6 +1084,7 @@ export default {
         for (const id of fxTimers) clearTimeout(id)
         fxTimers.clear()
         if (hud.destroy) hud.destroy()
+        if (rail.destroy) rail.destroy()
         for (const off of offs) off()
         if (typeof app.toastLimit === 'function') app.toastLimit(null)
         // trả lại hàm thông báo của app; thông báo còn chờ lúc rời màn (hết ca) là tin trong ca đã cũ: bỏ (thẻ Mẹo nghề vẫn

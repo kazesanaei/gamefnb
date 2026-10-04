@@ -4,12 +4,16 @@
 // giảm chuyển động thì đứng yên). Viền phiếu cũng ngả vàng / đỏ theo data-wait. Phiếu mới lên dây đung đưa MỘT lần (theo id).
 // Dây cao cố định (không đẩy panel Quầy / Bếp lên xuống khi phiếu nhiều dòng). Chạm phiếu là mở nó trong Bếp.
 // Giữ: ticket-rail, rail-ticket-<id> [data-status, data-wait] và chữ tên món trong phiếu (e2e đọc textContent).
+// Vừa màn (L0): ở tab Quầy dây thành KẸP NHỎ ở góc phải hàng trên của cảnh (css/game.css) — phiếu nhỏ chỉ còn hình món + dải
+// màu chờ; không đủ chỗ thì phiếu cuộn ngang trong kẹp. Thẻ đếm mang dải màu chờ XẤU NHẤT của các phiếu chưa xong
+// (data-band) và hiện dải đó khi có phiếu bị cuộn khuất (.is-clipped — đo khi dây đổi phiếu hoặc đổi cỡ, không đo mỗi khung).
 import { h, svgBox } from '../dom.js'
 import { upper } from '../format.js'
 import { icon } from '../art.js'
 import { isReduced } from '../motion.js'
 
 const STATUS_LABELS = { cho: 'Chờ làm', dang_lam: 'Đang làm', xong: 'Xong' }
+const BAND_ORDER = ['green', 'yellow', 'orange', 'red']
 
 /** Mức màu chờ (viền phiếu, đồng bộ phiếu trong Bếp): xanh < 50%, vàng tới 80%, đỏ quá 80% ngân sách chờ. */
 export function waitLevel(ratio) {
@@ -33,17 +37,37 @@ function waitRatioOf(sh, ticket) {
   return Math.max(0, (sh.t - start) / c.waitBudget)
 }
 
-/** createTicketRail(app, { onTap }) → { el, update() } */
+/** createTicketRail(app, { onTap }) → { el, update(), destroy() } */
 export function createTicketRail(app, { onTap } = {}) {
   const list = h('div', { class: 'rail-list' })
   const countN = h('b', { class: 'rail-count-n' })
-  const count = h('span', { class: 'rail-count' }, h('span', { class: 'rail-count-cap' }, 'Phiếu '), countN)
+  const count = h('span', { class: 'rail-count' }, h('span', { class: 'rail-count-cap' }, 'Phiếu '), countN,
+    h('i', { class: 'rail-count-band', 'aria-hidden': 'true' }))
   const el = h('section', { class: 'ticket-rail', testid: 'ticket-rail', 'aria-label': 'Dây phiếu bếp' },
     h('div', { class: 'rail-wire', 'aria-hidden': 'true' }), count, list)
   let sig = ''
   const nodes = new Map()          // id phiếu → { node, fill, band, wait, k }
   const seen = new Set()            // id phiếu đã từng lên dây (đung đưa một lần)
   let first = true
+  let worst = ''
+  let clipped = false
+
+  // có phiếu bị cuộn khuất trong kẹp (bề ngang dây bị giới hạn ở tab Quầy)? Đo sau bố cục: khi dây đổi phiếu (khung hình
+  // kế) và khi dây đổi cỡ (ResizeObserver) — không đo trong vòng cập nhật mỗi khung hình.
+  let clipPending = false
+  function checkClip() {
+    clipPending = false
+    const on = el.isConnected && list.clientWidth > 0 && list.scrollWidth > list.clientWidth + 1
+    if (on !== clipped) { clipped = on; count.classList.toggle('is-clipped', on) }
+  }
+  function scheduleClip() {
+    if (clipPending) return
+    clipPending = true
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(checkClip)
+    else checkClip()
+  }
+  const sizeObs = typeof ResizeObserver === 'function' ? new ResizeObserver(() => checkClip()) : null
+  if (sizeObs) sizeObs.observe(list)
 
   function render(sh, R) {
     list.textContent = ''
@@ -122,6 +146,7 @@ export function createTicketRail(app, { onTap } = {}) {
     if (key !== sig) {
       sig = key
       render(sh, R)
+      scheduleClip()
     }
     if (first) {
       first = false
@@ -130,6 +155,7 @@ export function createTicketRail(app, { onTap } = {}) {
     const n = String(sh.tickets.length) + '/' + max
     if (countN.textContent !== n) countN.textContent = n
     count.classList.toggle('full', sh.tickets.length >= max)
+    let bad = -1
     for (const t of sh.tickets) {
       const rec = nodes.get(t.id)
       if (!rec) continue
@@ -139,10 +165,18 @@ export function createTicketRail(app, { onTap } = {}) {
       const band = done ? 'green' : waitBand(ratio)
       if (rec.node.dataset.wait !== lv) rec.node.dataset.wait = lv
       if (rec.band !== band) { rec.band = band; rec.node.dataset.band = band }
+      if (!done) bad = Math.max(bad, BAND_ORDER.indexOf(band))
       // phần ngân sách chờ còn lại (dải co từ phải sang trái); làm tròn 1% để không ghi style mỗi khung hình
       const k = done ? 100 : Math.round(Math.max(0, Math.min(1, 1 - ratio)) * 100)
       if (k !== rec.k) { rec.k = k; rec.fill.style.transform = `scaleX(${(k / 100).toFixed(2)})` }
     }
+    // dải màu chờ xấu nhất của các phiếu chưa xong (thẻ đếm hiện khi có phiếu bị cuộn khuất)
+    const w = bad >= 0 ? BAND_ORDER[bad] : ''
+    if (w !== worst) {
+      worst = w
+      if (w) count.dataset.band = w
+      else delete count.dataset.band
+    }
   }
-  return { el, update }
+  return { el, update, destroy() { if (sizeObs) sizeObs.disconnect() } }
 }

@@ -8,7 +8,13 @@
    bán kính 34 theo khung hình, ngoài tóc). Hơi nước bốc trên đỉnh đầu khi kiên nhẫn thấp (.is-low).
    Khách đang ở quầy lúc tab Quầy mở (panel đã có bán thân lớn của khách): thu thành thẻ tròn nhỏ .q-here (mặt + vòng kiên
    nhẫn + mũi tên ↓), hàng chờ dồn sang trái; tab Bếp thì bán thân hiện lại (service.js gắn .is-away).
-   Chiều cao: 102px (khung cao), 84px khi khung ≤ 760px — bằng dải phố cũ, panel Quầy / Bếp không hẹp đi.
+   Chiều cao gốc 102px (dự phòng). Vừa màn (L0, khối cuối tệp; vị trí / cao do css/game.css theo data-tab, data-fit):
+     tab Quầy — CẢNH: mái bạt, HÀNG TRÊN (hàng khách: mọi khách là thẻ tròn, khách ở quầy 42 có mũi tên ↓, khách sau 40 / 34,
+       viên "+n" queue-more), hàng giữa (khách ở quầy + bong bóng do panel Quầy vẽ; quầy trống: khách chờ món ở mép phải,
+       sau biển "Chờ món"), dải mặt trước xe đẩy (36 / 34 / 20 / 16 theo bậc). Đang phục vụ (.is-serving) thì khách chờ món
+       không hiện ở cảnh Quầy.
+     tab Bếp — DẢI MẶT KHÁCH 58: mái bạt 10, hàng bán thân nhỏ (khách xếp hàng trái; biển "Chờ món" + khách chờ món phải),
+       mặt quầy 8.
    Hoạt ảnh chỉ transform / opacity, chạy MỘT lần theo sự kiện (service.js gắn / gỡ lớp); giảm chuyển động: chỉ mờ dần,
    hơi nước đứng yên. index.html gắn tệp này NGAY SAU game.css. Chế độ tập trung khi nấu (ẩn dải phố) vẫn ở game.css. */
 
@@ -84,8 +90,8 @@
 .q-tag.is-order { background: #2f6fb0; color: #fff; text-shadow: var(--g-text-outline-thin); }
 .q-tag.is-stranger { background: var(--g-gold); }
 
-/* ---------- Khách đang ở quầy khi tab Quầy mở: thẻ tròn nhỏ ---------- */
-/* mặt tròn (people.js head) trong vòng kiên nhẫn, huy hiệu ↓ vàng chỉ xuống panel; ngồi trên mặt quầy như bán thân */
+/* ---------- Tab Quầy: khách xếp hàng là thẻ tròn nhỏ ---------- */
+/* mặt tròn (people.js head) trong vòng kiên nhẫn; khách ở quầy có huy hiệu ↓ vàng chỉ xuống bán thân lớn của panel */
 .q-here { display: none; position: relative; z-index: 1; width: var(--hs); height: var(--hs); margin: 0 3px 4px; transform-origin: 50% 100%; }
 .q-cust.is-away > .st-fig { display: none; }
 .q-cust.is-away > .q-here, .q-here.st-ghost { display: block; }
@@ -97,6 +103,7 @@
 }
 .q-here-face svg { display: block; width: 100%; height: 100%; }
 .q-here-arrow { position: absolute; right: -5px; bottom: -3px; z-index: 2; width: 20px; height: 20px; }
+.q-cust:not(.at-counter) .q-here-arrow { display: none; }
 .q-here-arrow svg { display: block; width: 100%; height: 100%; }
 .q-here .steam i { top: -6%; }
 .is-low > .q-here .steam { display: block; }
@@ -164,7 +171,50 @@
 }
 html.reduce-motion .steam i { animation: none; opacity: .85; }
 
-/* Khung thấp (≤ 760px, vd 360×600, 320×568, iPhone có thanh Safari): dải phố 84px như cũ */
+/* Khung thấp (≤ 760px) khi chưa có khung vừa màn (data-tab chưa ghi): dải phố 84px như 0.5.1 */
 @media (max-height: 760px) {
   .street { --st-h: 84px; --st-awn: 14px; --st-counter: 18px; --qh: 72px; --wh: 44px; --hs: 44px; }
 }
+
+/* ---------- Viên "+n": khách xếp hàng bị gộp (hàng trên chỉ đủ chỗ cho vài thẻ) ---------- */
+.queue-more {
+  flex: none; align-self: center; display: inline-flex; align-items: center; justify-content: center;
+  min-width: 32px; height: 28px; padding: 0 6px; border: 2px solid var(--g-ink); border-radius: 999px;
+  background: var(--g-paper); color: var(--g-ink); box-shadow: 0 2px 0 rgba(58, 38, 24, .3);
+  font-family: var(--g-font-display); font-weight: 800; font-size: 13px; line-height: 1; white-space: nowrap; pointer-events: none;
+}
+/* trong số khách bị gộp có khách sắp hết kiên nhẫn */
+.queue-more.is-low { background: #ffd8cc; border-color: #9b2a1f; color: #7a1d14; }
+.q-cust.is-over { display: none; }
+
+/* ---------- Vừa màn (L0): cảnh tab Quầy ---------- */
+.service-screen[data-tab="counter"] > .street { --st-awn: var(--sc-awn); --st-counter: var(--street-cart, var(--sc-cart)); --wh: 54px; --hs: 42px; }
+.service-screen[data-tab="counter"][data-fit="s"] > .street { --wh: 44px; }
+.service-screen[data-tab="counter"][data-fit="xs"] > .street { --wh: 36px; }
+/* hàng trên: hàng khách bên trái, cao 44 (42 ở xs), ngay dưới mái bạt */
+.service-screen[data-tab="counter"] > .street .queue {
+  top: calc(var(--st-awn) + 1px); bottom: auto; height: calc(var(--sc-row) - var(--st-awn) - 2px); align-items: center; gap: 4px;
+}
+.service-screen[data-tab="counter"] > .street .queue-empty { padding: 0 4px; font-size: 14px; }
+.service-screen[data-tab="counter"] > .street .q-here { margin: 0 3px; }
+.service-screen[data-tab="counter"] > .street .q-cust[data-pos="1"] { --hs: 40px; }
+.service-screen[data-tab="counter"] > .street .q-cust[data-pos="2"] { --hs: 34px; }
+.service-screen[data-tab="counter"] > .street .q-cust.at-counter { --hs: 42px; }
+/* nhãn dưới thẻ: tên và "Ở quầy" ẩn (bán thân lớn đã có tên); Đặt trước / Khách lạ thành chip đè mép dưới mặt */
+.service-screen[data-tab="counter"] > .street .q-tag.is-name,
+.service-screen[data-tab="counter"] > .street .q-tag.is-here { display: none; }
+.service-screen[data-tab="counter"] > .street .q-tag { top: auto; bottom: -6px; transform: translateX(-50%); padding: 0 4px; line-height: 13px; }
+/* khách chờ món: chỉ khi quầy trống, ở mép phải hàng giữa (đứng sau dải xe đẩy, biển "Chờ món" trên dải) */
+.service-screen[data-tab="counter"] > .street.is-serving .waiting { display: none; }
+/* panel Quầy bố cục 0.5.1 (cảnh gọn, không có hàng giữa): không vẽ khách chờ món ở cảnh */
+.service-screen[data-tab="counter"]:not([data-scene]) > .street .waiting { display: none; }
+.service-screen[data-tab="counter"][data-fit="s"] > .street .wait-title,
+.service-screen[data-tab="counter"][data-fit="xs"] > .street .wait-title { top: auto; bottom: 4px; right: calc(100% + 4px); transform: none; }
+
+/* ---------- Vừa màn (L0): tab Bếp — dải mặt khách 58 ---------- */
+.service-screen[data-tab="kitchen"] > .street { --st-h: 58px; --st-awn: 10px; --st-counter: 8px; --qh: 46px; --wh: 38px; --hs: 40px; }
+.service-screen[data-tab="kitchen"] > .street .q-tag { display: none; }
+.service-screen[data-tab="kitchen"] > .street .queue-empty { padding: 0 4px 10px; font-size: 13px; }
+.service-screen[data-tab="kitchen"] > .street .queue-more { align-self: flex-end; margin-bottom: 6px; }
+.service-screen[data-tab="kitchen"] > .street .wait-title { top: auto; bottom: 6px; right: calc(100% + 4px); transform: none; }
+.service-screen[data-tab="kitchen"] > .street .wait-more { margin-bottom: 4px; }

@@ -5,8 +5,9 @@
    chữ phía sau không lộ qua), tiêu đề Baloo 800; thông báo tốt / xấu có nền giấy ngả xanh / đỏ rất nhạt và huy hiệu tròn
    ✓ xanh / ! đỏ ở đầu (khi thông báo chưa có hình riêng — luôn có biểu tượng, không chỉ dựa vào màu).
    Vị trí: ngay dưới HUD (50px + vùng an toàn trên); trong màn Ca bán hạ xuống 57px để không che thẻ "+tiền thu trong ca"
-   treo dưới ví HUD (service.js gắn .is-service lên lớp nổi gốc). Chiều cao: thông báo 1 dòng ≤ 32px, thẻ Mẹo nghề ≤ 66px —
-   chồng thông báo vừa khoảng giữa thẻ tiền thu và thanh 4 khâu (≥ 71px ở khung thấp, service.js toastLimit). */
+   treo dưới ví HUD (service.js gắn .is-service lên lớp nổi gốc). Chiều cao: thông báo 1 dòng ≤ 32px, thẻ Mẹo nghề ≤ 66px.
+   Vừa màn (L0): chồng thông báo chỉ phủ HÀNG TRÊN của cảnh (hàng khách, kẹp phiếu) ở tab Quầy, dây phiếu ở tab Bếp —
+   service.js toastLimit; thông báo không vừa thì chờ (một thông báo đứng một mình vẫn hiện). */
 .toast-stack {
   position: absolute; top: calc(50px + var(--safe-top)); left: 12px; right: 12px; display: flex; flex-direction: column; gap: 5px;
   align-items: center; z-index: 60;
@@ -213,7 +214,8 @@
 /* Dải phố, hàng khách, khách chờ món: css/street.css (M5 Đợt 2, gắn ngay sau tệp này) */
 
 /* Thanh 4 khâu (components/progress4.js): 4 biểu tượng tròn nối bằng thanh; khâu xong có ✓ xanh và thanh nối xanh, khâu
-   đang làm nền vàng (chấm vàng) kèm tên khâu, khâu sau mờ. Cao 34px như cũ. */
+   đang làm nền vàng (chấm vàng) kèm tên khâu, khâu sau mờ. Luật gốc dưới đây là dạng dải 34px (dự phòng); màn Ca bán đặt
+   lại ở khối "Vừa màn (L0)" cuối tệp: tab Quầy là biển giấy trên dải xe đẩy của cảnh, tab Bếp cao 0. */
 .progress4 {
   flex: none; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 34px; padding: 2px 10px;
   background: var(--g-paper); border-bottom: 2px solid var(--g-paper-line);
@@ -247,8 +249,8 @@
 .p4-step.current .p4-label { display: inline; }
 
 /* Dây phiếu (components/ticket-rail.js): sợi dây, thẻ đếm "Phiếu n/3" bằng gỗ, phiếu giấy kẹp kẹp gỗ có hình món to,
-   số phiếu, tên món, dải màu chờ ở đáy (xanh → vàng → cam → đỏ, co dần). Cao cố định 64px (56px khi khung ≤ 760px):
-   phiếu nhiều dòng không đẩy panel Quầy / Bếp xuống. */
+   số phiếu, tên món, dải màu chờ ở đáy (xanh → vàng → cam → đỏ, co dần). Cao cố định: phiếu nhiều dòng không đẩy panel
+   xuống. Vừa màn (L0, khối cuối tệp): tab Bếp dây đầy đủ 56px; tab Quầy thành KẸP NHỎ ở góc phải hàng trên của cảnh. */
 .ticket-rail {
   flex: none; position: relative; display: flex; align-items: flex-start; gap: 6px; height: 64px; padding: 10px 8px 0;
   background: linear-gradient(180deg, #f6e8cc, #eedcb7); border-bottom: 2px solid rgba(58, 38, 24, .18); overflow: hidden;
@@ -364,42 +366,43 @@ html.reduce-motion .rail-ticket[data-wait="red"] .rail-wait { animation: none; }
 .kitchen-wait { padding: 24px; text-align: center; }
 
 /* Thanh tab Quầy / Bếp: nút bánh kẹo có biểu tượng xe đẩy / chảo, chữ, huy hiệu số; chấm đỏ góc trên (dot-*) báo bên
-   kia có việc mới. Cao 61px như cũ. */
+   kia có việc mới. Vừa màn (L0): nút 44px, đệm 4px trên / max(4px, vùng an toàn dưới) — thanh cao 53px (83px khi vùng an
+   toàn dưới 34px). */
 .tabbar {
-  flex: none; display: flex; gap: 8px; padding: 6px 10px calc(6px + var(--safe-bottom)); background: var(--g-cream);
+  flex: none; display: flex; gap: 8px; padding: 4px 10px max(4px, var(--safe-bottom)); background: var(--g-cream);
   border-top: 1px solid var(--line);
 }
 .tab {
-  position: relative; flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; padding: 0 8px;
-  border: 2.5px solid var(--g-ink); border-radius: 16px; color: var(--g-ink);
+  position: relative; flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; height: 44px;
+  padding: 0 8px; border: 2.5px solid var(--g-ink); border-radius: 14px; color: var(--g-ink);
   background: linear-gradient(180deg, #fffdf6 0%, #fffdf6 18%, #f2dcae 100%);
-  box-shadow: inset 0 -3px 0 rgba(58, 38, 24, .12), 0 3px 0 #a8773a;
-  font-family: var(--g-font-display); font-weight: 800; font-size: 18px; line-height: 1;
+  box-shadow: inset 0 -3px 0 rgba(58, 38, 24, .12), 0 2.5px 0 #a8773a;
+  font-family: var(--g-font-display); font-weight: 800; font-size: 17px; line-height: 1;
   touch-action: manipulation; transition: transform 80ms var(--g-ease-out);
 }
-.tab:active { transform: translateY(2px); box-shadow: inset 0 -3px 0 rgba(58, 38, 24, .12), 0 1px 0 #a8773a; }
+.tab:active { transform: translateY(2px); box-shadow: inset 0 -3px 0 rgba(58, 38, 24, .12), 0 0.5px 0 #a8773a; }
 .tab.active {
   color: #fff; text-shadow: var(--g-text-outline-thin);
   background: linear-gradient(180deg, var(--g-tomato-light) 0%, var(--g-tomato) 55%, #c63a2c 100%);
-  box-shadow: inset 0 -3px 0 rgba(58, 38, 24, .2), 0 3px 0 var(--g-tomato-dark);
+  box-shadow: inset 0 -3px 0 rgba(58, 38, 24, .2), 0 2.5px 0 var(--g-tomato-dark);
 }
-.tab-ico { flex: none; display: block; width: 34px; height: 34px; }
+.tab-ico { flex: none; display: block; width: 30px; height: 30px; }
 .tab-ico svg { display: block; width: 100%; height: 100%; }
 .tab-count {
-  flex: none; min-width: 26px; height: 26px; padding: 0 6px; border: 2px solid var(--g-ink); border-radius: 999px;
+  flex: none; min-width: 24px; height: 24px; padding: 0 5px; border: 2px solid var(--g-ink); border-radius: 999px;
   background: radial-gradient(circle at 35% 28%, #fff3b0 0 25%, var(--g-gold) 70%); color: var(--g-ink); text-shadow: none;
-  font-size: 15px; line-height: 22px; text-align: center;
+  font-size: 14px; line-height: 20px; text-align: center;
 }
 .tab-count.is-zero { background: var(--g-paper); color: var(--g-ink-soft); }
 .tab .dot {
   position: absolute; top: -6px; right: -4px; width: 18px; height: 18px; border-radius: 50%;
   background: var(--g-bad); border: 2.5px solid var(--g-ink); box-shadow: 0 0 0 2px #fff;
 }
-@media (max-width: 340px) { .tab { gap: 4px; font-size: 17px; } .tab-ico { width: 30px; height: 30px; } }
+@media (max-width: 340px) { .tab { gap: 4px; font-size: 16px; } .tab-ico { width: 28px; height: 28px; } }
 
 /* Phiếu chấm */
-/* ngay trên thanh tab (cao 61px + vùng an toàn), không đè lên nút Quầy/Bếp */
-.sheet-host { position: absolute; left: 0; right: 0; bottom: calc(64px + var(--safe-bottom)); display: flex; justify-content: center; pointer-events: none; z-index: 40; padding: 0 12px; }
+/* ngay trên thanh tab (cao 49px + max(4px, vùng an toàn dưới), cách 3px), không đè lên nút Quầy/Bếp */
+.sheet-host { position: absolute; left: 0; right: 0; bottom: calc(52px + max(4px, var(--safe-bottom))); display: flex; justify-content: center; pointer-events: none; z-index: 40; padding: 0 12px; }
 .score-sheet {
   pointer-events: none; width: 100%; max-width: 420px; background: #fffef6; border: 2px solid var(--yellow); border-radius: 16px;
   padding: 10px 12px; box-shadow: var(--shadow); font-size: 14px; opacity: 0; transform: translateY(30px);
@@ -487,13 +490,6 @@ html.reduce-motion .rail-ticket[data-wait="red"] .rail-wait { animation: none; }
 .counter { padding-bottom: 0; }
 .counter > :last-child { margin-bottom: 0; }
 
-/* Màn thấp (vd 360×740): thu dải phố (css/street.css) và dây phiếu để panel thao tác đủ chỗ */
-@media (max-height: 760px) {
-  .ticket-rail { height: 56px; padding-top: 9px; }
-  .rail-ticket { height: 44px; padding-bottom: 7px; }
-  .rail-count { height: 42px; }
-  .rail-dish { width: 30px; height: 30px; }
-}
 
 /* ---------- M5: chế độ tập trung khi nấu (service.js, thiết kế mục 1.9) ----------
    Tab Bếp đang nấu (Chọn, Thớt, sân khấu một bước) và khung cao dưới 760px: ẩn dải khách và thanh 4 khâu để panel Bếp cao
@@ -518,3 +514,121 @@ html.reduce-motion .rail-ticket[data-wait="red"] .rail-wait { animation: none; }
 .complaint-rare { color: var(--brick-dark); font-weight: 700; }
 /* thẻ "+tiền thu trong ca" của HUD: ẩn trong lúc nấu tập trung (không treo đè lên dây phiếu) */
 .service-screen.is-focus > .hud .hud-take { display: none; }
+
+/* =====================================================================================================================
+   Vừa màn (L0): khung chung của màn Ca bán — mỗi khâu trọn một màn điện thoại, không phải cuộn.
+   service.js đo khung (mount + ResizeObserver, chỉ ghi khi đổi) và ghi lên .service-screen:
+     data-fit = l | m | s | xs   bậc theo A (chỗ giữa HUD và thanh tab): ≥ 640 | ≥ 540 | ≥ 440 | < 440
+     data-tab = counter | kitchen   tab đang mở;   data-cook = chon | thot | stage | (rỗng)   bếp đang ở màn nấu nào
+     data-scene = 1 khi panel Quầy theo bố cục cảnh (div.counter mang lớp co-scene)
+     --hud-h (HUD gồm an toàn trên), --usable-h (U), --avail-h (A), --scene-h (cảnh tab Quầy), --tray-h (khay = A − cảnh),
+     --kitchen-h (.k-main dự kiến ở tab Bếp)
+   Tab Quầy: HUD trong luồng; CẢNH (.street) tuyệt đối ngay dưới HUD, cao --scene-h, z 0, không nhận chạm — mái bạt, hàng
+   trên (hàng khách trái, kẹp phiếu phải), hàng giữa (khách ở quầy + bong bóng: panel Quầy vẽ), dải mặt trước xe đẩy mang
+   biển 4 khâu; .panels phủ toàn bộ A (z 1), panel Quầy trong suốt phần trên nên thấy cảnh bên dưới; biển 4 khâu và kẹp
+   phiếu z 3 (trên panel). Thanh tab 49 + max(4, an toàn dưới).
+   Panel Quầy chưa theo bố cục cảnh (không có data-scene — bố cục 0.5.1): cảnh GỌN chỉ còn mái bạt + hàng trên + dải xe đẩy
+   36px mang biển 4 khâu (mọi bậc), panel bắt đầu ngay dưới cảnh và cuộn như cũ (không vẽ khách chờ món ở cảnh). Panel theo
+   bố cục cảnh (data-scene="1"): cảnh cao --scene-h, dải xe đẩy theo bậc, panel phủ A và KHÔNG cuộn (overflow: clip; khay tự
+   cuộn khi thiếu chỗ ở khung nhỏ).
+   Tab Bếp: dải mặt khách 58 + dây phiếu đầy đủ 56 trong luồng, thanh 4 khâu cao 0 (ẩn, vẫn trong DOM); đang Chọn
+   (data-cook="chon", mọi khung) hoặc tập trung khi nấu (.is-focus, U < 760) thì ẩn dải mặt khách.
+   Đổi bố cục tức thì (không hoạt ảnh); hoạt ảnh sẵn có của hàng khách / dây phiếu vẫn chỉ kích theo sự kiện.
+   ===================================================================================================================== */
+.service-screen {
+  --sc-awn: 14px;   /* mái bạt (gồm mép lượn) */
+  --sc-row: 60px;   /* mái bạt + hàng trên (hàng khách, kẹp phiếu) */
+  --sc-cart: 36px;  /* dải mặt trước xe đẩy ở đáy cảnh */
+}
+.service-screen[data-fit="m"] { --sc-row: 58px; --sc-cart: 34px; }
+.service-screen[data-fit="s"] { --sc-awn: 12px; --sc-row: 56px; --sc-cart: 20px; }
+.service-screen[data-fit="xs"] { --sc-awn: 12px; --sc-row: 54px; --sc-cart: 16px; }
+
+/* ---------- Tab Quầy: cảnh dưới panel trong suốt ---------- */
+.service-screen[data-tab="counter"] { --street-cart: 36px; --street-h: calc(var(--sc-row) + var(--street-cart)); }
+.service-screen[data-tab="counter"][data-scene] { --street-cart: var(--sc-cart); --street-h: var(--scene-h, 256px); }
+.service-screen[data-tab="counter"] > .street {
+  position: absolute; left: 0; right: 0; top: var(--hud-h, calc(47px + var(--safe-top))); height: var(--street-h); z-index: 0;
+  pointer-events: none;
+}
+.service-screen[data-tab="counter"] > .panels { z-index: 1; }
+.service-screen[data-tab="counter"] > .panels > .panel-counter { top: var(--street-h); }
+.service-screen[data-tab="counter"][data-scene] > .panels > .panel-counter { top: 0; overflow: hidden; overflow: clip; }
+
+/* biển 4 khâu: viên giấy viền mực cao 30 đè mép trên dải xe đẩy (l / m: chấm 24 + tên khâu đang làm) */
+.service-screen[data-tab="counter"] > .progress4 {
+  position: absolute; z-index: 3; left: 0; right: 0; width: fit-content; max-width: calc(100% - 12px); margin: 0 auto;
+  top: calc(var(--hud-h, calc(47px + var(--safe-top))) + var(--street-h) - var(--street-cart) - 3px);
+  min-height: 0; height: 30px; padding: 0 9px 0 2px; gap: 4px;
+  border: 2.5px solid var(--g-ink); border-radius: 999px; background: var(--g-paper);
+  box-shadow: inset 0 -2px 0 var(--g-paper-shade), 0 2px 0 rgba(58, 38, 24, .35);
+}
+.service-screen[data-tab="counter"] > .progress4 .p4-who { display: none; }
+.service-screen[data-tab="counter"] > .progress4 .p4-step { gap: 3px; font-size: 13px; }
+.service-screen[data-tab="counter"] > .progress4 .p4-dot { width: 24px; height: 24px; border-width: 2px; }
+.service-screen[data-tab="counter"] > .progress4 .p4-ico { width: 18px; height: 18px; }
+.service-screen[data-tab="counter"] > .progress4 .p4-link { width: 7px; height: 3px; }
+.service-screen[data-tab="counter"] > .progress4 .p4-tick { right: -4px; bottom: -3px; width: 13px; height: 13px; }
+.service-screen[data-tab="counter"] > .progress4 .p4-tick::after { left: 2.5px; top: 2.5px; width: 5px; height: 3px; }
+.service-screen[data-tab="counter"] > .progress4 .p4-step.current .p4-dot { box-shadow: 0 0 0 2px var(--g-gold); }
+/* cảnh s / xs: dải xe đẩy chỉ 20 / 16px — biển lên giữa hàng trên, chỉ còn chấm 22 */
+.service-screen[data-tab="counter"][data-scene][data-fit="s"] > .progress4,
+.service-screen[data-tab="counter"][data-scene][data-fit="xs"] > .progress4 {
+  top: calc(var(--hud-h, calc(47px + var(--safe-top))) + var(--sc-awn) + (var(--sc-row) - var(--sc-awn) - 30px) / 2);
+  padding: 0 3px;
+}
+.service-screen[data-tab="counter"][data-scene][data-fit="s"] > .progress4 .p4-label,
+.service-screen[data-tab="counter"][data-scene][data-fit="xs"] > .progress4 .p4-label { display: none; }
+.service-screen[data-tab="counter"][data-scene][data-fit="s"] > .progress4 .p4-dot,
+.service-screen[data-tab="counter"][data-scene][data-fit="xs"] > .progress4 .p4-dot { width: 22px; height: 22px; }
+.service-screen[data-tab="counter"][data-scene][data-fit="s"] > .progress4 .p4-ico,
+.service-screen[data-tab="counter"][data-scene][data-fit="xs"] > .progress4 .p4-ico { width: 17px; height: 17px; }
+@media (max-width: 339px) {
+  .service-screen[data-tab="counter"] > .progress4 .p4-link { width: 4px; }
+}
+
+/* kẹp phiếu nhỏ: góc phải hàng trên — thẻ đếm "Phiếu n/3" 44×44 + phiếu nhỏ 44×44 (hình món + dải màu chờ; số phiếu và tên
+   món chỉ cho máy đọc). Bề rộng chừa hàng khách (--queue-w do service.js ghi khi hàng đổi); không đủ chỗ thì phiếu cuộn
+   ngang trong kẹp, thẻ đếm mang màu dải chờ xấu nhất (ticket-rail.js gắn .is-clipped). */
+.service-screen[data-tab="counter"] > .ticket-rail {
+  position: absolute; z-index: 3; right: 6px; top: calc(var(--hud-h, calc(47px + var(--safe-top))) + var(--sc-awn) - 9px);
+  height: 53px; max-width: calc(100% - var(--queue-w, 186px) - 18px); padding: 0; gap: 4px; align-items: flex-end;
+  background: none; border: 0; overflow: visible;
+}
+.service-screen[data-tab="counter"][data-scene][data-fit="s"] > .ticket-rail,
+.service-screen[data-tab="counter"][data-scene][data-fit="xs"] > .ticket-rail {
+  max-width: min(calc(100% - var(--queue-w, 92px) - 18px), calc(50% - 70px));
+}
+.service-screen[data-tab="counter"] > .ticket-rail .rail-wire { top: 4px; left: -2px; right: -4px; height: 3px; }
+.service-screen[data-tab="counter"] > .ticket-rail .rail-count { height: 44px; min-width: 44px; padding: 0 3px; border-radius: 6px 6px 9px 9px; }
+.service-screen[data-tab="counter"] > .ticket-rail .rail-count-n { font-size: 15px; }
+.service-screen[data-tab="counter"] > .ticket-rail .rail-list { height: 53px; padding: 9px 2px 0; gap: 4px; }
+.service-screen[data-tab="counter"] > .ticket-rail .rail-empty { display: none; }
+.service-screen[data-tab="counter"] > .ticket-rail .rail-ticket {
+  flex: 0 0 44px; width: 44px; min-width: 44px; height: 44px; justify-content: center; gap: 0; padding: 2px 3px 8px;
+}
+.service-screen[data-tab="counter"] > .ticket-rail .rail-dish { width: 32px; height: 28px; }
+.service-screen[data-tab="counter"] > .ticket-rail .rail-body {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+.service-screen[data-tab="counter"] > .ticket-rail .rail-more { left: -6px; top: -6px; }
+.service-screen[data-tab="counter"] > .ticket-rail .rail-done { right: -5px; top: -5px; width: 18px; height: 18px; line-height: 14px; }
+.service-screen[data-tab="counter"] > .ticket-rail .rail-wait { left: 3px; right: 3px; bottom: 2px; }
+
+/* ---------- Tab Bếp: dải mặt khách 58 + dây phiếu đầy đủ 56 (trong luồng), thanh 4 khâu cao 0 ---------- */
+.service-screen[data-tab="kitchen"] > .ticket-rail { height: 56px; padding-top: 9px; }
+.service-screen[data-tab="kitchen"] > .ticket-rail .rail-ticket { height: 44px; padding-bottom: 7px; }
+.service-screen[data-tab="kitchen"] > .ticket-rail .rail-count { height: 42px; }
+.service-screen[data-tab="kitchen"] > .ticket-rail .rail-dish { width: 30px; height: 30px; }
+.service-screen[data-tab="kitchen"] > .progress4 {
+  min-height: 0; height: 0; padding: 0; border: 0; overflow: hidden; visibility: hidden;
+}
+/* đang ở bước Chọn (mọi khung): kệ cần cả chiều cao — ẩn dải mặt khách, dây phiếu lên sát HUD */
+.service-screen[data-tab="kitchen"][data-cook="chon"] > .street { display: none; }
+/* thẻ đếm của kẹp phiếu: dải màu chờ xấu nhất khi có phiếu bị cuộn khuất (ticket-rail.js: data-band, .is-clipped) */
+.rail-count-band { display: none; position: absolute; left: 4px; right: 4px; bottom: 2px; height: 4px; border-radius: 2px; background: var(--g-go); }
+.service-screen[data-tab="counter"] > .ticket-rail .rail-count.is-clipped[data-band] .rail-count-band { display: block; }
+.rail-count[data-band="yellow"] .rail-count-band { background: #f2c21b; }
+.rail-count[data-band="orange"] .rail-count-band { background: var(--g-orange); }
+.rail-count[data-band="red"] .rail-count-band { background: var(--g-bad); }
+.service-screen[data-tab="counter"] > .ticket-rail .rail-count.is-clipped[data-band="red"] { box-shadow: 0 0 0 2px var(--g-bad), 0 2px 0 rgba(58, 38, 24, .3); }
