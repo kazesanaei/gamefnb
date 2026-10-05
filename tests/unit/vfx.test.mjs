@@ -1016,3 +1016,109 @@ test('createVfx không có DOM: countUp / counting / glow / coins có onArrive v
   assert.equal(got[0].sum, 5000)
   fx.destroy()
 })
+
+// ---------- M5 Đợt 3 (gói M-N): quà, rương, điểm danh ----------
+import { REWARD_FX, rewardBurstPlan, rewardBurst, chestOpen } from '../../src/ui/vfx.js'
+
+// Hệ hiệu ứng giả: ghi lại lời gọi API công khai (rewardBurst / chestOpen chỉ dùng API đó).
+function fakeFx() {
+  const calls = []
+  return {
+    calls,
+    burst: (t, kind, o) => { calls.push(['burst', kind, o && o.n]); return 3 },
+    coins: (from, to, n, o) => { calls.push(['coins', n, o && o.amount, to.id]); return Promise.resolve(n) },
+    fly: (from, to, o) => { calls.push(['fly', to.id, o.ms, from.width]); return Promise.resolve(true) },
+    glow: t => { calls.push(['glow', t.id]); return {} },
+    squash: el => { calls.push(['squash', el.id]); return {} }
+  }
+}
+const SRC = { left: 100, top: 300, width: 120, height: 44 }
+
+test('rewardBurstPlan: số mảnh bay theo loại (xu theo số tiền, muỗng ceil(n/5) trong 2–5, sao 1–3), không đích / giảm chuyển động thì 0, tổng ≤ 27', () => {
+  assert.ok(Object.isFrozen(REWARD_FX))
+  assert.deepEqual({ ...REWARD_FX }, { maxSpoons: 5, maxStars: 3, stagger: 70, flyMs: 540 })
+  const to = { id: 'vi' }
+  const p = rewardBurstPlan([
+    { kind: 'coin', amount: 5000, to }, { kind: 'coin', amount: 200000, to }, { kind: 'coin', n: 99, to }, { kind: 'coin', to },
+    { kind: 'spoon', n: 5, to }, { kind: 'spoon', n: 15, to }, { kind: 'spoon', n: 99, to },
+    { kind: 'star', n: 9, to }, { kind: 'item', to }, { kind: 'la', n: 2, to }, { kind: 'star', n: 3 }
+  ])
+  // trần tổng 27 (= 30 − canvas − 2 vòng sáng): 6 + 12 rồi mục thứ ba chỉ còn 9, các mục sau hết chỗ
+  assert.deepEqual(p.items.map(i => i.n), [6, 12, 9, 0, 0, 0, 0, 0, 0, 0, 0])
+  // từng mục (không tính trần tổng)
+  const one = it => rewardBurstPlan([it]).items[0].n
+  assert.equal(one({ kind: 'coin', amount: 5000, to }), 6)
+  assert.equal(one({ kind: 'coin', amount: 200000, to }), 12)
+  assert.equal(one({ kind: 'coin', n: 99, to }), 12)
+  assert.equal(one({ kind: 'coin', to }), 8)
+  assert.equal(one({ kind: 'spoon', n: 5, to }), 2)
+  assert.equal(one({ kind: 'spoon', n: 15, to }), 3)
+  assert.equal(one({ kind: 'spoon', n: 99, to }), 5)
+  assert.equal(one({ kind: 'star', n: 9, to }), 3)
+  assert.equal(one({ kind: 'item', to }), 1)
+  assert.equal(rewardBurstPlan([{ kind: 'la', n: 2, to }]).items[0].kind, 'star', 'loại lạ → sao')
+  assert.equal(one({ kind: 'star', n: 3 }), 0, 'không đích: không bay')
+  // trần tổng: chừa canvas + 2 vòng sáng trong VFX_LIMITS.dom
+  assert.ok(p.dom <= VFX_LIMITS.dom - 3, 'tổng ' + p.dom)
+  assert.equal(p.dom, p.items.reduce((a, i) => a + i.n, 0))
+  const red = rewardBurstPlan([{ kind: 'coin', amount: 5000, to }, { kind: 'spoon', n: 10, to }], { reduced: true })
+  assert.equal(red.reduced, true)
+  assert.deepEqual(red.items.map(i => i.n), [0, 0])
+  assert.deepEqual(rewardBurstPlan(null).items, [])
+})
+
+test('rewardBurst: nổ sao tại nguồn, xu qua fx.coins, muỗng bay so le qua fx.fly (ô 34px), nhịp sáng ở mỗi đích', async () => {
+  const fx = fakeFx()
+  const r = await rewardBurst(fx, SRC, [
+    { kind: 'coin', amount: 20000, to: { id: 'vi' } }, { kind: 'spoon', n: 10, to: { id: 'muong' }, html: '<svg viewBox="0 0 64 64"></svg>' },
+    { kind: 'star', n: 2 }
+  ], { reduced: false })
+  assert.deepEqual(r, { coins: 8, flown: 2 })
+  const kinds = fx.calls.map(c => c[0])
+  assert.deepEqual(fx.calls.filter(c => c[0] === 'burst').map(c => c[1]), ['star', 'sparkle'])
+  assert.deepEqual(fx.calls.find(c => c[0] === 'coins'), ['coins', 8, 20000, 'vi'])
+  const flies = fx.calls.filter(c => c[0] === 'fly')
+  assert.equal(flies.length, 2)
+  assert.ok(flies.every(c => c[1] === 'muong' && c[3] === 34), 'mảnh bay là ô 34px, không kéo giãn theo nút')
+  assert.ok(flies[1][2] > flies[0][2], 'mảnh sau bay lâu hơn một chút (so le)')
+  assert.deepEqual(fx.calls.filter(c => c[0] === 'glow').map(c => c[1]).sort(), ['muong', 'vi'])
+  assert.ok(kinds.indexOf('burst') < kinds.indexOf('coins'), 'nổ tại nguồn trước rồi mới bay')
+})
+
+test('rewardBurst giảm chuyển động: chỉ dấu tĩnh tại nguồn + một nhịp sáng ở mỗi đích, không bay; nguồn lỗi → không làm gì', async () => {
+  const fx = fakeFx()
+  const r = await rewardBurst(fx, SRC, [{ kind: 'coin', amount: 5000, to: { id: 'vi' } }, { kind: 'spoon', n: 5, to: { id: 'muong' } }], { reduced: true })
+  assert.deepEqual(r, { coins: 0, flown: 0 })
+  assert.deepEqual(fx.calls.map(c => c[0]).sort(), ['burst', 'glow', 'glow'])
+  assert.equal(fx.calls.filter(c => c[0] === 'burst').length, 1, 'không lấp lánh thêm')
+  const fx2 = fakeFx()
+  assert.deepEqual(await rewardBurst(fx2, null, [{ kind: 'coin', to: { id: 'vi' } }]), { coins: 0, flown: 0 })
+  assert.deepEqual(await rewardBurst(null, SRC, []), { coins: 0, flown: 0 })
+  assert.deepEqual(fx2.calls, [])
+  // phần tử nguồn đã rời trang (isConnected false) → bỏ qua
+  const gone = { isConnected: false, getBoundingClientRect: () => ({ left: 0, top: 0, width: 10, height: 10 }) }
+  assert.deepEqual(await rewardBurst(fx2, gone, [{ kind: 'coin', to: { id: 'vi' } }]), { coins: 0, flown: 0 })
+  assert.deepEqual(fx2.calls, [])
+})
+
+test('chestOpen: rương nảy squash rồi bung sao + xu; giảm chuyển động chỉ một nhịp sáng; phần tử đã rời trang → false', async () => {
+  const fx = fakeFx()
+  assert.equal(await chestOpen(fx, { id: 'ruong' }, { reduced: false }), true)
+  assert.deepEqual(fx.calls.map(c => c.slice(0, 2)), [['squash', 'ruong'], ['burst', 'star'], ['burst', 'coin']])
+  const fx2 = fakeFx()
+  assert.equal(await chestOpen(fx2, { id: 'ruong' }, { reduced: true }), true)
+  assert.deepEqual(fx2.calls, [['glow', 'ruong']])
+  const fx3 = fakeFx()
+  assert.equal(await chestOpen(fx3, { isConnected: false, getBoundingClientRect() {} }), false)
+  assert.equal(await chestOpen(null, { id: 'x' }), false)
+  assert.deepEqual(fx3.calls, [])
+})
+
+test('rewardBurst + createVfx thật không có DOM: không lỗi, không nút, Promise kết thúc', async () => {
+  const fx = createVfx({ host: null, reduced: () => false })
+  const r = await rewardBurst(fx, SRC, [{ kind: 'coin', amount: 5000, to: { left: 0, top: 0, width: 20, height: 20 } }], { reduced: false })
+  assert.equal(typeof r.coins, 'number')
+  assert.equal(fx.stats().dom, 0)
+  assert.equal(await chestOpen(fx, { left: 1, top: 1, width: 4, height: 4 }, { reduced: true }), true)
+  fx.destroy()
+})

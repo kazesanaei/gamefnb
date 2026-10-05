@@ -1419,3 +1419,154 @@ export function createVfx({ host = null, reduced = null } = {}) {
     destroy
   }
 }
+
+// ---------- Quà, rương, điểm danh (M5 Đợt 3, gói M-N) ----------
+// Thêm mới, không đổi hàm cũ: dùng API công khai của createVfx (burst, coins, fly, glow, squash). Xu và sao bung ra từ
+// rương / nút nhận rồi bay về viên ví / Muỗng Vàng; giảm chuyển động: dấu tĩnh + một nhịp sáng ở đích, không bay.
+// Mọi nút DOM nằm trong .vfx-layer (≤ VFX_LIMITS.dom, tự dọn); không phát lên bus; gọi theo SỰ KIỆN (bấm nhận), không gọi
+// trong render().
+
+/** Nhịp của luồng quà: số muỗng / sao bay tối đa, độ trễ giữa các mảnh (ms), thời gian bay một mảnh (ms). */
+export const REWARD_FX = Object.freeze({ maxSpoons: 5, maxStars: 3, stagger: 70, flyMs: 540 })
+const REWARD_KINDS = Object.freeze(['coin', 'spoon', 'star', 'item'])
+
+/**
+ * rewardBurstPlan(items, { reduced }) → { reduced, items: [{ index, kind, n, target }], dom } (thuần):
+ * số mảnh bay cho từng mục quà. items: [{ kind: 'coin' | 'spoon' | 'star' | 'item', n?, amount?, to? }].
+ * - coin: n (1–12) hoặc coinCount(amount) (6–12), không có gì thì 8;
+ * - spoon: n là số Muỗng Vàng → ceil(n / 5) mảnh, kẹp 2–5; star / item: n kẹp 1–3; kind lạ coi là star.
+ * - Mục không có đích (to) thì không bay (n = 0, chỉ nổ sao tại nguồn). Giảm chuyển động: mọi n = 0.
+ * - Tổng mảnh bay ≤ VFX_LIMITS.dom − 3 (chừa canvas hạt và 2 vòng sáng); dom = tổng đó.
+ */
+export function rewardBurstPlan(items, { reduced = false } = {}) {
+  const list = Array.isArray(items) ? items : []
+  let budget = VFX_LIMITS.dom - 3
+  const out = []
+  list.forEach((it, index) => {
+    if (!it || typeof it !== 'object') return
+    const kind = REWARD_KINDS.includes(it.kind) ? it.kind : 'star'
+    const target = !!it.to
+    let n
+    if (kind === 'coin') {
+      const want = Math.floor(num0(it.n))
+      n = want > 0 ? clampN(want, 1, COIN_LIMITS.max) : (num0(it.amount) > 0 ? coinCount(it.amount) : 8)
+    } else if (kind === 'spoon') {
+      n = clampN(Math.ceil(Math.max(1, num0(it.n)) / 5), 2, REWARD_FX.maxSpoons)
+    } else {
+      n = clampN(Math.floor(num0(it.n)) || 1, 1, REWARD_FX.maxStars)
+    }
+    if (reduced || !target) n = 0
+    n = Math.max(0, Math.min(n, budget))
+    budget -= n
+    out.push({ index, kind, n, target })
+  })
+  return { reduced: !!reduced, items: out, dom: out.reduce((a, p) => a + p.n, 0) }
+}
+
+// Hình chữ nhật (khung nhìn) của nguồn ngay lúc gọi: phần tử còn trong trang → getBoundingClientRect; hình chữ nhật / điểm
+// giữ nguyên. Lỗi / không hiển thị → null.
+function sourceRect(from) {
+  if (!from) return null
+  try {
+    if (typeof from.getBoundingClientRect === 'function') {
+      if (from.isConnected === false) return null
+      const r = from.getBoundingClientRect()
+      if (!(r.width > 0 || r.height > 0)) return null
+      return { left: r.left, top: r.top, width: r.width, height: r.height }
+    }
+  } catch { return null }
+  const x = Number.isFinite(from.left) ? from.left : from.x
+  const y = Number.isFinite(from.top) ? from.top : from.y
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null
+  return { left: x, top: y, width: num0(from.width), height: num0(from.height) }
+}
+
+// Đích còn dùng được (phần tử còn trong trang, hoặc hình chữ nhật).
+const liveTarget = t => !!t && (typeof t.getBoundingClientRect !== 'function' || t.isConnected !== false)
+
+/**
+ * rewardBurst(fx, from, items, { reduced }) → Promise<{ coins, flown }>
+ * fx: hệ hiệu ứng (createVfx / app.vfx). from: phần tử hoặc hình chữ nhật { left, top, width, height } của rương / nút nhận —
+ * lấy TRƯỚC khi màn vẽ lại (nhân bản rồi bay). items như rewardBurstPlan; mỗi mục có `to` (phần tử viên ví / Muỗng Vàng),
+ * coin có thể có amount và onArrive (chuyển cho fx.coins), spoon / item có html (SVG của mảnh bay).
+ * - Nổ sao + lấp lánh tại nguồn; xu: fx.coins (tỏa ra, dừng giữa đường, bay về đích); muỗng / hiện vật: fx.fly từng mảnh so le
+ *   REWARD_FX.stagger ms (đích đã rời trang thì thôi). Mỗi đích có một nhịp sáng (fx.glow) khi mảnh cuối tới.
+ * - Giảm chuyển động (opts.reduced, mặc định isReduced()): dấu tĩnh tại nguồn + một nhịp sáng ở mỗi đích, không bay.
+ * - coins: số xu đã tới đích; flown: số mảnh muỗng / hiện vật đã tới.
+ */
+export function rewardBurst(fx, from, items = [], opts = {}) {
+  const none = Promise.resolve({ coins: 0, flown: 0 })
+  if (!fx || typeof fx.burst !== 'function') return none
+  const src = sourceRect(from)
+  if (!src) return none
+  const o = opts && typeof opts === 'object' ? opts : {}
+  let red
+  try { red = typeof o.reduced === 'boolean' ? o.reduced : isReduced() } catch { red = false }
+  const list = Array.isArray(items) ? items : []
+  const plan = rewardBurstPlan(list, { reduced: red })
+  const glowAt = t => { try { if (liveTarget(t) && typeof fx.glow === 'function') fx.glow(t) } catch { /* bỏ qua */ } }
+  try {
+    fx.burst(src, 'star', red ? {} : { n: 10 })
+    if (!red) fx.burst(src, 'sparkle', { n: 8 })
+  } catch { /* bỏ qua */ }
+  if (red) {
+    for (const p of plan.items) if (p.target) glowAt(list[p.index].to)
+    return none
+  }
+  // nguồn bay của từng mảnh: ô 34px ở tâm nguồn (không kéo giãn hình theo cỡ nút)
+  const cx = src.left + src.width / 2, cy = src.top + src.height / 2
+  const piece = { left: cx - 17, top: cy - 17, width: 34, height: 34 }
+  const jobs = []
+  let coins = 0, flown = 0
+  for (const p of plan.items) {
+    const it = list[p.index]
+    if (!p.n || !it || !it.to) continue
+    const to = it.to
+    if (p.kind === 'coin' && typeof fx.coins === 'function') {
+      const job = Promise.resolve(fx.coins(src, to, p.n, { amount: it.amount ?? null, onArrive: it.onArrive || null }))
+        .then(n => { coins += Number(n) || 0; glowAt(to) }).catch(() => {})
+      jobs.push(job)
+      continue
+    }
+    if (typeof fx.fly !== 'function') continue
+    const svgHtml = String(it.html || '').replace(/^<svg /, '<svg width="100%" height="100%" ')
+    const html = `<span style="display:block;width:100%;height:100%">${svgHtml}</span>`
+    const flights = []
+    for (let k = 0; k < p.n; k++) {
+      flights.push(new Promise(resolve => {
+        setTimeout(() => {
+          if (!liveTarget(to) || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) { resolve(false); return }
+          Promise.resolve(fx.fly(piece, to, { html, ms: REWARD_FX.flyMs + k * 24, arc: 0.55, scale: 0.7 })).then(resolve, () => resolve(false))
+        }, k * REWARD_FX.stagger)
+      }))
+    }
+    jobs.push(Promise.all(flights).then(r => { flown += r.filter(Boolean).length; glowAt(to) }))
+  }
+  return Promise.all(jobs).then(() => ({ coins, flown }))
+}
+
+/**
+ * chestOpen(fx, el, { reduced, n }) → Promise<boolean>: rương (hoặc ô quà) bật mở — nảy squash rồi bung sao + xu tại chỗ.
+ * Gọi trên phần tử ĐANG ở trong trang sau khi vẽ lại (vd ô rương mới). Giảm chuyển động: một nhịp sáng, không nảy, không hạt.
+ */
+export function chestOpen(fx, el, opts = {}) {
+  if (!fx || !el || !liveTarget(el)) return Promise.resolve(false)
+  const o = opts && typeof opts === 'object' ? opts : {}
+  let red
+  try { red = typeof o.reduced === 'boolean' ? o.reduced : isReduced() } catch { red = false }
+  if (red) {
+    try { if (typeof fx.glow === 'function') fx.glow(el) } catch { /* bỏ qua */ }
+    return Promise.resolve(true)
+  }
+  try { if (typeof fx.squash === 'function') fx.squash(el) } catch { /* bỏ qua */ }
+  return new Promise(resolve => {
+    setTimeout(() => {
+      if (!liveTarget(el)) { resolve(false); return }
+      try {
+        fx.burst(el, 'star', { n: clampN(Math.floor(num0(o.n)) || 12, 4, 20) })
+        fx.burst(el, 'coin', { n: 6 })
+      } catch { /* bỏ qua */ }
+      resolve(true)
+    }, 140)
+  })
+}

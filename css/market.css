@@ -1,23 +1,359 @@
 /* M4: màn Gánh hàng quê / Lựa hàng (src/ui/screens/market.js, dùng lại kệ Chọn của bếp). M5 Đợt 3 bước 0: chuyển nguyên
-   văn từ css/meta.css (gắn sau summary.css, cuối nhóm màn ngoài ca). */
+   văn từ css/meta.css (gắn sau summary.css, cuối nhóm màn ngoài ca).
+   M5 Đợt 3 gói M-G (0.5.2): cảnh chợ quê — dây cờ, trời theo buổi của phiên (data-tod sang / trua / toi), người bán bán
+   thân + bong bóng, đòn gánh hai thúng tre (hình hàng hiếm to, bảng tên giấy), biển tre ba khung giờ, bảng phần thưởng có
+   hình, nút chính dính đáy (.sticky-foot của game.css); Lựa hàng: lời dặn có hình hai món; kết quả: con dấu điểm, mẹt tre
+   đựng hàng, rương kho. Quy chuẩn theme.css: viền mực --g-ink, chữ tiêu đề Baloo 2, chữ luôn trên mảng giấy đặc (không
+   đặt thẳng lên vân tre / gỗ). Không có hoạt ảnh CSS: hiệu ứng (bay vào kho, con dấu bật) do market.js gọi vfx một lần.
+   Kiểu thẻ Mẹo ở kết quả (.incident-tip) nằm ở đầu css/sheet.css. Chữ ≥ 13px, vùng chạm ≥ 44px. */
 
-/* Màn Phiên chợ quê */
+.market-screen {
+  --mk-ink: var(--g-ink, #3a2618);
+  --mk-paper: var(--g-paper, #fffaf0);
+  --mk-font: var(--g-font-display, 'Baloo 2', system-ui, sans-serif);
+  /* thúng tre: khung hình (vuông) và cỡ hình món hàng hiếm trong thúng (64–72px) */
+  --th: clamp(132px, 38vw, 150px);
+  --ico: calc(var(--th) * .48);
+  /* nút chính dính đáy tự chừa vùng an toàn (thanh Home) */
+  padding-bottom: 0;
+}
 .market-body { gap: 12px; }
-.market-intro, .market-result { display: flex; flex-direction: column; gap: 8px; }
-.market-intro > .btn, .market-result > .btn { min-height: 48px; }
-.market-goods, .market-got { display: flex; flex-direction: column; gap: 6px; }
-.market-good { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 12px; background: #fff; border: 1px solid var(--line); }
-.market-got li { display: flex; align-items: center; gap: 10px; font-weight: 800; }
-.market-good-icon { width: 44px; height: 44px; display: inline-block; line-height: 0; flex: none; }
-.market-good-icon svg { width: 100%; height: 100%; }
-.market-good-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.market-trap { color: var(--bad); font-weight: 700; }
-.market-rules { display: flex; flex-direction: column; gap: 2px; padding-left: 18px; list-style: disc; }
-.market-locked { color: var(--brick-dark); font-weight: 700; }
-.market-stage { display: flex; flex-direction: column; gap: 8px; }
-.market-stage .mg-stage { position: relative; min-height: 420px; }
+.market-intro, .market-result, .market-stage { display: flex; flex-direction: column; gap: 12px; }
+
+/* ---------- Cảnh chợ quê ---------- */
+.market-scene {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin: -12px calc(-1 * var(--gutter)) 0;
+  padding: 26px var(--gutter) 14px;
+  border-bottom: 3px solid var(--mk-ink);
+  background: linear-gradient(180deg, #bfe3f5 0%, #e3f3fa 55%, #f4f9f2 100%);
+}
+.market-scene[data-tod="sang"] { background: linear-gradient(180deg, #ffd9a8 0%, #ffecd0 55%, #fff6e6 100%); }
+.market-scene[data-tod="toi"] { background: linear-gradient(180deg, #7a68aa 0%, #c98c94 45%, #f1b98a 100%); }
+.market-bunting { position: absolute; top: 0; left: 0; right: 0; height: 24px; z-index: 1; line-height: 0; pointer-events: none; }
+.market-bunting svg { display: block; width: 100%; height: 100%; }
+
+/* người bán + bong bóng (tour lua_hang bước 1 nhắm .npc-talk trong market-intro). Hàng này không tạo ngữ cảnh xếp chồng:
+   người bán (0) nằm sau đòn gánh và thúng (3), bong bóng (4) nằm trên đòn gánh (câu dài 3 dòng không bị đòn gánh che). */
+.market-talk { position: relative; align-items: flex-start; gap: 6px; }
+.market-seller { position: relative; z-index: 0; flex: none; width: 104px; height: 121px; margin: 0 0 0 -4px; }
+.market-seller.is-face { width: 84px; height: 84px; margin: 6px 4px 8px 0; }
+.market-bubble {
+  position: relative;
+  z-index: 4;
+  align-self: flex-start;
+  margin-top: 8px;
+  padding: 8px 12px 9px;
+  border: 3px solid var(--mk-ink);
+  border-radius: 16px;
+  background: var(--mk-paper);
+  box-shadow: 0 4px 0 rgba(58, 38, 24, .2);
+  font-size: 15px;
+  line-height: 1.35;
+}
+.market-bubble b { font-family: var(--mk-font); font-size: 16px; line-height: 1.1; color: var(--brick); }
+/* đuôi bong bóng chỉ về người bán */
+.market-bubble::before, .market-bubble::after {
+  content: ''; position: absolute; top: 22px; width: 0; height: 0; border-style: solid; pointer-events: none;
+}
+.market-bubble::before { left: -15px; border-width: 9px 15px 9px 0; border-color: transparent var(--mk-ink) transparent transparent; }
+.market-bubble::after { left: -10px; top: 25px; border-width: 6px 10px 6px 0; border-color: transparent var(--mk-paper) transparent transparent; }
+
+/* đòn gánh hai thúng (tour lua_hang bước 2 nhắm .market-goods). Thứ tự lớp trong ngữ cảnh xếp chồng của danh sách:
+   đất (-1) → lớp sau thúng (0) → đòn gánh (1) → hình hàng (2) → thân thúng (3); bảng tên giấy là khối thường, vẽ trên đất. */
+.market-goods {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: -14px;
+}
+.market-goods::before {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  top: calc(var(--th) * 4 / 140);
+  left: calc(25% - var(--th) * .5);
+  right: calc(25% - var(--th) * .5);
+  height: 13px;
+  border: 3px solid var(--mk-ink);
+  border-radius: 999px;
+  background:
+    repeating-linear-gradient(90deg, rgba(168, 116, 4, 0) 0 46px, rgba(168, 116, 4, .55) 46px 49px),
+    linear-gradient(180deg, #fbe7ae 0%, #e8bf62 55%, #c9973a 100%);
+  pointer-events: none;
+}
+.market-goods::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: calc(var(--th) * .86);
+  bottom: -14px;
+  left: calc(-1 * var(--gutter));
+  right: calc(-1 * var(--gutter));
+  border-top: 3px solid var(--mk-ink);
+  background:
+    repeating-linear-gradient(90deg, rgba(58, 38, 24, 0) 0 46px, rgba(58, 38, 24, .16) 46px 48px),
+    linear-gradient(180deg, #e6c193 0%, #d8ab78 100%);
+  pointer-events: none;
+}
+.market-good { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.market-thung { position: relative; width: var(--th); height: var(--th); flex: none; }
+.market-thung-back, .market-thung-front { position: absolute; inset: 0; display: block; line-height: 0; }
+.market-thung-back { z-index: 0; }
+.market-thung-front { z-index: 3; }
+.market-thung svg { display: block; width: 100%; height: 100%; }
+.market-good-icon {
+  position: absolute;
+  z-index: 2;
+  left: calc(50% - var(--ico) / 2);
+  top: calc(var(--th) * 91 / 140 - var(--ico));
+  width: var(--ico);
+  height: var(--ico);
+  display: block;
+  line-height: 0;
+}
+.market-good-icon svg { display: block; width: 100%; height: 100%; }
+/* bảng tên giấy dưới thúng */
+.market-good-text {
+  position: relative;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  margin-top: -10px;
+  padding: 6px 6px 7px;
+  border: 2.5px solid var(--mk-ink);
+  border-radius: 12px;
+  background: var(--mk-paper);
+  box-shadow: 0 3px 0 rgba(58, 38, 24, .25);
+  text-align: center;
+}
+.market-good-name { font-family: var(--mk-font); font-weight: 800; font-size: 16px; line-height: 1.12; color: var(--mk-ink); overflow-wrap: anywhere; }
+.market-good-name .rare-star { color: #c98a00; letter-spacing: 0; }
+.market-good-meta { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px 6px; font-size: 13px; font-weight: 700; color: var(--muted); line-height: 1.2; }
+.market-stock {
+  display: inline-flex; align-items: center; gap: 3px; padding: 1px 7px 1px 3px;
+  border: 2px solid var(--mk-ink); border-radius: 999px; background: #f3ecff; color: var(--mk-ink);
+  font-family: var(--mk-font); font-size: 14px; line-height: 1.15; white-space: nowrap;
+}
+.market-stock-ico { display: inline-block; width: 20px; height: 20px; line-height: 0; flex: none; }
+.market-stock-ico svg { width: 100%; height: 100%; }
+.market-trap { color: var(--g-bad-dark, #8f2015); font-weight: 700; line-height: 1.25; }
+.market-desc { font-size: 14px; color: var(--muted); line-height: 1.4; }
+
+/* ---------- Biển tre "Phiên chợ hôm nay": ba khung giờ thật ---------- */
+.market-clock {
+  padding: 8px 8px 9px;
+  border: 3px solid var(--mk-ink);
+  border-radius: 14px;
+  background:
+    repeating-linear-gradient(180deg, rgba(168, 116, 4, 0) 0 15px, rgba(140, 92, 20, .45) 15px 17px, rgba(255, 240, 200, .5) 17px 18px),
+    linear-gradient(180deg, #f3d48a 0%, #e2b45a 100%);
+  box-shadow: 0 4px 0 var(--g-wood-dark, #a5672b);
+}
+.market-clock-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 7px; flex-wrap: wrap; }
+.market-clock-title, .market-now {
+  padding: 2px 10px 1px; border: 2.5px solid var(--mk-ink); border-radius: 8px; background: var(--mk-paper);
+  font-family: var(--mk-font); font-weight: 800; line-height: 1.2; color: var(--mk-ink);
+}
+.market-clock-title { font-size: 16px; }
+.market-now { font-size: 14px; font-variant-numeric: tabular-nums; background: #fff3c4; }
+.market-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.market-slot {
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 1px; min-width: 0;
+  padding: 5px 3px 6px; border: 2.5px solid var(--mk-ink); border-radius: 10px; background: var(--mk-paper);
+  text-align: center; color: var(--mk-ink);
+}
+.market-slot-time { font-family: var(--mk-font); font-weight: 800; font-size: 14px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.market-slot-name { font-size: 13px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.market-slot-state {
+  margin-top: 2px; padding: 0 7px; border-radius: 999px; background: rgba(58, 38, 24, .1);
+  font-size: 13px; font-weight: 800; line-height: 1.45; white-space: nowrap;
+}
+.market-slot.is-open { background: #e3f6d6; box-shadow: 0 0 0 3px var(--g-gold, #f7b928); }
+.market-slot.is-open .market-slot-state { background: var(--g-go-dark, #226b28); color: #fff; }
+.market-slot.is-pending { background: #fff3c4; box-shadow: 0 0 0 3px var(--g-gold, #f7b928); }
+.market-slot.is-pending .market-slot-state { background: var(--g-gold, #f7b928); }
+.market-slot.is-done .market-slot-state { background: #dcefd9; color: var(--green-ink); }
+.market-slot.is-past { background: #efe7d8; color: #6f5f4e; }
+.market-clock-note {
+  margin-top: 7px; padding: 3px 8px; border-radius: 8px; background: rgba(255, 250, 240, .92);
+  font-size: 13px; font-weight: 600; color: var(--muted); text-align: center; line-height: 1.3;
+}
+
+/* ---------- Bảng phần thưởng có hình + giá lượt ---------- */
+.market-perks {
+  padding: 10px 10px 11px;
+  border: 3px solid var(--mk-ink);
+  border-radius: 16px;
+  background: var(--mk-paper);
+  box-shadow: inset 0 -4px 0 var(--g-paper-shade, #f1e2c2), 0 4px 0 rgba(58, 38, 24, .2);
+}
+.market-perks-title { font-family: var(--mk-font); font-weight: 800; font-size: 17px; line-height: 1.15; color: var(--brick-dark); margin-bottom: 6px; }
+.market-perk-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.market-perk { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; text-align: center; }
+.market-perk-art { position: relative; width: 56px; height: 56px; flex: none; }
+.market-perk-ico { display: block; width: 100%; height: 100%; line-height: 0; }
+.market-perk-ico svg { width: 100%; height: 100%; }
+.market-perk-badge {
+  position: absolute; right: -10px; bottom: -2px; min-width: 30px; height: 24px; padding: 0 5px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 2.5px solid var(--mk-ink); border-radius: 999px; background: var(--g-go, #43a63d); color: #fff;
+  font-family: var(--mk-font); font-weight: 800; font-size: 14px; line-height: 1;
+  text-shadow: var(--g-text-outline-thin, 0 1px 0 #3a2618);
+}
+.market-perk.is-frag .market-perk-badge { background: var(--g-gold, #f7b928); color: var(--mk-ink); text-shadow: none; }
+.market-perk-text { font-size: 13px; font-weight: 700; line-height: 1.25; color: var(--mk-ink); overflow-wrap: anywhere; }
+.market-price {
+  display: flex; align-items: center; gap: 8px; margin-top: 8px; padding-top: 7px;
+  border-top: 2px dashed var(--line); font-size: 14px; line-height: 1.35;
+}
+.market-price b { color: var(--green-ink); }
+.market-price-ico { display: inline-block; width: 30px; height: 30px; line-height: 0; flex: none; }
+.market-price-ico svg { width: 100%; height: 100%; }
+
+/* ---------- Nút chính dính đáy (Bắt đầu lựa / Lựa tiếp / Về màn Chuẩn bị) ---------- */
+/* .sticky-foot (game.css) dính đáy màn cuộn, đệm vùng an toàn; tour chừa chỗ cho .sticky-foot */
+.market-foot { display: flex; flex-direction: column; gap: 8px; margin-top: 0; padding-top: 10px; z-index: 5; }
+.market-foot > .btn { min-height: 54px; }
+.market-start { gap: 8px; }
+.market-start-ico { display: inline-block; width: 34px; height: 34px; line-height: 0; flex: none; margin: -6px 0 -6px -6px; }
+.market-start-ico svg { width: 100%; height: 100%; }
+.market-back-ghost { align-self: center; min-height: 48px; padding-left: 22px; padding-right: 22px; font-size: 16px; }
+.market-back-main { min-height: 52px; font-size: 19px; }
+/* tấm biển "chưa lựa được" (phiên chưa mở / đã tan / đã ghé / tạm khóa) */
+.market-locked {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px;
+  border: 3px solid var(--mk-ink); border-radius: 12px; background: #fff3c4;
+  box-shadow: 0 3px 0 rgba(58, 38, 24, .25);
+  color: var(--brick-dark); font-size: 15px; font-weight: 800; line-height: 1.3;
+}
+.market-intro.is-done .market-locked { background: #e3f6d6; color: var(--green-ink); }
+.market-locked-ico { display: inline-block; width: 36px; height: 36px; line-height: 0; flex: none; }
+.market-locked-ico svg { width: 100%; height: 100%; }
+
+/* ---------- Lựa hàng ---------- */
+.market-hint { align-items: center; gap: 8px; }
+.market-hint-face { flex: none; width: 52px; height: 52px; line-height: 0; }
+.market-hint-face svg { width: 100%; height: 100%; }
+.market-hint-bubble {
+  position: relative; flex: 1; min-width: 0; margin: 0 0 0 6px; padding: 7px 10px 8px;
+  border: 2.5px solid var(--mk-ink); border-radius: 14px; background: var(--mk-paper);
+  font-size: 15px; font-weight: 600; line-height: 1.5;
+}
+.market-hint-bubble::before, .market-hint-bubble::after {
+  content: ''; position: absolute; top: calc(50% - 8px); width: 0; height: 0; border-style: solid; pointer-events: none;
+}
+.market-hint-bubble::before { left: -13px; border-width: 8px 13px 8px 0; border-color: transparent var(--mk-ink) transparent transparent; }
+.market-hint-bubble::after { left: -8.5px; top: calc(50% - 5px); border-width: 5px 9px 5px 0; border-color: transparent var(--mk-paper) transparent transparent; }
+.market-want { display: inline-flex; align-items: center; gap: 3px; vertical-align: middle; white-space: nowrap; }
+.market-want b { font-weight: 800; color: var(--brick-dark); white-space: normal; }
+.market-want-ico { display: inline-block; width: 28px; height: 28px; line-height: 0; flex: none; margin: -4px 0; }
+.market-want-ico svg { width: 100%; height: 100%; }
+.market-stage .mg-stage { position: relative; }
+/* kệ Lựa hàng: hình món to hơn khi khung đủ cao (chon.js chỉ tự đo cỡ trong khung bếp; ở đây cả màn cuộn, thanh "Trong
+   rổ / Xong" dính đáy) — 402×680 vẫn thấy trọn kệ và nút Xong không phải cuộn */
+@media (min-height: 660px) { .market-stage .chon-shelf { --ico: 64px; } }
+@media (min-height: 800px) { .market-stage .chon-shelf { --ico: 72px; } }
 /* màn Lựa hàng không có thanh tab: thanh "Trong rổ / Xong" dính đáy màn chừa vùng an toàn (thanh Home iPhone), nền đặc */
 .market-stage .mg-chon .mg-foot { padding-bottom: calc(6px + var(--safe-bottom)); background: var(--bg); }
-.market-hint { font-weight: 700; }
-.market-score { display: flex; align-items: baseline; gap: 10px; }
-.market-score b { font-size: 32px; color: var(--brick); }
+
+/* ---------- Kết quả ---------- */
+.market-score {
+  align-self: center;
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 12px;
+  padding: 6px 16px 7px;
+  border: 3px solid var(--mk-ink); border-radius: 18px; background: var(--mk-paper);
+  box-shadow: inset 0 -4px 0 var(--g-paper-shade, #f1e2c2), 0 4px 0 rgba(58, 38, 24, .22);
+}
+.market-score-label { font-size: 15px; font-weight: 700; color: var(--muted); }
+.market-score-num {
+  font-family: var(--mk-font); font-weight: 800; font-size: 44px; line-height: 1; color: var(--g-tomato, #e8483a);
+  text-shadow: var(--g-text-outline, 0 2px 0 #3a2618), 0 3px 0 var(--mk-ink);
+  font-variant-numeric: tabular-nums;
+}
+.market-score.is-top .market-score-num { color: var(--g-gold-light, #ffe27a); }
+.market-score-grade {
+  padding: 2px 10px 1px; border: 2.5px solid var(--mk-ink); border-radius: 999px; background: var(--g-gold, #f7b928);
+  font-family: var(--mk-font); font-weight: 800; font-size: 16px; line-height: 1.2; color: var(--mk-ink);
+}
+.market-score.is-low .market-score-grade { background: #efe7d8; }
+/* mẹt tre đựng hàng vừa lựa; rương kho ở góc trên-phải */
+.market-haul {
+  position: relative;
+  margin-top: 8px;
+  padding: 24px 10px 18px;
+  border: 3px solid var(--mk-ink);
+  border-radius: 48% / 34%;
+  background:
+    repeating-linear-gradient(45deg, rgba(168, 116, 4, 0) 0 7px, rgba(168, 116, 4, .16) 7px 9px),
+    repeating-linear-gradient(-45deg, rgba(168, 116, 4, 0) 0 7px, rgba(168, 116, 4, .16) 7px 9px),
+    radial-gradient(70% 70% at 50% 45%, #f6d58c 0%, #e8bf62 70%, #d7a646 100%);
+  box-shadow: inset 0 0 0 6px #f8df9a, inset 0 0 0 9px var(--mk-ink), 0 5px 0 rgba(58, 38, 24, .22);
+}
+.market-got { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 10px 8px; }
+.market-got-item { display: flex; flex-direction: column; align-items: center; gap: 2px; width: calc(50% - 8px); max-width: 160px; min-width: 0; text-align: center; }
+.market-got-icon { position: relative; display: block; width: 68px; height: 68px; line-height: 0; flex: none; }
+.market-got-icon svg { width: 100%; height: 100%; }
+.market-got-text {
+  padding: 2px 8px 3px; border: 2.5px solid var(--mk-ink); border-radius: 10px; background: var(--mk-paper);
+  font-family: var(--mk-font); font-weight: 800; font-size: 15px; line-height: 1.15; color: var(--mk-ink);
+  overflow-wrap: anywhere;
+}
+.market-got-item.is-frag .market-got-text { background: #fff3c4; }
+.market-got-item.is-spoon .market-got-text { background: #fff3c4; font-size: 14px; }
+/* mảnh công thức: tờ giấy có sao + hình món nhỏ góc dưới */
+.market-frag-paper, .market-frag-dish { position: absolute; display: block; line-height: 0; }
+.market-frag-paper { inset: 0; }
+.market-frag-dish { right: -6px; bottom: -4px; width: 34px; height: 34px; }
+/* rương kho hàng hiếm (đích hàng bay vào): góc trên-phải mẹt */
+.market-kho-icon { position: absolute; z-index: 2; top: -22px; right: -4px; display: block; width: 60px; height: 60px; line-height: 0; }
+.market-kho-icon svg { width: 100%; height: 100%; }
+/* dòng kho sau khi cất: số phần từng món / sức chứa */
+.market-kho {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; padding: 7px 10px;
+  border: 3px solid var(--mk-ink); border-radius: 14px; background: #f3ecff;
+  box-shadow: 0 4px 0 rgba(58, 38, 24, .2);
+}
+.market-kho b { font-family: var(--mk-font); font-weight: 800; font-size: 16px; line-height: 1.15; color: #5b3a8c; }
+.market-kho-list { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.market-kho-pill {
+  display: inline-flex; align-items: center; gap: 3px; padding: 1px 8px 1px 2px;
+  border: 2px solid var(--mk-ink); border-radius: 999px; background: var(--mk-paper);
+  font-family: var(--mk-font); font-weight: 800; font-size: 14px; line-height: 1.2; font-variant-numeric: tabular-nums;
+}
+.market-kho-pill-ico { display: inline-block; width: 24px; height: 24px; line-height: 0; flex: none; }
+.market-kho-pill-ico svg { width: 100%; height: 100%; }
+/* thẻ Mẹo nghề "Kiểm hàng" (kiểu nền .incident-tip ở đầu css/sheet.css; đè trong màn này: giấy vàng viền mực + hình sổ tay) */
+.market-result .incident-tip.market-tip {
+  flex-direction: row; align-items: flex-start; gap: 10px; padding: 8px 10px 9px;
+  border: 2.5px solid var(--mk-ink); border-radius: 14px; background: #fff3c4; box-shadow: 0 3px 0 rgba(58, 38, 24, .2);
+}
+.market-tip-ico { display: block; width: 44px; height: 44px; line-height: 0; flex: none; }
+.market-tip-ico svg { width: 100%; height: 100%; }
+.market-tip-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.market-disau { align-items: center; }
+.market-disau .bubble { border: 2.5px solid var(--mk-ink); background: var(--mk-paper); }
+.market-note { line-height: 1.4; }
+
+/* ---------- Khung hẹp / thấp ---------- */
+@media (max-width: 370px) {
+  .market-hint-bubble { font-size: 14px; line-height: 1.45; }
+  .market-seller { width: 88px; height: 103px; }
+  .market-bubble { font-size: 14px; padding: 7px 10px 8px; }
+  .market-good-name { font-size: 15px; }
+  .market-perk-art { width: 48px; height: 48px; }
+  .market-got-icon { width: 60px; height: 60px; }
+  .market-score-num { font-size: 38px; }
+}
+@media (max-height: 700px) {
+  .market-scene { padding-top: 24px; }
+  .market-seller { width: 92px; height: 107px; }
+  .market-goods { margin-top: -12px; }
+}
