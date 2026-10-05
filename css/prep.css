@@ -833,7 +833,7 @@ html.reduce-motion .ps-lobby .ps-obj-art, html.reduce-motion .ps-lobby .ps-wx { 
 .su-end .stage-cart, .su-next-art { width: 100%; max-width: 170px; line-height: 0; }
 .su-end .stage-cart svg, .su-next-art svg { width: 100%; height: auto; display: block; }
 .su-next { position: relative; }
-.su-next-art.is-locked { opacity: .5; filter: saturate(.25); }
+.su-next-art.is-locked { opacity: .62; filter: saturate(.35); }
 .su-lock {
   position: absolute; top: 18%; left: 50%; transform: translateX(-50%); width: 40px; height: 40px; box-sizing: border-box; display: grid; place-items: center;
   border: 3px solid var(--g-ink); border-radius: 50%; background: var(--g-paper); line-height: 0; box-shadow: 0 3px 0 rgba(58, 38, 24, .3);

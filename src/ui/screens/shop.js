@@ -335,7 +335,7 @@ export default {
       const baseMissing = info.bases.filter(b => !(state.recipes && state.recipes[b])).map(b => (R[b] && R[b].name) || b)
       const busy = !!state.shift || !!(state.tasting && state.tasting.recipeId !== info.recipeId)
       const status = info.owned ? 'owned' : info.ready ? 'ready' : info.baseOwned ? 'collecting' : 'locked'
-      const line = info.owned ? 'Đã mở, bán khi kho còn hàng hiếm'
+      const line = info.owned ? 'Khách gọi món này khi kho còn hàng hiếm'
         : info.ready ? 'Đủ mảnh! Nấu thử đạt hạng Được là mở món'
           : baseMissing.length ? `Cần có món ${baseMissing.join(', ')}` : `Mảnh ${info.n}/${info.need}`
       return h('article', { class: ['shop-rare', 'st-' + status], testid: 'shop-rare-' + info.recipeId, dataset: { n: String(info.n), status } },
@@ -343,8 +343,10 @@ export default {
           info.owned ? svgBox(metaArt('dau_tick'), 'shop-done-tick') : null),
         h('div', { class: 'shop-rare-text' },
           h('h3', null, r.name, ' ', h('span', { class: 'rare-star' }, '★')),
-          h('div', { class: 'shop-frags', role: 'img', 'aria-label': `Mảnh công thức ${info.n}/${info.need}` }, frags,
-            h('b', { class: 'shop-frag-n' }, `${info.n}/${info.need}`)),
+          info.owned
+            ? h('span', { class: 'shop-badge is-owned' }, svgBox(metaArt('dau_tick'), 'shop-badge-ico'), 'Đã mở món')
+            : h('div', { class: 'shop-frags', role: 'img', 'aria-label': `Mảnh công thức ${info.n}/${info.need}` }, frags,
+              h('b', { class: 'shop-frag-n' }, `${info.n}/${info.need}`)),
           h('small', null, line),
           Object.keys(need).length ? h('small', { class: 'muted' }, 'Mỗi phần: ' + Object.entries(need).map(([id, n]) => `${n} ${(INGS[id] && INGS[id].name) || id}`).join(', ')) : null),
         info.ready ? h('button', {
