@@ -13,6 +13,8 @@
 //               nút "?" vẫn xem lại được
 //   veteranDay: bản lưu cũ (trước khi có tour) đã bán ít nhất một ca và đang ở ngày ≥ số này thì coi như đã xem
 //               (core/tour.js migrateTour) — chỉ đặt cho vòng chơi chính người chơi chắc chắn đã đi qua
+//   delayMs:    (tùy chọn, 0.5.2) TỰ hiện chậm ít nhất chừng này ms sau khi vào màn, để màn diễn xong hiệu ứng vào màn
+//               (vd Tổng kết: sao bật, số đếm lên, xu bay về ví) rồi mới làm tối nền; nút "?" xem lại thì hiện ngay
 //   steps: [{
 //     target:   data-testid, hoặc bộ chọn CSS (bắt đầu bằng . # [ hoặc có dấu cách), hoặc mảng các lựa chọn (lấy cái đầu
 //               tiên đang hiện); null = bong bóng giữa khung, không khoét sáng. Không tìm thấy phần tử → bỏ qua bước
@@ -40,33 +42,56 @@ export const TOURS = Object.freeze({
     ])
   }),
 
-  // ---------- Màn Chuẩn bị ca ----------
+  // ---------- Màn Chuẩn bị ca ("sảnh chính") ----------
+  // 0.5.2 (M5 Đợt 3): sảnh là cảnh phố — biển ngày treo dưới mái bạt (Ngày N, ba con số bằng hình: ví, huy hiệu, ngôi sao;
+  // hình sự kiện ngày ở góc biển), xe đẩy là bảng lối vào (4 đồ vật trên mặt xe, 3 đồ vật trong hộc xe, chấm đỏ ở góc
+  // hình), Dì Sáu đứng vỉa hè với bong bóng lời dặn (hộp quà có số dán ở góc khi có thưởng chờ nhận), sổ "Dì Sáu dặn" là tờ
+  // giấy ghim có hàng chấm bước, nút Mở hàng là biển treo đỏ dính đáy.
   chuan_bi: Object.freeze({
     screen: 'prep', name: 'Màn Chuẩn bị', veteranDay: 2,
     steps: Object.freeze([
-      step('prep-stats', 'Ba con số của xe', 'Đây là Tiền quán, danh tiếng và sao trung bình của xe. Bán khéo, khách vui thì cả ba cùng lên.'),
-      step('open-shop', 'Lối vào', 'Chợ Công Thức để mua món mới, Việc hôm nay để nhận thưởng, Điểm danh mỗi ngày, Hộp thư có quà. Chấm đỏ là có việc đang chờ con.', { span: 'open-mail' }),
-      step('open-recipe-book', 'Sổ và Cài đặt', 'Sổ công thức ghi cách làm từng món, Sổ tay nghề gom các thẻ Mẹo nghề. Cài đặt có âm thanh, hỗ trợ và sao lưu.', { span: 'open-settings' }),
-      step('chain-card', 'Dì Sáu dặn', 'Thẻ này là việc dì dặn theo từng bước. Xong bước nào thì quay lại đây nhận thưởng bước đó.'),
+      step('prep-stats', 'Ba con số của xe', 'Cái ví là Tiền quán, huy hiệu là danh tiếng, ngôi sao là sao trung bình của xe. Bán khéo, khách vui thì cả ba cùng lên.'),
+      step('open-shop', 'Trên mặt xe', 'Chợ Công Thức để mua món mới, Việc hôm nay để nhận thưởng, Điểm danh mỗi ngày, Hộp thư có quà. Chấm đỏ ở góc hình là có việc đang chờ con.', { span: 'open-mail' }),
+      step('open-recipe-book', 'Trong hộc xe', 'Sổ công thức ghi cách làm từng món, Sổ tay nghề gom các thẻ Mẹo nghề. Cài đặt có âm thanh, hỗ trợ và sao lưu.', { span: 'open-settings' }),
+      // tờ sổ cao (nhiều bước, ô nhận thưởng): chỉ khoét sáng đầu sổ và hàng chấm bước để bong bóng không che sổ
+      step(['[data-testid="chain-card"] .chain-head', 'chain-card'], 'Dì Sáu dặn', 'Sổ này ghi việc dì dặn theo từng bước, chấm xanh là bước đã xong, ô cuối hàng là quà cuối. Xong bước nào thì quay lại đây nhận thưởng.',
+        { span: '[data-testid="chain-card"] .chain-path' }),
       step('help-button', 'Nút "?"', 'Quên chỗ nào thì bấm nút này: xem lại hướng dẫn của màn, hoặc đọc trang Cách chơi.'),
-      step('open-shift', 'Mở hàng', 'Sẵn sàng rồi thì bấm Mở hàng, khách ghé xe trong ca sáng từ 06:00 tới 10:00.')
+      step('open-shift', 'Mở hàng', 'Sẵn sàng rồi thì bấm biển Mở hàng, khách ghé xe trong ca sáng từ 06:00 tới 10:00.')
     ])
   }),
-  // Thẻ sự kiện ngày: tự hiện lần đầu thẻ xuất hiện ở màn Chuẩn bị
+  // Thẻ sự kiện ngày: tự hiện lần đầu thẻ xuất hiện ở màn Chuẩn bị (0.5.2: bắt đầu từ hình sự kiện ở góc biển ngày)
   su_kien_ngay: Object.freeze({
     screen: 'prep', spot: 'day-event', name: 'Sự kiện ngày',
     steps: Object.freeze([
-      step('day-event-card', 'Sự kiện ngày', 'Có ngày trời mưa, có chợ phiên, có đoàn kiểm tra ghé. Đọc kỹ mấy dòng ảnh hưởng để biết hôm nay khách đông hay vắng.'),
+      step('prep-wx', 'Hình sự kiện', 'Góc biển ngày có hình sự kiện hôm nay: dấu "!" là ngày khó hoặc còn lựa chọn chưa chọn, dấu ✓ là đã lo xong. Chạm hình là tới tờ thông báo.'),
+      // tờ thông báo cao (lời, các dòng ảnh hưởng, lựa chọn): khoét sáng đầu tờ tới hết các dòng có hình
+      step(['[data-testid="day-event-card"] .day-ev-head', 'day-event-card'], 'Sự kiện ngày', 'Có ngày trời mưa, có chợ phiên, có đoàn kiểm tra ghé. Đọc kỹ mấy dòng có hình để biết hôm nay khách đông hay vắng.',
+        { span: '[data-testid="day-event-card"] .day-ev-effects' }),
       step('[data-testid^="day-event-choice-"]', 'Chuẩn bị trước', 'Sự kiện nào có lựa chọn thì chọn trước khi Mở hàng, tốn chút tiền mà đỡ thiệt. Đổi ý thì bấm Bỏ chọn.')
+    ])
+  }),
+  // Hộp quà ở sảnh (0.5.2): có thưởng chờ nhận ngay ở sảnh (bước "Dì Sáu dặn" đã xong, quà sự kiện) thì hộp quà có số dán ở
+  // góc bong bóng Dì Sáu; tour tự hiện lần đầu hộp quà xuất hiện (thường là sáng ngày 2, sau ca đầu)
+  qua_sanh: Object.freeze({
+    screen: 'prep', spot: 'gift', name: 'Quà chờ nhận',
+    steps: Object.freeze([
+      step('prep-gift', 'Quà chờ nhận', 'Hộp quà trên lời dì báo có thưởng đang chờ ngay ở sảnh, số đỏ là số phần thưởng. Chạm hộp quà là dì dẫn con tới chỗ nhận.'),
+      step(['.ps-body > .chain-card.has-claim .chain-claim-row', '.ps-body > .event-card.has-pending [data-testid="open-event"]'], 'Nhận thưởng',
+        'Bấm Nhận ở đây là xu và Muỗng Vàng bay thẳng về ví. Quà sự kiện thì vào thẻ sự kiện để nhận.')
     ])
   }),
   // Thẻ gánh hàng quê và kho hàng hiếm
   hang_hiem: Object.freeze({
     screen: 'prep', spot: 'stall', name: 'Hàng hiếm',
     steps: Object.freeze([
-      step('stall-card', 'Gánh hàng quê', 'Gánh hàng quê mở theo giờ thật trong ngày, mỗi phiên bán vài nguyên liệu hiếm. Ghé lựa đúng hàng là được mang về kho.'),
-      step(['[data-testid="rare-stock-card"] .rare-stock', 'rare-stock-card'], 'Kho hàng hiếm', 'Nấu món hiếm thì lấy nguyên liệu trong kho này. Bên dưới là mảnh công thức hiếm, đủ mảnh thì nấu thử để mở món mới.'),
-      step('basket-luck', 'Giỏ chợ', 'Phục vụ liền 5 khách không sai ở quầy, hoặc gặp ngày Chợ phiên, thì cuối ca được một lượt Giỏ chợ. Tỉ lệ ghi ở đây, lâu chưa ra nguyên liệu thì thanh may mắn đầy dần.')
+      step(['[data-testid="stall-card"] .ps-stall-head', 'stall-card'], 'Gánh hàng quê', 'Gánh hàng quê mở theo giờ thật trong ngày, mỗi phiên bán vài nguyên liệu hiếm. Ghé lựa đúng hàng là được mang về kho.',
+        { span: '[data-testid="stall-card"] .ps-goods' }),
+      // biển tên kho + hàng ô kệ đầu (cả kệ cao quá khung thấp, bong bóng sẽ che kệ)
+      step(['[data-testid="rare-stock-card"] .ps-plaque', '[data-testid="rare-stock-card"] .rare-stock', 'rare-stock-card'], 'Kho hàng hiếm', 'Mỗi ô kệ ghi số phần đang có trong kho, nấu món hiếm thì lấy ở đây. Bên dưới là mảnh công thức hiếm, đủ mảnh thì nấu thử để mở món mới.',
+        { span: '[data-testid="rare-stock-card"] .rare-stock-item' }),
+      step(['[data-testid="basket-luck"] .basket-head', 'basket-luck'], 'Giỏ chợ', 'Phục vụ liền 5 khách không sai ở quầy, hoặc gặp ngày Chợ phiên, thì cuối ca được một lượt Giỏ chợ. Tỉ lệ ghi ở đây, lâu chưa ra nguyên liệu thì thanh may mắn đầy dần.',
+        { span: '[data-testid="basket-luck"] .pbar' })
     ])
   }),
 
@@ -247,42 +272,50 @@ export const TOURS = Object.freeze({
   }),
 
   // ---------- Tổng kết ca ----------
+  // 0.5.2 (M5 Đợt 3): băng rôn "Hết ca!" với 5 sao lớn và hạng ca, Dì Sáu, lãi trong ca đếm lên; tờ sổ lãi lỗ kẻ dòng có hình
+  // từng khoản, dòng lãi đóng dấu LÃI / LỖ; Chốt két; Tiền quán trên thanh gỗ. Tour chờ hiệu ứng vào màn diễn xong (delayMs).
   tong_ket: Object.freeze({
-    screen: 'summary', name: 'Tổng kết ca', veteranDay: 2,
+    screen: 'summary', name: 'Tổng kết ca', veteranDay: 2, delayMs: 2600,
     steps: Object.freeze([
-      step(['.ledger .total', '.ledger'], 'Sổ lãi lỗ', 'Sổ cộng tiền bán, tip rồi trừ giá vốn và chi phí, ra dòng này là lãi của ca. Lãi dương là ca này có lời.'),
+      step('summary-stars', 'Sao ca này', 'Năm sao lớn là sao trung bình khách chấm ca này, chữ bên dưới là hạng ca. Sao của xe tính theo 30 lượt chấm gần nhất.'),
+      step(['.ledger .total', '.ledger'], 'Sổ lãi lỗ', 'Sổ cộng tiền bán, tip rồi trừ giá vốn và chi phí, dòng đóng dấu này là lãi của ca. Lãi đã cộng vào Tiền quán trên thanh gỗ.'),
       step('summary-drawer-diff', 'Lệch két', 'Dòng này cho biết tiền trong két có khớp sổ không. Lệch là do thối thiếu hoặc thối dư trong ca.'),
-      step('summary-stars', 'Sao ca này', 'Sao trung bình khách chấm hôm nay. Sao của xe tính theo 30 lượt chấm gần nhất.'),
       step('summary-reviews', 'Lời khách', 'Khách ăn xong để lại vài lời. Đọc để biết khách khen gì, chê gì.'),
       step('next-day', 'Ngày mai', 'Bấm để về màn Chuẩn bị cho ngày kế tiếp. Có việc xong thì nhớ ghé Việc hôm nay nhận thưởng nha.')
     ])
   }),
 
   // ---------- Màn con ----------
+  // 0.5.2 (M5 Đợt 3): thanh gỗ đầu màn (nút quay lại, ví, Muỗng Vàng, "?") + biển treo tên màn; nội dung là bảng gỗ, tờ
+  // giấy ghim, phong bì, sổ bìa da; phần thưởng là ô vật phẩm có hình.
   cho_cong_thuc: Object.freeze({
     screen: 'shop', name: 'Chợ Công Thức',
     steps: Object.freeze([
       step('shop-tab-recipes', 'Ba kệ', 'Kệ Chính bán công thức món mới, Nâng cấp bán dụng cụ, Góc Muỗng Vàng đổi màu dù và đồ trang trí.', { span: 'shop-tab-spoons' }),
-      step(['[data-testid^="shop-item-"]:not(.is-owned) .shop-facts', '[data-testid^="shop-item-"]'], 'Món mới', 'Mỗi món ghi giá bán, giá vốn, lãi mỗi phần và chừng mấy ca thì hoàn vốn. Món mới mua về thì khách gọi nhiều gấp đôi trong 2 ca đầu.'),
-      step('button[data-testid^="shop-trial-"]', 'Nấu thử', 'Nấu thử miễn phí, không tính giờ, có gợi ý tận tay. Làm quen trước rồi hẵng mua.'),
-      step('[data-testid^="shop-buy-"]', 'Mua món', 'Đủ Tiền quán và điều kiện thì bấm Mua. Món mới có trong thực đơn từ ca kế tiếp.')
+      step(['[data-testid^="shop-item-"]:not(.is-owned) .shop-facts', '[data-testid^="shop-item-"]'], 'Món mới', 'Mỗi món ghi giá bán, giá vốn, lãi mỗi phần, chừng mấy ca hoàn vốn và thao tác mới. Món mới mua về thì khách gọi nhiều gấp đôi trong 2 ca đầu.',
+        { span: '[data-testid^="shop-item-"]:not(.is-owned) .shop-mech' }),
+      step('button[data-testid^="shop-trial-"]', 'Nấu thử', 'Mỗi món được nấu thử miễn phí một lần, không tính giờ, có gợi ý tận tay. Làm quen trước rồi hẵng mua.'),
+      step('[data-testid^="shop-buy-"]', 'Mua món', 'Đủ Tiền quán và điều kiện thì bấm Mua, giá ghi ngay trên nút. Món mới có trong thực đơn từ ca kế tiếp.')
     ])
   }),
   viec_hom_nay: Object.freeze({
     screen: 'quests', name: 'Việc hôm nay',
     steps: Object.freeze([
-      step('quest-0', 'Việc hôm nay', 'Mỗi ngày có vài việc nhỏ như thối đúng, ra món ngon. Làm trong ca là việc tự đếm.'),
+      // hình loại việc tới thanh tiến độ của tờ việc đầu (hàng nút bên dưới có bước riêng)
+      step(['[data-testid="quest-0"] .qs-type', 'quest-0'], 'Việc hôm nay', 'Mỗi tờ giấy là một việc nhỏ như thối đúng, ra món ngon; nhãn màu ghi việc thuộc Quầy, Bếp hay Chất lượng. Làm trong ca là việc tự đếm.',
+        { span: '[data-testid="quest-0"] .quest-prog' }),
       // ưu tiên nút Nhận đang bật (việc đã xong), không có thì nút của việc đầu
-      step(['[data-testid^="quest-claim-"]:not([disabled])', 'quest-claim-0', '[data-testid^="quest-claim-"]'], 'Nhận thưởng', 'Việc xong thì bấm Nhận để lấy thưởng. Chấm đỏ ở màn Chuẩn bị nhắc con khi có quà chờ.'),
+      step(['[data-testid^="quest-claim-"]:not([disabled])', 'quest-claim-0', '[data-testid^="quest-claim-"]'], 'Nhận thưởng', 'Việc xong thì bấm Nhận, quà trong mấy ô bên trái bay về ví. Chấm đỏ ở màn Chuẩn bị nhắc con khi có quà chờ.'),
       step(['[data-testid^="quest-reroll-"]:not([disabled])', '[data-testid^="quest-reroll-"]'], 'Đổi việc', 'Việc nào khó quá thì đổi sang việc khác. Mỗi ngày đổi miễn phí 1 lần, lần sau tốn Muỗng Vàng.'),
-      step('daily-chest-card', 'Rương ngày', 'Xong đủ 3 việc thì mở Rương ngày lấy thêm quà. Việc mới đổi lúc 04:00 sáng.')
+      step('daily-chest-card', 'Rương ngày', 'Xong đủ 3 việc thì Rương ngày sáng lên, mở rương lấy thêm quà. Biển phấn trên bảng ghi giờ có việc mới, lúc 04:00 sáng.')
     ])
   }),
   hop_thu: Object.freeze({
     screen: 'mailbox', name: 'Hộp thư',
     steps: Object.freeze([
-      step('mail-list', 'Hộp thư', 'Thư của dì, của khách quen và thư báo bản mới nằm ở đây. Chạm thư để đọc.'),
-      step('button[data-testid^="mail-claim-"]:not([data-testid="mail-claim-all"])', 'Quà trong thư', 'Thư có quà thì bấm Nhận. Quà giữ tối đa 30 ngày, nhớ nhận sớm.'),
+      // phong bì của thư đầu (danh sách thư rất cao: khoét sáng cả danh sách thì bong bóng che mất thư)
+      step(['[data-testid^="mail-item-"] .mail-head', 'mail-list'], 'Phong bì', 'Mỗi thư là một phong bì, chấm đỏ là thư mới, hộp quà nhỏ là thư có quà. Chạm phong bì để mở thư ra đọc.'),
+      step('button[data-testid^="mail-claim-"]:not([data-testid="mail-claim-all"])', 'Quà trong thư', 'Thư có quà thì bấm Nhận quà, xu và Muỗng Vàng bay về ví. Quà giữ tối đa 30 ngày, nhớ nhận sớm.'),
       step('mail-claim-all', 'Nhận hết', 'Nhiều thư có quà thì bấm nút này nhận một lần cho lẹ.')
     ])
   }),
@@ -290,16 +323,17 @@ export const TOURS = Object.freeze({
     screen: 'market', name: 'Lựa hàng hiếm', requires: 'stall-start',
     steps: Object.freeze([
       step(['[data-testid="market-intro"] .npc-talk', 'market-intro'], 'Gánh hàng quê', 'Mỗi phiên có một người bán mang vài món hàng hiếm từ quê lên. Mỗi phiên con được lựa một lượt mỗi ngày.'),
-      step(['.market-goods', 'market-intro'], 'Nhìn kỹ hàng', 'Nhớ hình và tên món hàng hiếm, lúc lựa sẽ có hàng thường na ná để thử mắt con.'),
-      step('stall-start', 'Bắt đầu lựa', 'Bỏ đúng hàng hiếm vào rổ rồi bấm Xong. Lựa càng chuẩn càng được nhiều phần.')
+      step(['.market-goods', 'market-intro'], 'Nhìn kỹ hàng', 'Nhớ hình và tên món hàng hiếm, dòng Dễ nhầm ghi hàng thường na ná. Lúc lựa sẽ có cả hàng na ná để thử mắt con.'),
+      step('market-clock', 'Phiên chợ hôm nay', 'Biển tre ghi ba phiên chợ theo giờ thật, phiên đang mở nổi bật. Lỡ phiên này thì chờ phiên sau.'),
+      step('stall-start', 'Bắt đầu lựa', 'Bỏ đúng hàng hiếm vào rổ rồi bấm Xong. Lựa càng chuẩn càng được nhiều phần, có khi được thêm mảnh công thức hiếm.')
     ])
   }),
   so_cong_thuc: Object.freeze({
     screen: 'recipe-book', name: 'Sổ công thức',
     steps: Object.freeze([
       step('recipe-book-tab-mon', 'Hai mục', 'Mục Món ăn là các công thức, mục Sổ từ vùng miền ghi cách khách mỗi miền gọi món.', { span: 'recipe-book-tab-tu' }),
-      step('[data-testid^="book-recipe-"]', 'Thẻ món', 'Mỗi thẻ ghi số lần nấu, điểm cao nhất và cấp thạo món. Nấu nhiều, nấu khéo thì thạo món lên cấp.'),
-      step('[data-testid^="book-open-"]', 'Xem công thức', 'Chạm thẻ để xem nguyên liệu và các bước của món. Quên cách làm thì vô đây coi lại.')
+      step('[data-testid^="book-recipe-"]', 'Trang món', 'Mỗi trang đôi ghi giá, số lần nấu, điểm cao nhất; huy hiệu khiên có sao là cấp thạo món. Nấu nhiều, nấu khéo thì thạo món lên cấp.'),
+      step('[data-testid^="book-open-"]', 'Xem cách làm', 'Chạm hình món để xem nguyên liệu và các bước của món. Quên cách làm thì vô đây coi lại.')
     ])
   })
 })
@@ -307,7 +341,7 @@ export const TOURS = Object.freeze({
 // Tour tự hiện thêm ở màn có nhiều phần (chạy nối tiếp khi bấm "Xem lại hướng dẫn màn này").
 export const TOUR_SCREENS = Object.freeze({
   title: Object.freeze(['mo_dau']),
-  prep: Object.freeze(['chuan_bi', 'su_kien_ngay', 'hang_hiem']),
+  prep: Object.freeze(['chuan_bi', 'su_kien_ngay', 'qua_sanh', 'hang_hiem']),
   summary: Object.freeze(['tong_ket']),
   shop: Object.freeze(['cho_cong_thuc']),
   quests: Object.freeze(['viec_hom_nay']),

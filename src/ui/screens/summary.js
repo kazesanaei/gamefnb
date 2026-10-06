@@ -413,12 +413,12 @@ export default {
       const stampText = profit > 0 ? 'LÃI' : profit < 0 ? 'LỖ' : 'HÒA'
       const table = h('table', { class: 'ledger sum-ledger' }, h('tbody', null,
         rows.map(r => h('tr', { class: ['sum-row', 'k-' + r.key, r.kind === 'minus' && r.value ? 'neg' : '', r.value === 0 ? 'is-zero' : ''], dataset: { k: r.key } },
-          h('td', { class: 'sum-lbl' }, svgBox(artOf(r.art), 'sum-row-ico'), h('span', { class: 'sum-lbl-text' }, r.label)),
+          h('td', { class: 'sum-lbl' }, h('span', { class: 'sum-lbl-in' }, svgBox(artOf(r.art), 'sum-row-ico'), h('span', { class: 'sum-lbl-text' }, r.label))),
           h('td', { class: 'num', dataset: { kind: r.kind, value: r.value } }, h('span', { class: 'sum-amt' }, ledgerText(r.kind, r.value))))),
         h('tr', { class: ['total', profit >= 0 ? 'pos' : 'neg'] },
-          h('td', { class: 'sum-lbl' },
+          h('td', { class: 'sum-lbl' }, h('span', { class: 'sum-lbl-in' },
             h('span', { class: ['sum-stamp', profit > 0 ? 'is-pos' : profit < 0 ? 'is-neg' : 'is-even'], 'aria-hidden': 'true' }, stampText),
-            h('span', { class: 'sum-lbl-text' }, totalLabel)),
+            h('span', { class: 'sum-lbl-text' }, totalLabel))),
           h('td', { class: 'num', testid: 'summary-profit', dataset: { amount: profit, kind: 'total', value: profit } },
             h('span', { class: 'sum-amt' }, signedVND(profit))))))
       const info = [

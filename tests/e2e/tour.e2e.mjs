@@ -24,6 +24,12 @@
 //     "Bỏ qua hướng dẫn" → tour ghi đã xem, ca chạy tiếp, thẻ chạy tiếp phần thời gian còn lại rồi tự vào trò, chơi tiếp được.
 // 10. Tour Quầy (0.5.1: Order, Bảng chọn món, Thanh toán, Tính tiền, Phiếu thu, Ca bán, Chuyển khoản) đủ bước, đích đúng chỗ ở
 //     375×553 (vùng an toàn 47/34), 390×844, iPhone 16 Pro cài app 402×874 (vùng an toàn 62/34) và Safari 402×680.
+// 11. M5 Đợt 3 (0.5.3) tour màn ngoài ca theo giao diện mới: sảnh Chuẩn bị ngày 7 (Chuẩn bị + Sự kiện ngày + Quà chờ nhận +
+//     Hàng hiếm nối tiếp, 14 bước) ở 402×874 vùng an toàn 62/34 và 375×553 vùng an toàn 47/34; Chợ Công Thức (360×600), Việc
+//     hôm nay (402×680), Hộp thư (402×874), Gánh hàng (390×844), Sổ công thức (402×680), Tổng kết (402×680). Đủ bước theo dữ
+//     liệu (không bước nào bị bỏ vì đích khuất), bong bóng trọn trong khung, vùng sáng ôm đúng đích; ở khung cao (402×874,
+//     402×680, 390×844, 360×600) bong bóng không che đích; tour Tổng kết chỉ tự hiện sau khi màn diễn xong hiệu ứng vào màn
+//     (delayMs), nút "?" xem lại thì hiện ngay.
 // Không có lỗi console ở mọi kịch bản.
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -40,7 +46,7 @@ import { requiredIngredients } from '../../src/core/scoring.js'
 import { markSeen } from '../../src/core/tour.js'
 import { counterStep, cookTicket } from '../helpers/perfect-player.mjs'
 import { makeMetaCtx } from '../helpers/meta-helpers.mjs'
-import { playedSave, tipShiftSave, TIP_AT } from '../helpers/m4-saves.mjs'
+import { playedSave, tipShiftSave, TIP_AT, builtRareSave, RARE_AT, vn } from '../helpers/m4-saves.mjs'
 
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'
 const VIEWPORTS = [{ width: 375, height: 553 }, { width: 390, height: 844 }]
@@ -945,3 +951,130 @@ for (const f of COUNTER_FRAMES) {
     }
   })
 }
+
+// ---------- 11. M5 Đợt 3 (0.5.3): tour màn ngoài ca theo giao diện mới ----------
+
+const META_AT = '2026-11-14T12:00'
+// Save ngày 7 (seed 6, 6 ca 8–13/11, mở game 14/11 12:00: Trời mưa có lựa chọn, sự kiện Tri ân 20/11 đang diễn ra, phiên
+// Xe ba gác trưa đang mở, thưởng chuỗi chờ nhận → hộp quà ở sảnh). Việc 1 xong chưa nhận. Mọi tour đã xem trừ `ids`.
+function metaTourSave(ids) {
+  const { state } = playedSave(6, 6, { from: '2026-11-08T08:00', name: 'Xe Tour Sảnh' })
+  state.checkin.lastDay = '2026-11-14'
+  state.goldSpoons = 40
+  state.rare.fragments.tra_tac_mat_ong = 3
+  state.rare.stock.mat_ong_rung = Math.max(2, Number(state.rare.stock.mat_ong_rung) || 0)
+  if (!state.rare.seen.includes('mat_ong_rung')) state.rare.seen.push('mat_ong_rung')
+  const q = state.daily.quests
+  q[0].progress = q[0].target
+  q[1].progress = 0
+  markSeen(state, Object.keys(DATA.TOURS).filter(id => !ids.includes(id)))
+  return state
+}
+const META_CSS = f => [
+  f.safe ? `:root { --safe-top: ${f.safe[0]}px !important; --safe-bottom: ${f.safe[1]}px !important; }` : '',
+  '.screen, .panel, .k-main { clip-path: inset(0); }'
+].filter(Boolean).join('\n')
+function openMetaFrame(f, name, at) {
+  return openGame({
+    clock: { time: vn(at) }, viewport: f.vp, name: 'tour-meta-' + name, initCss: META_CSS(f),
+    contextOptions: { userAgent: UA, deviceScaleFactor: 3, isMobile: true, hasTouch: true }
+  })
+}
+// Bong bóng che bao nhiêu phần trăm phần nhìn thấy của đích (0 = không che).
+function overlapPct(m) {
+  if (!m.vis) return 0
+  const B = m.bubble
+  const w = Math.max(0, Math.min(B.r, m.vis.r) - Math.max(B.l, m.vis.l))
+  const hh = Math.max(0, Math.min(B.b, m.vis.b) - Math.max(B.t, m.vis.t))
+  return Math.round(w * hh / Math.max(1, (m.vis.r - m.vis.l) * (m.vis.b - m.vis.t)) * 100)
+}
+async function enterPrepTour(page, g) {
+  await page.goto(g.url('/?tour=1'))
+  await page.waitForSelector(T('start-button'))
+  await page.tap(T('start-button'))
+  await page.waitForSelector(T('screen-prep'))
+}
+
+const META_TOUR_CASES = [
+  { name: 'sanh', ids: ['chuan_bi', 'su_kien_ngay', 'qua_sanh', 'hang_hiem'], frames: [{ vp: { width: 402, height: 874 }, safe: [62, 34] }, { vp: { width: 375, height: 553 }, safe: [47, 34] }],
+    go: async () => {} },
+  { name: 'cho', ids: ['cho_cong_thuc'], frames: [{ vp: { width: 360, height: 600 } }], go: page => page.tap(T('open-shop')) },
+  { name: 'viec', ids: ['viec_hom_nay'], frames: [{ vp: { width: 402, height: 680 } }], go: page => page.tap(T('open-quests')) },
+  { name: 'thu', ids: ['hop_thu'], frames: [{ vp: { width: 402, height: 874 }, safe: [62, 34] }], go: page => page.tap(T('open-mail')) },
+  { name: 'so', ids: ['so_cong_thuc'], frames: [{ vp: { width: 402, height: 680 } }], go: page => page.tap(T('open-recipe-book')) },
+  { name: 'ganh', ids: ['lua_hang'], frames: [{ vp: { width: 390, height: 844 } }], rare: true,
+    go: async page => { await page.$eval(T('open-market'), e => e.scrollIntoView({ block: 'center' })); await page.tap(T('open-market')) } }
+]
+
+for (const c of META_TOUR_CASES) {
+  for (const f of c.frames) {
+    const label = vpName(f.vp) + (f.safe ? ` vùng an toàn ${f.safe[0]}/${f.safe[1]}` : '')
+    test(`tour màn ngoài ca 0.5.3 (${c.ids.join(' + ')}, ${label}): đủ bước, đích đúng chỗ, bong bóng không che đích`, { timeout: 120000 }, async () => {
+      const g = await openMetaFrame(f, c.name, c.rare ? RARE_AT : META_AT)
+      const { page, errors } = g
+      try {
+        let state
+        if (c.rare) {
+          state = builtRareSave(3)
+          markSeen(state, Object.keys(DATA.TOURS).filter(id => !c.ids.includes(id)))
+        } else state = metaTourSave(c.ids)
+        await seedSave(page, state)
+        await enterPrepTour(page, g)
+        await c.go(page)
+        const steps = await walkTour(g, c.ids[0], label)
+        const want = c.ids.flatMap(id => DATA.TOURS[id].steps.map(x => x.title))
+        assert.deepEqual(steps.map(m => m.title), want, `${label}: tour thiếu bước (đích không hiện) hoặc sai thứ tự`)
+        // khung đủ cao: bong bóng không che phần nhìn thấy của đích (đích quá cao ở khung thấp có vùng an toàn thì cho che ít)
+        const tall = f.vp.height >= 600
+        for (const m of steps) {
+          const pct = overlapPct(m)
+          assert.ok(pct <= (tall ? 0 : 45), `${label} ${m.title}: bong bóng che ${pct}% đích (${m.target})`)
+        }
+        await page.waitForSelector(T('tour'), { state: 'detached' })
+        await waitSave(page, s => c.ids.every(id => s.tour.seen[id] === true))
+        assert.deepEqual(errors, [], `${label}: có lỗi console/trang`)
+      } finally {
+        await g.close()
+      }
+    })
+  }
+}
+
+test('tour Tổng kết 0.5.3 (402×680): chỉ tự hiện sau khi màn diễn xong hiệu ứng vào màn (delayMs); nút "?" xem lại hiện ngay', { timeout: 120000 }, async () => {
+  const f = { vp: { width: 402, height: 680 } }
+  const g = await openMetaFrame(f, 'tong-ket', '2026-09-30T09:02')
+  const { page, errors } = g
+  try {
+    const state = shiftDoneSave()
+    state.tour.seen = {}
+    markSeen(state, Object.keys(DATA.TOURS).filter(id => id !== 'tong_ket'))
+    await seedSave(page, state)
+    await page.goto(g.url('/?tour=1'))
+    await page.waitForSelector(`${T('screen-service')}, ${T('summary')}`)
+    await resolveIncidentIfShown(g, { waitMs: 300 })
+    await page.waitForSelector(T('summary'), { timeout: 15000 })
+    const t0 = await page.evaluate(() => performance.now())
+    await page.waitForSelector(tourSel('tong_ket'), { timeout: 8000 })
+    const waited = (await page.evaluate(() => performance.now())) - t0
+    assert.ok(waited >= DATA.TOURS.tong_ket.delayMs - 300, `tour Tổng kết hiện sau ${Math.round(waited)} ms, chưa chờ hiệu ứng vào màn`)
+    // hiệu ứng vào màn đã xong: số "Lãi trong ca" là số cuối
+    const profit = Number(await page.getAttribute(T('summary-profit'), 'data-amount'))
+    assert.equal((await page.textContent('.sum-result-num')).trim().replace(/[^\d]/g, ''), String(Math.abs(profit)))
+    const steps = await walkAll(g, 'tong_ket', '402×680')
+    assert.equal(steps[0].target, 'summary-stars')
+    for (const m of steps) assert.equal(overlapPct(m), 0, `Tổng kết ${m.title}: bong bóng che đích`)
+    // nút "?" → Xem lại: hiện ngay (không chờ delayMs)
+    await page.evaluate(() => { document.getElementById('screen').scrollTop = 0 })
+    await page.tap(`.summary-screen ${T('help-button')}`)
+    await page.waitForSelector(T('help-replay'))
+    const t1 = await page.evaluate(() => performance.now())
+    await page.tap(T('help-replay'))
+    await page.waitForSelector(tourSel('tong_ket'), { timeout: 1500 })
+    assert.ok((await page.evaluate(() => performance.now())) - t1 < 1500, 'xem lại tour Tổng kết phải hiện ngay')
+    await page.tap(T('tour-skip'))
+    await page.waitForSelector(T('tour'), { state: 'detached' })
+    assert.deepEqual(errors, [], 'có lỗi console/trang')
+  } finally {
+    await g.close()
+  }
+})

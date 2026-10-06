@@ -253,6 +253,49 @@ test('index.html (0.5.1): thứ tự CSS giữ cascade — tệp tách nằm nga
   assert.equal(order.at(-1), 'css/sheet.css', 'sheet.css nạp cuối')
 })
 
+// 0.5.3 (M5 Đợt 3): meta.css là nền chung các màn ngoài ca; CSS từng màn (tách ở 0.5.2, vẽ lại ở 0.5.3) nạp NGAY SAU meta.css,
+// đúng thứ tự đã kiểm khi tách (luật dùng chung như .ev-assist / .ev-grace-note của meta.css phải đứng trước luật của màn),
+// rồi tới settings.css, tour.css và CSS kiểu game (theme.css…).
+const SCREEN_CSS = ['css/prep.css', 'css/shop.css', 'css/quests.css', 'css/mail.css', 'css/book.css', 'css/summary.css', 'css/market.css']
+test('index.html (0.5.3): meta.css nạp trước CSS các màn ngoài ca, 7 tệp màn liền sau meta.css đúng thứ tự, tất cả trước theme.css', () => {
+  const order = [...read('index.html').matchAll(/<link rel="stylesheet" href="(css\/[^"]+\.css)">/g)].map(m => m[1])
+  const at = f => order.indexOf(f)
+  for (const f of ['css/meta.css', ...SCREEN_CSS]) assert.ok(at(f) >= 0, 'chưa gắn ' + f)
+  assert.deepEqual(order.slice(at('css/meta.css') + 1, at('css/meta.css') + 1 + SCREEN_CSS.length), SCREEN_CSS,
+    'CSS màn ngoài ca liền sau meta.css, đúng thứ tự prep → shop → quests → mail → book → summary → market')
+  for (const f of ['css/meta.css', ...SCREEN_CSS]) {
+    assert.ok(at(f) > at('css/mg-mix.css'), `${f} sau CSS bếp`)
+    for (const later of ['css/settings.css', 'css/tour.css', 'css/theme.css']) assert.ok(at(f) < at(later), `${f} phải nạp trước ${later}`)
+  }
+  // mọi tệp CSS màn đều có trong PRECACHE (chơi offline vẫn đúng giao diện)
+  const list = precacheOf(loadServiceWorker())
+  for (const f of ['css/meta.css', ...SCREEN_CSS, 'src/ui/art/meta.js']) assert.ok(list.includes(f), 'PRECACHE thiếu ' + f)
+})
+
+// 0.5.3 (ráp nối Đợt 3): mặt tiền src/ui/art.js xuất lại hình meta (cùng tham chiếu với src/ui/art/meta.js), giữ mọi export
+// cũ; icon() giữ hành vi, màn ngoài ca gọi metaArt(id) để lấy hình meta.
+test('art.js (0.5.3): xuất lại metaArt, META_ART, EVENT_ART của art/meta.js; export cũ còn đủ; icon() giữ hành vi', async () => {
+  const A = await import('../../src/ui/art.js')
+  const M = await import('../../src/ui/art/meta.js')
+  assert.equal(A.metaArt, M.metaArt)
+  assert.equal(A.META_ART, M.META_ART)
+  assert.equal(A.EVENT_ART, M.EVENT_ART)
+  assert.equal(A.metaArt('ruong_dong'), M.META_ART.ruong_dong)
+  assert.equal(A.metaArt('tri_an_20_11_chuoi'), M.META_ART.tri_an_20_11)
+  assert.equal(A.metaArt('khong_co'), '')
+  assert.ok(Object.isFrozen(A.META_ART) && Object.isFrozen(A.EVENT_ART))
+  for (const k of ['icon', 'art', 'prop', 'legacyIcon', 'ICONS', 'ICONS_V2', 'LEGACY_ICONS', 'STATES', 'PROPS', 'PROP_META', 'escapeXml',
+    'MOODS', 'FACES', 'face', 'headFace', 'legacyFace', 'LEGACY_FACES', 'DI_SAU', 'ANH_KHOA', 'CO_HANH', 'bust', 'head', 'BUSTS', 'HEADS',
+    'PEOPLE_META', 'WHO_LOOKS', 'DI_SAU_POSES', 'DI_SAU_POSE_MOOD', 'ANH_KHOA_BUSTS', 'CO_HANH_BUSTS', 'billSvg', 'fakeQrSvg', 'scene', 'SCENE',
+    'SCENE_ICONS', 'SCENE_META', 'STAGE_ICONS', 'TAB_ICONS', 'HUD_ICONS', 'phoneQr', 'phoneQrSvg', 'cartSvg', 'CART']) {
+    assert.ok(k in A, 'art.js mất export ' + k)
+  }
+  // icon() giữ hành vi cũ (tra ICONS, tiền tố mon_, hình dự phòng)
+  assert.equal(A.icon('ruong'), A.ICONS.ruong)
+  assert.equal(A.icon('banh_mi_op_la'), A.ICONS.mon_banh_mi_op_la)
+  assert.equal(A.icon('khong_co_hinh'), A.ICONS.fallback)
+})
+
 test('index.html (0.5.0): tải sớm font tiêu đề Latin đúng tệp CSS dùng, có crossorigin, nằm trong PRECACHE, trước CSS', () => {
   const html = read('index.html')
   const tag = '<link rel="preload" as="font" type="font/woff2" href="fonts/baloo2-800-latin.woff2" crossorigin>'

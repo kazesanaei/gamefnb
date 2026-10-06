@@ -15,13 +15,16 @@
 // mục thật). Trang mẫu (mau.html, mau/) và fonts/OFL.txt KHÔNG nằm trong PRECACHE.
 // 0.5.0 (M5 Đợt 1): thêm 5 thao tác bếp mới (src/ui/minigames/{dap,xoay,got,lac,bay}.js, _gesture.js), bảng ánh xạ
 // bước → hình trạng thái (src/ui/art/state-map.js); bộ hình mới đã vào ICONS qua mặt tiền src/ui/art.js.
-// 0.5.2 (vừa màn hình điện thoại): mọi khâu trong ca (Quầy, Bếp) thao tác trọn một màn ở khung iPhone 16 Pro (cảnh + khay);
-//   tách meta.css thành css/{prep,shop,quests,mail,book,summary,market}.css (chỉ chuyển chỗ), thêm src/ui/art/meta.js.
 // 0.5.1 (M5 Đợt 2, chỉ đổi giao diện trong ca): Quầy tách theo khâu (src/ui/screens/counter-{order,pay,cash,qr,receipt}.js),
 // thành phần mới (components/{numpad,cash-drawer,score-sheet,incident-view}.js), hình người và cảnh quầy
 // (src/ui/art/{people,scene}.js), CSS theo khâu (css/{street,cashier,receipt,sheet}.css).
+// 0.5.2 (vừa màn hình điện thoại): mọi khâu trong ca (Quầy, Bếp) thao tác trọn một màn ở khung iPhone 16 Pro (cảnh + khay);
+//   tách meta.css thành css/{prep,shop,quests,mail,book,summary,market}.css (chỉ chuyển chỗ), thêm src/ui/art/meta.js.
+// 0.5.3 (M5 Đợt 3, chỉ đổi giao diện ngoài ca): Chuẩn bị, Chợ Công Thức, Nấu thử, Việc hôm nay, Điểm danh, Hộp thư, Sự kiện,
+//   Sổ công thức, Sổ tay nghề, Cài đặt, Mở đầu, Tổng kết, Gánh hàng vẽ lại bằng hình meta (src/ui/art/meta.js, nay xuất lại
+//   qua mặt tiền src/ui/art.js) và CSS từng màn; không thêm/bớt tệp nên PRECACHE giữ nguyên danh sách của 0.5.2.
 
-const VERSION = '0.5.2'
+const VERSION = '0.5.3'
 const CACHE_PREFIX = 'bkn-'
 const CACHE = CACHE_PREFIX + VERSION
 

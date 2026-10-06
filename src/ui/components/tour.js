@@ -15,6 +15,8 @@
 // thẻ mới chờ) — tour đóng thì thẻ hiện tiếp đủ thời gian.
 // 0.5.0: Bếp báo chỗ 'card-<loại>' khi thẻ "Bước k/N" đầy đủ đang chờ chạm; "giữ" màn (hold) làm thẻ dừng tự chạy
 // (kitchen.guideHold → card.hold), tour đóng thì thẻ chạy tiếp phần thời gian còn lại. Đích: step-card-demo, step-card-go.
+// 0.5.2 (M5 Đợt 3): tour có delayMs (dữ liệu) chỉ TỰ hiện sau khi đã vào màn chừng đó ms (màn Tổng kết diễn xong sao bật,
+// số đếm lên, xu bay về ví rồi mới làm tối nền); nút "?" xem lại vẫn hiện ngay.
 // }
 // Lớp phủ gắn vào lớp nổi gốc app.overlay (ngoài mọi vùng cuộn, trên thanh tab — cùng chỗ với bảng chọn món và hộp thoại
 // nên iOS Safari không cắt mất). Bong bóng không bao giờ tràn khung (cả 320×568, chừa vùng an toàn); phần tử đích nằm
@@ -140,6 +142,41 @@ export function bringIntoView(el, spanEl = null, stop = null) {
   }
 }
 
+/**
+ * 0.5.3: không đủ chỗ cho bong bóng ở cả trên lẫn dưới phần tử đích (khung thấp, vd 375×553 có vùng an toàn, nhiều thanh
+ * dính) → cuộn thêm vùng cuộn gần nhất để phần tử đích (và phần tử cuối dải) dời lên sát thanh dính trên (bong bóng nằm
+ * dưới) hoặc xuống sát thanh dính dưới (bong bóng nằm trên) mà vẫn thấy trọn. need: chiều cao bong bóng + khe; minY / maxY:
+ * mép trên / dưới bong bóng được phép (tọa độ khung nhìn). Chọn cách cuộn ít nhất; không cách nào được thì không cuộn.
+ * → độ cuộn đã dùng (0 = không cuộn).
+ */
+export function makeRoom(el, spanEl, need, minY, maxY, stop = null) {
+  let node = el.parentElement
+  while (node && node !== stop && node !== document.body && node !== document.documentElement) {
+    const cs = getComputedStyle(node)
+    if ((cs.overflowY === 'auto' || cs.overflowY === 'scroll') && node.scrollHeight > node.clientHeight + 1) break
+    node = node.parentElement
+  }
+  if (!node || node === stop || node === document.body || node === document.documentElement) return 0
+  const box = node.getBoundingClientRect()
+  const cover = stickyCover(node, el)
+  const r = union(rectOf(el), spanEl ? rectOf(spanEl) : null)
+  const viewTop = box.top + cover.top + 6
+  const viewBottom = box.bottom - cover.bottom - 6
+  const canDown = node.scrollHeight - node.clientHeight - node.scrollTop
+  const canUp = node.scrollTop
+  const opts = []
+  // bong bóng dưới phần tử: r.bottom - d + need ≤ maxY, phần tử vẫn dưới thanh dính trên (r.top - d ≥ viewTop)
+  const dDown = Math.ceil(r.bottom + need - maxY)
+  if (dDown > 0 && dDown <= r.top - viewTop && dDown <= canDown) opts.push(dDown)
+  // bong bóng trên phần tử: r.top - d - need ≥ minY, phần tử vẫn trên thanh dính dưới (r.bottom - d ≤ viewBottom)
+  const dUp = Math.floor(r.top - need - minY)
+  if (dUp < 0 && -dUp <= viewBottom - r.bottom && -dUp <= canUp) opts.push(dUp)
+  if (!opts.length) return 0
+  const d = opts.sort((a, b) => Math.abs(a) - Math.abs(b))[0]
+  node.scrollTop += d
+  return d
+}
+
 // Phần nhìn thấy của phần tử: cắt theo mọi tổ tiên có overflow khác visible (panel cuộn, khung app).
 function visibleRect(el, spanEl) {
   let r = union(rectOf(el), spanEl ? rectOf(spanEl) : null)
@@ -168,7 +205,7 @@ export function createTourHost(app) {
   const holdFns = new Set()
   const afterFns = []
   let run = null             // tour đang chạy
-  let wish = null            // { ids, screen, timer }
+  let wish = null            // { ids, screen, timer, since } — since: lúc bắt đầu chờ (cho delayMs)
   let provider = null        // màn ca bán: () => [tourId] theo khâu đang làm
   let seq = 0
   const autoOk = autoAllowedNow()
@@ -218,6 +255,7 @@ export function createTourHost(app) {
     let spanEl = null
     let closed = false
     let lastKey = ''
+    let roomTried = false      // đã thử cuộn chừa chỗ cho bong bóng ở bước này (makeRoom) — chỉ một lần mỗi bước
     let raf = 0
     let resolveEnd
     const done = new Promise(r => { resolveEnd = r })
@@ -281,6 +319,7 @@ export function createTourHost(app) {
       bubble.dataset.span = s.span || ''
       layer.dataset.step = String(k + 1)
       lastKey = ''
+      roomTried = false
       place()
       try { nextBtn.focus({ preventScroll: true }) } catch { /* bỏ qua */ }
     }
@@ -326,6 +365,13 @@ export function createTourHost(app) {
       const s = list[index] || {}
       const below = maxY - (r.bottom + ARROW_GAP)
       const above = (r.top - ARROW_GAP) - minY
+      // không vừa bên nào: màn ngoài ca cuộn thêm một lần cho bong bóng khỏi che phần tử đích (màn ca bán giữ bố cục
+      // vừa một màn, không cuộn panel)
+      if (below < bh && above < bh && !roomTried && el && screen !== 'service') {
+        roomTried = true
+        const need = HOLE_PAD + ARROW_GAP + bh + 1
+        if (makeRoom(el, spanEl, need, L.top + minY, L.top + maxY, app.root)) { lastKey = ''; place(); return }
+      }
       let side
       if (s.place === 'top' && above >= bh) side = 'top'
       else if (s.place === 'bottom' && below >= bh) side = 'bottom'
@@ -409,6 +455,11 @@ export function createTourHost(app) {
     if (!autoOk || !app.state) return []
     return ids.filter(id => shouldShowTour(app.state, id, app.data) && requiresOk(id) && availableSteps([id]).length > 0)
   }
+  // Đã chờ đủ delayMs của tour (tính từ lúc vào màn) chưa.
+  const settled = (id, since) => {
+    const d = Number(TOURS()[id] && TOURS()[id].delayMs) || 0
+    return d <= 0 || Date.now() - since >= d
+  }
   function stopWish() {
     if (wish) clearTimeout(wish.timer)
     wish = null
@@ -421,7 +472,8 @@ export function createTourHost(app) {
     // mọi tour đã xem hoặc đã tắt tự hiện: thôi chờ
     if (!autoOk || !wish.ids.some(id => shouldShowTour(app.state, id, app.data))) { stopWish(); return }
     if (!run && !holdKeys.size && !blocked()) {
-      const ids = eligible(wish.ids)
+      const since = wish.since
+      const ids = eligible(wish.ids.filter(id => settled(id, since)))
       if (ids.length && begin(ids, { auto: true })) {
         // tour khác của màn (vd thẻ sự kiện ngày xuất hiện sau) vẫn chờ tiếp
         wish.ids = wish.ids.filter(id => !ids.includes(id))
@@ -451,7 +503,7 @@ export function createTourHost(app) {
       const list = (Array.isArray(ids) ? ids : [ids]).filter(Boolean)
       stopWish()
       if (!list.length || !autoOk) return
-      wish = { ids: list, screen: app.router ? app.router.name : '', timer: 0 }
+      wish = { ids: list, screen: app.router ? app.router.name : '', timer: 0, since: Date.now() }
       wish.timer = setTimeout(pump, TOUR_TICK_MS)
     },
     // Chạy ngay (nút "?" → Xem lại): không cần chưa xem; xong thì vẫn ghi đã xem.

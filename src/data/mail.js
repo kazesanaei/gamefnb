@@ -9,8 +9,9 @@ function deepFreeze(o) {
 
 export const MAIL_CONFIG = deepFreeze({
   // phiên bản nội dung mới nhất (thư phiên bản ≤ số này được gửi cho save cũ); 0.3.0 không có thư riêng
-  // (0.4.1, 0.4.2 cũng không; 0.5.0 có thư giới thiệu bếp mới, 0.5.1 có thư giới thiệu quầy mới, 0.5.2 có thư báo màn hình gọn vừa điện thoại, đều không kèm quà)
-  currentVersion: '0.5.2',
+  // (0.4.1, 0.4.2 cũng không; 0.5.0 có thư giới thiệu bếp mới, 0.5.1 có thư giới thiệu quầy mới, 0.5.2 có thư báo màn hình gọn vừa điện thoại,
+  // 0.5.3 có thư báo các màn ngoài ca đổi giao diện, đều không kèm quà)
+  currentVersion: '0.5.3',
   maxMails: 100,           // đầy thì bỏ thư cũ nhất đã nhận
   expireDays: 30,          // hạn nhận mặc định
   holidayExpireDays: 14,   // quà lễ
@@ -95,6 +96,17 @@ export const MAIL_VERSIONS = deepFreeze([
       'máy tính tiền, két tiền, điện thoại nhận chuyển khoản, phiếu thu. ' +
       'Thanh trên cùng và thanh Quầy – Bếp cũng gọn hơn để chừa chỗ cho tay thao tác. ' +
       'Giá bán, giá vốn, cách chấm sao và luật tip vẫn giữ như cũ. Con ra quầy thử nha!',
+    reward: {} },
+  // M5 Đợt 3 (0.5.3): các màn ngoài ca vẽ lại (sảnh Chuẩn bị có xe đẩy và Dì Sáu, Việc hôm nay trên bảng gỗ, thư trong
+  // phong bì, quà là vật phẩm có hình); chỉ đổi giao diện (giá, phần thưởng, luật giữ nguyên). Thư ngắn, KHÔNG kèm quà như
+  // các thư 0.5.x.
+  { version: '0.5.3', id: 'phien_ban_0_5_3', kind: 'phien_ban',
+    title: 'Có gì mới: các màn ngoài ca mặc áo mới',
+    body: 'Ngoài giờ bán, xe đẩy cũng được sửa sang cho đẹp như quầy và bếp! ' +
+      'Màn Chuẩn bị có Dì Sáu đứng cạnh xe, lối vào là hình to có chấm đỏ báo việc mới. ' +
+      'Việc hôm nay dán trên bảng gỗ, thư nằm trong phong bì, quà là vật phẩm có hình như xu, Muỗng Vàng, rương; ' +
+      'nhận xong là xu bay về ví. ' +
+      'Giá bán, phần thưởng và luật chơi vẫn như cũ. Con ghé xem thử nha!',
     reward: {} }
 ])
 

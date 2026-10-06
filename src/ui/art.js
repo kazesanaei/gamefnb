@@ -18,6 +18,13 @@
 // - FACES / face() trả mặt mới (HEADS / headFace); bộ mặt cũ giữ ở LEGACY_FACES / legacyFace.
 // - Xuất lại từ scene.js: scene(id), SCENE, SCENE_ICONS, SCENE_META, STAGE_ICONS, TAB_ICONS, HUD_ICONS, phoneQr; thêm
 //   phoneQrSvg(variant) = điện thoại của khách có QR giả "QR GAME".
+//
+// M5 Đợt 3 (0.5.3) — ráp nối hình meta (thiết kế M5 mục 5, gói M-H):
+// - Xuất lại từ src/ui/art/meta.js: metaArt(id, opts) (tra META_ART rồi EVENT_ART; id lạ trả ''; opts.silhouette = bóng
+//   mờ), META_ART (lối vào, phần thưởng, điểm danh, danh hiệu, sự kiện, vật phẩm, món tương lai; viewBox 64) và EVENT_ART
+//   (id sự kiện ngày / sự kiện lễ / tình huống → id hình). Các màn ngoài ca đang import thẳng art/meta.js vẫn chạy như cũ.
+// - CHỈ xuất lại: ICONS / icon() giữ nguyên bộ hình (META_ART không gộp vào ICONS), nên icon('ruong'), icon('thu')… vẫn
+//   trả hình cũ; màn nào muốn hình meta thì gọi metaArt(id).
 import { ING_TUOI, ING_TUOI_STATES } from './art/ing-tuoi.js'
 import { ING_KHO, ING_KHO_STATES } from './art/ing-kho.js'
 import { MON as MON_V2 } from './art/mon.js'
@@ -28,6 +35,7 @@ import {
   ANH_KHOA_FACES, ANH_KHOA_BUSTS, CO_HANH_FACES, CO_HANH_BUSTS
 } from './art/people.js'
 import { scene, SCENE, SCENE_ICONS, SCENE_META, STAGE_ICONS, TAB_ICONS, HUD_ICONS, phoneQr } from './art/scene.js'
+import { metaArt, META_ART, EVENT_ART } from './art/meta.js'
 
 const INK = '#3a2618'
 const FONT = 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif'
@@ -889,6 +897,13 @@ export function fakeQrSvg(variant = 0) {
 // phiếu, kẹp phiếu, hũ tip) và biểu tượng 64 (SCENE_ICONS: xu tip, HUD, 4 khâu, 2 tab); scene(id) trả '' nếu không có.
 
 export { scene, SCENE, SCENE_ICONS, SCENE_META, STAGE_ICONS, TAB_ICONS, HUD_ICONS, phoneQr }
+
+// ---------- Hình meta (M5 Đợt 3: src/ui/art/meta.js) ----------
+// Lối vào, phần thưởng (xu, Muỗng Vàng, rương, mảnh công thức…), điểm danh, danh hiệu, sự kiện và tình huống, vật phẩm,
+// món tương lai (viewBox 64, cel-shading viền mực). metaArt(id, { silhouette }) trả '' nếu không có hình (bên gọi tự dự
+// phòng bằng icon()). Không gộp vào ICONS (xem chú thích đầu tệp).
+
+export { metaArt, META_ART, EVENT_ART }
 
 /** Điện thoại của khách giơ mã QR giả (fakeQrSvg(variant), có chữ "QR GAME") trong màn hình; viewBox SCENE_META.dien_thoai. */
 export function phoneQrSvg(variant = 0) {

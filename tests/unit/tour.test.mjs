@@ -3,6 +3,9 @@
 // mới (bep_dap, bep_xoay, bep_got, bep_lac, bep_bay — chỗ 'card-<loại>'), lời tour Thớt nhắc thao tác mới.
 // 0.5.1 (M5 Đợt 2): đích của mọi bước tour còn là testid / lớp móc có thật trong src/ui và css (giao diện Quầy, HUD, phố,
 // phiếu chấm làm lại), bộ đích các tour Quầy / Ca bán / Phiếu chấm đúng thiết kế, lời khớp nhãn nút thật.
+// 0.5.3 (M5 Đợt 3): các tour màn ngoài ca theo giao diện mới (sảnh Chuẩn bị, Chợ Công Thức, Việc hôm nay, Hộp thư, Gánh hàng,
+// Sổ công thức, Tổng kết) — bộ đích đúng thiết kế, tour mới qua_sanh (hộp quà ở sảnh), delayMs của Tổng kết, lời khớp luật
+// (đổi việc miễn phí, giờ đặt lại việc, hạn quà trong thư, giờ ca, nấu thử miễn phí, món mới được gọi gấp đôi).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { DATA } from '../../src/data/index.js'
@@ -17,6 +20,8 @@ import { COUNTER_STREAK_ROLL } from '../../src/core/order.js'
 import { formatVND } from '../../src/core/money.js'
 import { GESTURE_BY_TYPE } from '../../src/ui/components/step-card.js'
 import { STICKY } from '../../src/ui/components/tour.js'
+import { gameTime } from '../../src/core/shift.js'
+import { DAY_RESET_HOUR_VN } from '../../src/core/clock.js'
 
 const T = DATA.TOURS
 // M5 (0.5.0): năm thao tác mới, mỗi loại một tour trên thẻ "Bước k/N" (chỗ 'card-<loại>' của kitchen.tourSpot)
@@ -151,7 +156,7 @@ test('migrate save thật bản 0.3.0 (v2, đang dở ca ngày 8): có state.tou
 test('dữ liệu tour: 2–6 bước, tiêu đề ngắn, lời Dì Sáu tối đa 2 câu, màn có thật, không trùng id', () => {
   const SCREENS = ['title', 'prep', 'service', 'summary', 'shop', 'quests', 'mailbox', 'market', 'recipe-book']
   const SPOTS = ['idle', 'order', 'order-sheet', 'thanh_toan', 'tinh_tien', 'qr', 'receipt', 'rail', 'line', 'chon', 'thot', 'ready', 'score', 'day-event', 'stall',
-    'card-dap', 'card-xoay', 'card-got', 'card-lac', 'card-bay']
+    'gift', 'card-dap', 'card-xoay', 'card-got', 'card-lac', 'card-bay']
   const spots = new Set()
   for (const [id, t] of Object.entries(T)) {
     assert.match(id, /^[a-z_]+$/, id)
@@ -180,6 +185,11 @@ test('dữ liệu tour: 2–6 bước, tiêu đề ngắn, lời Dì Sáu tối 
       assert.ok(sentences >= 1 && sentences <= 2, `${id}: "${s.text}" có ${sentences} câu`)
       assert.ok(s.text.length <= 170, `${id}: lời quá dài (${s.text.length})`)
       assert.ok(['auto', 'top', 'bottom'].includes(s.place), id)
+    }
+    // 0.5.3: chờ hiệu ứng vào màn (chỉ số ms hợp lý; tour theo chỗ của màn ca bán không dùng)
+    if (t.delayMs !== undefined) {
+      assert.ok(Number.isInteger(t.delayMs) && t.delayMs > 0 && t.delayMs <= 5000, `${id}: delayMs ${t.delayMs}`)
+      assert.notEqual(t.screen, 'service', `${id}: tour màn ca bán không chờ theo giờ`)
     }
   }
   for (const [screen, ids] of Object.entries(DATA.TOUR_SCREENS)) {
@@ -303,17 +313,22 @@ test('đích tour còn có thật trong mã giao diện (testid / lớp móc), k
   walk(path.join(root, 'css'))
   const text = files.map(f => readFileSync(f, 'utf8')).join('\n')
   const has = s => text.includes(s)
+  // testid viết thẳng (testid: 'x'), hoặc ghép tiền tố + số / id ('quest-' + i, 'dot-' + name…)
+  const testidOk = tg => {
+    const pre = tg.includes('-') ? tg.slice(0, tg.lastIndexOf('-') + 1) : null
+    return has(`'${tg}'`) || has(`"${tg}"`) || has('`' + tg + '`') || (!!pre && (has(`'${pre}'`) || has('`' + pre)))
+  }
   for (const [id, t] of Object.entries(T)) {
     for (const s of t.steps) {
       for (const tg of [s.target, s.span].flatMap(x => (Array.isArray(x) ? x : [x])).filter(Boolean)) {
         if (/^[A-Za-z0-9_-]+$/.test(tg)) {
-          // testid viết thẳng (testid: 'x'), hoặc ghép tiền tố + số / id ('quest-' + i, 'dot-' + name…)
-          const pre = tg.includes('-') ? tg.slice(0, tg.lastIndexOf('-') + 1) : null
-          const ok = has(`'${tg}'`) || has(`"${tg}"`) || has('`' + tg + '`') || (!!pre && (has(`'${pre}'`) || has('`' + pre)))
-          assert.ok(ok, `${id}: đích ${tg} không còn trong mã giao diện`)
+          assert.ok(testidOk(tg), `${id}: đích ${tg} không còn trong mã giao diện`)
           continue
         }
-        for (const m of tg.matchAll(/data-testid\^?="([^"]+)"/g)) assert.ok(has(m[1]), `${id}: testid ${m[1]} (trong ${tg}) không còn`)
+        // [data-testid="x"] (đúng testid, có thể ghép tiền tố + số) và [data-testid^="x"] (tiền tố)
+        for (const m of tg.matchAll(/data-testid(\^?)="([^"]+)"/g)) {
+          assert.ok(m[1] ? has(m[2]) : testidOk(m[2]), `${id}: testid ${m[2]} (trong ${tg}) không còn`)
+        }
         const plain = tg.replace(/\[[^\]]*\]/g, ' ').replace(/:not\([^)]*\)/g, ' ')
         for (const m of plain.matchAll(/\.([a-z][\w-]*)/g)) assert.ok(has(m[1]), `${id}: lớp .${m[1]} (trong ${tg}) không còn trong mã / CSS`)
       }
@@ -334,4 +349,72 @@ test('đích tour còn có thật trong mã giao diện (testid / lớp móc), k
   assert.match(T.quay_tinh_tien.steps.find(x => x.target === 'give-change').text, /Không cần thối/)
   assert.match(T.quay_qr.steps.find(x => x.target === 'qr-reject').text, /Từ chối ảnh giả/)
   assert.ok(has("'Không cần thối'") && has("'Từ chối ảnh giả'"), 'nhãn nút Quầy đổi mà lời tour chưa đổi')
+})
+
+// 0.5.3 (M5 Đợt 3): giao diện các màn ngoài ca làm lại — bộ đích từng tour đúng thiết kế (bản đồ mã M5 mục 9.3), lời tour
+// khớp luật đang chạy (đọc số từ dữ liệu / lõi, không chép tay), tour mới qua_sanh, Tổng kết chờ hiệu ứng vào màn.
+test('tour màn ngoài ca 0.5.3: đích đúng giao diện mới, lời khớp luật, hộp quà ở sảnh, Tổng kết chờ hiệu ứng', () => {
+  const targets = id => T[id].steps.map(x => (Array.isArray(x.target) ? x.target.join('|') : x.target))
+  const spans = id => T[id].steps.map(x => x.span || '')
+  const text = (id, title) => {
+    const st = T[id].steps.find(x => x.title === title)
+    assert.ok(st, `${id}: không có bước "${title}"`)
+    return st.text
+  }
+  // sảnh Chuẩn bị: biển ngày, 2 dải đồ vật trên xe đẩy, đầu sổ "Dì Sáu dặn" + hàng chấm bước, nút "?", biển Mở hàng
+  assert.deepEqual(targets('chuan_bi'), ['prep-stats', 'open-shop', 'open-recipe-book', '[data-testid="chain-card"] .chain-head|chain-card', 'help-button', 'open-shift'])
+  assert.deepEqual(spans('chuan_bi'), ['', 'open-mail', 'open-settings', '[data-testid="chain-card"] .chain-path', '', ''])
+  assert.match(text('chuan_bi', 'Ba con số của xe'), /ví.*Tiền quán.*huy hiệu.*danh tiếng.*ngôi sao.*sao trung bình/s, 'ba con số nay chỉ còn hình: lời gọi theo hình')
+  // giờ ca trong lời Mở hàng = giờ của lõi (gameTime: đầu ca → cuối ca)
+  const open = gameTime({ plan: [], t: 0 })
+  const close = gameTime({ plan: [], t: 1e9 })
+  assert.ok(text('chuan_bi', 'Mở hàng').includes(`từ ${open} tới ${close}`), `giờ ca ${open}–${close}`)
+  assert.deepEqual(targets('su_kien_ngay'), ['prep-wx', '[data-testid="day-event-card"] .day-ev-head|day-event-card', '[data-testid^="day-event-choice-"]'])
+  assert.deepEqual(spans('su_kien_ngay'), ['', '[data-testid="day-event-card"] .day-ev-effects', ''])
+  assert.deepEqual(targets('hang_hiem'), ['[data-testid="stall-card"] .ps-stall-head|stall-card',
+    '[data-testid="rare-stock-card"] .ps-plaque|[data-testid="rare-stock-card"] .rare-stock|rare-stock-card', '[data-testid="basket-luck"] .basket-head|basket-luck'])
+  assert.deepEqual(spans('hang_hiem'), ['[data-testid="stall-card"] .ps-goods', '[data-testid="rare-stock-card"] .rare-stock-item', '[data-testid="basket-luck"] .pbar'])
+  // hộp quà ở sảnh: tour theo chỗ 'gift', tự hiện khi hộp quà xuất hiện, không veteranDay (giao diện mới)
+  const q = T.qua_sanh
+  assert.equal(q.screen, 'prep')
+  assert.equal(q.spot, 'gift')
+  assert.equal(q.veteranDay, undefined)
+  assert.notEqual(q.auto, false)
+  assert.deepEqual(targets('qua_sanh'), ['prep-gift', '.ps-body > .chain-card.has-claim .chain-claim-row|.ps-body > .event-card.has-pending [data-testid="open-event"]'])
+  assert.ok(DATA.TOUR_SCREENS.prep.includes('qua_sanh'))
+  // Tổng kết: sao lớn ở băng rôn trước (đầu màn), rồi sổ lãi lỗ, lệch két, lời khách, Ngày mai; chờ hiệu ứng vào màn
+  assert.deepEqual(targets('tong_ket'), ['summary-stars', '.ledger .total|.ledger', 'summary-drawer-diff', 'summary-reviews', 'next-day'])
+  assert.ok(T.tong_ket.delayMs >= 2000, 'tour Tổng kết phải chờ sao bật, số đếm lên, xu bay về ví xong')
+  assert.match(text('tong_ket', 'Sao ca này'), /30 lượt/)
+  // Chợ Công Thức: dải số liệu món + hàng thao tác mới; Nấu thử miễn phí đúng số lần; món mới được gọi gấp đôi
+  assert.deepEqual(targets('cho_cong_thuc'), ['shop-tab-recipes', '[data-testid^="shop-item-"]:not(.is-owned) .shop-facts|[data-testid^="shop-item-"]',
+    'button[data-testid^="shop-trial-"]', '[data-testid^="shop-buy-"]'])
+  assert.deepEqual(spans('cho_cong_thuc'), ['shop-tab-spoons', '[data-testid^="shop-item-"]:not(.is-owned) .shop-mech', '', ''])
+  assert.ok(DATA.SHOP.tasteFree, 'nấu thử phải miễn phí')
+  assert.match(text('cho_cong_thuc', 'Nấu thử'), /miễn phí một lần/)
+  // Việc hôm nay: đổi việc miễn phí đúng số lần, rồi tốn Muỗng Vàng; việc mới lúc giờ đặt lại của lõi
+  assert.deepEqual(targets('viec_hom_nay'), ['[data-testid="quest-0"] .qs-type|quest-0', '[data-testid^="quest-claim-"]:not([disabled])|quest-claim-0|[data-testid^="quest-claim-"]',
+    '[data-testid^="quest-reroll-"]:not([disabled])|[data-testid^="quest-reroll-"]', 'daily-chest-card'])
+  const QC = DATA.QUEST_CONFIG
+  assert.ok(text('viec_hom_nay', 'Đổi việc').includes(`miễn phí ${QC.freeRerolls} lần`) && QC.rerollCost > 0)
+  assert.ok(text('viec_hom_nay', 'Rương ngày').includes(String(DAY_RESET_HOUR_VN).padStart(2, '0') + ':00'))
+  // Rương ngày mở khi xong hết việc trong ngày: mỗi nhóm (Quầy, Bếp, Chất lượng) một việc
+  const groups = Object.keys(DATA.QUEST_GROUPS)
+  assert.ok(text('viec_hom_nay', 'Rương ngày').includes(`đủ ${groups.length} việc`))
+  assert.match(text('viec_hom_nay', 'Việc hôm nay'), new RegExp(Object.values(DATA.QUEST_GROUPS).join('.*'), 's'), 'nhãn nhóm việc')
+  // Hộp thư: phong bì của thư đầu (không khoét cả danh sách thư rất cao), nút nhận là thẻ button, hạn quà đúng cấu hình
+  assert.deepEqual(targets('hop_thu'), ['[data-testid^="mail-item-"] .mail-head|mail-list', 'button[data-testid^="mail-claim-"]:not([data-testid="mail-claim-all"])', 'mail-claim-all'])
+  assert.ok(text('hop_thu', 'Quà trong thư').includes(`${DATA.MAIL_CONFIG.expireDays} ngày`))
+  // Gánh hàng: người bán, hai thúng hàng, biển tre phiên chợ, nút bắt đầu (cần thấy mới tự hiện)
+  assert.deepEqual(targets('lua_hang'), ['[data-testid="market-intro"] .npc-talk|market-intro', '.market-goods|market-intro', 'market-clock', 'stall-start'])
+  assert.equal(T.lua_hang.requires, 'stall-start')
+  assert.ok(DATA.RARE_CONFIG.stall.fragmentRate > 0 && DATA.RARE_CONFIG.stall.fragmentRate < 1, 'lời "có khi được mảnh" cần tỉ lệ mảnh dưới 100%')
+  assert.equal(DATA.STALLS.length, 3, 'lời biển tre nói "ba phiên chợ"')
+  assert.match(text('lua_hang', 'Phiên chợ hôm nay'), /ba phiên/)
+  // Sổ công thức: hai mục, trang đôi của món, hình món mở cách làm
+  assert.deepEqual(targets('so_cong_thuc'), ['recipe-book-tab-mon', '[data-testid^="book-recipe-"]', '[data-testid^="book-open-"]'])
+  // mọi tour màn ngoài ca đều có nút "?" để xem lại ở màn của nó (đầu màn con có help: true, Chuẩn bị / Tổng kết tự gắn)
+  for (const id of ['cho_cong_thuc', 'viec_hom_nay', 'hop_thu', 'lua_hang', 'so_cong_thuc', 'tong_ket', 'chuan_bi']) {
+    assert.ok(Object.values(DATA.TOUR_SCREENS).some(list => list.includes(id)), id)
+  }
 })

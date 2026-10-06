@@ -149,8 +149,8 @@
 }
 .summary-screen.sum-v2 table.ledger { width: 100%; border-collapse: collapse; font-size: 15px; }
 .summary-screen.sum-v2 .ledger td { padding: 3px 2px; height: 34px; border-bottom: 1.5px solid var(--g-paper-line); vertical-align: middle; }
-.sum-v2 .ledger .sum-lbl { display: flex; align-items: center; gap: 8px; min-height: 34px; padding-right: 6px; }
-.sum-v2 .ledger td.sum-lbl { height: auto; }
+.sum-v2 .ledger td.sum-lbl { padding-right: 6px; }
+.sum-v2 .ledger .sum-lbl-in { display: flex; align-items: center; gap: 8px; min-height: 28px; }
 .sum-v2 .sum-row-ico { flex: none; width: 28px; height: 28px; line-height: 0; }
 .sum-v2 .sum-row-ico svg { width: 100%; height: 100%; display: block; }
 .sum-v2 .sum-lbl-text { min-width: 0; line-height: 1.2; }
@@ -167,7 +167,7 @@
   content: attr(data-shown); position: absolute; right: 2px; top: 0; bottom: 0; display: flex; align-items: center; padding-top: 3px;
 }
 .summary-screen.sum-v2 .ledger tr.total td { border-bottom: 0; border-top: 3px solid var(--g-ink); height: 46px; padding-top: 6px; }
-.summary-screen.sum-v2 .ledger tr.total .sum-lbl { font-family: var(--g-font-display); font-size: 18px; font-weight: 800; }
+.summary-screen.sum-v2 .ledger tr.total .sum-lbl-in { font-family: var(--g-font-display); font-size: 18px; font-weight: 800; }
 .summary-screen.sum-v2 .ledger tr.total td.num { font-size: 23px; }
 .summary-screen.sum-v2 .ledger tr.total.pos td.num { color: var(--g-go-dark); }
 .summary-screen.sum-v2 .ledger tr.total.neg td.num { color: var(--g-bad); }
