@@ -1,9 +1,10 @@
 /* Giao diện M3 nền tảng: thẻ nhắc sao lưu ở màn Chuẩn bị, nút "Có bản mới", màn Cài đặt (công tắc, âm lượng, tần suất
    tình huống), hộp thoại sao lưu/nhập mã, bản lưu đã cất.
    M5 Đợt 3 (gói M-E, bản 0.5.2): thêm màn MỞ ĐẦU (title.js: logo Baloo viền mực, cảnh phố đầu hẻm, Dì Sáu, khung thoại,
-   biển gỗ tên xe, nút bánh kẹo lớn), màn Cài đặt kiểu game (thẻ giấy có biểu tượng, công tắc rãnh gỗ núm tròn, thanh âm
-   lượng rãnh gỗ, nút chọn kẹo), hộp sao lưu / nhập mã / giới thiệu / chơi lại / cài game có hình, bảng Hướng dẫn và trang
-   Cách chơi (help.js: ô lựa chọn có hình, dải 4 khâu, lưới thao tác bếp).
+   biển gỗ tên xe, nút bánh kẹo lớn; khung cao thì nội dung ra giữa màn, khung thấp bớt câu dặn thêm), màn Cài đặt kiểu game
+   (thẻ giấy có biểu tượng, công tắc rãnh gỗ núm tròn, thanh âm lượng rãnh gỗ, nút chọn kẹo, ba ô hình sao lưu), hộp sao lưu
+   / nhập mã (bảng xem trước có hình đầu hàng) / giới thiệu / chơi lại / cài game có hình, bảng Hướng dẫn và trang Cách chơi
+   (help.js: ô lựa chọn có hình, dải 4 khâu, lưới thao tác bếp).
    Thứ tự nạp (index.html): game.css → … → settings.css → tour.css → theme.css. Luật ở đây thắng game.css (.title-*) khi cùng
    độ ưu tiên; muốn thắng tour.css (.help-*, .how-*) thì phải cụ thể hơn (luôn mở đầu bằng .modal.help-modal).
    Dùng biến --g-* của theme.css và biến màu của base.css. Vùng chạm ≥ 44px, chữ ≥ 14px. Hoạt ảnh chỉ transform / opacity,
@@ -180,9 +181,18 @@
 .ti-start-text { padding-top: 2px; }
 .title-screen .ti-import { min-height: 48px; font-size: 16px; line-height: 1.2; background: rgba(255, 250, 240, .75); }
 
+/* khung cao (iPhone cài app 874, 844): nội dung ra giữa màn, phần dư chia đều trên / dưới */
+.title-screen.ti-screen > .ti-logo-wrap { margin-top: auto; }
+.title-screen.ti-screen > :last-child { margin-bottom: auto; }
+/* chữ nút: Baloo không giãn chữ (giãn lẻ làm chữ "c", "o" lệch khoảng ở cỡ 16px) */
+.title-screen .btn, .settings-screen .btn, .modal.set-modal .btn, .modal.help-modal .btn { letter-spacing: 0; }
+
 /* ---------- Màn mở đầu: khung thấp / hẹp ---------- */
 @media (min-height: 760px) {
   .title-screen.ti-screen { --ti-scene-h: 200px; gap: 12px; }
+}
+@media (min-height: 820px) {
+  .title-screen.ti-screen { --ti-scene-h: 224px; gap: 14px; }
 }
 @media (max-height: 720px) {
   .title-screen.ti-screen { --ti-scene-h: 162px; gap: 9px; }
@@ -199,6 +209,15 @@
   .title-screen .ti-name-input { min-height: 48px; font-size: 20px; }
   .title-screen .ti-start { min-height: 56px; font-size: 23px; }
   .ti-start-ico { width: 38px; height: 38px; }
+}
+/* khung thấp (360×600, 320×568, iPhone 375×553 có vùng an toàn): bớt câu dặn thêm, nút gọn để "Bắt đầu" và
+   "Nhập mã sao lưu" đều thấy ngay */
+@media (max-height: 600px) {
+  .ti-talk-more { display: none; }
+  .title-screen.ti-screen { gap: 7px; padding-bottom: calc(10px + var(--safe-bottom)); }
+  .title-screen .ti-logo { font-size: clamp(29px, 8.6vw, 34px); }
+  .ti-sign { margin-top: 12px; padding: 15px 10px 9px; }
+  .title-screen .ti-import { min-height: 44px; font-size: 15px; }
 }
 @media (max-height: 560px) {
   .title-screen.ti-screen { --ti-scene-h: 108px; }
@@ -306,6 +325,7 @@
 }
 .set-range:focus-visible { outline: 3px solid var(--g-gold); outline-offset: 2px; border-radius: 999px; }
 .set-range:disabled { opacity: .45; cursor: not-allowed; }
+.set-volume .set-range { margin: -2px 0 -8px; }
 
 /* Tần suất sự kiện: 3 nút kẹo, mức đang chọn đỏ cà chua chữ trắng viền mực */
 .set-seg-row { flex-direction: column; align-items: stretch; }
@@ -317,13 +337,23 @@
 .settings-screen .set-seg-btn.is-on {
   --btn-top: #ff7f60; --btn-bot: #c8331f; --btn-edge: #8f2216; color: #fff; text-shadow: var(--btn-ink-outline);
 }
+.set-seg-hint { display: block; margin-top: 6px; font-size: 14px; line-height: 1.35; color: var(--g-ink-soft); }
 
 /* nhóm nút trong thẻ: cột ở khung hẹp, hai nút chia đôi khi đủ rộng */
 .set-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .set-actions .btn { flex: 1 1 100%; }
-.set-backup-actions .btn-secondary, .set-backup-actions .btn-ghost,
 .set-info-actions .btn { flex: 1 1 130px; }
 .settings-screen .set-card .btn-ghost { background: rgba(255, 250, 240, .6); }
+
+/* Sao lưu: ba ô hình (chép mã — nút chính đỏ, tải file — vàng, nhập mã — giấy); hình trên, chữ hai dòng dưới */
+.set-backup-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.settings-screen .set-tile {
+  flex-direction: column; justify-content: center; gap: 2px; width: 100%; min-height: 96px; padding: 8px 4px 9px;
+  border-radius: 16px; font-size: 16px; line-height: 1.08; white-space: normal;
+}
+.set-tile-ico { flex: none; width: 44px; height: 44px; line-height: 0; }
+.set-tile-ico svg { width: 100%; height: 100%; }
+.set-tile-text { display: flex; flex-direction: column; align-items: center; min-width: 0; }
 
 /* dòng "Lần sao lưu gần nhất" / "Chưa sao lưu": dấu tròn ✓ xanh hoặc ! vàng */
 .set-last { display: flex; align-items: center; gap: 8px; margin-top: 4px; padding: 6px 10px; border-radius: 12px; font-weight: 700; color: var(--g-ink); }
@@ -351,6 +381,12 @@
 .set-book-text { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
 .set-book-text b { font-size: 16px; line-height: 1.1; color: var(--g-ink); }
 .set-book-text small { font-family: var(--font); font-size: 14px; font-weight: 500; color: var(--g-ink-soft); line-height: 1.2; letter-spacing: 0; }
+/* khung hẹp: hình trên, chữ dưới (không vỡ tên sổ thành nhiều dòng) */
+@media (max-width: 380px) {
+  .settings-screen .set-book { flex-direction: column; justify-content: center; gap: 2px; padding: 8px 6px 9px; text-align: center; }
+  .set-book-text { align-items: center; }
+  .set-book-ico { width: 42px; height: 42px; }
+}
 
 /* Bản lưu đã cất: ngăn kéo giấy, mỗi bản là một phiếu */
 .archive-box { margin-top: 8px; border-top: 2px dashed var(--g-paper-line); padding-top: 4px; }
@@ -379,6 +415,8 @@
 .modal.set-modal > .modal-text { font-size: 16px; line-height: 1.4; }
 
 .backup-body, .about-body { display: flex; flex-direction: column; gap: 10px; }
+/* hàng nút cuối hộp: hai nút luôn nằm cạnh nhau kể cả khung 320px (chữ dài tự xuống dòng trong nút) */
+.modal.set-modal .modal-actions .btn, .modal.help-modal .modal-actions .btn { flex-basis: 104px; }
 .backup-text {
   min-height: 96px; max-height: 180px; resize: vertical; font-family: ui-monospace, Menlo, Consolas, monospace;
   font-size: 14px; line-height: 1.35; word-break: break-all; overflow-wrap: anywhere;
@@ -394,6 +432,10 @@
 }
 .backup-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .backup-row .btn { flex: 1 1 140px; }
+/* nút có hình nhỏ bên trái chữ (Chọn file, Xem trước) */
+.set-btn-art { gap: 6px; padding-left: 10px; padding-right: 10px; }
+.set-btn-ico { flex: none; width: 30px; height: 30px; margin: -6px 0; line-height: 0; }
+.set-btn-ico svg { width: 100%; height: 100%; }
 .backup-note { color: var(--muted); }
 .backup-preview { display: flex; flex-direction: column; gap: 6px; }
 /* bảng xem trước: hàng đầu gỗ, ô giấy */
@@ -404,7 +446,13 @@
   background: linear-gradient(180deg, var(--g-wood-light), var(--g-wood)); color: var(--g-ink); font-family: var(--g-font-display);
   font-weight: 800; font-size: 15px; border-bottom: 2.5px solid var(--g-ink);
 }
-.backup-table tbody th { color: var(--g-ink-soft); font-weight: 700; white-space: nowrap; }
+/* cột cố định (tên mục 40%, các bản chia đều; khung hẹp 31% vì hình nằm trên tên): số tiền không bị bẻ giữa chừng */
+.backup-table { table-layout: fixed; }
+.backup-table thead th:first-child { width: 40%; }
+.backup-table tbody th { color: var(--g-ink-soft); font-weight: 700; }
+.backup-th { display: inline-flex; align-items: center; gap: 5px; }
+.backup-th-ico { flex: none; width: 22px; height: 22px; margin: -2px 0; line-height: 0; }
+.backup-th-ico svg { width: 100%; height: 100%; }
 .backup-table td:nth-child(2) { font-weight: 800; }
 .backup-table tbody tr:nth-child(even) { background: #fdf6e6; }
 
@@ -418,8 +466,11 @@
   text-shadow: 1.6px 0 0 var(--g-ink), -1.6px 0 0 var(--g-ink), 0 1.6px 0 var(--g-ink), 0 -1.6px 0 var(--g-ink),
     1.2px 1.2px 0 var(--g-ink), -1.2px 1.2px 0 var(--g-ink), 1.2px -1.2px 0 var(--g-ink), -1.2px -1.2px 0 var(--g-ink), 0 3px 0 var(--g-ink);
 }
-.about-ver { padding: 2px 10px 1px; border: 2px solid var(--g-ink); border-radius: 999px; background: #fff; font-size: 14px; font-weight: 700; }
-.about-paper { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 2px solid rgba(58, 38, 24, .5); border-radius: 12px; background: #fff; }
+.about-ver { padding: 2px 10px 1px; border: 2px solid var(--g-ink); border-radius: 999px; background: #fff; font-size: 14px; font-weight: 700; white-space: nowrap; }
+.about-paper { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 10px 12px 10px 8px; list-style: none; border: 2px solid rgba(58, 38, 24, .5); border-radius: 12px; background: #fff; }
+.about-note { display: flex; align-items: flex-start; gap: 8px; }
+.about-note-ico { flex: none; width: 32px; height: 32px; margin-top: -2px; line-height: 0; }
+.about-note-ico svg { width: 100%; height: 100%; }
 .about-body p { font-size: 15px; line-height: 1.4; }
 .about-credit {
   position: relative; display: flex; flex-direction: column; gap: 6px; margin-top: 10px; padding: 16px 12px 10px;
@@ -431,6 +482,15 @@
   font-family: var(--g-font-display); font-weight: 800; font-size: 15px; letter-spacing: .06em; line-height: 1.3; text-transform: uppercase;
 }
 .about-font-name { font-family: var(--g-font-display); font-weight: 800; font-size: 17px; color: var(--g-tomato-dark); }
+
+/* khung hẹp (≤ 380px): bảng xem trước đặt hình trên tên mục cho cột số đủ rộng; Giới thiệu thu xe đẩy và tên game */
+@media (max-width: 380px) {
+  .backup-th { flex-direction: column; align-items: flex-start; gap: 1px; }
+  .backup-table thead th:first-child { width: 31%; }
+  .backup-table th, .backup-table td { padding: 6px 6px; }
+  .about-cart { width: 92px; }
+  .about-name { font-size: 22px; }
+}
 
 /* màn thấp: hình hộp thoại nhỏ lại để nội dung và hàng nút có chỗ */
 @media (max-height: 640px) {

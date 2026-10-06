@@ -24,8 +24,8 @@ export const DEFAULT_SHOP_NAME = 'Xe bánh mì đầu hẻm'
 
 // Cửa sổ có khung, kính xanh nhạt và hai cánh chớp.
 function windowAt(x, y, w, hh, shutter) {
-  const s = Math.min(7, w * 0.3)
-  return `<rect x="${x - s}" y="${y}" width="${s}" height="${hh}" rx="1.5" fill="${shutter}" stroke-width="2"/>` +
+  const s = r1(Math.min(7, w * 0.3))
+  return `<rect x="${r1(x - s)}" y="${y}" width="${s}" height="${hh}" rx="1.5" fill="${shutter}" stroke-width="2"/>` +
     `<rect x="${x + w}" y="${y}" width="${s}" height="${hh}" rx="1.5" fill="${shutter}" stroke-width="2"/>` +
     `<rect x="${x}" y="${y}" width="${w}" height="${hh}" rx="1.5" fill="#d9f2fc" stroke-width="2.2"/>` +
     `<path d="M${x + w / 2} ${y + 1}V${y + hh - 1}M${x + 1} ${y + hh / 2}H${x + w - 1}" stroke-width="1.5"/>` +
@@ -161,7 +161,9 @@ export default {
       input.addEventListener('keydown', e => { if (e.key === 'Enter') start() })
       body = [
         talkBox({ testid: 'title-talk' },
-          h('p', { class: 'ti-talk-text' }, app.data.DIALOGUE.diSau.intro + ' Con đặt tên cho xe đi, dì sơn lên tấm bảng liền.')),
+          // câu dặn thêm ẩn ở khung thấp (CSS) để nút "Bắt đầu" và "Nhập mã" thấy ngay không phải cuộn
+          h('p', { class: 'ti-talk-text' }, app.data.DIALOGUE.diSau.intro,
+            h('span', { class: 'ti-talk-more' }, ' Con đặt tên cho xe đi, dì sơn lên tấm bảng liền.'))),
         // biển gỗ: bảng phấn "Tên xe" + ô tên như tấm ván sơn
         h('label', { class: 'field ti-sign' },
           svgBox(SIGN_NAILS, 'ti-nail ti-nail-l'), svgBox(SIGN_NAILS, 'ti-nail ti-nail-r'),

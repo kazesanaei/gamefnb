@@ -4,8 +4,9 @@
 // Mở từ màn Chuẩn bị (nút open-settings, thẻ nhắc sao lưu). params: { focus: 'backup' } cuộn tới mục Sao lưu.
 // M5 Đợt 3 (gói M-E, bản 0.5.2): các nhóm là thẻ giấy có biểu tượng to (loa phường, phao cứu sinh, biển chỉ đường, cờ sự
 // kiện, sổ, két sắt, điện thoại, xe đẩy), công tắc kiểu game (rãnh gỗ, núm tròn; vẫn là checkbox role=switch thật), thanh
-// âm lượng rãnh gỗ, hộp sao lưu / nhập mã / giới thiệu / chơi lại có hình. Giới thiệu thêm ghi công font Baloo 2 (Ek Type,
-// SIL Open Font License 1.1, tệp fonts/OFL.txt). Không đổi luật, tiền, điểm; giữ mọi testid, role, aria và export.
+// âm lượng rãnh gỗ; Sao lưu là ba ô hình (chép mã, tải file, nhập mã); bảng xem trước mã có hình đầu hàng; hộp sao lưu /
+// nhập mã / giới thiệu (mỗi ý một hình) / chơi lại có hình. Giới thiệu thêm ghi công font Baloo 2 (Ek Type, SIL Open Font
+// License 1.1, tệp fonts/OFL.txt). Không đổi luật, tiền, điểm; giữ mọi testid, role, aria và export.
 // Biểu tượng SETTINGS_ART vẽ ở đây theo quy chuẩn mục 6.1 (viền mực, ba tông, bóng đất; không gradient / url( / filter).
 // Import trong Node an toàn: chỉ hằng chuỗi SVG thuần ở cấp module, không chạm DOM.
 import { h, svgBox } from '../dom.js'
@@ -103,8 +104,50 @@ const DIEN_THOAI = svg(ground(30, 58.4, 17, 3) +
   `<path d="M26 51.8H34" stroke="#8c99a8" stroke-width="2.2"/>` +
   ball(45.5, 43, 11.4, 11.4, GO, { sw: 2.8 }) + inked('M45.5 36.4V49M40.4 44.2L45.5 49.3L50.6 44.2', '#fff', 2.8))
 
+// Chép mã sao lưu: hai tờ giấy chồng lệch (bản chép), tờ trước có các dòng mã.
+const CHEP_MA = svg(ground(31, 58.4, 21, 3) +
+  tone3({
+    outline: rrD(22, 5, 32, 41, 4), base: '#f1dfba', dark: '#e2c995',
+    shade: 'M48 5.4C52 6 54 7 54 9V42C54 44 53 46 50 46H46C49 44 48 30 48 5.4Z'
+  }) +
+  `<path d="M28 12H46M28 18H41" stroke="#c9a77a" stroke-width="2.2"/>` +
+  tone3({
+    outline: rrD(10, 15, 32, 41, 4), base: '#fffaf0', dark: '#f1e2c2',
+    shade: 'M36 15.4C40 15.8 42 17 42 19V52C42 54 41 56 38 56H33C37 54 36 40 36 15.4Z', shine: hilite(16, 20, 4, 1.4, 0.6)
+  }) +
+  `<path d="M16 26H23M26.5 26H35M16 32H21M24.5 32H33M16 38H27M30.5 38H35M16 44H22M25.5 44H32" stroke="${INK}" stroke-width="2.4"/>` +
+  `<path d="M16 26H23M16 38H27" stroke="${PAL.do[0]}" stroke-width="2.4"/>`)
+
+// Tải file sao lưu: tờ giấy gấp góc, huy hiệu xanh mũi tên xuống.
+const TAI_FILE = svg(ground(30, 58.4, 19, 3) +
+  tone3({
+    outline: 'M13 6H36L48 18V52C48 54.4 46.4 56 44 56H13C10.6 56 9 54.4 9 52V10C9 7.6 10.6 6 13 6Z', base: '#fffaf0', dark: '#f1e2c2',
+    shade: 'M42 18H48V52C48 54.4 46.4 56 44 56H38C42 54 42 40 42 18Z', shine: hilite(15, 12, 4, 1.4, 0.6)
+  }) +
+  `<path d="M36 6V14.6C36 16.6 37.4 18 39.4 18H48Z" fill="#e6cfa6" stroke-width="2.4"/>` +
+  `<path d="M15 25H31M15 31H36M15 37H27" stroke="#c9a77a" stroke-width="2.4"/>` +
+  ball(45.5, 44, 11.4, 11.4, GO, { sw: 2.8 }) + inked('M45.5 37.4V50M40.4 45.2L45.5 50.3L50.6 45.2', '#fff', 2.8))
+
+// Nhập mã sao lưu: bảng kẹp gỗ có tờ mã, huy hiệu xanh dương mũi tên vào.
+const NHAP_MA = svg(ground(30, 58.4, 20, 3) +
+  tone3({
+    outline: rrD(8, 9, 40, 48, 5), base: PAL.go[0], dark: PAL.go[1],
+    shade: 'M43 9.4C46 10 48 11.6 48 14V52C48 55 46 57 43 57H38C42 55 43 40 43 9.4Z', shine: hilite(13, 13, 3, 1.4, 0.5)
+  }) +
+  `<rect x="13" y="15" width="30" height="37" rx="2.4" fill="#fffaf0" stroke-width="2.2"/>` +
+  `<path d="M18 25H36M18 31H32M18 37H34M18 43H26" stroke="#c9a77a" stroke-width="2.4"/>` +
+  tone3({
+    outline: rrD(19, 4, 18, 10, 3), base: PAL.thep[0], dark: PAL.thep[1],
+    shade: 'M19 10H37V11C37 12.6 35.6 14 34 14H22C20.4 14 19 12.6 19 11Z'
+  }) +
+  `<circle cx="28" cy="7.6" r="1.8" fill="#fff" stroke-width="1.6"/>` +
+  ball(46, 45, 11.4, 11.4, PAL.xanh_nhan, { sw: 2.8 }) + inked('M51.6 45H40.8M45.2 40.4L40.6 45L45.2 49.6', '#fff', 2.8))
+
 /** Biểu tượng nhóm của màn Cài đặt (id → SVG 64), dùng lại được ở bảng xem hình. */
-export const SETTINGS_ART = deepFreeze({ loa: LOA, phao: PHAO, bien_chi_duong: BIEN, ket_sat: KET, dien_thoai: DIEN_THOAI })
+export const SETTINGS_ART = deepFreeze({
+  loa: LOA, phao: PHAO, bien_chi_duong: BIEN, ket_sat: KET, dien_thoai: DIEN_THOAI,
+  chep_ma: CHEP_MA, tai_file: TAI_FILE, nhap_ma: NHAP_MA
+})
 
 const INCIDENT_LABELS = Object.freeze({ nhieu: 'Nhiều', vua: 'Vừa', it: 'Ít' })
 // M4: một cài đặt cho cả sự kiện ngày và tình huống trong ca ("Tần suất sự kiện")
@@ -266,14 +309,15 @@ function previewTable(app, next, cur) {
   const a = backupSummary(next)
   const b = cur && cur.shopName ? backupSummary(cur) : null
   const chang = n => (S.chang && S.chang[n]) || `Chặng ${n}`
+  // mỗi hàng: hình nhỏ (cùng hình với màn Chuẩn bị / ví) + tên mục
   const rows = [
-    ['Tên xe', a.shopName || 'Chưa đặt tên', b && (b.shopName || 'Chưa đặt tên')],
-    ['Ngày game', `Ngày ${a.day}`, b && `Ngày ${b.day}`],
-    ['Tiền quán', formatVND(a.wallet), b && formatVND(b.wallet)],
-    ['Chặng', chang(a.chang), b && chang(b.chang)],
-    ['Công thức', `${a.recipes} món`, b && `${b.recipes} món`],
-    ['Danh tiếng', String(a.reputation), b && String(b.reputation)],
-    ['Muỗng Vàng', String(a.goldSpoons), b && String(b.goldSpoons)]
+    ['Tên xe', SCENE_ICONS.tab_quay, a.shopName || 'Chưa đặt tên', b && (b.shopName || 'Chưa đặt tên')],
+    ['Ngày game', metaArt('o_lich'), `Ngày ${a.day}`, b && `Ngày ${b.day}`],
+    ['Tiền quán', SCENE_ICONS.hud_vi, formatVND(a.wallet), b && formatVND(b.wallet)],
+    ['Chặng', metaArt('cup'), chang(a.chang), b && chang(b.chang)],
+    ['Công thức', metaArt('so_cong_thuc'), `${a.recipes} món`, b && `${b.recipes} món`],
+    ['Danh tiếng', metaArt('danh_hieu'), String(a.reputation), b && String(b.reputation)],
+    ['Muỗng Vàng', metaArt('muong_vang'), String(a.goldSpoons), b && String(b.goldSpoons)]
   ]
   return h('div', {
     class: 'backup-preview', testid: 'backup-preview',
@@ -281,7 +325,9 @@ function previewTable(app, next, cur) {
   },
   h('table', { class: 'backup-table' },
     h('thead', null, h('tr', null, h('th', null, ''), h('th', null, 'Bản trong mã'), b ? h('th', null, 'Bản hiện tại') : null)),
-    h('tbody', null, rows.map(([label, x, y]) => h('tr', null, h('th', { scope: 'row' }, label), h('td', null, x), b ? h('td', null, y) : null)))),
+    h('tbody', null, rows.map(([label, art, x, y]) => h('tr', null,
+      h('th', { scope: 'row' }, h('span', { class: 'backup-th' }, svgBox(art, 'backup-th-ico'), h('span', null, label))),
+      h('td', null, x), b ? h('td', null, y) : null)))),
   a.inShift ? h('p', { class: 'small' }, 'Bản này có ca đang bán dở: vào game sẽ bán tiếp ca đó.') : null)
 }
 
@@ -346,8 +392,10 @@ export function openImport(app, opts = {}) {
           check()
         }
       })
-      const checkBtn = h('button', { class: 'btn btn-secondary', type: 'button', testid: 'backup-check', onclick: () => check() }, 'Xem trước')
-      const pickBtn = h('button', { class: 'btn btn-ghost', type: 'button', testid: 'backup-file-pick', onclick: () => file.click() }, 'Chọn file sao lưu')
+      const checkBtn = h('button', { class: 'btn btn-secondary set-btn-art', type: 'button', testid: 'backup-check', onclick: () => check() },
+        svgBox(metaArt('kiem_tra_attp'), 'set-btn-ico'), h('span', null, 'Xem trước'))
+      const pickBtn = h('button', { class: 'btn btn-ghost set-btn-art', type: 'button', testid: 'backup-file-pick', onclick: () => file.click() },
+        svgBox(TAI_FILE, 'set-btn-ico'), h('span', null, 'Chọn file sao lưu'))
       const confirmBtn = h('button', {
         class: 'btn btn-primary', type: 'button', testid: 'backup-confirm', hidden: true,
         onclick: () => {
@@ -441,6 +489,11 @@ export async function resetGame(app) {
  * "không liên quan tới thương hiệu"), lưu trên máy, và mục Ghi công (font Baloo 2 của Ek Type, giấy phép SIL Open Font
  * License 1.1, tệp fonts/OFL.txt; hình, âm, lời thoại tự làm).
  */
+// Một ý trong tờ ghi chú Giới thiệu: hình 30px + lời.
+function aboutNote(art, text) {
+  return h('li', { class: 'about-note' }, svgBox(art, 'about-note-ico'), h('p', null, text))
+}
+
 export function openAbout(app) {
   const cart = app.state && app.data ? cartArt(cartOptions(app.state, app.data)) : ''
   return app.modal({
@@ -451,11 +504,12 @@ export function openAbout(app) {
         h('div', { class: 'about-hero-text' },
           h('b', { class: 'about-name' }, 'Bếp Khởi Nghiệp'),
           h('span', { class: 'about-ver' }, `Phiên bản ${app.version}`))),
-      h('div', { class: 'about-paper' },
-        h('p', null, 'Bếp Khởi Nghiệp là game hư cấu về chuyện mở xe đẩy bán đồ ăn sáng: ghi order, tính tiền, thối tiền và nấu từng món.'),
-        h('p', null, 'Mọi nhân vật, tên quán đều là hư cấu. Giá bán, giá vốn, tiền thưởng và con số trong Mẹo nghề chỉ là số liệu minh họa, không phản ánh giá thị trường.'),
-        h('p', null, 'Game không liên quan tới thương hiệu, cửa hàng hay doanh nghiệp nào.'),
-        h('p', null, 'Tiến trình lưu ngay trên máy này, không cần tài khoản và không gửi dữ liệu đi đâu.')),
+      // tờ ghi chú: mỗi ý một hình nhỏ đầu dòng
+      h('ul', { class: 'about-paper' },
+        aboutNote(SCENE_ICONS.khau_lam_do, 'Bếp Khởi Nghiệp là game hư cấu về chuyện mở xe đẩy bán đồ ăn sáng: ghi order, tính tiền, thối tiền và nấu từng món.'),
+        aboutNote(metaArt('xu'), 'Mọi nhân vật, tên quán đều là hư cấu. Giá bán, giá vốn, tiền thưởng và con số trong Mẹo nghề chỉ là số liệu minh họa, không phản ánh giá thị trường.'),
+        aboutNote(metaArt('tem'), 'Game không liên quan tới thương hiệu, cửa hàng hay doanh nghiệp nào.'),
+        aboutNote(KET, 'Tiến trình lưu ngay trên máy này, không cần tài khoản và không gửi dữ liệu đi đâu.')),
       h('section', { class: 'about-credit', testid: 'about-credit' },
         h('h3', { class: 'about-credit-title' }, 'Ghi công'),
         h('p', { class: 'about-font', testid: 'about-font' },
@@ -533,16 +587,18 @@ export default {
 
     function incidentRow() {
       const cur = app.state.settings.incidentFrequency || 'vua'
+      // tên mục → ba nút chọn → lời giải thích mức đang chọn (nút nằm ngay dưới tên, không bị đoạn chữ dài đẩy xuống)
       return h('div', { class: 'set-row set-seg-row' },
         h('span', { class: 'set-text' }, h('b', null, 'Tần suất sự kiện'),
-          h('small', null, 'Sự kiện ngày và tình huống giữa hai khách: sự kiện có phạt luôn có cách an toàn, vài sự kiện chỉ là chi phí nhỏ được báo trước. ' +
-            INCIDENT_HINTS[cur] + ' Đổi mức chỉ áp cho ngày chưa báo trước, sự kiện đã báo giữ nguyên.')),
+          h('small', null, 'Sự kiện ngày và tình huống giữa hai khách.')),
         h('div', { class: 'set-seg', role: 'radiogroup', 'aria-label': 'Tần suất sự kiện' },
           INCIDENT_FREQUENCIES.map(id => h('button', {
             class: ['btn', 'btn-small', 'set-seg-btn', id === cur ? 'is-on' : ''], type: 'button', role: 'radio',
             'aria-checked': String(id === cur), testid: 'setting-incident-' + id,
             onclick: () => { if (id !== cur) { set('incidentFrequency', id); app.sound('click'); render() } }
-          }, INCIDENT_LABELS[id]))))
+          }, INCIDENT_LABELS[id]))),
+        h('small', { class: 'set-seg-hint' }, INCIDENT_HINTS[cur] + ' Sự kiện có phạt luôn có cách an toàn, vài sự kiện chỉ là chi phí nhỏ được báo trước. ' +
+          'Đổi mức chỉ áp cho ngày chưa báo trước, sự kiện đã báo giữ nguyên.'))
     }
 
     // Thẻ giấy một nhóm: biểu tượng to + tiêu đề Baloo (+ dòng phụ), rồi các hàng.
@@ -552,6 +608,13 @@ export default {
           art ? svgBox(art, 'set-ico') : null,
           h('h2', { class: 'card-title set-title' }, title)),
         children)
+    }
+
+    // Ô hành động có hình (sao lưu): hình trên, chữ Baloo hai dòng dưới; chữ đọc liền là "Chép mã sao lưu"…
+    function tile(kind, testid, art, l1, l2, onclick) {
+      return h('button', { class: ['btn', kind, 'set-tile'], type: 'button', testid, onclick },
+        svgBox(art, 'set-tile-ico'),
+        h('span', { class: 'set-tile-text' }, h('span', null, l1), ' ', h('span', null, l2)))
     }
 
     function backupSection() {
@@ -577,10 +640,11 @@ export default {
         h('p', { class: ['small', 'set-last', bk.lastAt ? 'is-ok' : 'is-warn'], testid: 'backup-last' },
           h('span', { class: 'set-last-mark', 'aria-hidden': 'true' }, bk.lastAt ? '✓' : '!'),
           h('span', null, bk.lastAt ? `Lần sao lưu gần nhất: ${formatTime(bk.lastAt)}` : 'Chưa sao lưu lần nào.')),
-        h('div', { class: 'set-actions set-backup-actions' },
-          h('button', { class: 'btn btn-primary', type: 'button', testid: 'backup-copy', onclick: () => copyBackup(app).then(() => { if (!destroyed) render() }) }, 'Chép mã sao lưu'),
-          h('button', { class: 'btn btn-secondary', type: 'button', testid: 'backup-download', onclick: () => { downloadBackup(app); render() } }, 'Tải file sao lưu'),
-          h('button', { class: 'btn btn-ghost', type: 'button', testid: 'backup-import', onclick: () => { app.sound('click'); openImport(app) } }, 'Nhập mã sao lưu')),
+        // ba ô hình: chép mã (nút chính), tải file, nhập mã
+        h('div', { class: 'set-backup-tiles' },
+          tile('btn-primary', 'backup-copy', CHEP_MA, 'Chép mã', 'sao lưu', () => copyBackup(app).then(() => { if (!destroyed) render() })),
+          tile('btn-secondary', 'backup-download', TAI_FILE, 'Tải file', 'sao lưu', () => { downloadBackup(app); render() }),
+          tile('btn-ghost', 'backup-import', NHAP_MA, 'Nhập mã', 'sao lưu', () => { app.sound('click'); openImport(app) })),
         items.length ? h('details', { class: 'archive-box', testid: 'archive-list' },
           h('summary', null, `Bản lưu đã cất (${items.length})`),
           h('p', { class: 'small muted' }, 'Bản cũ được cất lại mỗi khi nhập mã hoặc chơi lại từ đầu. Khôi phục một bản thì bản đang chơi cũng được cất.'),
@@ -634,7 +698,7 @@ export default {
       if (destroyed) return
       const scrollTop = root.scrollTop
       el.textContent = ''
-      el.appendChild(screenHead(app, { title: 'Cài đặt', sub: 'Âm thanh, hỗ trợ, sao lưu và cài game', backLabel: '‹ Chuẩn bị' }))
+      el.appendChild(screenHead(app, { title: 'Cài đặt', sub: 'Âm thanh, hỗ trợ, sao lưu', backLabel: '‹ Chuẩn bị' }))
       el.appendChild(h('div', { class: 'meta-body settings-body' },
         section('Âm thanh và rung', 'settings-sound', LOA,
           switchRow('sound', 'Âm thanh', 'Dao thái, dầu xèo, rót nước, chuông ra món, tiền vào két.'),

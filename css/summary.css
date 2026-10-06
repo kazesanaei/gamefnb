@@ -1,24 +1,501 @@
-/* Màn Tổng kết ca (src/ui/screens/summary.js): tiến độ meta, tình huống trong ca, sổ ghi nợ, tiền sự kiện.
-   M5 Đợt 3 bước 0: chuyển nguyên văn từ css/meta.css (gắn sau book.css). */
+/* Màn Tổng kết ca (src/ui/screens/summary.js) — M5 Đợt 3, gói M-F, bản 0.5.2: màn kết quả kiểu game.
+   Thanh gỗ dính đầu (.sum-head-row), băng rôn "Hết ca!" trên bảng gỗ (sao lớn, Dì Sáu, lãi), tờ sổ kẻ dòng có hình từng
+   khoản (table.ledger), các thẻ giấy có hình to (két, khách, tình huống, hàng hiếm, thạo món, lỗi, lời khách, mẹo, việc,
+   ngày mai), biển "Ngày mai" dính đáy (.sticky-foot).
+   Nạp sau meta.css và trước tour.css / theme.css (index.html): mọi luật có tiền tố .summary-screen.sum-v2 để thắng các
+   luật cũ ở game.css (.ledger, .summary-screen) và tour.css (.summary-screen > .sum-head-row) bằng độ ưu tiên.
+   Hoạt ảnh chỉ nằm dưới .sum-v2.is-anim (màn vào lần đầu của một ca, không giảm chuyển động), hữu hạn, chỉ transform /
+   opacity; .is-static (giảm chuyển động / mở lại cùng ca) không có hoạt ảnh nào. Chữ tối thiểu 14px. */
 
-/* chữ tối thiểu 14px trên màn Tổng kết (nhãn M1 13px) */
-.summary-screen .stat-label { font-size: 14px; }
+.summary-screen.sum-v2 {
+  --sum-gut: var(--gutter);
+  display: flex; flex-direction: column; gap: 12px; min-height: 100%;
+  padding: 0 var(--sum-gut) 0; background: var(--g-cream); color: var(--g-ink);
+}
+.summary-screen.sum-v2 small { font-size: 14px; }
 
-/* ---------- Tổng kết: tiến độ meta ---------- */
-.sum-meta { display: flex; flex-direction: column; gap: 10px; }
-.sum-meta-block { display: flex; flex-direction: column; gap: 4px; }
-.sum-quests { display: flex; flex-direction: column; gap: 6px; }
-.sum-quests li { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; font-size: 14px; }
-.sum-quests li .pbar { grid-column: 1 / -1; }
-.sum-quests li.is-done .sq-text { color: var(--green-ink); font-weight: 800; }
-.sq-num { font-weight: 800; font-variant-numeric: tabular-nums; }
+/* ---------- 1. Thanh gỗ dính đầu màn ---------- */
+.summary-screen.sum-v2 > .sum-head-row.sum-bar {
+  position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: 8px;
+  margin: 0 calc(-1 * var(--sum-gut)); min-height: calc(52px + var(--safe-top)); box-sizing: border-box;
+  padding: calc(4px + var(--safe-top)) 8px 4px 12px;
+  background:
+    repeating-linear-gradient(178.6deg, rgba(40, 22, 8, 0) 0 6px, rgba(40, 22, 8, .14) 6px 7.5px, rgba(40, 22, 8, 0) 7.5px 13px),
+    linear-gradient(180deg, #b87838 0%, var(--g-wood-dark) 60%, #8a5422 100%);
+  border-bottom: 3px solid var(--g-ink); box-shadow: inset 0 -3px 0 rgba(255, 220, 170, .22), 0 3px 0 rgba(58, 38, 24, .12);
+}
+.sum-v2 .sum-bar-title {
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; margin: 0;
+  font-family: var(--g-font-display); font-weight: 800; font-size: 21px; line-height: 1.1; letter-spacing: .01em;
+  color: #fff4d8; text-shadow: var(--g-text-outline-thin); white-space: nowrap;
+}
+.sum-v2 .sum-bar-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; padding-top: 2px; }
+.sum-v2 .sum-bar-day {
+  flex: none; padding: 3px 10px 1px; border: 2.5px solid var(--g-ink); border-radius: 999px;
+  background: linear-gradient(180deg, #fff0a6, var(--g-gold)); color: var(--g-ink); text-shadow: none; font-size: 16px;
+  box-shadow: 0 2px 0 rgba(40, 22, 8, .55);
+}
+.sum-v2 .sum-bar .pill { flex: none; min-height: 38px; box-shadow: inset 0 -3px 0 rgba(58, 38, 24, .1), 0 2px 0 rgba(40, 22, 8, .5); }
+.sum-v2 .sum-bar .help-btn {
+  flex: none; width: 44px; height: 44px; margin: 0; border: 2.5px solid var(--g-ink); color: var(--g-tomato-dark);
+  font-family: var(--g-font-display); font-size: 23px; padding-top: 3px;
+  background: radial-gradient(circle at 36% 30%, #fffdf6 0 34%, #f2dcae 100%); box-shadow: 0 2px 0 rgba(40, 22, 8, .55);
+}
+.sum-v2 .sum-empty { padding: 24px 4px; font-size: 16px; text-align: center; color: var(--g-ink-soft); }
 
-/* ---------- Tổng kết: tình huống, sổ ghi nợ ---------- */
-.sum-incident { display: flex; flex-direction: column; gap: 6px; }
-.sum-incident-item { display: flex; flex-direction: column; gap: 2px; }
-.sum-incident-fx { display: flex; flex-wrap: wrap; gap: 2px 12px; font-weight: 700; }
-/* M4: ghi chú tiền sự kiện ngày, mỗi khoản một dòng */
-.sum-event-notes { flex-direction: column; font-weight: 600; }
-.sum-event-notes li b { font-weight: 800; }
-.sum-debt.is-paid { color: var(--green-ink); font-weight: 700; }
-.sum-debt.is-unpaid { color: #2f4a63; }
+/* ---------- 2. Băng rôn "Hết ca!" trên bảng gỗ ---------- */
+.sum-v2 .sum-hero {
+  position: relative; margin-top: 26px; padding: 26px 10px 10px;
+  border: 3px solid var(--g-ink); border-radius: 20px; color: var(--g-ink);
+  background:
+    radial-gradient(120% 70% at 18% 0%, rgba(255, 244, 214, .45), rgba(255, 244, 214, 0) 62%),
+    repeating-linear-gradient(178.6deg, rgba(111, 66, 25, 0) 0 6px, rgba(111, 66, 25, .1) 6px 7.5px, rgba(111, 66, 25, 0) 7.5px 13px),
+    linear-gradient(180deg, var(--g-wood-light) 0%, var(--g-wood) 55%, #c98a40 100%);
+  box-shadow: inset 0 3px 0 rgba(255, 238, 205, .5), inset 0 -5px 0 rgba(111, 66, 25, .4), 0 4px 0 var(--g-wood-deep);
+}
+.sum-v2 .sum-hero.rank-loss, .sum-v2 .sum-hero.rank-ok, .sum-v2 .sum-hero.rank-even {
+  background:
+    radial-gradient(120% 70% at 18% 0%, rgba(255, 244, 214, .35), rgba(255, 244, 214, 0) 62%),
+    repeating-linear-gradient(178.6deg, rgba(111, 66, 25, 0) 0 6px, rgba(111, 66, 25, .1) 6px 7.5px, rgba(111, 66, 25, 0) 7.5px 13px),
+    linear-gradient(180deg, #e2b77a 0%, #c99050 55%, #b07a3c 100%);
+}
+/* băng rôn treo vắt qua mép trên bảng (canh giữa bằng margin auto: transform dành cho hoạt ảnh) */
+.sum-v2 .sum-ribbon {
+  position: absolute; top: -20px; left: 0; right: 0; width: fit-content; margin: 0 auto; z-index: 2;
+  height: 40px; padding: 2px 22px 0; font-size: 22px; letter-spacing: .04em;
+}
+/* hàng sao lớn + hạng ca canh giữa ngay dưới băng rôn */
+.sum-v2 .sum-hero-top { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+/* Dì Sáu bán thân + bong bóng nhận xét, đứng trên dải lãi */
+.sum-v2 .sum-hero-main { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 8px; align-items: end; margin-top: 4px; }
+.sum-v2 .sum-disau { display: block; width: 88px; height: 103px; line-height: 0; margin: 0 0 -12px -2px; align-self: end; }
+.sum-v2 .sum-disau svg { width: 100%; height: 100%; display: block; }
+/* sao lớn khắc trên bảng gỗ */
+.sum-v2 .sum-stars { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; max-width: 100%; }
+.sum-v2 .sum-stars-row { display: flex; gap: 3px; min-width: 0; }
+.sum-v2 .sum-star { position: relative; flex: none; width: 42px; height: 42px; line-height: 0; }
+.sum-v2 .sum-star .svg-box, .sum-v2 .sum-star-bg, .sum-v2 .sum-star-fg { display: block; position: absolute; inset: 0; }
+.sum-v2 .sum-star svg { display: block; width: 100%; height: 100%; }
+.sum-v2 .sum-star.is-half .sum-star-fg { clip-path: inset(0 50% 0 0); }
+.sum-v2 .sum-stars-num {
+  flex: none; padding: 2px 9px 0; border: 2.5px solid var(--g-ink); border-radius: 999px; background: var(--g-paper);
+  font-family: var(--g-font-display); font-size: 18px; font-weight: 800; line-height: 1.25; font-variant-numeric: tabular-nums;
+  box-shadow: 0 2px 0 rgba(58, 38, 24, .35);
+}
+.sum-v2 .sum-rank {
+  margin: 0; text-align: center; font-family: var(--g-font-display); font-size: 22px; font-weight: 800; line-height: 1.05; letter-spacing: .02em;
+  color: var(--g-gold-light); text-shadow: var(--g-text-outline-thin);
+}
+.sum-v2 .rank-good .sum-rank { color: #fff4d8; }
+.sum-v2 .rank-ok .sum-rank, .sum-v2 .rank-even .sum-rank { color: #fff4d8; }
+.sum-v2 .rank-loss .sum-rank { color: #ffd0c4; }
+/* bong bóng lời Dì Sáu: giấy viền mực, đuôi chỉ về Dì Sáu bên trái */
+.sum-v2 .sum-bubble {
+  position: relative; align-self: center; margin-bottom: 10px; padding: 6px 10px 7px; border: 2.5px solid var(--g-ink); border-radius: 14px; background: var(--g-paper);
+  box-shadow: inset 0 -3px 0 var(--g-paper-shade), 0 3px 0 rgba(58, 38, 24, .25);
+}
+.sum-v2 .sum-bubble::before {
+  content: ''; position: absolute; left: -10px; bottom: 12px; width: 14px; height: 14px; background: var(--g-paper);
+  border-left: 2.5px solid var(--g-ink); border-bottom: 2.5px solid var(--g-ink); transform: rotate(45deg) skew(8deg, 8deg);
+}
+.sum-v2 .sum-bubble b { display: block; font-family: var(--g-font-display); font-size: 15px; font-weight: 800; color: var(--g-tomato-dark); line-height: 1.2; }
+.sum-v2 .sum-bubble p { margin: 0; font-size: 15px; line-height: 1.3; }
+/* dải "Lãi trong ca": giấy, xu to, số Baloo lớn */
+.sum-v2 .sum-result {
+  position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 4px 12px 4px 6px;
+  border: 2.5px solid var(--g-ink); border-radius: 14px; background: var(--g-paper);
+  box-shadow: inset 0 -4px 0 var(--g-paper-shade), 0 3px 0 rgba(58, 38, 24, .3);
+}
+.sum-v2 .sum-result-ico { flex: none; width: 42px; height: 42px; line-height: 0; }
+.sum-v2 .sum-result-ico svg { width: 100%; height: 100%; }
+.sum-v2 .sum-result-label { flex: 1 1 auto; min-width: 0; font-family: var(--g-font-display); font-size: 17px; font-weight: 800; line-height: 1.1; }
+.sum-v2 .sum-result-num {
+  flex: none; font-family: var(--g-font-display); font-size: 28px; font-weight: 800; line-height: 1.1; padding-top: 3px;
+  font-variant-numeric: tabular-nums; color: var(--g-go-dark); white-space: nowrap;
+}
+.sum-v2 .sum-result.is-neg .sum-result-num { color: var(--g-bad); }
+
+/* ---------- Thẻ giấy dùng chung ---------- */
+.sum-v2 .sum-card {
+  position: relative; padding: 10px 12px 12px; border: 2.5px solid var(--g-ink); border-radius: 16px;
+  background: var(--g-paper); color: var(--g-ink);
+  box-shadow: inset 0 -4px 0 var(--g-paper-shade), 0 3px 0 rgba(58, 38, 24, .18);
+}
+.sum-v2 .sum-card-head { display: flex; align-items: center; gap: 8px; min-width: 0; margin-bottom: 6px; }
+.sum-v2 .sum-card-ico { flex: none; width: 40px; height: 40px; line-height: 0; margin: -4px 0; }
+.sum-v2 .sum-card-ico svg { width: 100%; height: 100%; display: block; }
+.sum-v2 .sum-card-ico--wide { width: 72px; height: 36px; }
+.sum-v2 .sum-card-title {
+  flex: 1 1 auto; min-width: 0; margin: 0; font-family: var(--g-font-display); font-size: 19px; font-weight: 800; line-height: 1.15;
+  color: var(--g-tomato-dark); padding-top: 2px;
+}
+.sum-v2 .sum-card-tag {
+  flex: none; padding: 2px 10px 0; border: 2px solid var(--g-ink); border-radius: 999px; background: #fff3d0;
+  font-family: var(--g-font-display); font-size: 15px; font-weight: 800; line-height: 1.35; white-space: nowrap;
+}
+.sum-v2 .sum-hint { margin: 6px 0 0; font-size: 14px; line-height: 1.35; color: var(--g-ink-soft); }
+.sum-v2 .sum-line { display: flex; align-items: center; gap: 8px; margin: 6px 0 0; font-size: 14px; line-height: 1.35; color: var(--g-ink-soft); }
+.sum-v2 .sum-line-ico { flex: none; width: 28px; height: 28px; line-height: 0; }
+.sum-v2 .sum-line-ico svg { width: 100%; height: 100%; }
+.sum-v2 .sum-mark { flex: none; display: inline-block; width: 22px; height: 22px; line-height: 0; vertical-align: middle; }
+.sum-v2 .sum-mark svg { width: 100%; height: 100%; }
+.sum-v2 .sum-note { background: #fff8e0; }
+
+/* ---------- 3. Tờ sổ lãi lỗ kẻ dòng ---------- */
+.sum-v2 .sum-ledger-card {
+  padding-left: 14px;
+  background-image:
+    linear-gradient(90deg, transparent 8px, rgba(232, 72, 58, .28) 8px 10px, transparent 10px);
+}
+.summary-screen.sum-v2 table.ledger { width: 100%; border-collapse: collapse; font-size: 15px; }
+.summary-screen.sum-v2 .ledger td { padding: 3px 2px; height: 34px; border-bottom: 1.5px solid var(--g-paper-line); vertical-align: middle; }
+.sum-v2 .ledger .sum-lbl { display: flex; align-items: center; gap: 8px; min-height: 34px; padding-right: 6px; }
+.sum-v2 .ledger td.sum-lbl { height: auto; }
+.sum-v2 .sum-row-ico { flex: none; width: 28px; height: 28px; line-height: 0; }
+.sum-v2 .sum-row-ico svg { width: 100%; height: 100%; display: block; }
+.sum-v2 .sum-lbl-text { min-width: 0; line-height: 1.2; }
+.summary-screen.sum-v2 .ledger td.num {
+  position: relative; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums;
+  font-family: var(--g-font-display); font-size: 17px; font-weight: 800; padding-top: 5px;
+}
+.summary-screen.sum-v2 .ledger tr.neg td.num { color: var(--g-bad); }
+.summary-screen.sum-v2 .ledger tr.is-zero td { color: var(--g-ink-soft); }
+.summary-screen.sum-v2 .ledger tr.is-zero .sum-row-ico { opacity: .55; }
+/* số đang đếm: chữ thật giữ nguyên trong DOM (ẩn tạm), số đếm vẽ bằng ::after phủ đúng chỗ */
+.summary-screen.sum-v2 .ledger td.num.is-counting > .sum-amt { visibility: hidden; }
+.summary-screen.sum-v2 .ledger td.num.is-counting::after {
+  content: attr(data-shown); position: absolute; right: 2px; top: 0; bottom: 0; display: flex; align-items: center; padding-top: 3px;
+}
+.summary-screen.sum-v2 .ledger tr.total td { border-bottom: 0; border-top: 3px solid var(--g-ink); height: 46px; padding-top: 6px; }
+.summary-screen.sum-v2 .ledger tr.total .sum-lbl { font-family: var(--g-font-display); font-size: 18px; font-weight: 800; }
+.summary-screen.sum-v2 .ledger tr.total td.num { font-size: 23px; }
+.summary-screen.sum-v2 .ledger tr.total.pos td.num { color: var(--g-go-dark); }
+.summary-screen.sum-v2 .ledger tr.total.neg td.num { color: var(--g-bad); }
+/* con dấu LÃI / LỖ: mộc tròn viền kép, nghiêng */
+.sum-v2 .sum-stamp {
+  flex: none; display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; margin: -4px 0;
+  border: 3px solid currentColor; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--g-paper), inset 0 0 0 3.5px currentColor;
+  font-family: var(--g-font-display); font-size: 15px; font-weight: 800; letter-spacing: .04em; line-height: 1; padding-top: 2px;
+  transform: rotate(-12deg); background: rgba(255, 255, 255, .55);
+}
+.sum-v2 .sum-stamp.is-pos { color: #2a7a2a; }
+.sum-v2 .sum-stamp.is-neg { color: #c0281b; }
+.sum-v2 .sum-stamp.is-even { color: #8a6a1c; }
+.sum-v2 .sum-ledger-info { margin: 6px 0 0; padding: 0; list-style: none; font-size: 14px; color: var(--g-ink-soft); display: flex; flex-direction: column; gap: 2px; }
+
+/* ---------- 4. Chốt két ---------- */
+.sum-v2 .sum-drawer-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.sum-v2 .sum-drawer-table td { padding: 4px 2px; border-bottom: 1.5px dashed var(--g-paper-line); }
+.sum-v2 .sum-drawer-table td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 700; }
+.sum-v2 .sum-drawer-table tr.total td { border-bottom: 0; border-top: 2.5px solid var(--g-ink); font-family: var(--g-font-display); font-weight: 800; font-size: 17px; padding-top: 6px; }
+.sum-v2 .sum-drawer-table tr.total td:first-child { display: flex; align-items: center; gap: 6px; }
+.sum-v2 .sum-drawer-table tr.total.pos td.num { color: var(--g-go-dark); }
+.sum-v2 .sum-drawer-table tr.total.neg td.num { color: var(--g-bad); }
+.sum-v2 .sum-drawer.is-ok .sum-hint { color: var(--g-go-dark); font-weight: 700; }
+
+/* ---------- 5. Khách hôm nay: hàng mặt khách bán thân theo tâm trạng ---------- */
+.sum-v2 .sum-faces { display: flex; flex-wrap: wrap; gap: 6px 4px; align-items: flex-end; padding: 4px 0 2px; }
+.sum-v2 .sum-face {
+  position: relative; flex: none; width: 48px; height: 56px; border-bottom: 3px solid rgba(58, 38, 24, .18);
+}
+.sum-v2 .sum-face-img { display: block; width: 48px; height: 56px; line-height: 0; }
+.sum-v2 .sum-face-img svg { width: 100%; height: 100%; display: block; }
+.sum-v2 .sum-face-emote { position: absolute; top: -2px; right: -4px; width: 22px; height: 22px; line-height: 0; }
+.sum-v2 .sum-face-emote svg { width: 100%; height: 100%; }
+.sum-v2 .sum-face.is-lost .sum-face-img { opacity: .5; }
+.sum-v2 .sum-face-tag {
+  position: absolute; left: -3px; right: -3px; bottom: 2px; text-align: center; padding: 1px 0 0;
+  border: 1.5px solid var(--g-ink); border-radius: 8px; background: #ffe2da; color: var(--g-bad-dark);
+  font-family: var(--g-font-display); font-size: 14px; font-weight: 800; line-height: 1.1; white-space: nowrap;
+}
+.sum-v2 .sum-face-more {
+  align-self: center; padding: 4px 10px 2px; border: 2px solid var(--g-ink); border-radius: 999px; background: #fff3d0;
+  font-family: var(--g-font-display); font-size: 16px; font-weight: 800;
+}
+.sum-v2 .sum-guest-line { margin: 6px 0 0; font-size: 14px; line-height: 1.35; color: var(--g-ink-soft); }
+.sum-v2 .sum-rep { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.sum-v2 .sum-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px 3px 4px; border: 2px solid var(--g-ink); border-radius: 999px;
+  background: var(--g-paper); box-shadow: 0 2px 0 rgba(58, 38, 24, .2);
+}
+.sum-v2 .sum-chip.is-gold { background: linear-gradient(180deg, #fff6c4, #ffe27a); }
+.sum-v2 .sum-chip-ico { flex: none; width: 30px; height: 30px; line-height: 0; }
+.sum-v2 .sum-chip-ico svg { width: 100%; height: 100%; }
+.sum-v2 .sum-chip-text { display: flex; flex-direction: column; line-height: 1.1; }
+.sum-v2 .sum-chip-gain {
+  margin-left: 4px; padding: 2px 9px 0; border: 2px solid var(--g-ink); border-radius: 999px; background: #efe7d8;
+  font-family: var(--g-font-display); font-size: 16px; font-weight: 800; line-height: 1.25;
+}
+.sum-v2 .sum-chip-gain.is-up { background: linear-gradient(180deg, var(--g-go-light), var(--g-go)); color: #fff; text-shadow: var(--g-text-outline-thin); }
+.sum-v2 .sum-chip small { font-size: 14px; color: var(--g-ink-soft); font-weight: 700; }
+.sum-v2 .sum-chip b { font-family: var(--g-font-display); font-size: 18px; font-weight: 800; }
+
+/* ---------- 6. Tình huống, sự kiện trong ca, sổ ghi nợ ---------- */
+.sum-v2 .sum-incident { display: flex; flex-direction: column; gap: 8px; }
+.sum-v2 .sum-incident .sum-card-head { margin-bottom: 0; }
+.sum-v2 .sum-incident-item {
+  display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 4px 10px; align-items: start;
+  padding: 8px; border: 2px solid rgba(58, 38, 24, .25); border-radius: 12px; background: #fffdf6;
+}
+.sum-v2 .sum-incident-art { width: 56px; height: 56px; line-height: 0; }
+.sum-v2 .sum-incident-art svg { width: 100%; height: 100%; }
+.sum-v2 .sum-incident-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.sum-v2 .sum-incident-name { font-family: var(--g-font-display); font-size: 17px; font-weight: 800; line-height: 1.15; }
+.sum-v2 .sum-incident-choice { margin: 0; font-size: 15px; font-weight: 700; line-height: 1.3; }
+.sum-v2 .sum-incident-text { margin: 0; font-size: 14px; line-height: 1.35; color: var(--g-ink-soft); }
+.sum-v2 .sum-incident-fx { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 2px 0 0; padding: 0; list-style: none; }
+.sum-v2 .sum-incident-fx li {
+  padding: 2px 9px 1px; border: 1.5px solid rgba(58, 38, 24, .4); border-radius: 999px; background: #f3ead6;
+  font-size: 14px; font-weight: 700; line-height: 1.3;
+}
+.sum-v2 .sum-incident-fx li.is-plus { background: #e2f3d6; border-color: #4f8f3a; color: #1f5a24; }
+.sum-v2 .sum-incident-fx li.is-minus { background: #fde3dc; border-color: #c25a48; color: #8f2015; }
+.sum-v2 .sum-event-notes { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 14px; font-weight: 600; }
+.sum-v2 .sum-event-notes li {
+  display: flex; align-items: center; gap: 8px; padding: 5px 8px; border: 2px solid rgba(58, 38, 24, .25); border-radius: 12px; background: #fffdf6;
+}
+.sum-v2 .sum-event-notes li.is-plus { background: #effae6; }
+.sum-v2 .sum-event-notes li.is-minus { background: #fdeeea; }
+.sum-v2 .sum-event-notes li b { font-weight: 800; }
+.sum-v2 .sum-ev-ico { flex: none; width: 40px; height: 40px; line-height: 0; }
+.sum-v2 .sum-ev-ico svg { width: 100%; height: 100%; }
+.sum-v2 .sum-ev-text { min-width: 0; line-height: 1.35; }
+.sum-v2 .sum-debt { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; line-height: 1.35; }
+.sum-v2 .sum-debt.is-paid { color: var(--green-ink); font-weight: 700; }
+.sum-v2 .sum-debt.is-unpaid { color: #2f4a63; }
+
+/* ---------- 7. Hàng hiếm cuối ca ---------- */
+.sum-v2 .sum-rare-item { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 4px 10px; align-items: start; padding: 4px 0; }
+.sum-v2 .sum-rare-who { width: 52px; height: 52px; line-height: 0; }
+.sum-v2 .sum-rare-who.is-bust { height: 61px; }
+.sum-v2 .sum-rare-who svg { width: 100%; height: 100%; }
+.sum-v2 .sum-rare-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.sum-v2 .sum-rare-body > b { font-size: 15px; line-height: 1.25; }
+.sum-v2 .sum-rare-text { margin: 0; font-size: 14px; line-height: 1.35; color: var(--g-ink-soft); }
+.sum-v2 .sum-rare-tiles { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+
+/* ---------- 8. Thạo món: hình món + thanh tiến độ ---------- */
+.sum-v2 .sum-mastery-list { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.sum-v2 .sum-dish {
+  display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 2px 10px; align-items: center;
+  padding: 6px 8px; border: 2px solid rgba(58, 38, 24, .2); border-radius: 12px; background: #fffdf6;
+}
+.sum-v2 .sum-dish.is-up { border-color: var(--g-ink); background: linear-gradient(160deg, #fff1c8 0%, #fffaf0 100%); box-shadow: 0 0 0 2px var(--g-gold); }
+.sum-v2 .sum-dish-art {
+  position: relative; display: block; width: 52px; height: 52px; padding: 3px; box-sizing: border-box; line-height: 0;
+  border: 2px solid var(--g-ink); border-radius: 50%; background: radial-gradient(circle at 36% 30%, #fffdf6 0 40%, #f3dfb6 100%);
+}
+.sum-v2 .sum-dish-img { display: block; width: 100%; height: 100%; }
+.sum-v2 .sum-dish-img svg { width: 100%; height: 100%; display: block; }
+.sum-v2 .sum-dish-up { position: absolute; right: -8px; bottom: -4px; width: 24px; height: 24px; line-height: 0; }
+.sum-v2 .sum-dish-up svg { width: 100%; height: 100%; }
+.sum-v2 .sum-dish-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.sum-v2 .sum-dish-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.sum-v2 .sum-dish-name { min-width: 0; font-size: 15px; line-height: 1.2; overflow-wrap: anywhere; }
+.sum-v2 .sum-up-tag {
+  flex: none; padding: 2px 9px 0; border: 2px solid var(--g-ink); border-radius: 999px; background: linear-gradient(180deg, #fff0a6, var(--g-gold));
+  font-family: var(--g-font-display); font-size: 14px; font-weight: 800; line-height: 1.3; white-space: nowrap;
+}
+.sum-v2 .sum-dish-lv { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 8px; font-size: 14px; }
+.sum-v2 .sum-pips { display: inline-flex; gap: 1px; line-height: 0; }
+.sum-v2 .sum-pip { display: inline-block; width: 16px; height: 16px; line-height: 0; }
+.sum-v2 .sum-pip svg { width: 100%; height: 100%; }
+.sum-v2 .sum-dish-lvname { font-family: var(--g-font-display); font-weight: 800; font-size: 15px; color: var(--g-tomato-dark); }
+.sum-v2 .sum-dish-prog { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.sum-v2 .sum-dish-num { flex: none; font-size: 14px; font-weight: 700; color: var(--g-ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ---------- 9. Lỗi quầy / bếp ---------- */
+.sum-v2 .sum-err-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sum-v2 .sum-err-col { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.sum-v2 .sum-err-title { display: flex; align-items: center; gap: 6px; margin: 0; font-family: var(--g-font-display); font-size: 16px; font-weight: 800; line-height: 1.15; }
+.sum-v2 .sum-err-ico { flex: none; width: 34px; height: 34px; line-height: 0; }
+.sum-v2 .sum-err-ico svg { width: 100%; height: 100%; }
+.sum-v2 .sum-err-list { display: flex; flex-direction: column; gap: 3px; margin: 0; padding: 0; list-style: none; }
+.sum-v2 .sum-err-list li {
+  display: flex; justify-content: space-between; gap: 6px; padding: 2px 8px 1px; border-radius: 8px; background: #fde3dc;
+  font-size: 14px; line-height: 1.35; color: #7a1d12;
+}
+.sum-v2 .sum-err-list li b { font-family: var(--g-font-display); font-weight: 800; }
+.sum-v2 .sum-err-clean { display: flex; align-items: center; gap: 4px; }
+.sum-v2 .sum-err-clean .sum-err-none { margin-left: 6px; flex: 1 1 auto; min-width: 0; line-height: 1.3; }
+.sum-v2 .sum-err-none { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 14px; font-weight: 700; color: var(--g-go-dark); }
+.sum-v2 .sum-advice {
+  display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; padding: 6px 10px 7px 6px;
+  border: 2px solid rgba(168, 116, 4, .55); border-radius: 12px; background: #fff6d6; font-size: 15px; line-height: 1.35;
+}
+.sum-v2 .sum-advice p { margin: 0; min-width: 0; }
+.sum-v2 .sum-advice-face { flex: none; width: 44px; height: 44px; line-height: 0; }
+.sum-v2 .sum-advice-face svg { width: 100%; height: 100%; }
+
+/* ---------- 10. Lời khách ---------- */
+.summary-screen.sum-v2 .sum-review-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.sum-v2 .sum-review { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 8px; align-items: start; }
+.sum-v2 .sum-review-face { width: 44px; height: 44px; line-height: 0; border: 2px solid var(--g-ink); border-radius: 50%; background: #fff3d8; overflow: hidden; }
+.sum-v2 .sum-review-face svg { width: 100%; height: 100%; }
+.sum-v2 .sum-review-body {
+  position: relative; min-width: 0; padding: 5px 10px 6px; border: 2px solid rgba(58, 38, 24, .35); border-radius: 12px; background: #fffdf6;
+}
+.sum-v2 .sum-review-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.sum-v2 .sum-review-top b { font-size: 15px; }
+.summary-screen.sum-v2 .sum-review-body p { margin: 2px 0 0; font-style: italic; font-size: 15px; line-height: 1.35; }
+
+/* ---------- 11. Mẹo, Sổ tay nghề ---------- */
+.sum-v2 .sum-tip-text, .sum-v2 .sum-notebook p { margin: 0; font-size: 15px; line-height: 1.4; }
+
+/* ---------- 12. Việc hôm nay, chuỗi, Tem ---------- */
+.sum-v2 .sum-meta { display: flex; flex-direction: column; gap: 10px; }
+.sum-v2 .sum-meta .sum-card-head { margin-bottom: 0; }
+.sum-v2 .sum-meta-block { display: flex; flex-direction: column; gap: 4px; }
+.sum-v2 .sum-meta-block.has-claim { padding: 6px 8px; border-radius: 12px; background: #fff6dd; box-shadow: 0 0 0 2px var(--g-gold); }
+.sum-v2 .sum-meta-title { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 15px; font-weight: 800; line-height: 1.25; }
+.sum-v2 .sum-meta-ico { flex: none; width: 30px; height: 30px; line-height: 0; }
+.sum-v2 .sum-meta-ico svg { width: 100%; height: 100%; }
+.sum-v2 .sum-meta-text { margin: 0 0 0 38px; font-size: 14px; line-height: 1.35; }
+.sum-v2 .sum-quests { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.sum-v2 .sum-quests li { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; font-size: 14px; }
+.sum-v2 .sum-quests li .pbar { grid-column: 1 / -1; }
+.sum-v2 .sq-text { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.sum-v2 .sum-quests li.is-done .sq-text { color: var(--green-ink); font-weight: 800; }
+.sum-v2 .sq-tick { flex: none; width: 20px; height: 20px; line-height: 0; }
+.sum-v2 .sq-tick svg { width: 100%; height: 100%; }
+.sum-v2 .sq-num { font-family: var(--g-font-display); font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums; }
+
+/* ---------- 13. Ngày mai: tờ thông báo ghim + dự báo khách ---------- */
+.sum-v2 .sum-dayev {
+  position: relative; margin: 6px 0 8px; padding: 8px 10px 9px; border: 2px solid rgba(58, 38, 24, .4); border-radius: 12px;
+  background: #fffdf6; display: flex; flex-direction: column; gap: 4px;
+}
+.sum-v2 .sum-dayev.kind-xau { background: #fff0ec; border-color: #c25a48; }
+.sum-v2 .sum-dayev.kind-chon { background: #eef6fb; border-color: #4a7fa8; }
+.sum-v2 .sum-dayev-head { display: flex; align-items: center; gap: 10px; }
+.sum-v2 .sum-dayev-ico { flex: none; width: 56px; height: 56px; line-height: 0; }
+.sum-v2 .sum-dayev-ico svg { width: 100%; height: 100%; }
+.sum-v2 .sum-kicker { display: block; font-size: 14px; font-weight: 700; color: var(--g-ink-soft); }
+.sum-v2 .sum-dayev-name { display: block; font-family: var(--g-font-display); font-size: 18px; font-weight: 800; line-height: 1.15; }
+.sum-v2 .sum-dayev-desc { margin: 0; font-size: 14px; line-height: 1.35; }
+.sum-v2 .sum-dayev-fx { display: flex; flex-direction: column; gap: 4px; margin: 2px 0 0; padding: 0; list-style: none; font-size: 14px; }
+.sum-v2 .sum-dayev-fx li { display: flex; align-items: center; gap: 8px; line-height: 1.3; }
+.sum-v2 .sum-dayev-fx li.no-ico::before { content: ''; flex: none; width: 10px; height: 10px; margin: 0 9px; border-radius: 50%; background: var(--g-gold); border: 1.5px solid var(--g-ink); }
+.sum-v2 .sum-fx-ico { flex: none; width: 28px; height: 28px; line-height: 0; }
+.sum-v2 .sum-fx-ico svg { width: 100%; height: 100%; }
+.sum-v2 .sum-dayev-warn { margin: 0; font-size: 14px; font-weight: 700; color: var(--g-bad-dark); }
+.sum-v2 .sum-dayev-tip { margin: 0; font-size: 14px; font-weight: 700; color: #22557d; }
+.sum-v2 .sum-forecast { display: flex; align-items: center; gap: 10px; }
+.sum-v2 .sum-crowd { flex: none; display: flex; }
+.sum-v2 .sum-crowd-face {
+  width: 34px; height: 34px; line-height: 0; margin-left: -10px; border: 2px solid var(--g-ink); border-radius: 50%; background: #fff3d8; overflow: hidden;
+}
+.sum-v2 .sum-crowd-face:first-child { margin-left: 0; }
+.sum-v2 .sum-crowd-face svg { width: 100%; height: 100%; }
+.sum-v2 .sum-forecast p { margin: 0; min-width: 0; font-size: 14px; line-height: 1.35; color: var(--g-ink-soft); }
+
+/* ---------- 14. Biển "Ngày mai" dính đáy ---------- */
+.summary-screen.sum-v2 > .update-slot { margin: 0; }
+.summary-screen.sum-v2 > .sticky-foot.sum-foot {
+  position: sticky; bottom: 0; z-index: 5; margin: 0 calc(-1 * var(--sum-gut)); padding: 14px var(--sum-gut) calc(10px + var(--safe-bottom));
+  background: linear-gradient(180deg, rgba(251, 241, 220, 0) 0, var(--g-cream) 16px);
+}
+.sum-v2 .sum-foot .btn.sum-next {
+  --btn-tw: 1.75px; gap: 10px; min-height: 62px; padding: 6px 16px; border-radius: 20px;
+  box-shadow: inset 0 -4px 0 rgba(58, 38, 24, .16), 0 5px 0 var(--btn-edge);
+}
+.sum-v2 .sum-next-hook { position: absolute; z-index: -2; top: -14px; width: 4px; height: 14px; border-radius: 2px; background: var(--g-ink); pointer-events: none; }
+.sum-v2 .sum-next-hook-l { left: 22%; }
+.sum-v2 .sum-next-hook-r { right: 22%; }
+.sum-v2 .sum-next-face { display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 0; max-width: 100%; }
+.sum-v2 .sum-next-ico { flex: none; width: 42px; height: 42px; display: block; line-height: 0; margin: -4px 0; }
+.sum-v2 .sum-next-ico svg { width: 100%; height: 100%; }
+.sum-v2 .sum-next-text { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; text-align: left; }
+.sum-v2 .sum-next-text b { font-size: 26px; line-height: 1; font-weight: 800; padding-top: 3px; }
+.sum-v2 .sum-next-text small { font-size: 14px; line-height: 1.2; font-weight: 800; --btn-tw: 1px; white-space: nowrap; }
+
+/* ---------- Hoạt ảnh vào màn (một lần, hữu hạn; chỉ khi .is-anim) ---------- */
+.sum-v2.is-anim .sum-ribbon { animation: sum-drop 460ms var(--g-ease-back) both; }
+.sum-v2.is-anim .sum-disau { transform-origin: 50% 100%; animation: sum-rise 460ms var(--g-ease-back) 120ms both; }
+.sum-v2.is-anim .sum-star-fg { animation: sum-star 340ms var(--g-ease-back) both; animation-delay: calc(380ms + var(--i, 0) * 170ms); }
+.sum-v2.is-anim .sum-rank { animation: sum-pop 360ms var(--g-ease-back) 900ms both; }
+.sum-v2.is-anim .sum-bubble { transform-origin: 0 100%; animation: sum-pop 340ms var(--g-ease-back) 420ms both; }
+.sum-v2.is-anim .sum-result { animation: sum-pop 340ms var(--g-ease-back) 200ms both; }
+.sum-v2.is-anim .sum-face { animation: sum-pop 300ms var(--g-ease-back) both; animation-delay: calc(300ms + var(--i, 0) * 60ms); }
+.sum-v2.is-anim .sum-stamp:not(.is-slam) { opacity: 0; }
+.sum-v2.is-anim .sum-stamp.is-slam { animation: sum-slam 280ms cubic-bezier(.3, 0, .6, 1) both; }
+.sum-v2.is-anim .sum-mastery:not(.is-in) .pbar-fill { transform: scaleX(0); }
+.sum-v2.is-anim .sum-mastery.is-in .pbar-fill { transform-origin: 0 50%; animation: sum-fill 720ms var(--g-ease-out) 120ms both; }
+.sum-v2.is-anim .sum-mastery.is-in .sum-up-tag { animation: sum-pop 360ms var(--g-ease-back) 420ms both; }
+
+@keyframes sum-drop { 0% { opacity: 0; transform: translateY(-26px) scale(.7) rotate(-6deg); } 60% { opacity: 1; transform: translateY(3px) scale(1.06) rotate(1deg); } 100% { opacity: 1; transform: none; } }
+@keyframes sum-rise { 0% { opacity: 0; transform: translateY(18px) scale(.9); } 100% { opacity: 1; transform: none; } }
+@keyframes sum-star {
+  0% { opacity: 0; transform: scale(.2) rotate(-35deg); }
+  55% { opacity: 1; transform: scale(1.35) rotate(8deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+@keyframes sum-pop { 0% { opacity: 0; transform: scale(.6); } 60% { opacity: 1; transform: scale(1.06); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes sum-slam {
+  0% { opacity: 0; transform: scale(1.9) rotate(-24deg); }
+  70% { opacity: 1; transform: scale(.92) rotate(-12deg); }
+  100% { opacity: 1; transform: scale(1) rotate(-12deg); }
+}
+@keyframes sum-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* Giảm chuyển động (đổi giữa chừng): bỏ mọi hoạt ảnh, hiện thẳng trạng thái cuối */
+@media (prefers-reduced-motion: reduce) {
+  .sum-v2 *, .sum-v2 *::before, .sum-v2 *::after { animation: none !important; }
+  .sum-v2.is-anim .sum-stamp:not(.is-slam), .sum-v2.is-anim .sum-mastery:not(.is-in) .pbar-fill { opacity: 1; transform: none; }
+  .sum-v2.is-anim .sum-stamp:not(.is-slam) { transform: rotate(-12deg); }
+}
+html.reduce-motion .sum-v2 *, html.reduce-motion .sum-v2 *::before, html.reduce-motion .sum-v2 *::after { animation: none !important; }
+html.reduce-motion .sum-v2.is-anim .sum-stamp:not(.is-slam) { opacity: 1; }
+html.reduce-motion .sum-v2.is-anim .sum-mastery:not(.is-in) .pbar-fill { transform: none; }
+
+/* ---------- Khung hẹp (≤ 380px) ---------- */
+@media (max-width: 380px) {
+  .summary-screen.sum-v2 { --sum-gut: 12px; }
+  .sum-v2 .sum-bar-name { display: none; }
+  .sum-v2 .sum-bar-day { font-size: 17px; padding: 3px 12px 1px; }
+  .sum-v2 .sum-hero-main { grid-template-columns: 78px minmax(0, 1fr); }
+  .sum-v2 .sum-disau { width: 78px; height: 91px; }
+  .sum-v2 .sum-star { width: 38px; height: 38px; }
+  .sum-v2 .sum-stars-num { font-size: 16px; padding: 1px 7px 0; }
+  .sum-v2 .sum-rank { font-size: 20px; }
+  .sum-v2 .sum-result-num { font-size: 25px; }
+  .sum-v2 .sum-err-cols { gap: 8px; }
+}
+@media (max-width: 340px) {
+  .sum-v2 .sum-hero { padding-left: 8px; padding-right: 8px; }
+  .sum-v2 .sum-hero-main { grid-template-columns: 66px minmax(0, 1fr); gap: 6px; }
+  .sum-v2 .sum-disau { width: 66px; height: 77px; margin-left: -4px; }
+  .sum-v2 .sum-star { width: 34px; height: 34px; }
+  .sum-v2 .sum-stars { gap: 5px; }
+  .sum-v2 .sum-stars-row { gap: 1px; }
+  .sum-v2 .sum-result-label { font-size: 15px; }
+  .sum-v2 .sum-result-num { font-size: 22px; }
+  .sum-v2 .sum-err-cols { grid-template-columns: 1fr; }
+  .sum-v2 .sum-next-text b { font-size: 24px; }
+  .sum-v2 .sum-next-ico { display: none; }
+  .sum-v2 .sum-next-text { align-items: center; text-align: center; }
+}
+/* Khung thấp (≤ 700px: Safari 402×680, 360×600, 320×568, 375×553): băng rôn gọn hơn để thấy lãi + đầu tờ sổ ngay */
+@media (max-height: 700px) {
+  .sum-v2 .sum-hero { margin-top: 24px; padding-top: 22px; padding-bottom: 8px; }
+  .sum-v2 .sum-ribbon { height: 36px; font-size: 20px; top: -18px; }
+  .sum-v2 .sum-hero-main { grid-template-columns: 72px minmax(0, 1fr); margin-top: 2px; }
+  .sum-v2 .sum-disau { width: 72px; height: 84px; margin-bottom: -10px; }
+  .sum-v2 .sum-star { width: 36px; height: 36px; }
+  .sum-v2 .sum-rank { font-size: 19px; }
+  .sum-v2 .sum-bubble p { font-size: 14px; }
+  .sum-v2 .sum-result { margin-top: 8px; }
+  .sum-v2 .sum-result-ico { width: 36px; height: 36px; }
+  .sum-v2 .sum-result-num { font-size: 24px; }
+  .sum-v2 .sum-foot .btn.sum-next { min-height: 56px; padding-top: 4px; padding-bottom: 4px; }
+  .sum-v2 .sum-next-text b { font-size: 23px; }
+  .sum-v2 .sum-next-ico { width: 38px; height: 38px; }
+  .summary-screen.sum-v2 > .sticky-foot.sum-foot { padding-top: 12px; padding-bottom: calc(8px + var(--safe-bottom)); }
+}
+@media (max-height: 600px) {
+  .sum-v2 .sum-hero-main { grid-template-columns: 62px minmax(0, 1fr); }
+  .sum-v2 .sum-disau { width: 62px; height: 72px; }
+  .sum-v2 .sum-star { width: 32px; height: 32px; }
+  .sum-v2 .sum-bubble { padding: 4px 8px 5px; }
+  .sum-v2 .sum-bubble b { display: none; }
+}
