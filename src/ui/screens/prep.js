@@ -4,7 +4,8 @@
 //  2. Cảnh phố (.ps-scene): mái bạt theo màu dù đang dùng, biển ngày treo (Ngày N, chặng, ba con số Tiền quán / danh
 //     tiếng / sao bằng hình, huy hiệu sự kiện ngày có dấu "!" / "✓"), xe đẩy chính là bảng lối vào (7 đồ vật to có nhãn
 //     và chấm đỏ: Chợ Công Thức, Việc hôm nay, Điểm danh, Hộp thư trên mặt quầy; Sổ công thức, Sổ tay nghề, Cài đặt trong
-//     hộc xe), Dì Sáu bán thân trên vỉa hè với bong bóng lời dặn.
+//     hộc xe), Dì Sáu bán thân trên vỉa hè với bong bóng lời dặn; có thưởng chờ nhận ngay ở sảnh (bước chuỗi, quà sự
+//     kiện) thì hộp quà có số dán ở góc bong bóng (testid prep-gift, bấm → cuộn tới thẻ có nút nhận).
 //  3. Các tấm theo nhịp ngày: dải nhắc (lùi giờ, bản mới, sao lưu) → thiệp lễ → tờ thông báo sự kiện ngày + lựa chọn →
 //     vé Phiếu Chợ Sớm → gánh hàng quê → sổ chuỗi "Dì Sáu dặn" → nợ / mượn Dì Sáu → bảng gỗ "Hôm nay" (dự báo khách
 //     bằng hàng đầu khách + số to, thực đơn bằng hình món có đĩa giá) → kho hàng hiếm → Giấc mơ tiếp theo → Mẹo nghề.
@@ -257,6 +258,7 @@ export default {
     let pendingPop = ''        // bộ chọn hình cần "bật" sau lần vẽ lại kế tiếp (chọn lựa chọn, dùng phiếu)
     let bounced = false        // nút Mở hàng đã nảy lần vào màn này
     let bounceTimer = 0
+    let giftTimer = 0          // nút nhận nảy sau khi cuộn tới (bấm hộp quà)
 
     function refresh() {
       const nowInfo = app.nowInfo()
@@ -283,8 +285,17 @@ export default {
           svgBox(SCENE_ICONS.tab_quay, 'ps-shop-ico'), h('span', { class: 'ps-shop-name' }, state.shopName)),
         h('div', { class: 'prep-topend' }, spoonPill(state.goldSpoons || 0, 'prep-spoons', true), helpButton(app))))
 
+      // Chuỗi nhiệm vụ (không gồm chuỗi sự kiện: nằm trong thẻ sự kiện) và sự kiện có thời hạn
+      const chains = chainStatus(state, nowInfo, app.ctx).filter(c => !c.eventId && (!c.done || c.claimable.length))
+      chains.sort((a, b) => (b.main ? 1 : 0) - (a.main ? 1 : 0))
+      const events = eventsOverview(state, nowInfo, app.ctx)
+      // quà chờ nhận NGAY ở sảnh (bước chuỗi xong chưa nhận, quà sự kiện): hộp quà trên bong bóng Dì Sáu, thấy không cần
+      // cuộn ở mọi khung (thẻ chứa nút nhận nằm dưới cảnh); lối vào khác đã có chấm đỏ riêng
+      const giftN = chains.reduce((s, c) => s + ((c.claimable && c.claimable.length) || 0), 0) +
+        events.reduce((s, ev) => s + (Number(ev.pending) || 0), 0)
+
       // 2. Cảnh phố: biển ngày, xe đẩy = lối vào, Dì Sáu
-      el.appendChild(sceneView(state, nowInfo, dayEv, first))
+      el.appendChild(sceneView(state, nowInfo, dayEv, first, giftN))
 
       // 3. Các tấm
       const body = h('div', { class: 'ps-body' })
@@ -306,9 +317,7 @@ export default {
           h('span', { class: 'backup-reminder-go', 'aria-hidden': 'true' }, '›')))
       }
 
-      // Chuỗi nhiệm vụ (không gồm chuỗi sự kiện: nằm trong thẻ sự kiện); sổ giấy ghim, nhận thưởng thì xu bay về ví
-      const chains = chainStatus(state, nowInfo, app.ctx).filter(c => !c.eventId && (!c.done || c.claimable.length))
-      chains.sort((a, b) => (b.main ? 1 : 0) - (a.main ? 1 : 0))
+      // Thẻ chuỗi: sổ giấy ghim, nhận thưởng thì xu bay về ví
       const chainEls = chains.map((c, i) => chainCard(app, c, {
         testid: i === 0 ? 'chain-card' : 'chain-card-' + c.id, compact: true, variant: 'note',
         onClaimed: (reward, rect) => { pendingFx = { reward, rect } },
@@ -318,7 +327,7 @@ export default {
       if (first) for (const c of chainEls) add(c)
 
       // Sự kiện có thời hạn
-      for (const ev of eventsOverview(state, nowInfo, app.ctx)) add(eventCard(ev))
+      for (const ev of events) add(eventCard(ev))
 
       // Sự kiện ngày + Phiếu Chợ Sớm
       if (dayEv) add(dayEventCard(dayEv))
@@ -410,7 +419,7 @@ export default {
     }
 
     // ---------- Cảnh phố: mái bạt, biển ngày, xe đẩy = lối vào, Dì Sáu ----------
-    function sceneView(state, nowInfo, dayEv, first) {
+    function sceneView(state, nowInfo, dayEv, first, giftN = 0) {
       const o = cartOptions(state, app.data)
       const rain = !!(dayEv && dayEv.id === 'troi_mua')
       const c = dayEv && dayEv.choice
@@ -452,11 +461,37 @@ export default {
       // 2b. Xe đẩy với 7 đồ vật lối vào
       scene.appendChild(navGrid(state, nowInfo))
 
-      // 2c. Dì Sáu trên vỉa hè + bong bóng lời dặn (lời chọn một lần khi vào màn)
-      scene.appendChild(h('div', { class: 'npc-talk ps-talk', testid: 'prep-talk' },
+      // 2c. Dì Sáu trên vỉa hè + bong bóng lời dặn (lời chọn một lần khi vào màn); có quà chờ nhận ở sảnh thì dán hộp quà
+      // lên góc bong bóng
+      scene.appendChild(h('div', { class: ['npc-talk', 'ps-talk', giftN > 0 ? 'has-gift' : ''], testid: 'prep-talk' },
         svgBox(DI_SAU_POSES[prepPose(state, dayEv)] || DI_SAU_FACES.vui, 'ps-disau'),
-        h('div', { class: 'bubble npc-bubble ps-bubble' }, h('b', null, 'Dì Sáu'), h('p', null, talk))))
+        h('div', { class: 'bubble npc-bubble ps-bubble' }, h('b', null, 'Dì Sáu'), h('p', null, talk),
+          giftN > 0 ? giftBadge(giftN) : null)))
       return scene
+    }
+
+    // Hộp quà "có thưởng chờ nhận ở sảnh" (bấm → cuộn tới thẻ đầu tiên có nút nhận, nút đó nảy một lần). Tĩnh, không nhấp nháy.
+    function giftBadge(n) {
+      return h('button', {
+        class: 'ps-gift', type: 'button', testid: 'prep-gift', dataset: { n: String(n) },
+        'aria-label': `Có ${n} phần thưởng chờ nhận ở sảnh. Xem`, title: 'Thưởng chờ nhận',
+        onclick: () => {
+          app.sound('click')
+          const card = el.querySelector('.ps-body > .event-card.has-pending, .ps-body > .chain-card.has-claim')
+          if (!card) return
+          const reduced = isReduced(app)
+          card.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' })
+          const btn = card.querySelector('.chain-claim-row .btn:not([disabled]), [data-testid="open-event"]')
+          clearTimeout(giftTimer)
+          if (!btn || !app.vfx) return
+          giftTimer = setTimeout(() => {
+            if (destroyed || !btn.isConnected) return
+            try { if (reduced) app.vfx.glow(btn); else app.vfx.squash(btn) } catch { /* bỏ qua */ }
+          }, reduced ? 0 : 450)
+        }
+      },
+      svgBox(metaArt('qua') || icon('qua'), 'ps-gift-ico'),
+      redDot(n, 'prep-gift-dot'))
     }
 
     function stat(label, ico, value, testid, { title = null, aria = null, amount = null, note = null, noteShown = false } = {}) {
@@ -902,6 +937,6 @@ export default {
       const sg = stallSig()
       if (sg !== lastStall) { lastStall = sg; render() }
     }, 30000)
-    return { unmount() { destroyed = true; clearInterval(timer); clearTimeout(bounceTimer) } }
+    return { unmount() { destroyed = true; clearInterval(timer); clearTimeout(bounceTimer); clearTimeout(giftTimer) } }
   }
 }

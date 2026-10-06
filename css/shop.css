@@ -283,7 +283,17 @@
 .cart-view { width: 100%; max-width: 280px; line-height: 0; }
 .cart-view svg { width: 100%; height: auto; }
 .spoon-top .cart-view.shop-cart { max-width: 220px; }
-.spoon-balance { flex: 1 1 44%; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.spoon-balance {
+  flex: 1 1 44%; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+  container: spoon-bal / inline-size;
+}
+.spoon-balance .pill { max-width: 100%; }
+/* cột hẹp (mọi khung điện thoại: cột ~120–160px, viên một dòng cần ~170px): viên thành huy hiệu vàng hai dòng — muỗng + số
+   ở trên, chữ "Muỗng Vàng" xuống dòng dưới; không tràn ra ngoài cột, không cắt chữ */
+@container spoon-bal (max-width: 174px) {
+  .spoon-balance .pill { flex-wrap: wrap; justify-content: center; row-gap: 0; padding: 3px 12px 5px; border-radius: 16px; }
+  .spoon-balance .pill-cap { flex: 1 0 100%; text-align: center; line-height: 1.2; }
+}
 .spoon-hint {
   padding: 4px 8px; border: 2px solid rgba(58, 38, 24, .35); border-radius: 12px; background: rgba(255, 250, 240, .88);
   font-size: 14px; font-weight: 700; line-height: 1.3; color: var(--g-ink-soft);
@@ -377,7 +387,8 @@
   .shop-actions > .shop-buy-wrap { order: -1; }
   .shop-owned-items { display: none; }
 }
-@media (max-width: 370px) {
+/* thanh tab: dưới 390px bỏ hình trên tab (ô "Góc Muỗng Vàng" có hình sẽ xuống 3 dòng ở 375px) */
+@media (max-width: 389px) {
   .shop-tab-ico { display: none; }
   .shop-tabs .shop-tab { padding: 4px 3px 3px; }
 }
@@ -454,8 +465,18 @@
 .tasting-rule { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .tasting-rule-ico { flex: none; display: block; width: 20px; height: 20px; line-height: 0; }
 .tasting-rule-ico svg { display: block; width: 100%; height: 100%; }
-/* Nấu thử: chữ tối thiểu 14px, thẻ công thức thu gọn chạm được (≥ 44px) */
-.kitchen.is-tasting .k-card-lbl, .kitchen.is-tasting .k-ing-ready, .kitchen.is-tasting .k-tag { font-size: 14px; }
+/* Nấu thử: chữ tối thiểu 14px (bếp trong ca dùng 13px ở vài nhãn để vừa một màn — màn Nấu thử không đếm giờ, có chỗ cuộn,
+   nên giữ luật 14px như trước), thẻ công thức thu gọn chạm được (≥ 44px). Độ ưu tiên bằng luật gốc ở mg-prep.css (gắn trước). */
+.kitchen.is-tasting .k-card-lbl, .kitchen.is-tasting .k-ing-ready, .kitchen.is-tasting .k-tag,
+.kitchen.is-tasting .k-card-name, .kitchen.is-tasting .k-card-tip, .kitchen.is-tasting .k-card-sum-n,
+.kitchen.is-tasting .k-ing-name, .kitchen.is-tasting .k-step-st, .kitchen.is-tasting .k-retry-info,
+.tasting-screen .chon-shelf[data-cols="3"] .chon-label, .tasting-screen .chon-hint-short { font-size: 14px; }
+/* kệ 4 cột: nhãn 14px từ khung 390px; màn hẹp hơn giữ 13px của kệ Chọn (ô hẹp: 14px làm "Bánh tráng mè" xuống 3 dòng, đè
+   hàng dưới ở màn 320px) */
+@media (min-width: 390px) {
+  .tasting-screen .chon-shelf .chon-label { font-size: 14px; }
+}
+.tasting-screen .mg-stage.g-frame2 .g-head2 .g-dot-n { font-size: 14px; }
 .kitchen.is-tasting .k-card.is-compact .k-card-steps summary { min-height: 44px; }
 .kitchen.is-tasting [data-testid="mg-time"] { visibility: hidden; }
 /* kết quả: bảng ra món tĩnh (hàng 1 giãn theo chiều cao màn) + lời kết quả + nút */

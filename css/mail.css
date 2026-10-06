@@ -1,25 +1,116 @@
-/* Hộp thư (src/ui/screens/mailbox.js). M5 Đợt 3 bước 0: chuyển nguyên văn từ css/meta.css (gắn sau quests.css). */
+/* Hộp thư (src/ui/screens/mailbox.js). M5 Đợt 3 bước 0: chuyển nguyên văn từ css/meta.css (gắn sau quests.css).
+   M5 Đợt 3 (gói M-C, bản 0.5.2): kệ gỗ đầu danh sách (số thư + nút vàng "Nhận tất cả" có hộp quà); mỗi thư là phong bì
+   giấy (thư mới có viền thư máy bay đỏ – xanh ở mép trái, ô quà nhỏ ở góc hình phong bì); thư mở thành tờ giấy kẻ dòng
+   có tem và dấu bưu điện; quà đính kèm là ô vật phẩm có hình; nhận rồi thì nút thành dấu mực xanh "Đã nhận" (đóng dấu MỘT
+   LẦN khi vừa nhận). Chữ ≥ 14px, vùng chạm ≥ 44px; không hoạt ảnh lặp. `.meta-screen > .mail-bar` (lề) nằm ở meta.css. */
 
-/* ---------- Hộp thư ---------- */
-.mail-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.mail-list { gap: 8px; }
-.mail-item { background: var(--paper); border: 2px solid var(--line); border-radius: var(--radius); overflow: hidden; }
-.mail-item.is-new { border-color: #efb6a4; }
-.mail-item.is-claimed { opacity: .75; }
-.mail-head {
-  position: relative; width: 100%; display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 8px 32px 8px 10px;
-  background: transparent; border: 0; text-align: left;
+/* ---------- Kệ đầu danh sách ---------- */
+.mail-screen > .mail-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px 6px 6px;
+  border: 3px solid var(--g-ink); border-radius: 14px; color: var(--g-ink);
+  background:
+    repeating-linear-gradient(178.6deg, rgba(111, 66, 25, 0) 0 6px, rgba(111, 66, 25, .1) 6px 7.5px, rgba(111, 66, 25, 0) 7.5px 13px),
+    linear-gradient(180deg, var(--g-wood-light) 0%, var(--g-wood) 100%);
+  box-shadow: inset 0 3px 0 rgba(255, 238, 205, .5), inset 0 -4px 0 rgba(111, 66, 25, .35), 0 3px 0 var(--g-wood-deep);
 }
-.mail-head .red-dot { top: 50%; right: 10px; transform: translateY(-50%); }
-.mail-icon { width: 36px; height: 36px; display: inline-block; line-height: 0; flex: none; }
+.mail-count {
+  flex: 1 1 auto; display: flex; align-items: center; gap: 6px; min-width: 0; padding: 3px 10px 3px 4px;
+  border: 2.5px solid var(--g-ink); border-radius: 12px; background: var(--g-paper);
+}
+.mail-count-ico { flex: none; display: inline-block; width: 34px; height: 34px; line-height: 0; }
+.mail-count-ico svg { width: 100%; height: 100%; }
+.mail-count-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+.mail-count-text b { font-family: var(--g-font-display); font-size: 16px; font-weight: 800; padding-top: 1px; }
+.mail-count-text small { font-size: 14px; color: var(--g-ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mail-bar.has-gift .mail-count-text small { color: var(--g-go-dark); font-weight: 700; }
+.mail-bar .mail-claim-all { flex: none; gap: 4px; padding-left: 8px; }
+.mail-claim-all-ico { display: inline-block; width: 26px; height: 26px; line-height: 0; flex: none; }
+.mail-claim-all-ico svg { width: 100%; height: 100%; }
+.mail-claim-all:disabled .mail-claim-all-ico { filter: grayscale(.8); opacity: .65; }
+
+/* ---------- Phong bì ---------- */
+.mail-list { gap: 10px; }
+.mail-item {
+  position: relative; border: 2.5px solid var(--g-ink); border-radius: 12px; overflow: hidden; color: var(--g-ink);
+  background: var(--g-paper); box-shadow: inset 0 -4px 0 var(--g-paper-shade), 0 3px 0 rgba(58, 38, 24, .18);
+}
+/* thư mới: viền thư máy bay ở mép trái */
+.mail-item.is-new::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 7px; pointer-events: none;
+  background: repeating-linear-gradient(-45deg, var(--g-tomato) 0 7px, var(--g-paper) 7px 10px, var(--g-sky) 10px 17px, var(--g-paper) 17px 20px);
+  border-right: 1.5px solid rgba(58, 38, 24, .35);
+}
+.mail-item.has-gift { background: #fff8e4; }
+.mail-item.is-claimed { background: #f6f1e6; }
+.mail-head {
+  position: relative; width: 100%; display: flex; align-items: center; gap: 10px; min-height: 60px; padding: 8px 34px 6px 14px;
+  background: transparent; border: 0; text-align: left; color: inherit; font: inherit; cursor: pointer;
+}
+.mail-head:focus-visible { outline: 3px solid var(--g-gold); outline-offset: -3px; border-radius: 10px; }
+.mail-env { position: relative; flex: none; width: 48px; height: 48px; }
+.mail-icon { display: block; width: 48px; height: 48px; line-height: 0; }
 .mail-icon svg { width: 100%; height: 100%; }
+.mail-item.is-claimed .mail-icon { opacity: .75; }
+.mail-env-gift { position: absolute; right: -8px; bottom: -6px; width: 26px; height: 26px; line-height: 0; }
+.mail-env-gift svg { width: 100%; height: 100%; }
 .mail-titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.mail-titles b { font-size: 15px; }
-.mail-titles small { color: var(--muted); }
-.mail-preview { font-size: 14px; color: var(--ink); opacity: .8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mail-body { padding: 0 12px 8px 56px; font-size: 15px; }
-.mail-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 0 10px 10px; }
-.mail-foot .btn { margin-left: auto; }
-.mail-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 30px 0; color: var(--muted); }
-.mail-empty-icon { width: 64px; height: 64px; display: inline-block; line-height: 0; opacity: .6; }
+.mail-titles b { font-size: 16px; font-weight: 800; line-height: 1.25; overflow-wrap: anywhere; }
+.mail-titles small { font-size: 14px; color: var(--g-ink-soft); }
+.mail-head .red-dot { top: 12px; right: 10px; }
+.mail-chev {
+  position: absolute; right: 13px; bottom: 12px; width: 10px; height: 10px; box-sizing: border-box;
+  border-right: 3px solid var(--g-ink-soft); border-bottom: 3px solid var(--g-ink-soft); transform: rotate(45deg); opacity: .7;
+}
+.mail-item.is-open .mail-chev { transform: rotate(-135deg); bottom: 8px; }
+
+/* thư mở: tờ giấy kẻ dòng, tem góc phải, dấu bưu điện tròn đè lên tem */
+.mail-letter.g-paper-meta { margin: 2px 10px 10px 14px; padding: 8px 12px 6px; border-radius: 10px; background-position: 0 4px; }
+.mail-stamp { float: right; position: relative; width: 50px; height: 50px; margin: -2px -4px 4px 26px; transform: rotate(5deg); }
+.mail-stamp-art { display: block; width: 50px; height: 50px; line-height: 0; }
+.mail-stamp-art svg { width: 100%; height: 100%; }
+.mail-postmark {
+  position: absolute; left: -20px; bottom: -8px; width: 34px; height: 34px; box-sizing: border-box; padding: 4px; border-radius: 50%;
+  border: 2px dashed rgba(164, 42, 29, .75); background: rgba(255, 250, 240, .55); transform: rotate(-14deg); line-height: 0;
+}
+.mail-postmark-ico { display: block; width: 100%; height: 100%; opacity: .85; }
+.mail-postmark-ico svg { width: 100%; height: 100%; }
+.mail-body { font-size: 15px; line-height: 28px; margin: 0; }
+
+/* quà đính kèm + nút nhận */
+.mail-foot { display: flex; align-items: center; gap: 8px; padding: 0 10px 10px 14px; min-width: 0; }
+.mail-gift { flex: 1 1 auto; min-width: 0; }
+.mail-gift .rw-chips { padding-bottom: 0; }
+.mail-foot .mail-claim { flex: none; margin-left: auto; min-width: 96px; }
+.mail-foot .mail-claim.is-claimed:disabled {
+  flex-direction: column; min-width: 0; gap: 1px; padding: 3px 8px 2px; border: 3px double var(--g-go-dark); border-radius: 12px;
+  background: rgba(238, 248, 230, .92); color: var(--g-go-dark); box-shadow: none; text-shadow: none; cursor: default;
+  font-size: 14px; line-height: 1; white-space: nowrap; transform: rotate(-5deg);
+}
+.mail-foot .mail-claim.is-claimed::before { display: none; }
+.mail-claim-tick { display: block; width: 20px; height: 20px; line-height: 0; }
+.mail-claim-tick svg { width: 100%; height: 100%; }
+.mail-foot .mail-claim.is-claimed.is-stamping { animation: mail-stamp .34s cubic-bezier(.2, 1.3, .45, 1) 1 both; }
+@keyframes mail-stamp {
+  0% { transform: scale(1.8) rotate(-14deg); opacity: 0; }
+  60% { transform: scale(.94) rotate(-4deg); opacity: 1; }
+  100% { transform: scale(1) rotate(-5deg); opacity: 1; }
+}
+
+/* ---------- Hộp thư trống ---------- */
+.mail-empty.g-paper-meta { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 16px 20px; text-align: center; }
+.mail-empty-icon { width: 112px; height: 112px; display: inline-block; line-height: 0; }
 .mail-empty-icon svg { width: 100%; height: 100%; }
+.mail-empty b { font-family: var(--g-font-display); font-size: 19px; font-weight: 800; color: var(--g-tomato-dark); }
+.mail-empty p { font-size: 15px; color: var(--g-ink-soft); }
+
+@media (max-width: 370px) {
+  .mail-count-text small { display: none; }
+  .mail-count-text b { white-space: nowrap; }
+  .mail-head { gap: 8px; padding-left: 12px; }
+  .mail-env, .mail-icon { width: 44px; height: 44px; }
+  .mail-foot .mail-claim { min-width: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mail-foot .mail-claim.is-claimed.is-stamping { animation: none; }
+}
+html.reduce-motion .mail-foot .mail-claim.is-claimed.is-stamping { animation: none; }

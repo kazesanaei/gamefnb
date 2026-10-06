@@ -365,12 +365,12 @@
 .ps-lobby .ps-obj-art .nav-icon svg { width: 100%; height: 100%; }
 .ps-lobby .ps-obj:active .ps-obj-art { transform: translateY(2px) scale(.94); }
 /* chấm đỏ (G1): 20px, có số cao 22px, viền mực 2,5px, đặt trong hình; tĩnh (chỉ nảy một lần khi số tăng — meta.css) */
-.ps-lobby .ps-obj .red-dot {
+.ps-lobby .ps-obj .red-dot, .ps-lobby .ps-gift .red-dot {
   top: -4px; right: -6px; width: 20px; height: 20px; border: 2.5px solid var(--g-ink);
   background: radial-gradient(circle at 34% 30%, #ff8a6c 0 22%, var(--g-tomato) 60%, #c8331f 100%);
   box-shadow: 0 2px 0 rgba(58, 38, 24, .35);
 }
-.ps-lobby .ps-obj .red-dot.has-num {
+.ps-lobby .ps-obj .red-dot.has-num, .ps-lobby .ps-gift .red-dot.has-num {
   width: auto; height: 22px; min-width: 22px; padding: 1px 4px 0; top: -6px; right: -9px;
   font: 800 14px/1 var(--g-font-display); color: #fff;
 }
@@ -423,6 +423,20 @@
   border-left: 2.5px solid var(--g-ink); border-bottom: 2.5px solid var(--g-ink); transform: skewY(-35deg); border-radius: 0 0 0 4px;
 }
 .ps-lobby .ps-bubble b { font-family: var(--g-font-display); font-size: 15px; font-weight: 800; color: var(--g-tomato-dark); line-height: 1.1; }
+/* hộp quà "thưởng chờ nhận ở sảnh" (thưởng chuỗi, quà sự kiện): dán nghiêng ở góc trên-phải bong bóng, chấm đỏ có số;
+   tĩnh (không nhấp nháy). Bấm → cuộn tới thẻ có nút nhận. */
+.ps-lobby .ps-talk .ps-gift {
+  position: absolute; z-index: 3; top: -24px; right: 2px; width: 46px; height: 46px; min-width: 0; min-height: 0; padding: 0;
+  display: grid; place-items: center; border: 3px solid var(--g-ink); border-radius: 50%; color: var(--g-ink);
+  background: radial-gradient(circle at 36% 30%, #fffdf6 0 30%, #ffe9a8 100%); box-shadow: 0 3px 0 rgba(58, 38, 24, .35);
+  transform: rotate(-8deg); transition: transform 80ms var(--g-ease-out);
+  touch-action: manipulation; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.ps-lobby .ps-talk .ps-gift:active { transform: rotate(-8deg) scale(.94); }
+.ps-lobby .ps-talk .ps-gift:focus-visible { outline: 3px solid var(--g-gold); outline-offset: 2px; }
+.ps-lobby .ps-gift-ico { display: block; width: 34px; height: 34px; line-height: 0; }
+.ps-lobby .ps-gift-ico svg { width: 100%; height: 100%; }
+.ps-lobby .ps-talk.has-gift .ps-bubble > b { padding-right: 44px; }
 
 /* ---------- 3. Các tấm dưới cảnh: giấy viền mực, hình to ---------- */
 .ps-lobby .ps-body { display: flex; flex-direction: column; gap: 16px; padding: 18px var(--ps-gut) 6px; }
@@ -807,9 +821,9 @@
 
 /* ---------- Giảm chuyển động: đồ vật lún tức thì (không chuyển tiếp) ---------- */
 @media (prefers-reduced-motion: reduce) {
-  .ps-lobby .ps-obj-art, .ps-lobby .ps-wx { transition: none; }
+  .ps-lobby .ps-obj-art, .ps-lobby .ps-wx, .ps-lobby .ps-talk .ps-gift { transition: none; }
 }
-html.reduce-motion .ps-lobby .ps-obj-art, html.reduce-motion .ps-lobby .ps-wx { transition: none; }
+html.reduce-motion .ps-lobby .ps-obj-art, html.reduce-motion .ps-lobby .ps-wx, html.reduce-motion .ps-lobby .ps-talk .ps-gift { transition: none; }
 
 /* ================= Màn Lên chặng (stage-up.js) ================= */
 .stage-screen .meta-title { font-size: 20px; }
